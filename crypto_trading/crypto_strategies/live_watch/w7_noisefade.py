@@ -18,8 +18,10 @@ drift; structural test enforces it):
 
 Registered comparand (scan cell): n=1,621, hit 78.8% @ cost 0.750,
 +2.62c/contract, NW-t 2.36, 135 trades/day. LIVE criteria (watchlist):
-post-registration INDEPENDENT WINDOWS ≥ 200 (not raw trades — the five
-markets are one macro bet) AND mean > 0 AND window-clustered t ≥ 2.5. The
+post-registration INDEPENDENT WINDOWS ≥ 300 (raised from 200 on 2026-08-29:
+the realised window σ of 33.7c makes the 200-window test unreachable even
+for a true +3.3c edge — power correction using σ only, per user approval)
+AND mean > 0 AND window-clustered t ≥ 2.5. The
 bar exceeds the usual 2.0 because the cell surfaced from an exploratory scan
 (24 cells, Bonferroni |t| ≥ 3.08, which it did NOT clear on scan data).
 
@@ -152,11 +154,42 @@ def quote(m: dict) -> tuple[float, float] | None:
     return (yb, ya) if 0.0 < yb < 1.0 and 0.0 < ya < 1.0 else None
 
 
+def window_stats(windows: dict) -> tuple[int, float, float]:
+    """(n, mean_c, t) over INDEPENDENT windows — the strategy's honest stats."""
+    import math
+    wm = [v["sum_c"] / v["n"] for v in windows.values() if v.get("n")]
+    n = len(wm)
+    if n < 2:
+        return n, 0.0, 0.0
+    mu = sum(wm) / n
+    var = sum((x - mu) ** 2 for x in wm) / (n - 1)
+    se = math.sqrt(var / n) if var > 0 else float("inf")
+    return n, mu, (mu / se if se > 0 else 0.0)
+
+
+def evidence_kill(st: dict, min_windows: int = 30) -> bool:
+    """Paper probes burn no money, so a dollar stop only ever fires on noise
+    (it did, twice). The only honest reason to stop a paper probe is the data
+    actively REFUTING the edge: window-clustered t ≤ −2 with enough
+    independent windows. Sticky like the old kill — a human clears it."""
+    if st.get("killed"):
+        return True
+    n, mu, t = window_stats(st.get("windows") or {})
+    if n >= min_windows and t <= -2.0:
+        st["killed"] = True
+        st["killed_reason"] = (f"evidence: window t={t:.2f} (mean {mu:+.2f}c, "
+                               f"n={n}) — data refutes the edge")
+        return True
+    return False
+
+
 def run(cfg: dict | None = None, **_) -> dict:
     cfg = (cfg or common.load_cfg()).get(NAME, {})
     st = common.load_state(NAME)
-    if common.kill_check(NAME, st, cfg):
-        return {"strategy": NAME, "status": "KILLED"}
+    if evidence_kill(st):
+        common.save_state(NAME, st)
+        return {"strategy": NAME, "status": "KILLED",
+                "reason": st.get("killed_reason")}
     now = pd.Timestamp.now(tz="UTC")
     vpos = st.setdefault("positions", {})
     seen = st.setdefault("seen_tickers", [])

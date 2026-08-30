@@ -118,6 +118,71 @@ def _merge_upcoming(existing: list, fresh: list, conn=None) -> list:
                   if str(m.get("status") or "") in _LIVE_OR_DONE})
     return list(fresh) + [m for m in carry if m["fixture_id"] not in gone]
 
+
+def _finalize_pending(api, conn, si) -> int:
+    """Flip just-ended matches to FT/AET/PEN by pulling ONLY their fixture ids.
+
+    The candidate set is small by construction: fixtures our DB still holds in an
+    in-progress status within the last 8 hours (the same clause _in_match_window
+    uses), plus anything that kicked off in the last 3 hours whatever its status —
+    the batch API returns 20 fixtures per request with events embedded, so a busy
+    evening costs one or two calls instead of twelve season calendars.
+    """
+    from prediction_market_soccer.config.leagues import active
+    lids = tuple(c.api_football_id for c in active())
+    ph = ",".join("?" * len(lids))
+    st = ",".join("?" * len(_LIVE_STATUS))
+    rows = conn.execute(
+        f"SELECT api_id, status_short FROM fixture WHERE league_id IN ({ph}) AND ("
+        f"  (status_short IN ({st}) AND kickoff_ts >= datetime('now','-8 hours'))"
+        f"  OR kickoff_ts BETWEEN datetime('now','-3 hours') AND datetime('now')"
+        f")", (*lids, *_LIVE_STATUS)).fetchall()
+    ids = [r["api_id"] for r in rows]
+    if not ids:
+        return 0
+    _FIN = ("FT", "AET", "PEN", "AWD", "WO")
+    # The closing-stats pull below must fire on a TRANSITION, not on a state. The
+    # recently-kicked-off clause keeps an already-finished match in this candidate set
+    # for three hours, and keying on membership alone would have re-bought its stats,
+    # lineup and player tables every cycle for all three of them.
+    prior = {r["api_id"]: r["status_short"] for r in rows}
+    was_unfinished = {fid for fid, st_ in prior.items() if st_ not in _FIN}
+    try:
+        items = api.fixtures_by_ids(ids)
+    except Exception as e:  # noqa: BLE001 — budget/API failure must not kill the cycle
+        print(f"[live_refresh] finalize check skipped: {e}")
+        return 0
+    n = 0
+    just_finished: list[int] = []
+    # _store_detailed, not _fixture_row: the ids response carries each fixture's events
+    # EMBEDDED — already paid for — and the World Cup module's maturity here is exactly
+    # that events land the moment a match flips to FT (the smart-exit reconstruction,
+    # the milestone capture and the review logs all read them).
+    from prediction_market_soccer.ingest.soccer_ingest import (
+        _store_detailed, sync_fixture_players, sync_fixture_stats, sync_lineups)
+    for it in items:
+        _store_detailed(conn, it)
+        st = ((it.get("fixture") or {}).get("status") or {}).get("short")
+        if st in _FIN and it["fixture"]["id"] in was_unfinished:
+            just_finished.append(it["fixture"]["id"])
+        n += 1
+    if n:
+        conn.commit()
+    # Storing the events above removes these ids from sync_results' "finished and
+    # missing events" set, so its stats/lineups/players pull would silently skip
+    # them — the final-whistle versions of exactly the tables squad_index and the
+    # in-play study read. Pull them here for the matches that JUST finished, the
+    # same close-out the World Cup module does at FT.
+    if just_finished:
+        try:
+            sync_fixture_stats(api, conn, just_finished)
+            sync_lineups(api, conn, just_finished)
+            sync_fixture_players(api, conn, just_finished)
+            print(f"[live_refresh] finalized {len(just_finished)} match(es) with closing stats")
+        except Exception as e:  # noqa: BLE001
+            print(f"[live_refresh] closing stats skipped: {e}")
+    return n
+
 def _append_review_log(inplay: dict, synced: int) -> None:
     """Append a per-match, per-cycle record to a JSONL post-match review log.
 
@@ -328,35 +393,26 @@ def _maybe_refresh_champion(conn) -> None:
         print(f"[live_refresh] topscorers refresh skipped: {e}")
     from prediction_market_soccer.model.run_model import refresh_model
     pl = refresh_model()
-    # A match just settled → regenerate the performance/PnL report too, so the
-    # Accuracy & P&L view (and the PDF) update on the SAME settle event as the price
-    # track (both derive win/loss from performance_report.match_pick → they reconcile).
+    # A match just settled → the bet ledger, the OOS report and the PnL PDF need a
+    # refresh — in a DETACHED process, not here. They ran inline for a while, which was
+    # fine when they scored with the cached live model; the honest per-day walk-forward
+    # made each ~140 strength fits, and this loop holds the single-instance lock, so
+    # every settle wave froze the in-play card for the whole rebuild (8-15 minute
+    # "cycles"; 2,440 prior rebuilds in one day's log before the date-stamped prior
+    # cache landed). The spawn is fire-and-forget: reports land minutes later, the
+    # card never stops, and settle_reports' own lock file keeps it single-flight.
     try:
-        from dataclasses import asdict
-        from prediction_market_soccer.ops import performance_report
-        rep = performance_report.build(conn)
-        _write_both("performance_report.json", asdict(rep))
-        # OOS calibration rides the SAME settle event. It used to run every cycle, which
-        # was affordable while it scored with the cached live model — but it now refits a
-        # weekly walk-forward (~100 strength builds, measured 66.8s), and an unconditional
-        # 67s on a 60-second loop is most of why a match-window cycle took 500-1200s.
-        # Nothing in it can change until a match settles, so this is where it belongs.
-        try:
-            from prediction_market_soccer.model import oos_eval
-            _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
-        except Exception as e:  # noqa: BLE001
-            print(f"[live_refresh] oos_report rebuild skipped: {e}")
-        # Re-render the PnL report PDF too (the "下载报告" view) from the SAME report,
-        # so the JSON views and the PDF never disagree after a match settles.
-        try:
-            import shutil
-            pdf = CONFIG.paths.output / "performance_report.pdf"
-            performance_report.build_pdf(rep, str(pdf))
-            shutil.copyfile(pdf, CONFIG.paths.frontend_data / "performance_report.pdf")
-        except Exception as e:
-            print(f"[live_refresh] performance PDF refresh skipped: {e}")
+        import subprocess
+        import sys
+        subprocess.Popen(
+            [sys.executable, "-m", "prediction_market_soccer.ops.settle_reports"],
+            cwd=str(CONFIG.paths.repo_root) if hasattr(CONFIG.paths, "repo_root") else None,
+            stdout=open(CONFIG.paths.logs / "settle_reports.log", "a"),
+            stderr=subprocess.STDOUT,
+            start_new_session=True)
+        print("[live_refresh] settle reports spawned in background")
     except Exception as e:
-        print(f"[live_refresh] performance_report refresh skipped: {e}")
+        print(f"[live_refresh] settle reports spawn failed: {e}")
     # Recent-form (近期状态) also depends on the just-settled result (projected into
     # nt_recent earlier this cycle), so regenerate form.json on the SAME settle event —
     # else the form table shows stale recent results until the next daily refresh.
@@ -477,9 +533,20 @@ def refresh_once(conn=None) -> dict:
         # Retry the live pull if the fetched minute lags the wall clock (a transient blip that
         # would otherwise freeze the on-screen minute for the whole cycle).
         synced = _sync_live_until_fresh(api, conn, si)
-        # force=True: inside a live window we must catch the FT transition promptly,
-        # so bypass the fixtures TTL/watermark (bounded — only runs during the window).
-        si.sync_results(api, conn, force=True)   # flip just-ended matches to FT + final score
+        # Finalize JUST the in-progress fixtures, by id. This line used to be
+        # `sync_results(force=True)`, whose first act is a full-season fixture pull for
+        # every one of the 12 competitions with the TTL bypassed — 12 season calendars
+        # re-downloaded per minute-scale cycle, ~2,500 calls in one busy day, which is
+        # how the 6,500/day budget ran dry at 22:00 UTC and the loop went blind: matches
+        # sat frozen at 90+2' as "live" while Kalshi had already settled them, because
+        # the very sync that would have flipped them to FT was what had spent the budget.
+        # Catching the FT transition needs exactly the fixtures that are currently
+        # in-progress (or recently kicked off and not yet finalized) — a single batched
+        # ids call, ≤20 per request, with events embedded.
+        _finalize_pending(api, conn, si)
+        # The 14-day detail/backfill machinery still runs, TTL-gated (no force): its
+        # full-season pulls then happen at most once per ttl_fixtures, not per cycle.
+        si.sync_results(api, conn)
         si.project_wc_results_to_nt_recent(conn)  # keep recent-form current with WC results (0 API)
     except Exception as e:
         print(f"[live_refresh] sync failed (using stored state): {e}")

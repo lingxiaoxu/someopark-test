@@ -643,7 +643,7 @@
     "macroMarket": "マクロ予測市場",
     "macroMarketSub": "FRB · CPI · 雇用 · Kalshi",
     "soccerMarket": "クラブサッカー予測市場",
-    "soccerMarketSub": "欧州リーグ · UCL · Kalshi"
+    "soccerMarketSub": "欧州リーグ · UCL"
   },
   "chat": {
     "groupOverview": "概要",
@@ -2205,7 +2205,32 @@
       "cupAlive": "勝ち残り · 優勝 {{p}}",
       "cupOut": "敗退"
     },
-    "possNotMeasured": "ポゼッション未計測"
+    "possNotMeasured": "ポゼッション未計測",
+    "modeCashout": "利確(実現)",
+    "modeHold": "FT保持",
+    "modeArgmax": "argmax(選択のみ)",
+    "colExit": "決済",
+    "colPreCum": "事前Cum¢",
+    "colInplayBet": "ライブ賭け",
+    "colInplayExit": "ライブ決済",
+    "colInplayEntryC": "ライブ入¢",
+    "colInplayRealized": "ライブ実現¢",
+    "colInplayCum": "ライブCum¢",
+    "colCombinedCum": "合計Cum¢",
+    "colRealizedC": "実現¢",
+    "smartExitSold": "{{min}}′ で {{c}}¢ 売却",
+    "exitSettleWon": "決済 勝",
+    "exitSettleLost": "決済 負",
+    "noteCashout": "実現 = 判断モデルが最も過小評価された側に賭け(信頼度で$0.2–$2)、市場がライブ公正値を超えて過剰反応した時に利確。決済列は売却時刻/価格、または決済勝敗を表示。平均エントリー {{entry}}¢ · 平均CLV {{clv}}¢。",
+    "noteHold": "保持 = 同じ判断を決済まで保持(勝→100¢、負→0¢)。参考のみ——実戦略は利確。",
+    "noteArgmax": "argmax = 毎試合モデルの最有力サイドに賭ける(旧来の素朴なルール)。全サンプルの対照であり、当方のベット戦略ではありません。損益はエントリー価格のある試合のみで、戦績も同じ集合から取ります。",
+    "lblBets": "ベット",
+    "lblSkipped": "見送り(エッジなし)",
+    "lblMatchesAll": "試合",
+    "noBetShort": "ベットなし",
+    "colOurPick": "予想",
+    "colMatchup": "対戦",
+    "venueBlind": "一部シリーズがレート制限中 — 表示中の板は不完全です"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(リアルタイム · {{time}} ET)",

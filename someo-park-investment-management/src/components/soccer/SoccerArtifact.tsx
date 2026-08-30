@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import { usePoll } from '../prediction/usePoll';
 import { AdvanceModeToggle, useAdvanceMode } from '../prediction/AdvanceMode';
+import { CONF_COLOR, KIND_COLOR, renderOppReason } from '../prediction/PredictionArtifact';
 import {
   getSoccerModel, getSoccerSeasonOdds, getSoccerUpcoming, getSoccerInplay, getSoccerSchedule,
   getSoccerSquad, getSoccerStyles, getSoccerForm, getSoccerXvMatches, getSoccerXvChampion,
@@ -447,10 +448,11 @@ function InPlay() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
   const { mode } = useAdvanceMode();
-  const { data, loading, error } = usePoll<any>(() => getSoccerInplay(), 30000);
+  const { data, loading, error, updatedAt } = usePoll<any>(() => getSoccerInplay(), 30000);
   if (loading && !data) return <Loading />;
   const ms: any[] = data?.matches ?? [];
   const hasAdvance = ms.some((m) => m.caps?.advance);
+  const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   if (error || !ms.length) {
     return (
       <div>
@@ -463,45 +465,183 @@ function InPlay() {
     <div>
       <Title sub={`${t('soccer.subInplay')} · ${ms.length} ${t('soccer.live')}`}
         right={hasAdvance ? <AdvanceModeToggle /> : undefined} />
-      {ms.map((m: any, i: number) => {
-        const adv = mode === 'advance' && m.caps?.advance && m.advance?.model ? m.advance : null;
-        const q = m.prices?.kalshi || m.prices?.poly_us;
-        // Venue names match the match card's venueLabelMap — 'Poly' was an internal short form.
-        const qsrc = m.prices?.kalshi ? 'Kalshi' : m.prices?.poly_us ? 'Polymarket US' : null;
-        return (
-          <div key={m.fixture_id ?? i} className="card" style={{ marginBottom: 10, borderLeft: '4px solid var(--error)' }}>
-            <div className="flex items-center justify-between">
-              <span style={{ fontSize: 12, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>
-                <span className="pulse" style={{ color: 'var(--error)', marginRight: 6 }}>● {t('soccer.liveBadge')}</span>
-                {clubName(m.home, lang, t)} <b>{m.score ?? ''}</b> {clubName(m.away, lang, t)}
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{m.minute != null ? t('soccer.minuteSuffix', { n: m.minute }) : statusLabel(m.status, t)}</span>
-            </div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 2 }}>
-              {leagueLabel({ league: m.league ?? '', zh: m.league_zh }, lang, t)}{m.round ? ` · ${stageLabel(m.round, t)}` : ''}
-            </div>
-            <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginTop: 4 }}>
-              {t('soccer.model')}: {t('soccer.abbrHome')} {pct(m.model?.home, 0)} · {t('soccer.abbrDraw')} {pct(m.model?.draw, 0)} · {t('soccer.abbrAway')} {pct(m.model?.away, 0)}
-            </div>
-            {adv && (
-              <div style={{ fontSize: 10, ...mono, color: 'var(--accent-primary)', marginTop: 2 }}>
-                {t('soccer.modeAdvance')}: {t('soccer.abbrHome')} {pct(adv.model?.home, 0)} · {t('soccer.abbrAway')} {pct(adv.model?.away, 0)}
-              </div>
-            )}
-            {q && qsrc && (
-              <div style={{ fontSize: 10, ...mono, color: 'var(--text-muted)', marginTop: 2 }}>
-                {qsrc}: {t('soccer.abbrHome')} {cc(q.home?.mid_c)} · {t('soccer.abbrDraw')} {cc(q.draw?.mid_c)} · {t('soccer.abbrAway')} {cc(q.away?.mid_c)}
-              </div>
-            )}
-            {!!m.opportunities?.length && (
-              <div style={{ fontSize: 10, ...mono, color: 'var(--success)', fontWeight: 700, marginTop: 3 }}>
-                {m.opportunities.length} {t('soccer.signals')}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }} className="mb-2">
+        ● {t('prediction.autoRefresh')} 30s{upd ? ` · ${t('prediction.updated')} ${upd}` : ''}
+      </div>
+      {/* Series Kalshi refused this cycle — an empty board must not read as a quiet market. */}
+      {data?.venue_blind && (
+        <div style={{ fontSize: 9, color: 'var(--warning, #d08b00)', ...mono, marginBottom: 6 }}>
+          ⚠ {Object.keys(data.venue_blind).join(' · ')}: {t('soccer.venueBlind')}
+        </div>
+      )}
+      {ms.map((m: any, i: number) => <InPlayMatch key={m.fixture_id ?? i} m={m} mode={mode} lang={lang} />)}
       {data?.ts && <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{t('soccer.asOf')} {fmtTime(data.ts, lang)}</div>}
+    </div>
+  );
+}
+
+/** One live match, rendered at full World-Cup depth (the WC in-play card verbatim, with
+ * club naming). The previous card was a SUMMARY SHELL: it printed "N signals" as a green
+ * counter and stopped, so the signal tables, the intent grouping, the hedge matrix and
+ * the per-venue books — all of which the exporter has carried since day one — were
+ * produced every minute and rendered nowhere. Signal vocabulary deliberately reads from
+ * the prediction.* namespace: the club signals reuse the WC reason keys by design, and
+ * the standing rule is that WC wording is the reference translation. */
+function InPlayMatch({ m, mode, lang }: { m: any; mode: string; lang: string; key?: any }) {
+  const { t } = useTranslation();
+  const adv = mode === 'advance' && m.caps?.advance && m.advance?.model ? m.advance : null;
+  const model = adv ? adv.model : m.model;
+  const prices = adv
+    ? { model_c: adv.model?.cents, kalshi: adv.kalshi, poly_us: adv.poly_us }
+    : (m.prices ?? {});
+  const opps: any[] = (adv ? adv.opportunities : m.opportunities) ?? [];
+  const minuteCell = m.period === 'pens'
+    ? `${t('prediction.periodPens')}${m.shootout ? ` ${m.shootout.home}-${m.shootout.away}` : ''}`
+    : m.period === 'et'
+      ? `${t('prediction.periodEt')} ${m.minute}${m.stoppage ? `+${m.stoppage}` : ''}'`
+      : m.minute != null ? `${m.minute}${m.stoppage ? `+${m.stoppage}` : ''}'` : statusLabel(m.status, t);
+  return (
+    <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid var(--error)' }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: 2 }}>
+        <span style={{ fontWeight: 700, fontSize: 13, ...mono, color: 'var(--text-primary)' }}>
+          <span className="pulse" style={{ color: 'var(--error)', fontWeight: 700, marginRight: 6 }}>● {t('soccer.liveBadge')}</span>
+          <ClubName club={m.home} bold /> <b>{m.score ?? ''}</b> <ClubName club={m.away} bold />
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>
+          {minuteCell}{m.reds && m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}
+        </span>
+      </div>
+      <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4 }}>
+        {leagueLabel({ league: m.league ?? '', zh: m.league_zh }, lang, t)}{m.round ? ` · ${stageLabel(m.round, t)}` : ''}
+        {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{t('soccer.modeAdvance')}</span>}
+      </div>
+      {/* model — probability + per-contract ¢. Advance lens: H/A only (incl. ET+pens). */}
+      <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginBottom: 2 }}>
+        {t('soccer.model')}: {adv
+          ? <>{t('soccer.abbrHome')} {pct(model?.home, 0)} ({cc(prices.model_c?.home)}) · {t('soccer.abbrAway')} {pct(model?.away, 0)} ({cc(prices.model_c?.away)})</>
+          : <>{t('soccer.abbrHome')} {pct(model?.home, 0)} ({cc(prices.model_c?.home)}) · {t('soccer.abbrDraw')} {pct(model?.draw, 0)} ({cc(prices.model_c?.draw)}) · {t('soccer.abbrAway')} {pct(model?.away, 0)} ({cc(prices.model_c?.away)})</>}
+      </div>
+      {/* live venue ¢ — BOTH venues, mid_c (a deep ITM contract has no ask; mid falls back to bid) */}
+      {(prices.kalshi || prices.poly_us) && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 2 }}>
+          {adv ? <>
+            {prices.kalshi && <>Kalshi: {t('soccer.abbrHome')} {cc(prices.kalshi.home?.mid_c)} / {t('soccer.abbrAway')} {cc(prices.kalshi.away?.mid_c)}　</>}
+            {prices.poly_us && <>Poly: {t('soccer.abbrHome')} {cc(prices.poly_us.home?.mid_c)} / {t('soccer.abbrAway')} {cc(prices.poly_us.away?.mid_c)}</>}
+          </> : <>
+            {prices.kalshi && <>Kalshi: {t('soccer.abbrHome')} {cc(prices.kalshi.home?.mid_c)} / {t('soccer.abbrDraw')} {cc(prices.kalshi.draw?.mid_c)} / {t('soccer.abbrAway')} {cc(prices.kalshi.away?.mid_c)}　</>}
+            {prices.poly_us && <>Poly: {t('soccer.abbrHome')} {cc(prices.poly_us.home?.mid_c)} / {t('soccer.abbrDraw')} {cc(prices.poly_us.draw?.mid_c)} / {t('soccer.abbrAway')} {cc(prices.poly_us.away?.mid_c)}</>}
+          </>}
+        </div>
+      )}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>
+        xG {m.xg?.home ?? '—'} / {m.xg?.away ?? '—'}{adv
+          ? (adv.legs ? <> · {t('prediction.advSplit')} {pct(adv.legs.p_reg_decides, 0)}/{pct(adv.legs.p_et_decides, 0)}/{pct(adv.legs.p_pens_decides, 0)}</> : null)
+          : <> · {t('prediction.expGoals')} {num(m.model?.exp_remaining_goals, 2)}</>}
+      </div>
+      {/* 90' market settles at the whistle: past regulation there are no new 3-way entries. */}
+      {!adv && m.period && m.period !== 'reg' && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6, fontStyle: 'italic' }}>
+          {t('prediction.reg90Settled')}
+        </div>
+      )}
+      {/* opportunities — grouped by INTENT (manage / entry / event), WC layout verbatim */}
+      {opps.length ? (() => {
+        const cols = [t('prediction.colKind'), t('prediction.colConf'), t('prediction.colStake'), t('prediction.colAction'), t('prediction.colSide'), t('prediction.colMarketC'), t('prediction.colEdge'), t('prediction.colEdgeC'), t('prediction.colReason')];
+        const confBadge = (o: any) => o.confidence ? (
+          <span title={o.confidence_reason || ''} style={{ color: CONF_COLOR[o.confidence] ?? 'var(--text-muted)', fontWeight: 700, fontSize: 9, border: `1px solid ${CONF_COLOR[o.confidence] ?? 'var(--text-muted)'}`, borderRadius: 3, padding: '0 4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+            {t('prediction.conf.' + o.confidence, { defaultValue: o.confidence })}
+          </span>
+        ) : '—';
+        const stakeCell = (o: any) => o.actionable
+          ? <span title={o.gate_reason || ''} style={{ color: 'var(--success)', fontWeight: 700 }}>${num(o.stake_usd ?? 0, 2)}</span>
+          : <span title={o.gate_reason || ''} style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('prediction.advisory')}</span>;
+        const oppRow = (o: any) => [
+          <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{t('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
+          confBadge(o),
+          stakeCell(o),
+          t('prediction.action.' + o.action, { defaultValue: o.action }),
+          t('prediction.side.' + (o.venue === 'corners' ? 'corner_' + o.side : o.side), { defaultValue: o.side }),
+          cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
+          <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
+          renderOppReason(o, t),
+        ];
+        return (['manage', 'entry', 'event'] as const).map((group) => {
+          const rows = opps.filter((o: any) => (o.intent || 'entry') === group);
+          if (!rows.length) return null;
+          return (
+            <div key={group} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', ...mono, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>
+                {t('prediction.intent.' + group)}
+              </div>
+              <DataTable cols={cols} rows={rows.map(oppRow)} />
+            </div>
+          );
+        });
+      })() : (!adv && m.period && m.period !== 'reg')
+        ? null
+        : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('prediction.noOpps')}</div>}
+      {/* hedge — protect a held directional position by buying the draw (backend math verbatim) */}
+      {!adv && m.hedge && <InPlayHedge m={m} lang={lang} />}
+    </div>
+  );
+}
+
+function InPlayHedge({ m, lang }: { m: any; lang: string }) {
+  const { t } = useTranslation();
+  const h = m.hedge;
+  const homeName = clubName(m.home, lang, t), awayName = clubName(m.away, lang, t);
+  const heldName = h.held_side === 'home' ? homeName : awayName;
+  const planLabel = (b: number) => b === 0 ? t('prediction.hedge.planNone')
+    : (h.full_hedge_b != null && Math.abs(b - h.full_hedge_b) < 0.01) ? t('prediction.hedge.planFull')
+    : t('prediction.hedge.planBe');
+  const sign = (x: number) => (x >= 0 ? '+' : '');
+  const col = (x: number) => <span style={{ color: x >= 0 ? 'var(--success)' : 'var(--error)' }}>{sign(x)}{cc(x)}</span>;
+  const cols = [t('prediction.hedge.colPlan'), t('prediction.hedge.colDrawB'),
+    `${homeName} ${t('prediction.hedge.win')}`, t('prediction.side.draw'), `${awayName} ${t('prediction.hedge.win')}`];
+  const drawCell = (b: number) => b === 0 ? num(b, 2) : `${num(b, 2)} @${cc(h.draw_c, 1)}`;
+  const rows = (h.payoff || []).map((r: any) => [planLabel(r.b), drawCell(r.b), col(r.home), col(r.draw), col(r.away)]);
+  return (
+    <div style={{ marginTop: 8, padding: '6px 8px', border: '1px solid var(--border-subtle)', borderRadius: 4 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', ...mono, marginBottom: 3 }}>
+        🛡 {t(h.lead_state === 'leading' ? 'prediction.hedge.titleLeading' : 'prediction.hedge.titleManage')}
+      </div>
+      <div style={{ fontSize: 10, ...mono, marginBottom: 2, color: h.lead_state === 'leading' ? 'var(--text-secondary)' : 'var(--warning, #d08b00)' }}>
+        {t('prediction.hedge.summary', {
+          team: heldName, entry: cc(h.entry_c, 1),
+          state: t('prediction.hedge.state.' + h.lead_state),
+          draw: cc(h.draw_c, 1), shares: h.shares_ref,
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
+        {t('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
+        {h.profit_if_win_c != null && <> · {h.profit_if_win_c >= 0
+          ? t('prediction.hedge.profitIfWin', { team: heldName, profit: cc(h.profit_if_win_c) })
+          : t('prediction.hedge.lossIfWin', { team: heldName, loss: cc(Math.abs(h.profit_if_win_c)) })}</>}
+      </div>
+      <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', ...mono, fontSize: 10, marginTop: 2 }}>
+        <colgroup>
+          <col style={{ width: '20%' }} /><col style={{ width: '24%' }} />
+          <col style={{ width: '18.66%' }} /><col style={{ width: '18.66%' }} /><col style={{ width: '18.66%' }} />
+        </colgroup>
+        <thead>
+          <tr>{cols.map((c, i) => (
+            <th key={i} style={{ textAlign: i < 2 ? 'left' : 'right', padding: '2px 6px', color: 'var(--text-muted)', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c}</th>
+          ))}</tr>
+        </thead>
+        <tbody>{rows.map((r: any[], ri: number) => (
+          <tr key={ri}>{r.map((cell, ci) => (
+            <td key={ci} style={{ textAlign: ci < 2 ? 'left' : 'right', padding: '2px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cell}</td>
+          ))}</tr>
+        ))}</tbody>
+      </table>
+      <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 3 }}>
+        ⚠ {t('prediction.hedge.warnAway', { away: h.held_side === 'home' ? awayName : homeName })}
+      </div>
+      {h.knockout && (
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 1 }}>
+          ⏱ {t('prediction.hedge.koNote')}
+        </div>
+      )}
     </div>
   );
 }
@@ -910,6 +1050,109 @@ const cVal = (v: number | null | undefined): ReactNode =>
 
 /** 准确度与盈亏 — mirror of wc_performance (frozen-ledger KV + bet log). Cold-start
  * empty state until the first settlements land. */
+
+/** The three settlement views the World Cup card has, on the club data (附录 C-20).
+ *
+ * The backend has produced all of them for a while — bet_log carries `smart_exit`,
+ * `realized_*`, `argmax_*`, the five `inplay_*` fields and both cumulative streams — but
+ * the card rendered a single flat table, which is the HOLD track and only that. So the
+ * two headline facts of the strategy were invisible here: that we cash out rather than
+ * hold, and that a match can carry a SECOND, in-play position on top of the pre-match one.
+ *
+ * Columns mirror the World Cup exactly: the pre-match stream (下注/离场/入场¢/实现¢/赛前Cum)
+ * mirrored by the in-play stream (盘中下注/盘中离场/盘中入场¢/盘中实现¢/盘中Cum), both sized
+ * the same way, then 合计Cum.
+ */
+function PerformanceTracks({ data, log, lang }: { data: any; log: any[]; lang: string }) {
+  const { t } = useTranslation();
+  const [mode, setMode] = useState<'cashout' | 'hold' | 'argmax'>('cashout');
+  const muted = (x: ReactNode) => <span style={{ color: 'var(--text-muted)' }}>{x}</span>;
+  const rec = (raw: any) => {
+    const m = String(raw ?? '').match(/^(\d+)\s*W\s*-\s*(\d+)\s*L$/i);
+    return m ? t('soccer.record', { w: m[1], l: m[2] }) : (raw ?? '—');
+  };
+  const tab = (k: typeof mode, label: string) => (
+    <button key={k} onClick={() => setMode(k)}
+      style={{ fontSize: 10, ...mono, padding: '3px 9px', marginRight: 6, cursor: 'pointer',
+               background: mode === k ? 'var(--text-primary)' : 'transparent',
+               color: mode === k ? 'var(--bg-primary)' : 'var(--text-muted)',
+               border: `1px solid ${mode === k ? 'var(--text-primary)' : 'var(--border-subtle)'}` }}>
+      {label}
+    </button>
+  );
+  // Smart-exit sold min/price when it fired, else the settle W/L — one cell shape so the
+  // pre-match 离场 and the 盘中离场 read identically.
+  const exitCell = (se: any, won: boolean) => se
+    ? <span style={{ color: (se.pnl_c ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+        {t('soccer.smartExitSold', { min: se.sold_min, c: Math.round(se.sold_c) })}</span>
+    : <span style={{ color: won ? 'var(--success)' : 'var(--error)' }}>
+        {t(won ? 'soccer.exitSettleWon' : 'soccer.exitSettleLost')}</span>;
+  const inplayBet = (b: any) => b.inplay_side
+    ? <span style={{ color: b.inplay_won ? 'var(--success)' : 'var(--error)' }}>
+        {b.inplay_side === 'draw' ? t('soccer.drawResult') : anyName(b.inplay_side_team, lang, t)} {b.inplay_milestone}</span>
+    : muted('—');
+  const inplayCells = (b: any) => b.inplay_side
+    ? [inplayBet(b), exitCell(b.inplay_exit, b.inplay_won), cc(b.inplay_entry_cents),
+       cVal(b.inplay_pnl_cents), cVal(b.inplay_cum_pnl_cents)]
+    : [muted('—'), muted('—'), '—', '—', cVal(b.inplay_cum_pnl_cents)];
+
+  const headline = () => {
+    if (mode === 'cashout') return (
+      <><b>{rec(data.realized_record)}</b> · {cVal(data.combined_pnl_cents_total)} · {t('soccer.colRealizedC')} {cVal(data.realized_pnl_cents_total)} + {t('soccer.colInplayRealized')} {rec(data.inplay_record)} {cVal(data.inplay_pnl_cents_total)} = {t('soccer.colCombinedCum')}</>);
+    if (mode === 'hold') return (
+      <><b>{rec(data.hold_record ?? data.pnl_record)}</b> · {cVal(data.hold_pnl_cents_total ?? data.pnl_cents_total)} · {data.n_decision_bets ?? log.length} {t('soccer.lblBets')} · {data.n_skipped ?? 0} {t('soccer.lblSkipped')}</>);
+    return (
+      <><b>{rec(data.argmax_record)}</b> · {cVal(data.argmax_pnl_cents_total)} · {data.argmax_priced_n ?? 0}/{log.length} {t('soccer.lblMatchesAll')} · {t('soccer.lblModelAcc')} {pct(data.model_pred_accuracy, 0)}</>);
+  };
+  const note = () => mode === 'cashout'
+    ? t('soccer.noteCashout', { entry: data.avg_entry_cents == null ? '—' : Math.round(data.avg_entry_cents),
+                                clv: ((data.avg_clv_cents ?? 0) >= 0 ? '+' : '') + Math.round(data.avg_clv_cents ?? 0) })
+    : mode === 'hold' ? t('soccer.noteHold') : t('soccer.noteArgmax');
+
+  const cols = mode === 'argmax'
+    ? [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colResult'), t('soccer.colEntryC'), t('soccer.colRealizedC'), t('soccer.colCumC')]
+    : mode === 'cashout'
+      ? [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colStake'), t('soccer.colExit'), t('soccer.colEntryC'), t('soccer.colRealizedC'), t('soccer.colPreCum'), t('soccer.colInplayBet'), t('soccer.colInplayExit'), t('soccer.colInplayEntryC'), t('soccer.colInplayRealized'), t('soccer.colInplayCum'), t('soccer.colCombinedCum')]
+      : [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colStake'), t('soccer.colResult'), t('soccer.colEntryC'), t('soccer.colPnlC'), t('soccer.colCumC')];
+
+  const rows = log.map((b: any) => {
+    const matchup = <span>{anyName(b.home, lang, t)} {b.score ?? ''} {anyName(b.away, lang, t)}</span>;
+    const side = b.pick === 'draw' ? t('soccer.drawResult') : anyName(b.pick_team ?? b.pick, lang, t);
+    if (mode === 'argmax') {
+      const am = b.model_pick === 'draw' ? t('soccer.drawResult') : anyName(b.model_pick_team ?? b.model_pick, lang, t);
+      return [b.date?.slice(5) ?? '—', matchup, am, wlCell(t, b.model_won),
+              cc(b.argmax_entry_cents), cVal(b.argmax_pnl_cents), cVal(b.argmax_cum_pnl_cents)];
+    }
+    if (b.bet === false) {
+      const base = [b.date?.slice(5) ?? '—', matchup, muted(t('soccer.noBetShort')), muted('$0')];
+      // A no-bet match still shows its in-play position: 赛前Cum is unchanged while the
+      // in-play columns and 合计Cum move.
+      return mode === 'cashout'
+        ? [...base, muted('—'), '—', '—', cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)]
+        : [...base, muted('—'), '—', '—', cVal(b.cum_pnl_cents)];
+    }
+    if (mode === 'cashout')
+      return [b.date?.slice(5) ?? '—', matchup, side, b.stake_usd != null ? fmtMoney(b.stake_usd, lang) : '—',
+              exitCell(b.smart_exit, b.won), cc(b.entry_cents), cVal(b.realized_pnl_cents),
+              cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)];
+    return [b.date?.slice(5) ?? '—', matchup, side, b.stake_usd != null ? fmtMoney(b.stake_usd, lang) : '—',
+            wlCell(t, b.won), cc(b.entry_cents), cVal(b.pnl_cents), cVal(b.cum_pnl_cents)];
+  });
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ marginBottom: 8 }}>
+        {tab('cashout', t('soccer.modeCashout'))}
+        {tab('hold', t('soccer.modeHold'))}
+        {tab('argmax', t('soccer.modeArgmax'))}
+      </div>
+      <div style={{ fontSize: 12, ...mono, marginBottom: 4, color: 'var(--text-primary)' }}>{headline()}</div>
+      <div style={{ fontSize: 10, ...mono, marginBottom: 6, color: 'var(--text-muted)', lineHeight: 1.55 }}>{note()}</div>
+      <DataTable cols={cols} rows={rows} />
+    </div>
+  );
+}
+
 function PerformanceCard() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
@@ -935,36 +1178,7 @@ function PerformanceCard() {
         ...(data.avg_clv_cents != null ? [[t('soccer.lblAvgClv'), <span style={{ color: data.avg_clv_cents > 0 ? 'var(--success)' : undefined }}>{data.avg_clv_cents > 0 ? '+' : ''}{cc(data.avg_clv_cents)}</span>] as [string, ReactNode]] : []),
         [t('soccer.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? t('soccer.gradePass') : t('soccer.gradeBlock')}</span>],
       ]} />
-      {!!log.length && (() => {
-        // The exporter ships the record pre-formatted as "3W-12L"; W/L are English
-        // initials, so it is re-composed from the two numbers instead.
-        const raw = data.realized_record ?? data.hold_record ?? data.pnl_record;
-        const wl = String(raw ?? '').match(/^(\d+)\s*W\s*-\s*(\d+)\s*L$/i);
-        const record = wl ? t('soccer.record', { w: wl[1], l: wl[2] }) : raw;
-        const pnl = data.combined_pnl_cents_total ?? data.hold_pnl_cents_total ?? data.pnl_cents_total;
-        return (
-          <div style={{ marginTop: 14 }}>
-            {record && <div style={{ fontSize: 12, ...mono, marginBottom: 6, color: 'var(--text-primary)' }}><b>{record}</b>{pnl != null ? <> · {cVal(pnl)}</> : null}</div>}
-            <DataTable cols={[t('soccer.colDate'), t('soccer.colMatch'), t('soccer.colPick'), t('soccer.colStake'), t('soccer.colResult'), t('soccer.colEntryC'), t('soccer.colPnlC'), t('soccer.colCumC')]}
-              rows={log.map((b: any) => {
-                const matchup = <span>{anyName(b.home, lang, t)} {b.score ?? ''} {anyName(b.away, lang, t)}</span>;
-                if (b.bet === false) {
-                  const m0 = <span style={{ color: 'var(--text-muted)' }}>—</span>;
-                  return [b.date?.slice(5) ?? '—', matchup, <span style={{ color: 'var(--text-muted)' }}>{t('soccer.noBet')}</span>, m0, m0, '—', '—', cVal(b.cum_pnl_cents ?? b.combined_cum_pnl_cents)];
-                }
-                return [
-                  b.date?.slice(5) ?? '—', matchup,
-                  b.pick === 'draw' ? t('soccer.drawResult') : anyName(b.pick_team ?? b.pick, lang, t),
-                  b.stake_usd != null ? fmtMoney(b.stake_usd, lang) : '—',
-                  wlCell(t, b.won),
-                  cc(b.entry_cents),
-                  cVal(b.pnl_cents ?? b.realized_pnl_cents),
-                  cVal(b.cum_pnl_cents ?? b.combined_cum_pnl_cents),
-                ];
-              })} />
-          </div>
-        );
-      })()}
+      {!!log.length && <PerformanceTracks data={data} log={log} lang={lang} />}
       {(() => {
         // performance_report.json ships notes_i18n=[{key,args}] next to the English
         // prose; the keys are the same templates the WC module already translates.

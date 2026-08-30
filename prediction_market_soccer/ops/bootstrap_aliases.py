@@ -213,3 +213,112 @@ if __name__ == "__main__":
     args = ap.parse_args()
     st = ("open", "closed") if args.include_closed else ("open",)
     bootstrap(statuses=st)
+
+
+# ── Polymarket US spellings (2026-08-29) ─────────────────────────────────────
+# The venue writes LEGAL names ("FC Bayern München", "Stade Rennais FC 1901");
+# _parse_event drops an event when either team fails to resolve, and 85 such
+# spellings were silently costing us 23 listed matches in one weekend window.
+# Persisted to data/priors/aliases_poly.json, which the Poly US discovery merges
+# AFTER the per-comp files — a separate file so the Kalshi bootstrap regenerating
+# aliases_<comp>.json can never wipe these.
+
+_LEGAL_TOKENS = {
+    "fc", "cf", "sk", "fk", "sv", "ac", "as", "bv", "kk", "jk", "sc", "ca", "cd",
+    "afc", "kks", "vv", "bk", "if", "sl", "ec", "rc", "es", "ogc", "rcd", "1901",
+    "09", "04", "07", "1999", "de", "e", "club",
+    # second pass over the live venue list: Latin-American and German legal prefixes
+    "aa", "cs", "cr", "fr", "fbc", "fbpa", "cp", "ud", "sd", "ss", "us", "aek1",
+    "1846", "1910", "vfl", "vfb", "tsg", "rb", "y",
+}
+
+
+def _fold(s: str) -> str:
+    import re
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    return " ".join(w for w in re.sub(r"[^a-z0-9 ]", " ", s.lower()).split()
+                    if w not in _LEGAL_TOKENS)
+
+
+def bootstrap_poly() -> dict:
+    """Learn the Poly US spellings for our clubs and persist the exact-alias table.
+
+    Conservative on purpose: an auto-match needs the folded venue name to hit exactly
+    one registry club IN THE SAME COMPETITION (folded-equal, or containment with a
+    difflib ratio >= 0.85). Anything else lands in `unmatched` for the human pass —
+    a wrong club on a price is worse than a missing one (AEK alone could be Athens or
+    Larnaca). Re-runnable; existing entries are kept unless re-derived identically.
+    """
+    import difflib
+
+    from prediction_market_soccer.venues.polymarket_us.discovery import PolymarketUSDiscovery
+    conn = store.init_db()
+    reg: dict[str, dict[str, str]] = {}
+    for r in conn.execute("SELECT comp, club_id, name FROM club_registry"):
+        reg.setdefault(r["comp"], {})[r["club_id"]] = r["name"]
+
+    d = PolymarketUSDiscovery()
+    sids = d._series_ids()
+    out_path = CONFIG.paths.priors / "aliases_poly.json"
+    try:
+        existing = json.loads(out_path.read_text(encoding="utf-8")).get("aliases") or {}
+    except Exception:
+        existing = {}
+    aliases: dict[str, str] = dict(existing)
+    unmatched: list[str] = []
+
+    for comp, ids in sids.items():
+        pool = reg.get(comp) or {}
+        folded = {cid: _fold(nm) for cid, nm in pool.items()}
+        for sid in ids:
+            for off in range(0, 1200, 100):
+                try:
+                    page = d.c.events.list({"series_id": sid, "limit": 100, "offset": off})
+                except Exception:
+                    break
+                evs = (page.get("events") if isinstance(page, dict) else page) or []
+                if not evs:
+                    break
+                for e in evs:
+                    for t in (e.get("teams") or []):
+                        for label in (t.get("safeName"), t.get("name")):
+                            label = (label or "").strip()
+                            if not label or label in aliases:
+                                continue
+                            if d._resolve(label):
+                                continue          # already resolvable without help
+                            f = _fold(label)
+                            exact = [cid for cid, fn in folded.items() if fn == f]
+                            if len(exact) == 1:
+                                aliases[label] = exact[0]
+                                continue
+                            near = [cid for cid, fn in folded.items()
+                                    if fn and (fn in f or f in fn)
+                                    and difflib.SequenceMatcher(None, f, fn).ratio() >= 0.85]
+                            if len(near) == 1:
+                                aliases[label] = near[0]
+                                continue
+                            # Token-subset within the SAME competition: the registry
+                            # holds the short form ("Brighton") and the venue the legal
+                            # one ("Brighton & Hove Albion FC"). Either direction, and
+                            # only when exactly ONE club in the comp satisfies it — two
+                            # Gimnasias in Argentina both fail this and stay for the
+                            # human pass, which is the point.
+                            ft = set(f.split())
+                            sub = [cid for cid, fn in folded.items()
+                                   if fn and (set(fn.split()) <= ft or ft <= set(fn.split()))]
+                            if len(sub) == 1:
+                                aliases[label] = sub[0]
+                            elif label not in unmatched:
+                                unmatched.append(f"{comp}: {label}")
+
+    out_path.write_text(json.dumps(
+        {"source": "ops/bootstrap_aliases.bootstrap_poly", "aliases": aliases,
+         "unmatched": unmatched}, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"[aliases:poly] {len(aliases)} aliases ({len(aliases) - len(existing)} new), "
+          f"{len(unmatched)} left for the human pass")
+    for u in unmatched:
+        print("   ?", u)
+    return {"aliases": len(aliases), "unmatched": unmatched}

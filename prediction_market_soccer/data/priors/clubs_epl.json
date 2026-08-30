@@ -1,7 +1,7 @@
 {
- "prior_id": "clubs_epl_2026-08-27",
+ "prior_id": "clubs_epl_2026-08-28",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-08-27",
+ "as_of": "2026-08-28",
  "is_stale": true,
  "league": "epl",
  "notes": [
@@ -22,8 +22,8 @@
    "last_pts": 1.8684,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7934,
-   "market_p_champion": 0.04181
+   "anchor_points": 1.813,
+   "market_p_champion": 0.05112
   },
   {
    "club_id": "newcastle",
@@ -36,8 +36,8 @@
    "last_pts": 1.2895,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3894,
-   "market_p_champion": null
+   "anchor_points": 1.3607,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "bournemouth",
@@ -50,8 +50,8 @@
    "last_pts": 1.5,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.4829,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.4865,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "fulham",
@@ -64,8 +64,8 @@
    "last_pts": 1.3684,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.3535,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.3571,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "liverpool",
@@ -78,8 +78,8 @@
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.7157,
-   "market_p_champion": 0.07917
+   "anchor_points": 1.7171,
+   "market_p_champion": 0.06973
   },
   {
    "club_id": "arsenal",
@@ -92,8 +92,8 @@
    "last_pts": 2.2368,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.3025,
-   "market_p_champion": 0.49153
+   "anchor_points": 2.3171,
+   "market_p_champion": 0.48952
   },
   {
    "club_id": "everton",
@@ -106,8 +106,8 @@
    "last_pts": 1.2895,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.3107,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.3144,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "tottenham",
@@ -120,8 +120,8 @@
    "last_pts": 1.0789,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2489,
-   "market_p_champion": 0.01413
+   "anchor_points": 1.2543,
+   "market_p_champion": 0.01425
   },
   {
    "club_id": "chelsea",
@@ -134,8 +134,8 @@
    "last_pts": 1.3684,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.5612,
-   "market_p_champion": 0.13535
+   "anchor_points": 1.567,
+   "market_p_champion": 0.12564
   },
   {
    "club_id": "manchester_city",
@@ -148,8 +148,8 @@
    "last_pts": 2.0526,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0235,
-   "market_p_champion": 0.17283
+   "anchor_points": 2.0346,
+   "market_p_champion": 0.17228
   },
   {
    "club_id": "brighton",
@@ -162,8 +162,8 @@
    "last_pts": 1.3947,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4026,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.4063,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "crystal_palace",
@@ -176,8 +176,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2718,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.2754,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "brentford",
@@ -190,8 +190,8 @@
    "last_pts": 1.3947,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3953,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.3989,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "ipswich",
@@ -204,8 +204,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9363,
-   "market_p_champion": 0.00543
+   "anchor_points": 0.9399,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "leeds",
@@ -218,8 +218,8 @@
    "last_pts": 1.2368,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.2828,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.2864,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "hull_city",
@@ -232,8 +232,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1703,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.1739,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "nottingham_forest",
@@ -246,8 +246,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2869,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.2905,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "aston_villa",
@@ -260,8 +260,8 @@
    "last_pts": 1.7105,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.6284,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.632,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "sunderland",
@@ -274,8 +274,8 @@
    "last_pts": 1.4211,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.2683,
-   "market_p_champion": 0.00543
+   "anchor_points": 1.272,
+   "market_p_champion": 0.00553
   },
   {
    "club_id": "coventry",
@@ -288,8 +288,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8945,
-   "market_p_champion": null
+   "anchor_points": 0.9896,
+   "market_p_champion": 0.00553
   }
  ]
 }

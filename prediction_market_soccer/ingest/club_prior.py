@@ -184,6 +184,13 @@ def _validate(snap: ClubPriorSnapshot) -> None:
 
 # ── builder ──────────────────────────────────────────────────────────────────
 
+def _is_today(as_of: str | None) -> bool:
+    """True when ``as_of`` is today or later — i.e. when a live venue read is legitimate."""
+    if not as_of:
+        return True
+    return as_of[:10] >= datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
 def _market_champion_probs(comp_key: str) -> dict[str, float]:
     """{club_id: de-vigged P(champion)} from the Kalshi champion book, or {}.
 
@@ -418,7 +425,16 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
         # Third anchor: what the title market thinks. Converted onto the ppr scale by
         # its own z within the competition, exactly like the Elo anchor, so all three
         # anchors speak one language before they are blended.
-        mkt = _market_champion_probs(comp.key)
+        # The market anchor is a LIVE read of the Kalshi title book — season_cents calls
+        # list_events(status="open"), which has no date parameter and no history. For a
+        # prior stamped in the past that is the market's opinion TODAY, formed after the
+        # very matches the prior is used to score: measured, a 2026-07-14 PIT prior and
+        # today's carried identical market_p_champion for 20 of 20 Brasileirão clubs.
+        # An anchor we cannot know as of that date is therefore OMITTED, not approximated —
+        # the prior falls back on the two anchors that ARE historical (last season's table,
+        # and ClubElo, which the API does serve per date). This also makes a backtest
+        # reproducible: rebuilding the same as_of tomorrow now yields the same prior.
+        mkt = _market_champion_probs(comp.key) if _is_today(as_of) else {}
         mkt_z: dict[str, float] = {}
         if len(mkt) >= 4:
             import math as _m
@@ -507,16 +523,6 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
         b = best.get(c["club_id"])
         c["elo_rank"] = b.get("elo_rank") if b else None
 
-    merged = {
-        "prior_id": f"clubs_all_{as_of}", "source": "merged per-comp priors",
-        "as_of": as_of, "is_stale": True, "league": "all",
-        "clubs": list(best.values()),
-        # WC-compat projection: copied consumers read {"teams":[{"team","fifa_rank"}]}
-        "teams": [{"team": c["name"], "fifa_rank": c["elo_rank"] or 999}
-                  for c in best.values()],
-    }
-    (_PRIORS / "clubs_all.json").write_text(json.dumps(merged, ensure_ascii=False, indent=1),
-                                            encoding="utf-8")
     # Second pass. Two things can only be done once EVERY competition has been built:
     # the global elo_rank, and the domestic-anchor loan below.
     #
@@ -559,6 +565,47 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
         if n_loaned:
             summary[comp.key] = summary.get(comp.key, "") + f", {n_loaned} domestic anchors"
         p.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # The MERGED snapshot, written last and under the same suffix as everything else.
+    #
+    # Two bugs lived in the single line this replaces. It hard-coded "clubs_all.json"
+    # while every per-comp file honoured `suffix`, so a walk-forward build
+    # (build_all(suffix="_pit")) silently replaced the LIVE cross-league prior with a
+    # point-in-time one — observed on disk as clubs_all.json carrying as_of 2026-08-03
+    # while the per-comp files said 2026-08-27, and load_prior() with no argument is
+    # what ~40 live call sites read. And it ran BEFORE the domestic-anchor loan below,
+    # so even a correct nightly build left the merged file disagreeing with the per-comp
+    # files on every loaned club. Rebuilt from the files as they finally stand.
+    _best_final: dict[str, dict] = {}
+    for comp in active():
+        fp = _path(comp.key + suffix)
+        if not fp.exists():
+            continue
+        for c in json.loads(fp.read_text(encoding="utf-8"))["clubs"]:
+            cur = _best_final.get(c["club_id"])
+            if cur is None or (c.get("elo") or 0) > (cur.get("elo") or 0):
+                _best_final[c["club_id"]] = c
+    # Re-rank from scratch. The per-comp files carry an elo_rank from the first pass, so
+    # a club read back out of them arrives with a stale one — and a club with no Elo at
+    # all kept a rank it had no basis for, which is how the merged snapshot ended up with
+    # 399 ranked clubs, 88 duplicate positions and a maximum of 315. Only a club with an
+    # Elo gets a cross-league rank; everyone else is explicitly None.
+    for c in _best_final.values():
+        c["elo_rank"] = None
+    _ranked = sorted([c for c in _best_final.values() if c.get("elo") is not None],
+                     key=lambda c: -c["elo"])
+    for i, c in enumerate(_ranked, 1):
+        c["elo_rank"] = i
+    merged = {
+        "prior_id": f"clubs_all{suffix}_{as_of}", "source": "merged per-comp priors",
+        "as_of": as_of, "is_stale": True, "league": "all",
+        "clubs": list(_best_final.values()),
+        # WC-compat projection: copied consumers read {"teams":[{"team","fifa_rank"}]}
+        "teams": [{"team": c["name"], "fifa_rank": c.get("elo_rank") or 999}
+                  for c in _best_final.values()],
+    }
+    (_PRIORS / f"clubs_all{suffix}.json").write_text(
+        json.dumps(merged, ensure_ascii=False, indent=1), encoding="utf-8")
     print("[club_prior] built:", json.dumps(summary, ensure_ascii=False))
     return summary
 

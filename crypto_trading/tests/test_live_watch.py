@@ -442,3 +442,25 @@ def test_walk_book_for_no_is_read_only_and_prices_correctly(monkeypatch):
     assert d["fill_cost"] == 0.712
     assert d["filled"] == 25 and d["shortfall"] == 0
     assert d["slippage_c"] == 1.2                      # 1.2c worse than touch
+
+
+def test_w7_evidence_kill_semantics():
+    """Paper probes stop only when data REFUTES the edge (window t <= -2,
+    n >= 30) — never on paper dollars (that fired twice on pure noise)."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    def W(vals):  # windows dict from per-window per-trade means
+        return {f"c{i}": {"n": 1, "wins": 0, "sum_c": v} for i, v in enumerate(vals)}
+
+    # t = -0.05 world (measured 2026-08-29): must NOT kill
+    st = {"windows": W([+30, -30] * 52)}
+    assert w7.evidence_kill(st) is False
+    # clearly refuting world: 40 windows all around -10c → t << -2 → kill
+    st2 = {"windows": W([-10 + (i % 3 - 1) for i in range(40)])}
+    assert w7.evidence_kill(st2) is True and "refutes" in st2["killed_reason"]
+    # too few windows: never kill regardless of mean
+    st3 = {"windows": W([-50] * 10)}
+    assert w7.evidence_kill(st3) is False
+    # sticky
+    st4 = {"killed": True, "windows": W([+50] * 40)}
+    assert w7.evidence_kill(st4) is True

@@ -231,10 +231,16 @@ def _pit_strength(conn, as_of: str, league: str | None = None):
     ck = ((as_of or "")[:10], league)
     if ck in _pit_model_cache:
         return _pit_model_cache[ck]
-    if league not in _pit_prior_cache:
-        _pit_prior_cache[league] = load_prior(league) if league else load_prior()
+    # The prior must be the one that existed on the match's DATE, not tonight's file.
+    # This cache was keyed on the league alone while the model memo above is keyed on
+    # (date, league), so the model moved with the calendar and its anchor never did.
+    _pk = (ck[0], league)
+    if _pk not in _pit_prior_cache:
+        from prediction_market_soccer.model.pit_strength import pit_prior
+        _pit_prior_cache[_pk] = (pit_prior(conn, league, ck[0]) if league
+                                 else load_prior())
     cfg = CONFIG.model
-    sm = build_strength_live(conn, _pit_prior_cache[league], cfg, as_of=as_of,
+    sm = build_strength_live(conn, _pit_prior_cache[_pk], cfg, as_of=as_of,
                              xg_form=True, league=league)
     if cfg.oppadj_def_weight or cfg.oppadj_off_weight:
         sm = replace(sm, adj=altdata_index(conn, sm.ratings, as_of=as_of))

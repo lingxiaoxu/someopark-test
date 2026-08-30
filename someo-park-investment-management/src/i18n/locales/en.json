@@ -970,7 +970,7 @@
     "macroMarket": "Macro Prediction Market",
     "macroMarketSub": "Fed · CPI · Jobs · Kalshi",
     "soccerMarket": "Club Soccer Market",
-    "soccerMarketSub": "EPL · UCL · Kalshi"
+    "soccerMarketSub": "EPL · UCL"
   },
   "chat": {
     "groupOverview": "Overview",
@@ -1807,7 +1807,32 @@
       "cupAlive": "Still in · {{p}} to win it",
       "cupOut": "Eliminated"
     },
-    "possNotMeasured": "possession not measured yet"
+    "possNotMeasured": "possession not measured yet",
+    "modeCashout": "Cash-out (realized)",
+    "modeHold": "Hold-to-FT",
+    "modeArgmax": "Argmax (pick only)",
+    "colExit": "Exit",
+    "colPreCum": "Pre Cum¢",
+    "colInplayBet": "Live bet",
+    "colInplayExit": "Live exit",
+    "colInplayEntryC": "Live entry¢",
+    "colInplayRealized": "Live real¢",
+    "colInplayCum": "Live Cum¢",
+    "colCombinedCum": "Σ Cum¢",
+    "colRealizedC": "Realized¢",
+    "smartExitSold": "sell @{{min}}' {{c}}¢",
+    "exitSettleWon": "settled W",
+    "exitSettleLost": "settled L",
+    "noteCashout": "Realized = the decision model backs the most-underpriced side (sized $0.2–$2 by confidence) and CASHES OUT when the market over-reacts above live fair. The Exit column shows when/at what ¢ we sold, or settled W/L; ¢ is the realized result. Avg entry {{entry}}¢ · avg CLV {{clv}}¢.",
+    "noteHold": "Hold = the same decision picks held to settlement (win→100¢, loss→0¢). Reference only — the real strategy cashes out.",
+    "noteArgmax": "Argmax = back the model's most-likely side every match (the old naive rule). A full-sample reference, not our betting strategy; the P&L covers only matches with an entry price, and the record is drawn from the same set.",
+    "lblBets": "bets",
+    "lblSkipped": "skipped (no edge)",
+    "lblMatchesAll": "matches",
+    "noBetShort": "no bet",
+    "colOurPick": "Bet side",
+    "colMatchup": "Match",
+    "venueBlind": "some series rate-limited this cycle — the book shown is incomplete"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (live · {{time}} ET)",

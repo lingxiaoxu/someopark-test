@@ -643,7 +643,7 @@
     "macroMarket": "Marché de Prédiction Macro",
     "macroMarketSub": "Fed · CPI · Emploi · Kalshi",
     "soccerMarket": "Marché Football Clubs",
-    "soccerMarketSub": "Ligues · UCL · Kalshi"
+    "soccerMarketSub": "Ligues · UCL"
   },
   "chat": {
     "groupOverview": "Vue d'ensemble",
@@ -1805,7 +1805,32 @@
       "cupAlive": "Toujours en lice · {{p}} de la gagner",
       "cupOut": "Éliminé"
     },
-    "possNotMeasured": "possession pas encore mesurée"
+    "possNotMeasured": "possession pas encore mesurée",
+    "modeCashout": "Encaissement (réalisé)",
+    "modeHold": "Conserver TR",
+    "modeArgmax": "Argmax (choix seul)",
+    "colExit": "Sortie",
+    "colPreCum": "Pré Cum¢",
+    "colInplayBet": "Pari live",
+    "colInplayExit": "Sortie live",
+    "colInplayEntryC": "Entrée live¢",
+    "colInplayRealized": "Réal live¢",
+    "colInplayCum": "Live Cum¢",
+    "colCombinedCum": "Σ Cum¢",
+    "colRealizedC": "Réalisé¢",
+    "smartExitSold": "vendre @{{min}}' {{c}}¢",
+    "exitSettleWon": "réglé G",
+    "exitSettleLost": "réglé P",
+    "noteCashout": "Réalisé = le modèle mise sur le côté le plus sous-évalué ($0,2–$2 selon confiance) et ENCAISSE quand le marché sur-réagit au-dessus de la juste valeur live. La colonne Sortie montre quand/à quel ¢ on a vendu, ou réglé G/P. Entrée moy. {{entry}}¢ · CLV moy. {{clv}}¢.",
+    "noteHold": "Conserver = les mêmes choix tenus jusqu'au règlement (gain→100¢, perte→0¢). Référence — la vraie stratégie encaisse.",
+    "noteArgmax": "Argmax = miser sur l'issue la plus probable du modèle à chaque match (l'ancienne règle naïve). Une référence sur l'échantillon complet, pas notre stratégie ; le P&L ne couvre que les matchs avec un prix d'entrée, et le relevé vient du même ensemble.",
+    "lblBets": "paris",
+    "lblSkipped": "ignorés (sans marge)",
+    "lblMatchesAll": "matchs",
+    "noBetShort": "pas de pari",
+    "colOurPick": "Notre prono",
+    "colMatchup": "Match",
+    "venueBlind": "certaines séries limitées ce cycle — le carnet affiché est incomplet"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en direct · {{time}} ET)",

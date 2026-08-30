@@ -101,6 +101,23 @@
    }
   ]
  },
+ "US0162551016": {
+  "asset_class": "equity",
+  "cik": "0001097149",
+  "cusip": "016255101",
+  "figi": "BBG000BRNLL2",
+  "name": "Align Technology Inc",
+  "polygon_ticker": "ALGN",
+  "registered_at": "2026-08-28T16:50:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-28",
+    "ticker": "ALGN",
+    "to": null
+   }
+  ]
+ },
  "US0200021014": {
   "asset_class": "equity",
   "cik": "0000899051",
@@ -1223,6 +1240,23 @@
    }
   ]
  },
+ "US3030751057": {
+  "asset_class": "equity",
+  "cik": "0001013237",
+  "cusip": "303075105",
+  "figi": "BBG000BDJL83",
+  "name": "Factset Research Systems",
+  "polygon_ticker": "FDS",
+  "registered_at": "2026-08-29T13:43:19+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-29",
+    "ticker": "FDS",
+    "to": null
+   }
+  ]
+ },
  "US3156161024": {
   "asset_class": "equity",
   "cik": "0001048695",
@@ -1287,6 +1321,23 @@
    {
     "from": "2026-08-12",
     "ticker": "F",
+    "to": null
+   }
+  ]
+ },
+ "US34959E1091": {
+  "asset_class": "equity",
+  "cik": "0001262039",
+  "cusip": "34959E109",
+  "figi": "BBG000BCMBG4",
+  "name": "Fortinet, Inc.",
+  "polygon_ticker": "FTNT",
+  "registered_at": "2026-08-28T16:50:20+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-28",
+    "ticker": "FTNT",
     "to": null
    }
   ]

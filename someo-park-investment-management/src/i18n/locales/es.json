@@ -643,7 +643,7 @@
     "macroMarket": "Mercado de Predicción Macro",
     "macroMarketSub": "Fed · IPC · Empleo · Kalshi",
     "soccerMarket": "Mercado Fútbol de Clubes",
-    "soccerMarketSub": "Ligas · UCL · Kalshi"
+    "soccerMarketSub": "Ligas · UCL"
   },
   "chat": {
     "groupOverview": "Resumen",
@@ -1805,7 +1805,32 @@
       "cupAlive": "Sigue vivo · {{p}} de ganarla",
       "cupOut": "Eliminado"
     },
-    "possNotMeasured": "posesión aún no medida"
+    "possNotMeasured": "posesión aún no medida",
+    "modeCashout": "Cobro (realizado)",
+    "modeHold": "Mantener al final",
+    "modeArgmax": "Argmax (solo elección)",
+    "colExit": "Salida",
+    "colPreCum": "Pre Cum¢",
+    "colInplayBet": "Apuesta live",
+    "colInplayExit": "Salida live",
+    "colInplayEntryC": "Entrada live¢",
+    "colInplayRealized": "Real live¢",
+    "colInplayCum": "Live Cum¢",
+    "colCombinedCum": "Σ Cum¢",
+    "colRealizedC": "Realizado¢",
+    "smartExitSold": "vender @{{min}}' {{c}}¢",
+    "exitSettleWon": "liquidado G",
+    "exitSettleLost": "liquidado P",
+    "noteCashout": "Realizado = el modelo apuesta al lado más infravalorado ($0,2–$2 según confianza) y COBRA cuando el mercado sobrerreacciona por encima del valor justo en vivo. La columna Salida muestra cuándo/a qué ¢ vendimos, o liquidado G/P. Entrada media {{entry}}¢ · CLV medio {{clv}}¢.",
+    "noteHold": "Mantener = las mismas elecciones mantenidas hasta la liquidación (gana→100¢, pierde→0¢). Solo referencia — la estrategia real cobra.",
+    "noteArgmax": "Argmax = apostar cada partido al lado más probable del modelo (la vieja regla ingenua). Una referencia sobre la muestra completa, no nuestra estrategia; el P&L cubre solo los partidos con precio de entrada y el registro sale del mismo conjunto.",
+    "lblBets": "apuestas",
+    "lblSkipped": "omitidas (sin margen)",
+    "lblMatchesAll": "partidos",
+    "noBetShort": "sin apuesta",
+    "colOurPick": "Pronóstico",
+    "colMatchup": "Partido",
+    "venueBlind": "algunas series limitadas este ciclo — el libro mostrado está incompleto"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",

@@ -59,8 +59,17 @@ _CACHE: dict = {"at": None, "events": {}, "codes": {}, "series": None}
 
 
 def _load_aliases() -> dict[str, str]:
-    """Frozen per-comp alias tables (§3.6), merged — the same exact-only entity
-    resolution path KalshiDiscovery uses, so both venues agree on club identity."""
+    """Frozen per-comp alias tables (§3.6) plus the Poly-specific spellings, merged —
+    the same exact-only entity resolution path KalshiDiscovery uses.
+
+    aliases_poly.json exists because this venue writes LEGAL names ("FC Bayern
+    München", "Stade Rennais FC 1901", "Olympique Lyonnais") that neither the Kalshi
+    tables nor the normaliser know; _parse_event drops an event when either team fails
+    to resolve, and those spellings were silently costing 23 listed matches in one
+    weekend window. It is a separate file (written by ops/bootstrap_aliases.bootstrap_poly)
+    so the Kalshi bootstrap regenerating aliases_<comp>.json can never wipe it. It merges
+    LAST — a per-comp entry, being competition-scoped, always outranks a global spelling.
+    """
     out: dict[str, str] = {}
     for c in active(include_disabled=True):
         p = CONFIG.paths.priors / f"aliases_{c.key}.json"
@@ -70,6 +79,12 @@ def _load_aliases() -> dict[str, str]:
             continue
         for k, v in (doc.get("aliases") or {}).items():
             out.setdefault(k, v)
+    try:
+        poly = json.loads((CONFIG.paths.priors / "aliases_poly.json").read_text(encoding="utf-8"))
+        for k, v in (poly.get("aliases") or {}).items():
+            out.setdefault(k, v)
+    except Exception:
+        pass
     return out
 
 

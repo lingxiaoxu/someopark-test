@@ -864,12 +864,12 @@ function Schedule() {
   );
 }
 
-const KIND_COLOR: Record<string, string> = {
+export const KIND_COLOR: Record<string, string> = {
   lock_arb: 'var(--success)', relative_value: 'var(--text-primary)', tactic: 'var(--text-secondary)',
 };
 
 // Confidence tier badge colour (validated effectiveness rules — see plan 20-22).
-const CONF_COLOR: Record<string, string> = {
+export const CONF_COLOR: Record<string, string> = {
   high: 'var(--success)', medium: 'var(--warning, #d08b00)', low: 'var(--text-muted)',
 };
 
@@ -877,7 +877,7 @@ const CONF_COLOR: Record<string, string> = {
 // (reason_args), in the active language. Sub-enums (side/carded) are themselves localized;
 // the Part-2 strength+form basis becomes a parenthetical suffix; the cross-venue "also"
 // clause is appended. Falls back to the English reason string when no key is present.
-function renderOppReason(o: any, tr: (k: string, opts?: any) => string): string {
+export function renderOppReason(o: any, tr: (k: string, opts?: any) => string): string {
   if (!o.reason_key) return o.reason || '';
   const a: any = { ...(o.reason_args || {}) };
   if (a.side) a.side = tr('prediction.side.' + a.side, { defaultValue: a.side });

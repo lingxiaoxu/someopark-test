@@ -8,64 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -74,64 +74,64 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -140,64 +140,64 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -206,64 +206,64 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -272,64 +272,64 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -338,64 +338,64 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -404,64 +404,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -470,64 +470,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -536,64 +536,64 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -602,64 +602,64 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -668,64 +668,64 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -734,64 +734,64 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -800,64 +800,64 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -866,64 +866,64 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -932,64 +932,64 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -998,64 +998,64 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1064,64 +1064,64 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1130,64 +1130,64 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1196,64 +1196,64 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1262,64 +1262,64 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1328,64 +1328,64 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1394,64 +1394,64 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1460,64 +1460,64 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1526,64 +1526,64 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1592,64 +1592,64 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1658,64 +1658,64 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1724,64 +1724,64 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1790,64 +1790,64 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1856,64 +1856,64 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1922,64 +1922,64 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -1988,64 +1988,64 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2054,64 +2054,64 @@
       "param_set": "monthly_aligned_windows_fc",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2120,64 +2120,64 @@
       "param_set": "short_term_beta_neutral_fc",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2186,64 +2186,64 @@
       "param_set": "fast_strict_fc",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2252,64 +2252,64 @@
       "param_set": "monthly_aligned_windows_fc_skip",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2318,64 +2318,64 @@
       "param_set": "crash_adaptive",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2384,64 +2384,64 @@
       "param_set": "crash_shortguard",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     },
@@ -2450,64 +2450,64 @@
       "param_set": "crash_fastwin",
       "pairs": [
         [
-          "PAYC",
+          "MU",
           "BKNG"
         ],
         [
-          "PAYC",
-          "BLDR"
-        ],
-        [
-          "PSX",
+          "MU",
           "PNR"
         ],
         [
-          "PSX",
+          "CRM",
+          "BLDR"
+        ],
+        [
+          "CRM",
+          "GNRC"
+        ],
+        [
+          "FTNT",
           "NCLH"
         ],
         [
-          "MU",
-          "LUV"
-        ],
-        [
-          "MU",
-          "NI"
-        ],
-        [
-          "CRL",
+          "FTNT",
           "DECK"
         ],
         [
-          "CRL",
+          "PLTR",
+          "LUV"
+        ],
+        [
+          "PLTR",
+          "NI"
+        ],
+        [
+          "STT",
           "TPR"
         ],
         [
-          "IT",
-          "TXT"
-        ],
-        [
-          "IT",
-          "WMT"
-        ],
-        [
-          "ABNB",
-          "PEG"
-        ],
-        [
-          "ABNB",
-          "CMS"
+          "STT",
+          "ALGN"
         ],
         [
           "CTSH",
-          "CMI"
+          "CMS"
         ],
         [
           "CTSH",
           "LOW"
         ],
         [
+          "FDS",
+          "BSX"
+        ],
+        [
+          "FDS",
+          "WMT"
+        ],
+        [
           "TGT",
-          "CNP"
+          "PEG"
         ]
       ]
     }

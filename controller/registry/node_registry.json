@@ -12,6 +12,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR062JQWL": {
+  "aliases": [
+   "ACGL/HIG"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:USG0450A1054|S:US4165151048",
+  "display_name": "ACGL/HIG",
+  "first_seen": "2026-08-29T13:43:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR0JW0BZC": {
   "aliases": [
    "PAYC/LII"
@@ -52,6 +67,36 @@
   "canonical_key": "mrpt|L:US4165151048|S:USG0450A1054",
   "display_name": "ACGL/HIG",
   "first_seen": "2026-08-15T13:27:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR5KNKABN": {
+  "aliases": [
+   "PLTR/ALGN"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US69608A1088|S:US0162551016",
+  "display_name": "PLTR/ALGN",
+  "first_seen": "2026-08-28T16:50:34+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR5LK3THS": {
+  "aliases": [
+   "STT/WMT"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US8574771031|S:US9311421039",
+  "display_name": "STT/WMT",
+  "first_seen": "2026-08-28T16:50:34+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -267,6 +312,36 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRGLVOKXB": {
+  "aliases": [
+   "MU/NCLH"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US5951121038|S:USG667211043",
+  "display_name": "MU/NCLH",
+  "first_seen": "2026-08-28T16:50:34+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRHZ7JECT": {
+  "aliases": [
+   "FDS/BSX"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US3030751057|S:US1011371077",
+  "display_name": "FDS/BSX",
+  "first_seen": "2026-08-29T13:43:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRJVLKXOB": {
   "aliases": [
    "DELL/BLDR"
@@ -322,6 +397,21 @@
   "canonical_key": "mtfs|L:US24703L2025|S:US2435371073",
   "display_name": "DELL/DECK",
   "first_seen": "2026-08-14T15:08:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRNZU8XHU": {
+  "aliases": [
+   "FTNT/NI"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US34959E1091|S:US65473P1057",
+  "display_name": "FTNT/NI",
+  "first_seen": "2026-08-28T16:50:34+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

@@ -645,7 +645,7 @@
     "macroMarket": "宏观预测市场",
     "macroMarketSub": "美联储 · 通胀 · 就业",
     "soccerMarket": "俱乐部足球预测市场",
-    "soccerMarketSub": "五大联赛 · 欧战 · Kalshi"
+    "soccerMarketSub": "五大联赛 · 欧冠"
   },
   "chat": {
     "groupOverview": "总览",
@@ -2207,7 +2207,32 @@
       "cupAlive": "仍在赛 · 夺冠 {{p}}",
       "cupOut": "已出局"
     },
-    "possNotMeasured": "暂无实测控球数据"
+    "possNotMeasured": "暂无实测控球数据",
+    "modeCashout": "择时(实现)",
+    "modeHold": "持有到 FT",
+    "modeArgmax": "argmax 只选边",
+    "colExit": "离场",
+    "colPreCum": "赛前Cum¢",
+    "colInplayBet": "盘中下注",
+    "colInplayExit": "盘中离场",
+    "colInplayEntryC": "盘中入场¢",
+    "colInplayRealized": "盘中实现¢",
+    "colInplayCum": "盘中Cum¢",
+    "colCombinedCum": "合计Cum¢",
+    "colRealizedC": "实现¢",
+    "smartExitSold": "{{min}}′ 卖 {{c}}¢",
+    "exitSettleWon": "结算 赢",
+    "exitSettleLost": "结算 输",
+    "noteCashout": "实现口径 = 决策模型选「最被低估」的一边(按置信度 $0.2–$2 定额),并在市场超调高于实时公允价时现金出离场。「离场」列显示卖出时刻/价格,或结算赢/输;¢ 为实现盈亏。平均入场 {{entry}}¢ · 平均 CLV {{clv}}¢。",
+    "noteHold": "持有口径 = 同样的决策注,但持有到终场结算(赢→100¢,输→0¢)。仅作参考——真实策略是择时现金出。",
+    "noteArgmax": "argmax 口径 = 每场都押模型概率最高的一边(旧的天真规则)。全样本对照,不是我们的下注策略;盈亏只统计有入场价的场次,战绩与之同集。",
+    "lblBets": "注",
+    "lblSkipped": "跳过(无边际)",
+    "lblMatchesAll": "场全计",
+    "noBetShort": "不下注",
+    "colOurPick": "下注边",
+    "colMatchup": "对阵",
+    "venueBlind": "该场馆部分系列被限流,本轮盘口不完整"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(实时 · {{time}} ET)",

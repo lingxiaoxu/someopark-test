@@ -1,7 +1,7 @@
 {
- "prior_id": "clubs_brasileirao_2026-08-27",
+ "prior_id": "clubs_brasileirao_2026-08-28",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-08-27",
+ "as_of": "2026-08-28",
  "is_stale": true,
  "league": "brasileirao",
  "notes": [
@@ -18,12 +18,12 @@
    "league": "brasileirao",
    "api_team_id": 118,
    "elo": null,
-   "elo_rank": 176,
+   "elo_rank": 183,
    "last_pts": 1.5789,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4401,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.4588,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "internacional",
@@ -32,12 +32,12 @@
    "league": "brasileirao",
    "api_team_id": 119,
    "elo": null,
-   "elo_rank": 120,
+   "elo_rank": 115,
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.0651,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.0838,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "botafogo",
@@ -46,12 +46,12 @@
    "league": "brasileirao",
    "api_team_id": 120,
    "elo": null,
-   "elo_rank": 177,
+   "elo_rank": 184,
    "last_pts": 1.6579,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.3503,
-   "market_p_champion": 0.01296
+   "anchor_points": 1.2808,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "palmeiras",
@@ -60,12 +60,12 @@
    "league": "brasileirao",
    "api_team_id": 121,
    "elo": null,
-   "elo_rank": 115,
+   "elo_rank": 123,
    "last_pts": 2.0,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.1429,
-   "market_p_champion": 0.40602
+   "anchor_points": 2.1914,
+   "market_p_champion": 0.48238
   },
   {
    "club_id": "fluminense",
@@ -74,12 +74,12 @@
    "league": "brasileirao",
    "api_team_id": 124,
    "elo": null,
-   "elo_rank": 105,
+   "elo_rank": 107,
    "last_pts": 1.6842,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.6225,
-   "market_p_champion": 0.00656
+   "anchor_points": 1.5838,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "sao_paulo",
@@ -92,8 +92,8 @@
    "last_pts": 1.3421,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.2728,
-   "market_p_champion": 0.02022
+   "anchor_points": 1.1829,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "flamengo",
@@ -102,12 +102,12 @@
    "league": "brasileirao",
    "api_team_id": 127,
    "elo": null,
-   "elo_rank": 159,
+   "elo_rank": 104,
    "last_pts": 2.0789,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 1.9996,
-   "market_p_champion": 0.31935
+   "anchor_points": 2.036,
+   "market_p_champion": 0.36057
   },
   {
    "club_id": "santos",
@@ -120,8 +120,8 @@
    "last_pts": 1.2368,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.1317,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.1503,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "gremio",
@@ -134,8 +134,8 @@
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.099,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.1177,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "corinthians",
@@ -144,12 +144,12 @@
    "league": "brasileirao",
    "api_team_id": 131,
    "elo": null,
-   "elo_rank": 121,
+   "elo_rank": 117,
    "last_pts": 1.2368,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2838,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.3025,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "chapecoense_sc",
@@ -158,12 +158,12 @@
    "league": "brasileirao",
    "api_team_id": 132,
    "elo": null,
-   "elo_rank": 317,
+   "elo_rank": 315,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7403,
-   "market_p_champion": 0.00183
+   "anchor_points": 0.759,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "vasco_da_gama",
@@ -176,8 +176,8 @@
    "last_pts": 1.1842,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0012,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.0199,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "atletico_paranaense",
@@ -186,12 +186,12 @@
    "league": "brasileirao",
    "api_team_id": 134,
    "elo": null,
-   "elo_rank": 46,
+   "elo_rank": 51,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.8785,
-   "market_p_champion": 0.19817
+   "anchor_points": 1.8183,
+   "market_p_champion": 0.06085
   },
   {
    "club_id": "cruzeiro",
@@ -200,12 +200,12 @@
    "league": "brasileirao",
    "api_team_id": 135,
    "elo": null,
-   "elo_rank": 155,
+   "elo_rank": 161,
    "last_pts": 1.8421,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.5908,
-   "market_p_champion": 0.01296
+   "anchor_points": 1.5213,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "vitoria",
@@ -218,8 +218,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.1901,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.2088,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "coritiba",
@@ -228,12 +228,12 @@
    "league": "brasileirao",
    "api_team_id": 147,
    "elo": null,
-   "elo_rank": 82,
+   "elo_rank": 81,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3463,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.365,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "rb_bragantino",
@@ -246,8 +246,8 @@
    "last_pts": 1.2632,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.4251,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.4438,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "atletico_mg",
@@ -260,8 +260,8 @@
    "last_pts": 1.2632,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.3599,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.3786,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "remo",
@@ -270,12 +270,12 @@
    "league": "brasileirao",
    "api_team_id": 1198,
    "elo": null,
-   "elo_rank": 154,
+   "elo_rank": 128,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0026,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.0213,
+   "market_p_champion": 0.00566
   },
   {
    "club_id": "mirassol",
@@ -284,12 +284,12 @@
    "league": "brasileirao",
    "api_team_id": 7848,
    "elo": null,
-   "elo_rank": 212,
+   "elo_rank": 213,
    "last_pts": 1.7632,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.0664,
-   "market_p_champion": 0.00183
+   "anchor_points": 1.0851,
+   "market_p_champion": 0.00566
   }
  ]
 }

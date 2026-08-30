@@ -71,14 +71,13 @@ w7_noisefade:             # RE-FROZEN 2026-08-27: 15M up-side-premium fade
   demo_mirror: true       # ON 2026-08-26 (user): entries ALSO order on demo
                           # (KXBTCD preferred, flagship fallback; deviation logged)
   contracts: 25
-  # Scale-matched kill (2026-08-27): each binary trade risks 25 x ~0.77 = $19,
-  # so the old $30 bar was 1.5 losing trades — it fired on noise, not on
-  # evidence (window-clustered t was -0.58 at the time). Set to ~10 losing
-  # trades AND require enough INDEPENDENT windows for the number to mean
-  # something.
-  max_cum_loss_usd: 200
-  min_trades_for_kill: 150
-  # LIVE criteria: post-registration INDEPENDENT WINDOWS >= 200 — NOT raw
-  # trades. The five 15M markets settle the same macro move (one 12:30 window
-  # produced three identical results on 2026-08-27), so trade count overstates
-  # evidence 3-5x. Plus mean > 0 AND window-clustered t >= 2.5.
+  # EVIDENCE kill (2026-08-29, user-approved): paper probes burn no money, so
+  # dollar stops only ever fire on noise (they did, twice). W7 now stops only
+  # when the data refutes the edge: window-clustered t <= -2 with >= 30
+  # independent windows. The dollar fields below are ignored by w7.
+  max_cum_loss_usd: 999999
+  min_trades_for_kill: 999999
+  # LIVE criteria: post-registration INDEPENDENT WINDOWS >= 300 (raised from
+  # 200 on 2026-08-29 — realised window sigma 33.7c made the 200-window test
+  # unreachable even for a true edge; power fix uses sigma only). Plus
+  # mean > 0 AND window-clustered t >= 2.5. Five coins = one macro bet.

@@ -3111,3 +3111,27 @@
 {"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPREEZ25NW", "kind": "pair", "key": "mtfs|L:US0090661010|S:US8168511090", "display": "ABNB/SRE"}
 {"ts": "2026-08-26T14:23:19+00:00", "event": "build_master", "total": 228, "cusip_hit": 228, "placeholder": 0}
 {"ts": "2026-08-27T14:22:51+00:00", "event": "build_master", "total": 228, "cusip_hit": 228, "placeholder": 0}
+{"ts": "2026-08-28T16:43:10+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:43:25+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:43:57+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:44:38+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:46:42+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:48:45+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:50:14+00:00", "event": "register_security", "isin": "US0162551016", "ticker": "ALGN", "cusip": "016255101"}
+{"ts": "2026-08-28T16:50:20+00:00", "event": "register_security", "isin": "US34959E1091", "ticker": "FTNT", "cusip": "34959E109"}
+{"ts": "2026-08-28T16:50:29+00:00", "event": "build_master", "total": 230, "cusip_hit": 230, "placeholder": 0}
+{"ts": "2026-08-28T16:50:34+00:00", "event": "register_node", "spid": "SPPRGLVOKXB", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG667211043", "display": "MU/NCLH"}
+{"ts": "2026-08-28T16:50:34+00:00", "event": "register_node", "spid": "SPPRNZU8XHU", "kind": "pair", "key": "mtfs|L:US34959E1091|S:US65473P1057", "display": "FTNT/NI"}
+{"ts": "2026-08-28T16:50:34+00:00", "event": "register_node", "spid": "SPPR5LK3THS", "kind": "pair", "key": "mtfs|L:US8574771031|S:US9311421039", "display": "STT/WMT"}
+{"ts": "2026-08-28T16:50:34+00:00", "event": "register_node", "spid": "SPPR5KNKABN", "kind": "pair", "key": "mtfs|L:US69608A1088|S:US0162551016", "display": "PLTR/ALGN"}
+{"ts": "2026-08-29T13:36:27+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:36:58+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:37:13+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:37:44+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:38:25+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:40:29+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:42:32+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:43:19+00:00", "event": "register_security", "isin": "US3030751057", "ticker": "FDS", "cusip": "303075105"}
+{"ts": "2026-08-29T13:43:26+00:00", "event": "build_master", "total": 231, "cusip_hit": 231, "placeholder": 0}
+{"ts": "2026-08-29T13:43:29+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
+{"ts": "2026-08-29T13:43:29+00:00", "event": "register_node", "spid": "SPPRHZ7JECT", "kind": "pair", "key": "mtfs|L:US3030751057|S:US1011371077", "display": "FDS/BSX"}

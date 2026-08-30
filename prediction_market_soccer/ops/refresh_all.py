@@ -109,7 +109,25 @@ def main() -> None:
     except Exception as e:
         print(f"  ✗ price_tick backfill: {e}")
 
-    # Refit the probability calibration FIRST (on the current sample) so the gate
+    # Parameter selection FIRST — a real run, not a dry one, on the day's fresh sample.
+    # It used to sit in the artifact list below with dry_run=True, which had two problems:
+    # a winning candidate could never actually be adopted (the dry run withheld
+    # param_selected.json, the file config.py auto-loads), and it ran AFTER the model
+    # build, so even a real adoption would only have taken effect the NEXT day. Running
+    # it here means the calibration, the model and every export downstream price with
+    # the parameters the new day's data just chose. Discipline is inside run(): adoption
+    # only when a candidate beats the incumbent's TEST Brier by >= 0.005 on the
+    # per-league time split — most days that means "no change", which is correct.
+    from prediction_market_soccer.ops import param_select_club
+    _param_report = None
+    try:
+        _param_report = param_select_club.run(test_days=14, dry_run=False)
+        print(f"  ✓ param_select (winner={_param_report.get('winner')}, "
+              f"adopted={_param_report.get('adopted')})")
+    except Exception as e:
+        print(f"  ✗ param_select: {e}")
+
+    # Refit the probability calibration next (on the current sample) so the gate
     # and the calibrated predictions below all use the fresh map.
     from prediction_market_soccer.ops import calibrate_fit
     try:
@@ -183,7 +201,9 @@ def main() -> None:
         # Parameter selection runs with the rest: it trains on past seasons and
         # scores the most recent matches out-of-sample, so it has something to say
         # from day one — there is no sample-size gate to wait out.
-        ("param_select_club.json", lambda: param_select_club.run(test_days=14, dry_run=True)),
+        # Written from the REAL run at the top of the pipeline (see above) — running the
+        # evaluation twice per day would double the cost and could disagree with itself.
+        ("param_select_club.json", lambda: _param_report or param_select_club.run(test_days=14, dry_run=False)),
     ]
     for name, fn in steps:
         try:

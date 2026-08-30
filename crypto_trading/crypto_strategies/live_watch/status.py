@@ -80,8 +80,8 @@ def main() -> int:
                       f"均值{b['sum_c']/b['n']:+.2f}c")
 
     print("-" * 88)
-    print("FOCUS W7: verdict at INDEPENDENT WINDOWS >= 200 (5 coins = 1 macro "
-          "bet; raw trades overstate 3-5x) & mean>0 & window-clustered t>=2.5")
+    print("FOCUS W7: verdict at INDEPENDENT WINDOWS >= 300 & mean>0 & "
+          "window-clustered t>=2.5; kill only on evidence (window t<=-2)")
     print("FOCUS W4: funding trail30 is the income leg — see the daily "
           "heartbeat; verdict needs the external spot account (user).")
     return 0
