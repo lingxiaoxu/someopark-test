@@ -412,6 +412,7 @@ def _should_rebalance(
     force: bool = False,
     emergency_active: bool = False,
     vol_derisk_ctx: Optional[dict] = None,   # 防线 A: {'triggered': bool, 'target_cash': float}
+    event_reduce: bool = False,              # 事件降险: 检测器 reduce_next_open(§13)
 ) -> Tuple[bool, str]:
     """
     Returns (should_rebalance: bool, reason: str).
@@ -457,6 +458,15 @@ def _should_rebalance(
                       and str(r.get("date", ""))[:7] == signal_date.strftime("%Y-%m"))
         if streak_today >= 3 and gap > 0.20 and n_month < 2:
             return True, "vol_derisk"
+
+    # ── 事件降险(EVENT_RISK plan §8.3/§13):检测器 T 日晚发一次性 reduce_next_open
+    # → 当晚即调仓入账(信号日收盘价),QC T+1 开盘镜像成交。幂等由检测器
+    # reduce_done 保证(每事件至多发一次;openclaw 类同日误重跑也被它挡住)。
+    # 放在 monthly/semimonthly 之后:常规调仓日走原 reason,砍半权重本就会被应用
+    # (与防线 A 同注释同理)。8/28 首次实弹时本分支缺失,信号层砍半到 cash 50%
+    # 却 No trades,满仓过周末 —— 与 vol-scaling 6/23-30 被月度节奏挡住同构。
+    if event_reduce:
+        return True, "event_derisk"
 
     return False, "no_rebalance"
 
@@ -1203,6 +1213,7 @@ def run_daily_signal(
     ev_cfg = risk_cfg.get("event_derisk", {})
     event_active = False
     event_reason = ""
+    event_reduce_flag = False    # 检测器 reduce_next_open → 当晚触发一次性降险调仓(§13)
     if ev_cfg.get("enabled", False):
         try:
             import sys as _sys, os as _os
@@ -1230,6 +1241,7 @@ def run_daily_signal(
                 nfp_days=ev_cfg.get("nfp_window_days", 2),
                 bellwether_thresh=ev_cfg.get("bellwether_drop", -0.045))
             event_active = bool(_state.get("veto_next_open"))
+            event_reduce_flag = bool(_state.get("reduce_next_open"))
             event_reason = _state.get("reason", "")
             inv["event_derisk_active"] = bool(_state.get("active"))
             inv["event_signal_date"]   = _state.get("signal_date")
@@ -1348,6 +1360,7 @@ def run_daily_signal(
             "triggered": bool(getattr(risk_flags, "vol_scaling_triggered", False)),
             "target_cash": float(cash_weight),
         },
+        event_reduce=event_reduce_flag,
     )
     # Persist emergency state: set True on trigger, False on recovery or monthly rebalance
     if rebalance_reason == "emergency_vix":

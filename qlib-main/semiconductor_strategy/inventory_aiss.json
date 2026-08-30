@@ -1,57 +1,58 @@
 {
   "as_of": "2026-08-28",
-  "last_updated": "2026-08-03",
+  "last_updated": "2026-08-28",
   "capital": 1052170.46,
   "holdings": {
-    "equipment": {
-      "weight": 0.374991,
-      "shares": 38,
-      "last_price": 9890.5739,
-      "cost_basis": 10662.2909,
-      "entry_date": "2026-05-29",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 63,
-      "action_today": "INCREASE"
-    },
     "memory_hbm": {
-      "weight": 0.292952,
-      "shares": 83,
+      "weight": 0.126119,
+      "shares": 33,
       "last_price": 3987.8653,
       "cost_basis": 4182.5476,
       "entry_date": "2026-05-29",
-      "last_rebalance_date": "2026-08-03",
+      "last_rebalance_date": "2026-08-28",
       "days_held": 63,
-      "action_today": "INCREASE"
+      "action_today": "DECREASE"
     },
     "logic_cpu": {
-      "weight": 0.332057,
-      "shares": 107,
+      "weight": 0.143029,
+      "shares": 47,
       "last_price": 3145.0706,
       "cost_basis": 3788.5712,
       "entry_date": "2026-07-01",
-      "last_rebalance_date": "2026-08-03",
+      "last_rebalance_date": "2026-08-28",
       "days_held": 42,
-      "action_today": "INCREASE"
+      "action_today": "DECREASE"
+    },
+    "analog_defense": {
+      "weight": 0.230852,
+      "shares": 495,
+      "last_price": 490.057,
+      "cost_basis": 490.057,
+      "entry_date": "2026-08-28",
+      "last_rebalance_date": "2026-08-28",
+      "days_held": 1,
+      "action_today": "ENTER"
     }
   },
-  "cash_weight": 0.0,
+  "cash_weight": 0.5,
   "prev_weights": {
-    "equipment": 0.374991,
-    "memory_hbm": 0.292952,
-    "logic_cpu": 0.332057,
+    "equipment": 0.0,
+    "memory_hbm": 0.126119,
+    "logic_cpu": 0.143029,
     "ai_gpu": 0.0,
     "custom_asic": 0.0,
+    "analog_defense": 0.230852,
     "rf_edge": 0.0
   },
   "prev_composite_scores": {
-    "ai_gpu": -0.3134,
-    "custom_asic": -0.7535,
-    "equipment": 2.2391,
-    "memory_hbm": 0.3305,
-    "foundry": -0.6009,
-    "analog_defense": -0.1348,
-    "logic_cpu": 0.1348,
-    "rf_edge": -0.902
+    "ai_gpu": -1.2714,
+    "custom_asic": -1.3359,
+    "equipment": -0.3267,
+    "memory_hbm": 1.4553,
+    "foundry": -0.3657,
+    "analog_defense": 0.7151,
+    "logic_cpu": 0.7787,
+    "rf_edge": 0.3506
   },
   "rebalance_history": [
     {
@@ -201,6 +202,31 @@
         "logic_cpu": 0.1348,
         "rf_edge": -0.902
       }
+    },
+    {
+      "date": "2026-08-28",
+      "reason": "event_derisk",
+      "regime": "risk_on",
+      "weights": {
+        "equipment": 0.0,
+        "memory_hbm": 0.126119,
+        "logic_cpu": 0.143029,
+        "ai_gpu": 0.0,
+        "custom_asic": 0.0,
+        "analog_defense": 0.230852,
+        "rf_edge": 0.0
+      },
+      "cash_weight": 0.5,
+      "composite_scores": {
+        "ai_gpu": -1.2714,
+        "custom_asic": -1.3359,
+        "equipment": -0.3267,
+        "memory_hbm": 1.4553,
+        "foundry": -0.3657,
+        "analog_defense": 0.7151,
+        "logic_cpu": 0.7787,
+        "rf_edge": 0.3506
+      }
     }
   ],
   "emergency_mode_active": false,
@@ -208,143 +234,122 @@
   "param_set": "pure_momentum",
   "signal_version": "v1",
   "stock_holdings": {
-    "KLAC": {
-      "subsectors": [
-        "equipment"
-      ],
-      "portfolio_weight": 0.299993,
-      "shares": 1678,
-      "last_price": 175.54,
-      "target_value": 306708.81,
-      "cost_basis": 185.3607,
-      "entry_date": "2026-05-29",
-      "days_held": 63,
-      "applied_corporate_actions": [
-        {
-          "ticker": "KLAC",
-          "type": "split",
-          "execution_date": "2026-06-12",
-          "factor": 10.0,
-          "polygon_id": "Edd9dd124187dfa7354bf38a483c440ae435f12dcb2afe0f7def3997ed37e47ac",
-          "applied_at": "2026-06-12T17:36:27Z",
-          "applied_by": "CorporateActions:aiss",
-          "before": {
-            "shares": 127,
-            "cost_basis": 1921.71,
-            "last_price": 2411.64
-          },
-          "after": {
-            "shares": 1270,
-            "cost_basis": 192.171,
-            "last_price": 241.164
-          }
-        }
-      ],
-      "action_today": "HOLD"
-    },
-    "LRCX": {
-      "subsectors": [
-        "equipment"
-      ],
-      "portfolio_weight": 0.056249,
-      "shares": 195,
-      "last_price": 301.57,
-      "target_value": 57507.9,
-      "cost_basis": 301.667,
-      "entry_date": "2026-05-29",
-      "days_held": 63,
-      "action_today": "HOLD"
-    },
-    "AMAT": {
-      "subsectors": [
-        "equipment"
-      ],
-      "portfolio_weight": 0.01875,
-      "shares": 37,
-      "last_price": 461.67,
-      "target_value": 19169.3,
-      "cost_basis": 497.5768,
-      "entry_date": "2026-05-29",
-      "days_held": 63,
-      "action_today": "HOLD"
-    },
     "MU": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.234362,
-      "shares": 288,
+      "portfolio_weight": 0.100895,
+      "shares": 113,
       "last_price": 932.86,
-      "target_value": 239608.36,
+      "target_value": 106158.88,
       "cost_basis": 875.684,
       "entry_date": "2026-05-29",
       "days_held": 63,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
     },
     "WDC": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.043943,
-      "shares": 85,
+      "portfolio_weight": 0.018918,
+      "shares": 43,
       "last_price": 459.3,
-      "target_value": 44926.57,
+      "target_value": 19904.79,
       "cost_basis": 528.5794,
       "entry_date": "2026-05-29",
       "days_held": 63,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
     },
     "SIMO": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.014648,
-      "shares": 59,
+      "portfolio_weight": 0.006306,
+      "shares": 26,
       "last_price": 245.81,
-      "target_value": 14975.52,
+      "target_value": 6634.93,
       "cost_basis": 259.1933,
       "entry_date": "2026-05-29",
       "days_held": 63,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
     },
     "AMD": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.265645,
-      "shares": 560,
+      "portfolio_weight": 0.114423,
+      "shares": 258,
       "last_price": 465.58,
-      "target_value": 271592.47,
+      "target_value": 120392.76,
       "cost_basis": 504.6253,
       "entry_date": "2026-07-01",
       "days_held": 42,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
     },
     "INTC": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.049809,
-      "shares": 559,
+      "portfolio_weight": 0.021454,
+      "shares": 252,
       "last_price": 89.47,
-      "target_value": 50923.59,
+      "target_value": 22573.64,
       "cost_basis": 101.2454,
       "entry_date": "2026-07-01",
       "days_held": 42,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
     },
     "ARM": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.016603,
-      "shares": 71,
+      "portfolio_weight": 0.007151,
+      "shares": 31,
       "last_price": 239.05,
-      "target_value": 16974.53,
+      "target_value": 7524.55,
       "cost_basis": 274.6521,
       "entry_date": "2026-07-01",
       "days_held": 42,
-      "action_today": "HOLD"
+      "action_today": "DECREASE"
+    },
+    "TXN": {
+      "subsectors": [
+        "analog_defense"
+      ],
+      "portfolio_weight": 0.184682,
+      "shares": 751,
+      "last_price": 258.64,
+      "target_value": 194316.54,
+      "cost_basis": 258.64,
+      "entry_date": "2026-08-28",
+      "days_held": 1,
+      "action_today": "ENTER"
+    },
+    "ADI": {
+      "subsectors": [
+        "analog_defense"
+      ],
+      "portfolio_weight": 0.034628,
+      "shares": 101,
+      "last_price": 360.68,
+      "target_value": 36434.35,
+      "cost_basis": 360.68,
+      "entry_date": "2026-08-28",
+      "days_held": 1,
+      "action_today": "ENTER"
+    },
+    "MCHP": {
+      "subsectors": [
+        "analog_defense"
+      ],
+      "portfolio_weight": 0.011543,
+      "shares": 166,
+      "last_price": 72.93,
+      "target_value": 12144.78,
+      "cost_basis": 72.93,
+      "entry_date": "2026-08-28",
+      "days_held": 1,
+      "action_today": "ENTER"
     }
   },
   "event_derisk_active": true,
