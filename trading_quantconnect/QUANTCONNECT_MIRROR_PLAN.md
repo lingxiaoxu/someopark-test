@@ -539,3 +539,46 @@ inventory 变更无需重部署。
 *作者注: 本方案刻意把全部"聪明"留在本地(已被生产验证的 controller),QC 端
 只有一个哑执行器 + 状态机。镜像系统的价值在于它简单到不可能错,而所有会错的
 地方都有对账在等着。*
+
+---
+
+## 附录 A-4. M4 建成 + K → k_effective 语义修正 + 冻结执行计划(2026-08-27~30)
+
+### M4 建成(分支 m4-qc-reconcile-settle-window,d6129c9,已合 main)
+三平面日对账 + 五时点 launchd(11:00/13:30/16:20/23:15/23:50 ET):
+- **Q = cash + Σ 股数 × Polygon 官方收盘价**(QC payload 逐票价停在收盘前 ~15min,8/27 实测差 48.5bp,降级为交叉校验);
+- 16:20 存 close_snapshot(Q 只在 [16:00 D, 09:30 D+1) 可观测),次日 --settle 用存档补算,零 QC API;
+- 派活按 unsettled_sessions() 欠账清单;ΔD 有紧邻交易日闸门;
+- ΔD 归因项:过渡项 / **rebalance_mirror_lag**(qty×(下单瞬间价−决策日官方收盘),滑点只算尾段不双计;8/28 实测 −12,946.58 与未归因残差逐分吻合)/ 滑点 / 小数残差 delta / 股息时点。换仓日 3bp、无成交日 5bp;算不出的项只给 partial。
+
+### K 语义修正(8/30 用户确认)
+legacy 出清(CRL/MLM 8/27 平,+18,591)后 D 也**不是常数**——每个换仓日"面板决策收盘入账 vs QC 次日成交"的缺口是永久台阶。恒等式升级:
+
+    Q + k_effective ≡ P,  k_effective = k_equity(冻结锚点) + Σ 每换仓日(镜像滞后+滑点)
+
+台阶直接从历史 M4 报告 attribution 累加(报告即台账);缺台阶的天点名并拦 ok。
+**k_effective 代码已上线**(qc_reconcile.k_effective + equity_plane 接线 + --measure 显示),无需再写。
+
+### 冻结执行计划(2026-08-30 定;监控与 AISS reduce 分两条线,后者见 EVENT_RISK plan §13.5)
+
+**待写的唯一代码**:--freeze 改**报告锚定制**(方案 A):
+- K = 锚点场次 M4 报告里**判过的** D_usd(P(d)−Q(d) 都在报告里);
+- 退役三道旧闸:"此刻实测 Q ±$1"、"17:00–04:00 窗口"、"此刻收敛"——它们保护的东西,报告三平面裁决已经保护;
+- 保留:rolloff.json 不存在(只冻一次)+ legacy/scaled 队列空 + **锚点场次三段全 ok**(equity ok/baseline);加 --session 参数;
+- 重写 test_rolloff_freeze.py ~13 个闸门测试;**只加新冻结路径,不动 reconcile 复用的库函数**(qc_snapshot/official_eod/convergence 原样)。
+
+**为什么不能周一 15:00 冻、也不必赶在 BDC 16:05 / SSRS·AISS 17-20 之前**:
+- 报告锚定制锚的是**历史已判场次**,策略当天怎么跑、QC 怎么下单与冻结动作无关——"赶在策略运行前"是旧"实测此刻"制的需求,已随方案 A 退役;
+- 周一全天无锚可用:8/28 是 breach,且其报告早于镜像滞后项上线、盘上无 rebalance_mirror_lag 键 → 锚 8/27 时 k_effective 会把 8/28 台阶读成 +437(真实 −12,509.58),**K_eff 永久错 $12.9k**;重判 8/28 = 改写终态裁决,不做;
+- 锚 8/31 把 8/28 残缺台阶、AISS 重放 +$40 等全部脏留在锚点之前;8/31 的裁决等周二上午 P 落地 + settle。
+
+**时刻表**:
+| 时点(ET) | 动作 |
+|---|---|
+| 周一全天 | 不动代码;AISS reduce 观察走 EVENT_RISK §13.5(v17 成交、16:20 ①) |
+| 周一 ~16:40(16:20 trot 完)~22:00 | 改 --freeze 报告锚定制 + 重写测试 + 全套绿(23:15 trot 前收工) |
+| **周二 11:05**(11:00 settle 判 8/31 ok) | `python ops/rolloff.py --freeze --session 2026-08-31` → **K = D(8/31)** |
+| 周二 13:35 | 若 11:00 仍 pending(官方 EOD 晚)补冻 |
+| 冻后 | 日报自动出 k_effective_usd / D−K_eff 真漂移;--measure 同步显示 |
+
+**周日(8/30)已验支撑事实**:QC 周末零成交(自报净值/cash 与 8/28 收盘快照逐位同);QC↔v17 差 = 恰好 20 腿周末决策(AISS 12 + MTFS 4:PLTR/ALGN 平·FDS/BSX 开 + MRPT 4:CDW/ROP 平 −1,156·ACGL/HIG 开 1248/−890),无一笔无法解释;BDC 五持仓+BIL 与 QC+残差账逐票闭合(闭合差 0;ORCC=OBDC 历史首名);面板 K 备忘行"未镜像 $0 / legacy 0 对"与 legacy 出清一致。
