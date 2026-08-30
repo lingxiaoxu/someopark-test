@@ -220,6 +220,8 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh test
 
 命中 → **卖掉持仓一半 → cash**（`apply_risk_controls` 叠加档，与 DD/vol 同范式）；复用 `emergency_mode_active` 范式持久化在 `inventory_aiss.json`（`event_derisk_active`），veto 期内每日重算自动 hold 不回补；SMH 当日 < −3% 提前解，最迟 T+3。
 
+**执行机制（2026-08-30 修复）**：检测器 T 日晚发一次性 `reduce_next_open` → `_should_rebalance` 走 **`event_derisk` 调仓分支**（与月度 / 紧急 VIX / 防线 A 同一台执行机器）→ 当晚按 T 收盘价入账、QC 镜像 T+1 开盘成交。砍半总量穿透 zscore 稳定过滤器（重归一到砍半后总仓位，板块间轮动照常）；幂等由检测器 `reduce_done` 保证（每事件至多一次，同日误重跑也被挡）。此前只有权重层没有执行桥——8/28 首次实弹（NVDA −4.6%）信号砍到 cash 50% 却零成交，已修复并事件重放补救，全程见 `.claude/plan/strategies-plan/EVENT_RISK_DERISK_PLAN.md` §13。
+
 - **启用**：`config.yaml` → `risk.event_derisk.enabled: true`（默认 off；回测口径用 top-down SMH β）
 - **每日留痕**（不触发也写一行）：`trading_signals/event_risk_heartbeat.log`；日志 `[EVENT_DERISK]`
 - **共享数据**（根 `RefreshEventRiskData.py` 维护）：`price_data/event_risk/` 价库、`price_data/macro/nfp/`、`price_data/macro/earnings_bellwether/`、`price_data/semiconductor_universe.json`

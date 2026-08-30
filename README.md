@@ -141,7 +141,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 - `SMH 对 SPY 30d β > 2.5` 且未来 2 个交易日内有 **NFP**
 - **NVDA / AVGO 财报反应日收盘 < −4.5%**（龙头传染）
 
-命中时（T 收盘出信号 → T+1 执行）：MRPT/MTFS **关掉"做多腿是半导体"的合格 pair 一半**（Tier1 关半 / Tier2 关 β 最高 1 对）+ **veto 半导体做多腿新开**（复用 `MACRO_VETO`）。veto 持续 T+1~T+2，SMH 当日 < −3% 即提前解，最迟 T+3。AISS 侧是"卖一半→cash"，见 `qlib-main/semiconductor_strategy/README.md`。
+命中时（T 收盘出信号 → T+1 执行）：MRPT/MTFS **关掉"做多腿是半导体"的合格 pair 一半**（Tier1 关半 / Tier2 关 β 最高 1 对）+ **veto 半导体做多腿新开**（复用 `MACRO_VETO`）。veto 持续 T+1~T+2，SMH 当日 < −3% 即提前解，最迟 T+3。AISS 侧是"卖一半→cash"，见 `qlib-main/semiconductor_strategy/README.md`。首次实弹 2026-08-28（NVDA −4.6%）：MTFS 关 PLTR/ALGN、MRPT 无合格对——pairs 侧按设计执行；AISS 侧执行桥缺失已于 2026-08-30 修复（详 AISS README / plan §13）。
 
 - **核心模块**：`EventRiskDetector.py`（两策略共享检测器）
 - **启用**：`.env` 中 `SEMI_EVENT_DERISK_ENABLED=1`（默认 off）

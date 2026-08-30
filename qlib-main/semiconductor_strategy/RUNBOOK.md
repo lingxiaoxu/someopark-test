@@ -146,6 +146,9 @@ Extra de-risk layer on top of VIX (config switch, **ENABLED**). Triggers (either
 `max(SMH bottom-up β, portfolio_beta) > 2.5` AND an NFP within 2 trading days; OR
 NVDA/AVGO earnings reaction-day close < −4.5%. On hit → **sell half the book → cash**
 (`apply_risk_controls` event tier), held until SMH < −3% lifts it (T+3 cap).
+Since 2026-08-30 the hit **executes the same evening** as an `event_derisk` rebalance
+(trades booked at T close, QC mirrors at T+1 open) — on a trigger night expect
+`Rebalance: True reason=event_derisk` + a non-empty trade list in the daily log/report.
 
 ```bash
 # Enable (default off): config.yaml -> risk.event_derisk.enabled: true   (already on)
