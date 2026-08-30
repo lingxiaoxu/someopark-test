@@ -355,8 +355,15 @@ def cmd_measure(freeze: bool = False) -> int:
         if prev:
             drift = K - float(prev["k_equity"])
             print(f"\n已冻结 K = {float(prev['k_equity']):,.2f}"
-                  f"(测于 {prev['measured_on']});今日实测偏离 {drift:+,.2f}"
-                  f" —— 退场后残余漂移只应来自成交价差,长期缓慢累积。")
+                  f"(测于 {prev['measured_on']});今日实测偏离 {drift:+,.2f}")
+            # 对死常数的偏离不是"漂移":每个换仓日的镜像滞后+滑点是永久台阶,
+            # 会按日滚入 k_effective(M4 报告是台阶的唯一真相源)。
+            # 真漂移看 D − K_eff,只应剩股息时点等会自己回冲的项。
+            from reconcile.qc_reconcile import k_effective   # 函数内 import 免循环
+            k_eff, n_steps, k_miss = k_effective(prev, d, include_upto=True)
+            print(f"K_eff = {k_eff:,.2f}(冻结值 + {n_steps} 天台阶)"
+                  f";D − K_eff = {K - k_eff:+,.2f}"
+                  + (f";缺台阶 {k_miss}" if k_miss else ""))
         return 0
     # ---- 以下只有 --freeze 会走到 ----
     if ROLLOFF_PATH.exists():

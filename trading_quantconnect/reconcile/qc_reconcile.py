@@ -304,6 +304,46 @@ def prev_report(session: str) -> dict | None:
     return None
 
 
+def k_effective(frozen: dict, upto_session: str, include_upto: bool = False
+                ) -> tuple[float, int, list[str]]:
+    """冻结后的有效常数:k_equity + Σ 每个换仓日的永久台阶(镜像滞后+滑点)。
+
+    K 冻在 measured_on 那天的 D 上,但 D 不是从此不动:每个换仓日,面板按
+    决策收盘入账、QC 次日成交才接上,这段差**永久**沉淀进 D(见
+    rebalance_mirror_lag 项)。恒等式因此升级为
+        Q + k_effective ≡ P,  k_effective = k_equity + Σ steps
+    台阶不另设台账,直接从历史报告的 attribution 里读 —— 报告本来就是审计
+    留痕,再写一份就是第二个真相源。返回 (k_eff, 已计台阶数, 缺台阶的
+    session 列表);缺的那些(报告缺失或还停在 pending)让调用方**明说**,
+    静默跳过会把 k_eff 的洞演成"漂移"。
+
+    equity_plane 传 include_upto=False:当天自己的台阶调用方手上就有
+    (lag + slip),从内存加,不依赖自己那份还没写盘的报告。
+    rolloff --measure 传 True:纯读盘,当天的报告(若已出)也计入。
+    """
+    k = float(frozen["k_equity"])
+    f_sess = str(frozen["measured_on"])
+    n_steps, missing = 0, []
+    if not REPORT_DIR.exists():
+        return k, 0, []
+    for p in sorted(REPORT_DIR.glob("qc_reconcile_*.json")):
+        s = p.stem.replace("qc_reconcile_", "")
+        in_range = (f_sess < s <= upto_session) if include_upto else \
+                   (f_sess < s < upto_session)
+        if not in_range:
+            continue
+        a = (((_load(p) or {}).get("equity_check") or {})
+             .get("attribution") or {})
+        lag = (a.get("rebalance_mirror_lag") or {}).get("usd")
+        sl = (a.get("slippage") or {}).get("usd")
+        if lag is None and sl is None:
+            missing.append(s)          # 那天还没出归因(pending/缺文件)
+            continue
+        k += (lag or 0.0) + (sl or 0.0)
+        n_steps += 1
+    return k, n_steps, missing
+
+
 # ── QC 只读取数 ─────────────────────────────────────────────────────────────
 
 def _of_deploy(orders: list[dict], deploy_id: str) -> list[dict]:
@@ -852,6 +892,43 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
         "unreferenced": sorted(set(unref)),
         "note": "正数 = 成交价对我们不利,压低 QC 净值 ⇒ 推高 D"}
 
+    # 换仓镜像滞后:面板按**决策日收盘价**(= d_prev 官方收盘)入账,QC 要等
+    # 次日 target 应用后才成交接上仓位。[决策收盘 → 下单瞬间] 这段行情只有
+    # 面板在场,是 ΔD 的**永久台阶**(2026-08-28 实测 −12.9k,其中 FTNT 隔夜
+    # −4.8% 一腿就 −9.2k)。上界取**下单瞬间**而不是成交价:[下单 → 成交] 的
+    # 尾段是上面 slippage 的地盘,算到成交价会把滑点双计。缺下单参考价的腿
+    # 退回用成交价整窗归本项 —— slippage 对那种腿本来就算不了,不重不漏。
+    # 决策收盘价用与 P/Q 同一价源(Polygon 日 K):面板账本自己的入账价可能
+    # 略有出入,那点差留在 unattributed 里,不硬凑。
+    lag, lag_rows, lag_unpriced = 0.0, [], []
+    prev_closes: dict = {}
+    if fills:
+        try:
+            prev_closes = official_close.closes_for(
+                d_prev, [rolloff._canon(f["ticker"]) for f in fills])
+        except SourceError:
+            pass                       # 逐腿落 unpriced,blocked 里点名
+    for f in fills:
+        c0 = prev_closes.get(rolloff._canon(f["ticker"]))
+        if c0 is None:
+            lag_unpriced.append(f["ticker"])
+            continue
+        ref = f.get("submit_last_px")
+        end = float(ref) if ref is not None else float(f["fill_px"])
+        leg = (end - float(c0)) * f["qty"]
+        lag += leg
+        lag_rows.append({"ticker": f["ticker"], "qty": f["qty"],
+                         "decision_close": float(c0), "end_px": end,
+                         "full_window": ref is None, "usd": round(leg, 2)})
+    attrib["rebalance_mirror_lag"] = {
+        "usd": round(lag, 2), "n_legs": len(lag_rows),
+        "basis": f"qty × (下单瞬间价 − {d_prev} 官方收盘价);"
+                 f"缺下单价的腿用成交价整窗",
+        "per_leg": lag_rows, "unpriced": sorted(set(lag_unpriced)),
+        "note": "面板按决策日收盘入账、QC 次日成交才接上 —— 正数 = 接上前"
+                "行情走高(面板吃到 QC 没吃)⇒ 推高 D;此项永久沉淀,冻结 K"
+                "之后按日滚入 k_effective(见 k_effective())"}
+
     prev_frac = (pe.get("fractional_residual") or {}).get("value_usd")
     attrib["fractional_residual_delta"] = {
         "usd": (round(frac_usd - float(prev_frac), 2)
@@ -894,12 +971,15 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     row["attribution"] = attrib
 
     # —— 残差与裁决 ——
-    known: list[float] = [q["total_usd"], slip]
+    known: list[float] = [q["total_usd"], slip, lag]
     blocked: list[str] = []
     if q["unresolved"]:
         blocked.append(f"{len(q['unresolved'])} 对 L/S 队列盈亏取不到读数")
-    if unref:
-        blocked.append(f"{len(set(unref))} 票成交缺下单瞬间参考价")
+    # 缺下单参考价本身不再拦:那种腿已被镜像滞后项按成交价整窗吸收(见上),
+    # 残差里不缺东西。真拦的是缺**决策日收盘价**的腿 —— 那才是算不出的窗口。
+    if lag_unpriced:
+        blocked.append(f"{len(set(lag_unpriced))} 腿缺 {d_prev} 官方收盘价,"
+                       f"镜像滞后算不全")
     fd = attrib["fractional_residual_delta"]["usd"]
     if fd is None:
         blocked.append("上一份报告没有小数残差市值")
@@ -935,6 +1015,20 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
                              else "unattributed;无成交日阈值 5bp"),
                judged_bp_gross=round(bp, 2), tolerance_bp=tol,
                n_fills=len(fills))
+
+    # 冻结后:K 不是死常数,换仓日的永久台阶按日滚入(k_effective)。
+    # 当天自己的台阶(lag + slip)从内存加 —— 本 session 的报告此刻还没写盘。
+    # D − k_effective 才是"真漂移":它只应剩股息时点等会自己回冲的项。
+    if frozen and frozen.get("measured_on"):
+        k_eff, n_steps, k_miss = k_effective(frozen, session)
+        k_eff += lag + slip
+        row["k_effective_usd"] = round(k_eff, 2)
+        row["D_minus_K_effective_usd"] = round(D - k_eff, 2)
+        row["k_steps_counted"] = n_steps + 1
+        if k_miss:
+            row["k_steps_missing"] = k_miss
+            blocked.append(f"k_effective 缺 {len(k_miss)} 天的台阶"
+                           f"(那些天归因未出): {k_miss}")
     if blocked:
         row["blocked_terms"] = blocked
     if abs(bp) > tol:
@@ -1186,11 +1280,16 @@ def _emit(rep: dict, dry: bool = False) -> None:
               f"Q(QC净值) {e['qc_equity_Q']:>15,.2f}   D {e['D_usd']:>13,.2f}")
     if e.get("delta_D_usd") is not None:
         q = e["attribution"]["bootstrap_unmirrored_pnl"]
+        ml = (e["attribution"].get("rebalance_mirror_lag") or {}).get("usd", 0.0)
         print(f"       ΔD {e['delta_D_usd']:>+13,.2f}  = 过渡项 "
-              f"{q['total_usd']:+,.2f} + 滑点 "
+              f"{q['total_usd']:+,.2f} + 镜像滞后 {ml:+,.2f} + 滑点 "
               f"{e['attribution']['slippage']['usd']:+,.2f} + 其他 → "
               f"残差 {e['judged_usd']:+,.2f} = {e['judged_bp_gross']:+.2f}bp "
               f"(阈值 {e['tolerance_bp']}bp, {e['n_fills']} 笔成交)")
+    if e.get("k_effective_usd") is not None:
+        print(f"       K_eff {e['k_effective_usd']:>+13,.2f}"
+              f"(台阶 {e.get('k_steps_counted')} 天)   "
+              f"D − K_eff = {e['D_minus_K_effective_usd']:+,.2f}")
     if e.get("note"):
         print(f"       note: {e['note']}")
     b = rep["bootstrap"]

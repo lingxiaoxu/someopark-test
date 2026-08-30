@@ -962,3 +962,180 @@ def test_settle_all_reports_breach_over_failure(monkeypatch, settle_env):
         return {"verdict": "breach"}
     monkeypatch.setattr(qr, "settle", _fake)
     assert qr.settle_all(dry=True) == 2
+
+
+# ── 换仓镜像滞后归因 + K_eff(2026-08-30 补:8/28 实测 −12.9k 无处可挂)────
+#
+# 面板按决策日收盘入账、QC 次日 target 应用后才成交。[决策收盘 → 下单瞬间]
+# 只有面板在场,是 ΔD 的永久台阶;[下单 → 成交] 归 slippage。两段合计恰为
+# qty×(fill − 决策收盘),不重不漏。
+
+def _closes_by_session(monkeypatch, tables: dict):
+    """按 session 分表的收盘价桩(eq_env 默认桩是"问哪天都一样",测不出
+    新项拿没拿**对的那天**的价 —— 8/28 的教训恰恰是两天价差)。"""
+    monkeypatch.setattr(official_close, "grouped_closes",
+                        lambda s: dict(tables[s]))
+
+
+def test_mirror_lag_attributed_makes_rebalance_gap_ok(monkeypatch, eq_env):
+    """8/28 场景的最小复刻:隔夜跳空全额落进镜像滞后项,残差归零 → ok。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},     # 本日:定 Q 用
+        "2026-08-26": {"X": 9.0, "Y": 1.0},      # 决策日:X 收 9,隔夜涨到 10
+    })
+    # 滞后 = 100×(10.0−9.0) = +100;滑点 = 100×(10.05−10.0) = +5;
+    # 小数残差 delta = 0(frac=5 = 0.5×10);股息 0(现金恒等式配平)。
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 - 105.0, 2000.0, frac=5.0))
+    ep = datetime(2026, 8, 27, 14, 0, tzinfo=ZoneInfo("UTC")).timestamp()
+    fills = qr.fills_of_session(
+        [_order(1, "X", 100.0, 10.05, ep, "[MIRROR] v9 open {}", last_px=10.0)],
+        "2026-08-27", _ET)
+    # cash: 2000 − 1005(成交) = 995
+    row = qr.equity_plane("2026-08-27", _qc(995.0), fills,
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    ml = row["attribution"]["rebalance_mirror_lag"]
+    assert ml["usd"] == 100.0 and ml["n_legs"] == 1
+    assert ml["per_leg"][0]["decision_close"] == 9.0
+    assert ml["per_leg"][0]["end_px"] == 10.0            # 到下单瞬间,不到成交
+    assert ml["per_leg"][0]["full_window"] is False
+    assert row["attribution"]["slippage"]["usd"] == 5.0  # 尾段仍归滑点,没双计
+    assert row["attributed_usd"] == 105.0
+    assert row["unattributed_usd"] == 0.0
+    assert row["status"] == "ok"
+
+
+def test_mirror_lag_sell_leg_sign(monkeypatch, eq_env):
+    """卖腿:QC 迟迟没卖掉,期间涨价是 QC 多吃的 ⇒ 压低 D,符号必须为负。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"X": 9.0, "Y": 1.0},
+    })
+    # 滞后 = −100×(10.0−9.0) = −100;滑点 = (10.05−10.0)×(−100) = −5
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 + 105.0, 2000.0, frac=5.0))
+    ep = datetime(2026, 8, 27, 14, 0, tzinfo=ZoneInfo("UTC")).timestamp()
+    fills = qr.fills_of_session(
+        [_order(1, "X", -100.0, 10.05, ep, "[MIRROR] v9 close {}",
+                last_px=10.0)],
+        "2026-08-27", _ET)
+    # cash: 2000 + 1005(卖出回款) = 3005
+    row = qr.equity_plane("2026-08-27", _qc(3005.0), fills,
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert row["attribution"]["rebalance_mirror_lag"]["usd"] == -100.0
+    assert row["attribution"]["slippage"]["usd"] == -5.0
+    assert row["unattributed_usd"] == 0.0
+    assert row["status"] == "ok"
+
+
+def test_mirror_lag_full_window_fallback_when_no_submit_ref(monkeypatch,
+                                                            eq_env):
+    """缺下单参考价的腿整窗归滞后项;slippage 算不了它,但**不再拦裁决**——
+    残差里不缺东西,拦是"检查做过但白做"。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"X": 9.0, "Y": 1.0},
+    })
+    # 整窗 = 100×(10.05−9.0) = +105;滑点 0
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 - 105.0, 2000.0, frac=5.0))
+    ep = datetime(2026, 8, 27, 14, 0, tzinfo=ZoneInfo("UTC")).timestamp()
+    fills = qr.fills_of_session(
+        [_order(1, "X", 100.0, 10.05, ep, "[MIRROR] v9 open {}")],  # 无 last_px
+        "2026-08-27", _ET)
+    row = qr.equity_plane("2026-08-27", _qc(995.0), fills,
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    ml = row["attribution"]["rebalance_mirror_lag"]
+    assert ml["usd"] == 105.0
+    assert ml["per_leg"][0]["full_window"] is True
+    assert row["attribution"]["slippage"]["usd"] == 0.0
+    assert row["attribution"]["slippage"]["unreferenced"] == ["X"]
+    assert row["unattributed_usd"] == 0.0
+    assert "blocked_terms" not in row
+    assert row["status"] == "ok"
+
+
+def test_mirror_lag_blocked_when_decision_close_missing(monkeypatch, eq_env):
+    """决策日收盘价缺了才是真算不出 —— 拦成 partial,不许静默给 ok。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"Y": 1.0},                # X 在决策日没有收盘价
+    })
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 - 5.0, 2000.0, frac=5.0))
+    ep = datetime(2026, 8, 27, 14, 0, tzinfo=ZoneInfo("UTC")).timestamp()
+    fills = qr.fills_of_session(
+        [_order(1, "X", 100.0, 10.05, ep, "[MIRROR] v9 open {}", last_px=10.0)],
+        "2026-08-27", _ET)
+    row = qr.equity_plane("2026-08-27", _qc(995.0), fills,
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    ml = row["attribution"]["rebalance_mirror_lag"]
+    assert ml["usd"] == 0.0 and ml["unpriced"] == ["X"]
+    assert any("镜像滞后算不全" in b for b in row["blocked_terms"])
+    assert row["status"] == "partial"
+
+
+def test_k_effective_rolls_permanent_steps_into_constant(monkeypatch, tmp_path,
+                                                         eq_env):
+    """冻结后:K_eff = 冻结值 + 盘上历史台阶 + 当天内存台阶,逐项可对。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"X": 9.0, "Y": 1.0},
+    })
+    roll = tmp_path / "rolloff.json"
+    roll.write_text(json.dumps({"measured_on": "2026-08-25",
+                                "k_equity": 99_000.0}))
+    monkeypatch.setattr(qr, "ROLLOFF_PATH", roll)
+    rep_dir = tmp_path / "reports"
+    rep_dir.mkdir()
+    (rep_dir / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "equity_check": {"attribution": {
+            "rebalance_mirror_lag": {"usd": 90.0},
+            "slippage": {"usd": 10.0}}}}))
+    # 毒饵:当天自己的旧报告(上一趟留的)。当天台阶只能从内存加 ——
+    # k_effective 的上界若误放宽到 <=,这份就会被再计一次,K_eff 凭空多 77。
+    (rep_dir / "qc_reconcile_2026-08-27.json").write_text(json.dumps({
+        "equity_check": {"attribution": {
+            "rebalance_mirror_lag": {"usd": 70.0},
+            "slippage": {"usd": 7.0}}}}))
+    monkeypatch.setattr(qr, "REPORT_DIR", rep_dir)
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 - 105.0, 2000.0, frac=5.0))
+    ep = datetime(2026, 8, 27, 14, 0, tzinfo=ZoneInfo("UTC")).timestamp()
+    fills = qr.fills_of_session(
+        [_order(1, "X", 100.0, 10.05, ep, "[MIRROR] v9 open {}", last_px=10.0)],
+        "2026-08-27", _ET)
+    row = qr.equity_plane("2026-08-27", _qc(995.0), fills,
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    # 99,000(冻结) + 100(8/26 台阶 90+10) + 105(当天 100+5) = 99,205
+    assert row["k_effective_usd"] == 99_205.0
+    assert row["k_steps_counted"] == 2
+    assert row["D_minus_K_effective_usd"] == round(100_000.0 - 99_205.0, 2)
+    assert "k_steps_missing" not in row
+    assert row["status"] == "ok"
+
+
+def test_k_effective_missing_step_blocks_verdict(monkeypatch, tmp_path,
+                                                 eq_env):
+    """中间某天归因没出 → K_eff 有洞。洞必须**点名**并拦住 ok,静默跳过
+    会把洞演成"漂移",下一步就是有人去追一个不存在的错。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"X": 10.0, "Y": 1.0},     # 无滞后,免得脏了断言
+    })
+    roll = tmp_path / "rolloff.json"
+    roll.write_text(json.dumps({"measured_on": "2026-08-25",
+                                "k_equity": 99_000.0}))
+    monkeypatch.setattr(qr, "ROLLOFF_PATH", roll)
+    rep_dir = tmp_path / "reports"
+    rep_dir.mkdir()
+    (rep_dir / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "equity_check": {"status": "pending"}}))     # 那天没出归因
+    monkeypatch.setattr(qr, "REPORT_DIR", rep_dir)
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0, 2000.0, frac=5.0))
+    row = qr.equity_plane("2026-08-27", _qc(2000.0), [],
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert row["k_steps_missing"] == ["2026-08-26"]
+    assert any("k_effective 缺" in b for b in row["blocked_terms"])
+    assert row["status"] == "partial"
