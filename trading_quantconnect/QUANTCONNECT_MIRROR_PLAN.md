@@ -582,4 +582,25 @@ legacy 出清(CRL/MLM 8/27 平,+18,591)后 D 也**不是常数**——每个换�
 | 周二 13:35 | 若 11:00 仍 pending(官方 EOD 晚)补冻 |
 | 冻后 | 日报自动出 k_effective_usd / D−K_eff 真漂移;--measure 同步显示 |
 
+**冻结前提(周二动手前逐项过)**:
+- 8/31 报告**三段全 ok**(①holdings ②target ③equity ok;equity 若 partial/breach → 不冻,锚点顺延到 9/1、周三再冻——锚定制下顺延无代价);
+- prev 链完好(8/31 的 prev = 8/28,紧邻 ✓);
+- rolloff.json 不存在、legacy/scaled 队列空(周日已验)。
+
+**周一代码任务的完整内容**(不只是改函数):
+- rolloff.py:--freeze 走报告锚定路径 + --session 参数;--measure 原样保留;
+- test_rolloff_freeze.py ~13 个闸门测试重写(报告缺失/三段不全 ok/已冻结/队列非空/锚点值来源=报告 D_usd/只冻一次);
+- **trading_quantconnect/README.md K 节同步改**(现在写的还是旧三闸,不改会误导);
+- 全套测试绿 → commit + push(23:15 trot 前收工)。
+
+**冻结后验证(周二当天 + 周三)**:
+- 周二冻完即查 rolloff.json:measured_on=2026-08-31、k_equity=报告 D_usd 逐位一致、provenance=报告文件名;
+- `rolloff.py --measure` 跑一次:应显示 K_eff = k_equity(尚无冻后台阶)+ 当日漂移解释;
+- **周三**(9/1 场次 settle 后)看第一份带 K_eff 的日报:`k_effective_usd` / `D_minus_K_effective_usd` 出现,|D−K_eff| 应只剩股息时点级别的小项;9/1 是月度调仓日,其(镜像滞后+滑点)台阶应被自动滚入 —— 这是 K_eff 机制的首次实战检验;
+- A-4 本节补执行记录(冻结值、时间、首日漂移)。
+
+**后续独立事项(不阻塞冻结,另行批准)**:
+- NAV 面板显示 K/K_eff(M5 面板 quality check 集成的一部分):前端数据管道加 k_effective 字段 + 面板 K 备忘行从"未镜像 $0"升级为"QC+K_eff vs 面板"逐日核对显示;
+- 可选:|D−K_eff| 持续增长的告警阈值(现为纯信息展示)。
+
 **周日(8/30)已验支撑事实**:QC 周末零成交(自报净值/cash 与 8/28 收盘快照逐位同);QC↔v17 差 = 恰好 20 腿周末决策(AISS 12 + MTFS 4:PLTR/ALGN 平·FDS/BSX 开 + MRPT 4:CDW/ROP 平 −1,156·ACGL/HIG 开 1248/−890),无一笔无法解释;BDC 五持仓+BIL 与 QC+残差账逐票闭合(闭合差 0;ORCC=OBDC 历史首名);面板 K 备忘行"未镜像 $0 / legacy 0 对"与 legacy 出清一致。
