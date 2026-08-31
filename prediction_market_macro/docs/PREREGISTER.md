@@ -1061,3 +1061,21 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 证伪 | (a) 主判据未达 → 该系列 NOT ADOPTED,`ercot_w` 保持默认 0;(b) B 臂评到的事件集与 A 臂不逐一相同 → 该系列作废(协变量不得改变覆盖);(c) 采纳后若走 argmin 曝光需另注册(本条只判默认参数对比) |
 | 预期声明(不作判据) | 筛选为零信号 ⇒ β 应徘徊于 0、双臂应近似打平;若 B 显著变差说明 walk-forward β 在小样本上添噪,同样 NOT ADOPTED |
 | 结论 | **五系列全部 NOT ADOPTED**(2026-08-31,全量生产 replay,覆盖平价全过。−1h 每腿 Brier A→B:KXNATGASW 0.00766→0.00768(−0.3%,−24h −1.4% 反向改善但主判据是 −1h);KXWTIW 0.03457→0.03449(+0.2%);KXJOBLESSCLAIMS 0.15132→0.15261(−0.9%);KXCPI/KXCPIYOY 双臂逐位相同(月度 β 全程静默 0)。**与注册的预期声明完全一致**:筛选零信号 ⇒ walk-forward β≈0 ⇒ 打平或微劣。生产状态:接线保留、`ercot_w` 默认 0 = 逐位不变,任何非零曝光需新注册。判定中途修复一处接线 bug(energy dispatcher 误用 `dist.values`,Empirical 字段为 `samples`——B 臂曾静默 n=0,修复后重跑两能源系列,如实记录)。工件 `/tmp/dfm_verify/pr31_replay.{py,log}`、`pr31_replays.json`、`pr31_energy_rerun.json` |
+
+### PR-32 ERCOT→DFM 条件化(用户指令:ERCOT 必须使用 + DFM 必须使用)(2026-08-31)
+
+> PR-31 判死的是 mu 通道(市场已定价)。本条走**没测过的通道**:ERCOT 周度 gas 燃烧
+> (`fred_obs` 合成 sid `ERCOT_GASBURN_W`,W-SAT 周均、D+2 可知、已镜像 400 周)作为
+> **context 列**进 weekly panel——生成器**条件于电网状态**,合成世界与 λ/选参全链吃到。
+> **如实预告的代价**:930 只到 2019,panel 训练行将从 ~690 砍到 ~400;条件化收益必须打赢
+> 样本损失,这正是三臂设计要隔离的。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-08-31,判定跑之前 |
+| 三臂 | **A** = 现行 panel(全窗);**A2** = 现行列集、start=2019-01-05(隔离窗口效应);**B** = A2 + context 列 `ercot_burn`(不生成、只条件)。两 panel 各判:claims_weekly、energy_weekly。KW=PR-15 链冻结(holdout=0.3 folds=3 draws=256 seed=7 knn_k=40 printed start=marginal k_local=120) |
+| 主判据(逐 panel) | **采纳 iff** B 对 A2:`crps_ratio` 改善(任何量)且 `cover80` 距 0.80 不劣化超 **0.01**(PR-23 松量);**且** B 对 A:`crps_ratio` 不劣化超 **+0.01**(样本损失不致命) |
+| 证伪 | (a) 主判据未达 → 该 panel NOT ADOPTED;(b) B 的 `boot`/`knn` 相对 A2 非逐位(context 列不进臂,但 panel 行集相同、真实行相同 → 对照臂应逐位;若动,注入错位,作废) |
+| K | ERCOT 条件化第 1 次 |
+| 影响面 | 判定 /tmp 注入;采纳=context 列入 `panel.py`(列集变、config key 变),只对新 fit/新世界生效 |
+| 结论 | 待跑 |

@@ -127,6 +127,7 @@ def _run(weekly: bool = False) -> dict:
     # the EIA storage prints that move NG; accrues daily from the public dashboards.
     from prediction_market_macro.ingest import ercot
     step("ercot", lambda: ercot.refresh(conn))
+    step("ercot_mirror", lambda: ercot.mirror_weekly_burn(conn))
     # Cleveland Fed daily inflation nowcasts (2026-08-15, shadow per §7-bis —
     # no model reads it until a preregistered gate clears). The fetched files
     # carry full history, so this one step is backfill + daily tail in one.

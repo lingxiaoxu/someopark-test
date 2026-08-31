@@ -342,3 +342,34 @@ def backfill_eia930(conn, start: str = "2019-01-01", log=None) -> dict:
              r["period"], "eia_demand_mwh", now)).rowcount
     conn.commit()
     return {"rows": n}
+
+
+def mirror_weekly_burn(conn) -> int:
+    """Mirror weekly ERCOT gas burn into fred_obs as ERCOT_GASBURN_W (PR-32).
+
+    The established EIA pattern: synthetic sids in fred_obs are how non-FRED series
+    enter the DFM panels. W-SAT weekly mean of eia_gas_gen_mwh; knowledge_time =
+    week end + 2 days 00:00 UTC — the same D+2 conservatism PR-31 registered for this
+    source. INSERT OR IGNORE: vintages append, never rewrite."""
+    conn.executescript(_SCHEMA)
+    rows = conn.execute("SELECT date, value FROM ercot_daily WHERE"
+                        " metric='eia_gas_gen_mwh' ORDER BY date").fetchall()
+    if not rows:
+        return 0
+    import pandas as pd
+    s = pd.Series({pd.Timestamp(r[0]): float(r[1]) for r in rows})
+    wk = s.resample("W-SAT").mean().dropna()
+    # a week is written only when complete: its Saturday must be at least 2 days past
+    now = datetime.now(timezone.utc)
+    n = 0
+    for ts, v in wk.items():
+        kt = (ts + pd.Timedelta(days=2)).strftime("%Y-%m-%dT00:00:00+00:00")
+        if pd.Timestamp(kt[:10]) > pd.Timestamp(now.date()):
+            continue
+        n += conn.execute(
+            "INSERT OR IGNORE INTO fred_obs(sid, event_time, value, vintage_date,"
+            " knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?)",
+            ("ERCOT_GASBURN_W", ts.date().isoformat(), float(v),
+             ts.date().isoformat(), kt, now.isoformat())).rowcount
+    conn.commit()
+    return n
