@@ -60,3 +60,17 @@ be theater, so the full-production PIT walk-forward replay was not spent.
   lag stops mattering.
 * Deep zip archives (7y, hourly) remain unpulled — nothing screened so far justifies
   their cost.
+
+
+## Addendum 2026-08-31 — the user-ordered full-machinery judgment (PR-31)
+
+The screening verdict was re-judged with the complete production apparatus: the
+covariate landed as `model/ercot_cov.py` (PIT: D+2 knowability, prior-years-only
+climatology, expanding walk-forward OLS strictly before each asof, silent under 52
+pairs), gated into energy/claims/cpi-headline behind `params["ercot_w"]` (default 0 =
+production bit-identical), and both arms run through `replay_series` on every settled
+event. **All five series NOT ADOPTED** — KXNATGASW −0.3%, KXWTIW +0.2%,
+KXJOBLESSCLAIMS −0.9% at −1h against a +2% bar; the CPI pair's monthly beta never woke
+(arms bit-identical). Screening and the full replay now agree end to end. The wiring
+stays in production, inert; any nonzero exposure requires a new registration
+(PREREGISTER.md §PR-31).

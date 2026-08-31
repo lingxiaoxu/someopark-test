@@ -1060,4 +1060,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 主判据 | 逐系列采纳 iff:**−1h 每腿 Brier 相对改善 ≥ 2%** 且 **−24h 不劣化超 2%** |
 | 证伪 | (a) 主判据未达 → 该系列 NOT ADOPTED,`ercot_w` 保持默认 0;(b) B 臂评到的事件集与 A 臂不逐一相同 → 该系列作废(协变量不得改变覆盖);(c) 采纳后若走 argmin 曝光需另注册(本条只判默认参数对比) |
 | 预期声明(不作判据) | 筛选为零信号 ⇒ β 应徘徊于 0、双臂应近似打平;若 B 显著变差说明 walk-forward β 在小样本上添噪,同样 NOT ADOPTED |
-| 结论 | 待跑 |
+| 结论 | **五系列全部 NOT ADOPTED**(2026-08-31,全量生产 replay,覆盖平价全过。−1h 每腿 Brier A→B:KXNATGASW 0.00766→0.00768(−0.3%,−24h −1.4% 反向改善但主判据是 −1h);KXWTIW 0.03457→0.03449(+0.2%);KXJOBLESSCLAIMS 0.15132→0.15261(−0.9%);KXCPI/KXCPIYOY 双臂逐位相同(月度 β 全程静默 0)。**与注册的预期声明完全一致**:筛选零信号 ⇒ walk-forward β≈0 ⇒ 打平或微劣。生产状态:接线保留、`ercot_w` 默认 0 = 逐位不变,任何非零曝光需新注册。判定中途修复一处接线 bug(energy dispatcher 误用 `dist.values`,Empirical 字段为 `samples`——B 臂曾静默 n=0,修复后重跑两能源系列,如实记录)。工件 `/tmp/dfm_verify/pr31_replay.{py,log}`、`pr31_replays.json`、`pr31_energy_rerun.json` |

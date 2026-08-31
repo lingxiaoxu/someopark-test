@@ -421,7 +421,7 @@ def predict(conn, asof: datetime, period: str, series: str,
             if shift:
                 k = float(np.exp(w * shift))
                 if isinstance(pred.dist, Empirical):
-                    dist = Empirical(tuple(round(v * k, 5) for v in pred.dist.values))
+                    dist = Empirical(tuple(round(v * k, 5) for v in pred.dist.samples))
                 else:
                     dist = GaussianMix(tuple((c[0], c[1] * k, c[2])
                                              for c in pred.dist.comps))
