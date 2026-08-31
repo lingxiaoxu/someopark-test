@@ -43,11 +43,32 @@ def test_refresh_upserts_and_preserves_first_seen(monkeypatch):
     assert row["first_seen_ts"] == first               # PIT anchor survives
 
 
-def test_no_model_reads_ercot_daily_yet():
-    """§7-bis: SHADOW means shadow. This greps the model package for the table name so
-    that the first consumer must come through a preregistration that updates this test."""
+def test_ercot_daily_is_read_only_through_the_registered_covariate():
+    """§7-bis, updated by PR-31: the ONE registered consumer is model/ercot_cov.py,
+    whose shifts reach models only behind params['ercot_w'] (default 0). Any other
+    model file touching the table must arrive with its own registration and update
+    this list."""
     from pathlib import Path
     import prediction_market_macro.model as M
     root = Path(M.__file__).parent
-    hits = [p.name for p in root.glob("*.py") if "ercot_daily" in p.read_text()]
-    assert hits == [], f"models reading a shadow table without a gate: {hits}"
+    hits = sorted(p.name for p in root.glob("*.py") if "ercot_daily" in p.read_text())
+    assert hits == ["ercot_cov.py"], f"unregistered ercot_daily consumers: {hits}"
+
+
+def test_ercot_w_zero_is_bit_identical_and_cov_never_raises():
+    """PR-31's ground rule: the default arm must be production bit-for-bit, and the
+    covariate must never be the reason a prediction fails (empty table -> shift 0)."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from prediction_market_macro.model import ercot_cov
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE ercot_daily(date TEXT, metric TEXT, value REAL,"
+                 " knowledge_time TEXT, first_seen_ts TEXT)")
+    conn.execute("CREATE TABLE fut_daily(root TEXT, event_time TEXT, close REAL)")
+    conn.execute("CREATE TABLE fred_obs(sid TEXT, event_time TEXT, value REAL,"
+                 " vintage_date TEXT, knowledge_time TEXT)")
+    ercot_cov.clear_cache()
+    now = datetime(2026, 8, 30, tzinfo=timezone.utc)
+    for s in ("KXNATGASW", "KXWTIW", "KXJOBLESSCLAIMS", "KXCPI", "KXCPIYOY", "KXOTHER"):
+        assert ercot_cov.mu_shift(conn, now, s) == 0.0
+    ercot_cov.clear_cache()

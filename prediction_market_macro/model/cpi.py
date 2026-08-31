@@ -191,6 +191,11 @@ def _predict_mom(conn, asof: datetime, ref_month: str, core: bool,
         food = float(p["food_drift"])
         mu = mu_c + gas_pp + food
         sigma = _horizon_widen(math.hypot(sg_c, gas_sig), idx, ref_month, p)
+        w = float(p.get("ercot_w", 0.0))
+        if w:
+            # PR-31 covariate (walk-forward PIT, model/ercot_cov.py); 0 by default
+            from prediction_market_macro.model import ercot_cov
+            mu += w * ercot_cov.mu_shift(conn, asof, "KXCPI")
         inputs = {"core_mu": round(mu_c, 4), "gas_pp": round(gas_pp, 4),
                   "food_drift": food, "sigma": round(sigma, 4)}
     series = "KXCPICORE" if core else "KXCPI"

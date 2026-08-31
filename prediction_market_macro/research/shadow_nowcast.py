@@ -96,8 +96,12 @@ _P_FLOOR = 0.5 / 20_000.0
 # Stamped by `--stamp`; see `code_change_note`. A mid-flight edit to model/cpi.py moves both
 # arms together, so the pairing survives but the registered effect size does not, and that
 # has to be visible in the report rather than inferred from git.
-REGISTERED_FINGERPRINT = "a1f654f0d8e9"
+REGISTERED_FINGERPRINT = "200a4d80537d"   # re-stamped 2026-08-31 (PR-31 gate, inert)
 KNOWN_FINGERPRINTS: dict[str, str] = {
+    "200a4d80537d": (
+        "2026-08-31 (PR-31) — the ERCOT covariate gate on the HEADLINE MoM branch:\n"
+        "mu gains w*ercot_cov.mu_shift behind params['ercot_w'], default 0.0. INERT\n"
+        "for both arms — nothing here passes ercot_w, all numbers bit-identical."),
     "a1f654f0d8e9": "cpi/0.4.0 as this scorer was written, plus the `nowcast_anchor` key "
                     "that makes the un-anchored arm reachable. Proved a no-op at its "
                     "default on the live db: 200/200 settled CPI-family predictions "

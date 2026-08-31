@@ -177,7 +177,13 @@ def predict(conn, asof: datetime, period: str, series: str = "KXJOBLESSCLAIMS",
     sigma_log = max(1.4826 * float(np.median(np.abs(d_log - np.median(d_log)))),
                     float(p["sigma_floor"]))
 
-    mu = math.exp(base_log + seasonal)
+    ercot_shift = 0.0
+    w = float(p.get("ercot_w", 0.0))
+    if w:
+        # PR-31 covariate (walk-forward PIT, model/ercot_cov.py); 0 by default
+        from prediction_market_macro.model import ercot_cov
+        ercot_shift = w * ercot_cov.mu_shift(conn, asof, "KXJOBLESSCLAIMS")
+    mu = math.exp(base_log + seasonal + ercot_shift)
     sigma = mu * sigma_log
     dist = GaussianMix(((1.0, mu, sigma),))
     return Pred(series="KXJOBLESSCLAIMS", period=period, dist=dist, asof=asof,

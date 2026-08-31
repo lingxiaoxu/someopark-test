@@ -410,7 +410,26 @@ def predict(conn, asof: datetime, period: str, series: str,
             params: dict | None = None) -> Pred:
     """period: ISO settle date ('2026-07-31'). Dispatches per energy series."""
     if series in _FUT_ROOT:
-        return _gbm_futures(conn, asof, period, series, params)
+        pred = _gbm_futures(conn, asof, period, series, params)
+        w = float((params or {}).get("ercot_w", 0.0))
+        # PR-31: the ERCOT covariate, walk-forward PIT (model/ercot_cov.py). w=0 —
+        # the default everywhere — is bit-identical to production; the shift is a
+        # log-return added to the settle distribution, every existing input kept.
+        if w:
+            from prediction_market_macro.model import ercot_cov
+            shift = ercot_cov.mu_shift(conn, asof, series)
+            if shift:
+                k = float(np.exp(w * shift))
+                if isinstance(pred.dist, Empirical):
+                    dist = Empirical(tuple(round(v * k, 5) for v in pred.dist.values))
+                else:
+                    dist = GaussianMix(tuple((c[0], c[1] * k, c[2])
+                                             for c in pred.dist.comps))
+                pred = Pred(series=pred.series, period=pred.period, dist=dist,
+                            asof=pred.asof, model_version=pred.model_version,
+                            inputs={**pred.inputs, "ercot_shift": round(shift, 6)},
+                            data_horizon=pred.data_horizon)
+        return pred
     if series == "KXAAAGASW":
         return _aaa_gas(conn, asof, period, params)
     raise ValueError(f"energy.predict: unknown series {series}")

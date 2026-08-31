@@ -1042,3 +1042,22 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 |---|---|
 | 登记日 | 2026-08-29,判定跑之前。与 PR-29 唯一差异:矩阵抽样 **n_paths=512**(单对 SE≈0.044,45 对 max 的跨 seed 差期望 ~0.13,杠内)。判据 A(max \|Δ\| ≤ 0.15 双 seed)/B/C/影子报告、阈值 0.5、限额 8.0 **逐字不变**。K=2 |
 | 结论 | **ADOPTED**(2026-08-29。**A PASS** 双 seed 512 路径 max \|Δcorr\| **0.147** ≤ 0.15;**B PASS**(同 draw 对 +1.000;桥 KXJOBLESSCLAIMS~KXWTIW −0.307 为负);影子应用对当前在持零追溯拦截。矩阵(seed=0)已落 `data/synth/portfolio_corr.json`,`per_corr_cluster_usd=8.0`/阈值 0.5 的限额自下一次 decide_all 起生效;`weekly_portfolio_corr` 步已接进周刷新(失败退化为惰性,永不给错数)。强相关簇实测:CPI 族内 0.62–1.00、KXPAYROLLS~KXU3 −0.645(负相关不入簇,对冲方向正确地不受限)。联合律放宽风险的方向仍显式不取(§5d)。工件 `pr30_verdict.json` |
+
+### PR-31 ERCOT 协变量全量判定(用户指令:上全套机器)(2026-08-31)
+
+> 筛选(ERCOT_NOTES.md)零原始信号;用户命令按正常生产流程全量判:PIT、walk-forward、逐日
+> 多看一天、原输入全保留、只增新输入。已落地:`model/ercot_cov.py`(930 数据 D+2 可知——保守
+> 申报;气候学仅用既往年份;β 在每个 asof 上仅用完全早于 asof 的周做扩窗 OLS、<52 对则静默 0;
+> shift 截断在 1.5×残差 sd)。接线:energy(NG/CL 结算分布乘性移位)、claims(log-mu 加性)、
+> cpi(headline MoM mu 加性),全部走 `params["ercot_w"]`,**默认 0 = 生产逐位不变**(三个
+> shadow scorer 的指纹已按惰性注记登记重印)。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-08-31,replay 之前 |
+| 双臂 | 同一 `replay_series`,A=`params=None`(模型默认),B=`params={"ercot_w":1.0}`——唯一差异是协变量;信号按市场各配(NG/CL=燃烧气候 z、ICSA=\|需求 z\|、CPI=月度燃烧 z),与筛选的机制图谱一致 |
+| 判定系列 | KXNATGASW、KXWTIW、KXJOBLESSCLAIMS、KXCPI、KXCPIYOY(逐系列独立判,K=1 各) |
+| 主判据 | 逐系列采纳 iff:**−1h 每腿 Brier 相对改善 ≥ 2%** 且 **−24h 不劣化超 2%** |
+| 证伪 | (a) 主判据未达 → 该系列 NOT ADOPTED,`ercot_w` 保持默认 0;(b) B 臂评到的事件集与 A 臂不逐一相同 → 该系列作废(协变量不得改变覆盖);(c) 采纳后若走 argmin 曝光需另注册(本条只判默认参数对比) |
+| 预期声明(不作判据) | 筛选为零信号 ⇒ β 应徘徊于 0、双臂应近似打平;若 B 显著变差说明 walk-forward β 在小样本上添噪,同样 NOT ADOPTED |
+| 结论 | 待跑 |

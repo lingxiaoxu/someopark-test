@@ -82,8 +82,12 @@ INF = float("inf")
 # a mismatch is the signal that `model/energy.py` moved under a live registration, and the
 # repair is a line in KNOWN_FINGERPRINTS saying what moved and whether the paired
 # comparison survived it.
-REGISTERED_FINGERPRINT = "c895f35a7893"
+REGISTERED_FINGERPRINT = "5fd5adab8fce"   # re-stamped 2026-08-31 (PR-31 gate, inert)
 KNOWN_FINGERPRINTS: dict[str, str] = {
+    "5fd5adab8fce": (
+        "2026-08-31 (PR-31) — the ERCOT covariate gate on the HEADLINE MoM branch:\n"
+        "mu gains w*ercot_cov.mu_shift behind params['ercot_w'], default 0.0. INERT\n"
+        "for both arms — nothing here passes ercot_w, all numbers bit-identical."),
     "c895f35a7893": "PR-12 as registered: `fut_sigma_scale` added to DEFAULT_PARAMS at a "
                     "bit-identical 1.0 and applied to the horizon sigma after the floor. "
                     "VERSION deliberately not bumped — the default multiplies by exactly "

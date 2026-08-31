@@ -75,6 +75,11 @@ K = 1                                      # single pre-registered hypothesis
 # never "did the bytes move" but "did the two arms move".
 REGISTERED_FINGERPRINT = "c23dc975945f"    # model/claims.py at 224ad2e, 2026-07-31
 KNOWN_FINGERPRINTS = {
+    "54658a3a9771": (
+        "2026-08-31 (PR-31) — the ERCOT covariate gate: mu gains w*ercot_cov.mu_shift\n"
+        "behind params['ercot_w'], default 0.0. INERT for both arms: neither the\n"
+        "registered candidate nor the baseline passes ercot_w, so every number on\n"
+        "both sides is bit-identical to the previous fingerprint."),
     "c23dc975945f": "2026-07-31 — the registration itself",
     "6b52d629c385": (
         "2026-08-10 (#118) — DEFAULT_PARAMS made actually readable; seasonal_years, "
