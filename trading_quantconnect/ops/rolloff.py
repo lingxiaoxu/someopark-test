@@ -48,6 +48,7 @@ OFFICIAL_FIELDS = {
     "mtfs": ("strategy_performance.json", "mtfs_equity"),
     "ssrs": ("master_portfolio_performance.json", "sr_equity"),
     "aiss": ("master_portfolio_performance.json", "aiss_equity"),
+    "aeus": ("master_portfolio_performance.json", "aeus_equity"),
     "bdc": ("private_credit_bdc_performance.json", "bdc_equity"),
 }
 # 逐票对拍允许的股数偏差:0。QC 是整数股镜像,差 1 股就说明没收敛(或有单在飞)。
@@ -267,6 +268,11 @@ QC_SYMBOL_ALIAS = {
     # 经 Chase 并入 JPM)。股数与 target 分毫不差,纯命名差。
     "NB": "BAC",
     "CMB": "JPM",
+    # 2026-08-31 MRPT ACGL/HIG 上车首日实测:ACGL(Arch Capital)的 ID 历史首名
+    # 是 RCHI(Risk Capital Holdings,2000 年更名)。1248 股与 target 分毫不差、
+    # QC 标价 98.20 vs 面板成本 98.84,纯命名差。不补的话 16:20 ① 误报 breach,
+    # ③ 的 Q 会因 Polygon 查不到 RCHI 定不出收盘价。
+    "RCHI": "ACGL",
 }
 
 
