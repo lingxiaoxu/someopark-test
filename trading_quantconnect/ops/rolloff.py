@@ -14,7 +14,9 @@ L 与 S 都是**有限寿命**的:每对总会平仓,平了就永远不会回来
 用法:
   python ops/rolloff.py --check      离线: 现在还剩几对没退场(不碰网络)
   python ops/rolloff.py --measure    只读: 逐票对拍 QC↔target + 试算 K(不写文件)
-  python ops/rolloff.py --freeze     退场日一次性: 校验通过后写 state/rolloff.json
+  python ops/rolloff.py --freeze [--session YYYY-MM-DD]
+                                     一次性: 报告锚定制冻结(K = 锚点场次 M4 报告
+                                     已判的 D_usd;零 QC API,不要求账户静止)
 
 防火墙:本模块只读五个持仓文件、state/、public/data/*.json 与 QC 只读接口;
 只写 state/rolloff.json。绝不写 inventory,绝不向 QC 下单。
@@ -149,7 +151,15 @@ def official_eod(session: str | None = None) -> tuple[str, dict[str, float]]:
     """
     vals, dates = {}, {}
     cache: dict[str, list] = {}
+    # P 必须镜像"QC 正在镜像的那本书"。aeus 的官方序列先于 QC 挂载存在
+    # (2026-08-31 实测 ~$1.16M 全历史已入 master json),若无条件计入,
+    # 挂载前 P 凭空多一个策略、ΔD 跳 +$1.16M 假 breach;挂载(onboard_aeus
+    # append scalar + CashBook 入金)当日起 P 与 Q 同步 +aeus,D 才连续。
+    # 判据 = exporter scalars 里有没有该策略:scalar 是"QC 在镜像它"的唯一凭证。
+    scalars = (_load(EXPORTER_STATE, {}) or {}).get("scalars") or {}
     for st, (fn, field) in OFFICIAL_FIELDS.items():
+        if st == "aeus" and st not in scalars:
+            continue                      # 未挂载 QC → 不入 P(挂载后自动纳入)
         rows = cache.get(fn)
         if rows is None:
             rows = official_rows(DATA / fn)
@@ -324,7 +334,89 @@ def cmd_check(verbose: bool = True) -> bool:
     return total == 0
 
 
-def cmd_measure(freeze: bool = False) -> int:
+def cmd_freeze_anchored(session: str | None = None) -> int:
+    """报告锚定制冻结(2026-08-31,方案 A;plan 附录 A-4)。
+
+    K = 锚点场次 M4 报告里**判过的** D_usd(= P(d) − Q(d),两个数都躺在报告里,
+    已被三平面全套闸门复核:官方 EOD 按日期核对、盘中文件 mtime 闸、Q 与 QC 自报
+    交叉校验、当日持仓逐票 0 差)。
+
+    旧三闸("此刻实测 Q ±$1"/"17:00–04:00 窗口"/"此刻收敛")随 k_effective 一并
+    退役:K 是**那个 session**的属性,不是"此刻"的。锚点之后每个换仓日的缺口恰是
+    k_effective 要滚的台阶(镜像滞后+滑点),不需要账户静止 —— 每天有交易也随时
+    可冻。本路径**零 QC API、零 Polygon**:全部输入来自盘上报告与队列状态。
+    """
+    if ROLLOFF_PATH.exists():
+        raise SourceError(f"{ROLLOFF_PATH} 已存在 — K 只冻一次;确要重来先人工归档")
+    q = alive_queues()
+    if sum(len(v) for v in q.values()):
+        raise SourceError("L/S 两队未清空 —— 未镜像腿的市值还在 D 里随行情漂,冻不得")
+    rep_dir = _THIS_DIR / "reconcile"
+
+    def _all_ok(doc: dict) -> bool:
+        h = (doc.get("holdings_check") or {}).get("status")
+        t = (doc.get("target_check") or {}).get("status")
+        e = doc.get("equity_check") or {}
+        return (h == "ok" and t == "ok" and e.get("status") in ("ok", "baseline")
+                and e.get("D_usd") is not None)
+
+    if session is None:
+        # 默认锚点 = 最新一份三段全 ok 的报告。不悄悄跳过更近的坏报告不吭声 ——
+        # 打印跳过了哪些,免得"我以为冻的是昨天"。
+        for p in sorted(rep_dir.glob("qc_reconcile_*.json"), reverse=True):
+            doc = _load(p)
+            if doc and _all_ok(doc):
+                session = p.stem.replace("qc_reconcile_", "")
+                break
+            print(f"  跳过 {p.name}(三段未全 ok)")
+        if session is None:
+            raise SourceError("没有任何一份三段全 ok 的 M4 报告可作锚点 —— 先等一个"
+                              "干净 session 的裁决(--session 可显式指定)")
+    path = rep_dir / f"qc_reconcile_{session}.json"
+    doc = _load(path)
+    if not doc:
+        raise SourceError(f"锚点报告缺失: {path.name} —— 那天没有被对账平面判过,"
+                          f"没有判过的数不配当永久常数")
+    h = (doc.get("holdings_check") or {}).get("status")
+    t = (doc.get("target_check") or {}).get("status")
+    e = doc.get("equity_check") or {}
+    if h != "ok":
+        raise SourceError(f"锚点 {session} 的 holdings 段是 {h!r} 不是 ok —— "
+                          f"那天持仓没有逐票配平,P−Q 里混着未镜像差")
+    if t != "ok":
+        raise SourceError(f"锚点 {session} 的 target 段是 {t!r} 不是 ok —— "
+                          f"那天本地 target 与推送不一致,Q 对的书不可信")
+    if e.get("status") not in ("ok", "baseline"):
+        raise SourceError(f"锚点 {session} 的 equity 段是 {e.get('status') or '缺失'},"
+                          f"不是 ok/baseline —— 那天的 D 没有拿到干净裁决,先把那天"
+                          f"对平再冻(或 --session 换一天)")
+    K = e.get("D_usd")
+    if K is None:
+        raise SourceError(f"锚点 {session} 的报告没有 D_usd —— 报告损坏或版本过旧")
+    K = float(K)
+    doc_out = {
+        "frozen_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "measured_on": session,
+        "k_equity": round(K, 2),
+        "provenance": "m4_report_anchored",          # 方案 A:值取自已判报告,非实测
+        "anchor_report": path.name,
+        "panel_official_total": e.get("official_total_P"),
+        "official_eod": e.get("official_eod"),
+        "qc_equity": e.get("qc_equity_Q"),
+        "q_basis": e.get("q_basis"),
+        "cross_check_usd": e.get("cross_check_usd"),
+        "cross_check_bp": e.get("cross_check_bp"),
+        "note": "报告锚定制:K = 锚点场次已判的 P−Q。恒等式是 "
+                "**Q + k_effective ≡ P**,k_effective = k_equity + Σ 锚点之后每个"
+                "换仓日的(镜像滞后+滑点)台阶(从 M4 报告 attribution 累加,报告即"
+                "台账);真漂移看 D − K_eff,只应剩股息时点等会自己回冲的项。"}
+    _atomic_write(ROLLOFF_PATH, doc_out)
+    print(f"[rolloff] 已冻结 K = {K:,.2f}(锚点 {session},取自 {path.name})"
+          f" → {ROLLOFF_PATH}")
+    return 0
+
+
+def cmd_measure() -> int:
     ready = cmd_check()
     print()
     qc = qc_snapshot()
@@ -356,85 +448,19 @@ def cmd_measure(freeze: bool = False) -> int:
         print(f"  (参考)payload 自算净值 {qc['equity']:,.2f},比 QC 自报少"
               f" {stale:+,.2f} —— 这是逐票价停在收盘前 ~15 分钟造成的陈旧度,"
               f"不是账户在动;K 不用这个数)")
-    if not freeze:
-        prev = _load(ROLLOFF_PATH)
-        if prev:
-            drift = K - float(prev["k_equity"])
-            print(f"\n已冻结 K = {float(prev['k_equity']):,.2f}"
-                  f"(测于 {prev['measured_on']});今日实测偏离 {drift:+,.2f}")
-            # 对死常数的偏离不是"漂移":每个换仓日的镜像滞后+滑点是永久台阶,
-            # 会按日滚入 k_effective(M4 报告是台阶的唯一真相源)。
-            # 真漂移看 D − K_eff,只应剩股息时点等会自己回冲的项。
-            from reconcile.qc_reconcile import k_effective   # 函数内 import 免循环
-            k_eff, n_steps, k_miss = k_effective(prev, d, include_upto=True)
-            print(f"K_eff = {k_eff:,.2f}(冻结值 + {n_steps} 天台阶)"
-                  f";D − K_eff = {K - k_eff:+,.2f}"
-                  + (f";缺台阶 {k_miss}" if k_miss else ""))
-        return 0
-    # ---- 以下只有 --freeze 会走到 ----
-    if ROLLOFF_PATH.exists():
-        raise SourceError(f"{ROLLOFF_PATH} 已存在 — K 只冻一次;确要重来先人工归档")
-    if not ready:
-        raise SourceError("L/S 两队未清空 —— 此刻的差还会随行情漂,冻下来就是个错常数")
-    if bad:
-        raise SourceError(f"QC 有 {len(bad)} 票未收敛到 target —— 先等镜像补齐再冻")
-    et = _et_now()
-    if not (et.hour >= 17 or et.hour < 4):
-        raise SourceError(f"现在 {et:%H:%M} ET 属于盘中/盘后波动时段。K 是永久常数,"
-                          f"必须在收盘静止后测(17:00–04:00 ET),否则两边不同时刻的"
-                          f"标价差会被永久焊进常数里")
-    if cross is None:
-        raise SourceError("拿不到 QC 自报净值 —— 收盘 Q 没有第二条路径可校验,"
-                          "此刻冻 K 等于把一个没人复核过的数定成永久常数")
-    if cross_bp is None or cross_bp > CROSS_TOL_BP:
-        raise SourceError(f"收盘价复算的 Q({Q:,.2f})与 QC 自报净值"
-                          f"({qc['equity_reported']:,.2f})差 {cross:+,.2f}"
-                          f"({'gross 为 0' if cross_bp is None else f'{cross_bp:.2f}bp'}"
-                          f" > {CROSS_TOL_BP}bp)—— 两条独立路径对不上,"
-                          f"股数/现金/收盘价至少有一样是错的,不能冻")
-    # M4 那份日报是对 Q 的独立复核(官方 EOD 日期一致、没有盘中写的 performance
-    # 文件、交叉校验通过)。K 是永久常数,必须冻在**已经被对账平面判过**的那个
-    # session 上,而不是"我这一趟自己算得挺顺"。
-    m4 = _THIS_DIR / "reconcile" / f"qc_reconcile_{d}.json"
-    doc4 = _load(m4)
-    st4 = ((doc4 or {}).get("equity_check") or {}).get("status")
-    if st4 not in ("ok", "baseline"):
-        raise SourceError(
-            f"M4 对账报告 {m4.name} 的 equity 段是 {st4 or '缺失'},不是 ok/baseline"
-            f" —— 那趟对账没能给 {d} 的 Q 出裁决(官方 EOD 未落地 / 有盘中写的"
-            f" performance 文件 / 交叉校验没过)。先把那天对平再冻 K")
-    q4 = (doc4["equity_check"] or {}).get("qc_equity_Q")
-    if q4 is None or abs(float(q4) - Q) > 1.0:
-        raise SourceError(f"M4 判过的 Q({q4})与此刻复算的 Q({Q:,.2f})对不上"
-                          f" —— 两趟之间账户变过(有成交/持仓变动),冻哪个都是错的")
-    if d != et.strftime("%Y-%m-%d"):
-        print(f"  注意: 官方 EOD 是 {d},不是今天({et:%Y-%m-%d} ET)"
-              f" —— 确认这是最近一个已收盘交易日。")
-    doc = {"frozen_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-           "measured_on": d,
-           "k_equity": round(K, 2),
-           "panel_official_total": round(P, 2),
-           "official_eod": {s: round(v, 2) for s, v in off.items()},
-           "qc_equity": round(Q, 2),
-           "q_basis": "cash + Σ 逐票股数 × 官方收盘价(Polygon 日 K)",
-           "qc_equity_reported": round(float(qc["equity_reported"]), 2),
-           "cross_check_usd": round(cross, 2),
-           "cross_check_bp": round(cross_bp, 2),
-           "qc_shares": dict(qc["shares"]),
-           "official_closes": {t: closes[t] for t in sorted(closes)},
-           "qc_equity_payload_selfcalc": round(qc["equity"], 2),
-           "qc_holdings_mv": round(qc["holdings_mv"], 2),
-           "qc_cash": round(qc["cash"], 2),
-           "qc_deploy_id": qc["deploy_id"],
-           "m4_report": m4.name,
-           "n_tickers_matched": n_all,
-           "note": "退场日实测:L/S 两队已清空且 QC 逐票收敛,两边持仓相同 ⇒ "
-                   "净值差只剩现金项,定格为常数。恒等式是 "
-                   "**按官方收盘价复算的 QC 净值** + k_equity ≡ 面板净值 —— "
-                   "不是 QC 面板上显示的那个数,也不是 payload 自算的那个数"
-                   "(后者停在收盘前 ~15 分钟,8/27 实测差 48.5bp)。"}
-    _atomic_write(ROLLOFF_PATH, doc)
-    print(f"\n[rolloff] 已冻结 K = {K:,.2f} → {ROLLOFF_PATH}")
+    prev = _load(ROLLOFF_PATH)
+    if prev:
+        drift = K - float(prev["k_equity"])
+        print(f"\n已冻结 K = {float(prev['k_equity']):,.2f}"
+              f"(测于 {prev['measured_on']});今日实测偏离 {drift:+,.2f}")
+        # 对死常数的偏离不是"漂移":每个换仓日的镜像滞后+滑点是永久台阶,
+        # 会按日滚入 k_effective(M4 报告是台阶的唯一真相源)。
+        # 真漂移看 D − K_eff,只应剩股息时点等会自己回冲的项。
+        from reconcile.qc_reconcile import k_effective   # 函数内 import 免循环
+        k_eff, n_steps, k_miss = k_effective(prev, d, include_upto=True)
+        print(f"K_eff = {k_eff:,.2f}(冻结值 + {n_steps} 天台阶)"
+              f";D − K_eff = {K - k_eff:+,.2f}"
+              + (f";缺台阶 {k_miss}" if k_miss else ""))
     return 0
 
 
@@ -443,13 +469,18 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true", help="离线:还剩几对没退场")
     g.add_argument("--measure", action="store_true", help="只读:对拍 + 试算 K")
-    g.add_argument("--freeze", action="store_true", help="退场日一次性:冻结 K")
+    g.add_argument("--freeze", action="store_true",
+                   help="一次性:报告锚定制冻结 K(方案 A,plan 附录 A-4)")
+    ap.add_argument("--session", default=None, metavar="YYYY-MM-DD",
+                    help="冻结锚点场次(默认=最新一份三段全 ok 的报告)")
     a = ap.parse_args()
     try:
         if a.check:
             cmd_check()
             return 0
-        return cmd_measure(freeze=a.freeze)
+        if a.freeze:
+            return cmd_freeze_anchored(a.session)
+        return cmd_measure()
     except SourceError as e:
         print(f"!!!! [rolloff] {e}")
         return 1

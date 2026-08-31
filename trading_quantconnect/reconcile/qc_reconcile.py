@@ -1118,8 +1118,9 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
                         "known": built is not None}
     if built is not None and not ages:
         rep["bootstrap"]["milestone"] = (
-            "L/S 两队已清空 —— 退场条件满足,可在 17:00–04:00 ET 静止窗口跑 "
-            "ops/rolloff.py --freeze 焊死 K")
+            "L/S 两队已清空 —— 退场条件满足;待某 session 三段全 ok 后跑 "
+            "ops/rolloff.py --freeze --session <那天> 锚定冻结 K(报告锚定制,"
+            "不要求账户静止)")
 
     # ── QC 侧收盘存档 ──────────────────────────────────────────────────────
     # D 日的 Q 只在 [16:00 D, 09:30 D+1) 可观测;D 日的官方 EOD 与 monitor_log

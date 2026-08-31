@@ -1,13 +1,18 @@
 """--freeze 的闸门(全 tmp 沙箱 + 网络禁令)。
 
-K 冻下来就是**永久常数**:错一次,之后每一天的面板净值都带着这个错,而且没有
-任何东西会报错。所以这里钉的不是"能不能跑通",是每一道闸门单独拉下来都必须拦住:
+2026-08-31 起 --freeze 为**报告锚定制**(方案 A,QUANTCONNECT_MIRROR_PLAN 附录
+A-4):K = 锚点场次 M4 报告里**判过的** D_usd。K 冻下来就是永久锚点:错一次,
+之后每一天的 K_eff 都带着这个错。所以这里钉的是:
 
-  - Q 必须是"现金 + Σ 股数 × 官方收盘价",绝不能是 payload 自算的盘中净值
-    (2026-08-27 实测两者差 27,979 = 48.5bp);
-  - QC 自报净值这条独立路径对不上 → 不冻;
-  - M4 那天没出 ok/baseline 裁决 → 不冻(没被复核过的 Q 不配当常数);
-  - M4 判过的 Q 与此刻复算的 Q 不同 → 两趟之间账户变过,冻哪个都是错的。
+  - K 的值必须逐位取自报告的 D_usd(报告已被三平面全套闸门复核过);
+  - 冻结路径**零 QC API、零 Polygon** —— "此刻"的任何东西都不参与;
+  - 锚点报告缺失 / 三段任何一段不是 ok(equity 可 baseline)→ 不冻;
+  - 已冻结 / L·S 队列未清空 → 不冻;
+  - 默认锚点 = 最新一份三段全 ok 的报告,跳过坏报告要出声。
+
+旧三闸("此刻实测 Q ±$1"/"17:00–04:00 窗口"/"此刻收敛")已随 k_effective 退役,
+对应测试同日移除 —— 它们保护的东西由报告生成时的闸门(equity_plane/holdings_
+plane)负责,测试在 test_qc_reconcile.py。
 """
 import json
 import sys
@@ -34,12 +39,7 @@ _OFF = {"mrpt": 40_000.0, "mtfs": 30_000.0, "ssrs": 20_000.0,
 
 
 def _qc(**over):
-    """收盘快照。Q = 1000 + 1000×10 + 400×1 = 11,400。
-
-    payload 自算净值(equity = holdings_mv + cash = 11,000)故意与之差 400 ——
-    那正是现场那份"逐票价停在收盘前 15 分钟"的形状。任何一处仍拿 equity 定 K,
-    算出来的就是 100,400 而不是 100,000,会被下面第一个测试逮住。
-    """
+    """收盘快照(仅 --measure 用)。Q = 1000 + 1000×10 + 400×1 = 11,400。"""
     qc = {"shares": {"X": 1000, "Y": 400}, "cash": 1000.0,
           "holdings_mv": 10_000.0, "equity": 11_000.0, "gross": 10_400.0,
           "equity_reported": 11_400.0, "price_staleness_usd": 400.0,
@@ -62,9 +62,11 @@ def _ban_network(monkeypatch):
 
 @pytest.fixture()
 def env(monkeypatch, tmp_path):
-    """把 --freeze 的每一路外部输入都接到 tmp/桩上;生产 state/ 一个不碰。"""
+    """把每一路外部输入都接到 tmp/桩上;生产 state/ 一个不碰。"""
     monkeypatch.setattr(official_close, "grouped_closes", lambda s: dict(_CLOSES))
-    monkeypatch.setattr(rolloff, "cmd_check", lambda: True)      # L/S 已清空
+    monkeypatch.setattr(rolloff, "cmd_check", lambda: True)      # --measure 用
+    monkeypatch.setattr(rolloff, "alive_queues",
+                        lambda: {"mrpt": [], "mtfs": []})        # --freeze 用
     monkeypatch.setattr(rolloff, "convergence", lambda sh: ([], 29))
     monkeypatch.setattr(rolloff, "official_eod", lambda: (_D, dict(_OFF)))
     monkeypatch.setattr(rolloff, "qc_snapshot", lambda: _qc())
@@ -77,28 +79,125 @@ def env(monkeypatch, tmp_path):
     return tmp_path
 
 
-def _m4(tmp_path, status="ok", Q=11_400.0, session=_D):
+def _m4(tmp_path, session=_D, holdings="ok", target="ok", equity="ok",
+        D=100_000.0, P=111_400.0, Q=11_400.0):
+    """一份三段俱全的 M4 报告(报告锚定制的唯一输入)。"""
     p = tmp_path / "reconcile" / f"qc_reconcile_{session}.json"
-    p.write_text(json.dumps({"session": session,
-                             "equity_check": {"status": status,
-                                              "qc_equity_Q": Q}}))
+    p.write_text(json.dumps({
+        "session": session,
+        "holdings_check": {"status": holdings, "n_matched": 29, "n_tickers": 29},
+        "target_check": {"status": target},
+        "equity_check": {"status": equity, "session": session,
+                         "D_usd": D, "official_total_P": P, "qc_equity_Q": Q,
+                         "official_eod": dict(_OFF),
+                         "q_basis": "cash + Σ 逐票股数 × 官方收盘价(Polygon 日 K)",
+                         "cross_check_usd": 0.0, "cross_check_bp": 0.0}}))
     return p
 
 
-# ── K 的算法本身 ───────────────────────────────────────────────────────────
+# ── K 的值与出处 ───────────────────────────────────────────────────────────
 
-def test_freeze_prices_q_at_official_closes_not_payload_equity(env, capsys):
-    """K = P − (现金 + Σ 股数×官方收盘价)。用 payload 自算净值会得 100,400。"""
-    _m4(env)
-    assert rolloff.cmd_measure(freeze=True) == 0
+def test_freeze_anchors_k_from_report_d_usd(env):
+    """K 逐位 = 报告 D_usd;来源字段齐全,可追溯到那份报告。"""
+    _m4(env, D=100_000.0)
+    assert rolloff.cmd_freeze_anchored(_D) == 0
     doc = json.loads((env / "rolloff.json").read_text())
     assert doc["k_equity"] == 100_000.0
+    assert doc["measured_on"] == _D
+    assert doc["provenance"] == "m4_report_anchored"
+    assert doc["anchor_report"] == f"qc_reconcile_{_D}.json"
     assert doc["qc_equity"] == 11_400.0
-    assert doc["qc_equity_payload_selfcalc"] == 11_000.0   # 留痕,不参与 K
-    assert doc["official_closes"] == {"X": 10.0, "Y": 1.0}
-    assert doc["qc_shares"] == {"X": 1000, "Y": 400}
-    assert doc["cross_check_usd"] == 0.0
+    assert doc["panel_official_total"] == 111_400.0
 
+
+def test_freeze_touches_neither_qc_nor_polygon_nor_clock(env, monkeypatch):
+    """锚定制的语义核心:值取自历史已判报告,"此刻"的任何东西都不参与。
+    QC 快照 / 官方 EOD / 收敛检查 / 时钟全部炸掉,冻结必须照样成功。"""
+    _m4(env)
+    def _boom(*a, **k):
+        raise AssertionError("anchored freeze must not touch live state")
+    for fn in ("qc_snapshot", "official_eod", "convergence", "official_q",
+               "_et_now", "cmd_check"):
+        monkeypatch.setattr(rolloff, fn, _boom)
+    assert rolloff.cmd_freeze_anchored(_D) == 0
+    assert json.loads((env / "rolloff.json").read_text())["k_equity"] == 100_000.0
+
+
+# ── 闸门:每一道单独拉下来都要拦住 ─────────────────────────────────────────
+
+def test_freeze_refuses_when_report_missing(env):
+    with pytest.raises(SourceError, match="缺失"):
+        rolloff.cmd_freeze_anchored(_D)
+    assert not (env / "rolloff.json").exists()
+
+
+@pytest.mark.parametrize("st", ["pending", "partial", "breach", "incomplete"])
+def test_freeze_refuses_when_equity_not_terminal_ok(env, st):
+    _m4(env, equity=st)
+    with pytest.raises(SourceError, match=st):
+        rolloff.cmd_freeze_anchored(_D)
+    assert not (env / "rolloff.json").exists()
+
+
+def test_freeze_accepts_equity_baseline(env):
+    """首日基准也算判过 —— 它同样走完了官方 EOD 一致性与交叉校验。"""
+    _m4(env, equity="baseline")
+    assert rolloff.cmd_freeze_anchored(_D) == 0
+
+
+def test_freeze_refuses_when_holdings_not_ok(env):
+    """那天持仓没逐票配平 → P−Q 里混着未镜像差,不配当锚点。"""
+    _m4(env, holdings="breach")
+    with pytest.raises(SourceError, match="holdings"):
+        rolloff.cmd_freeze_anchored(_D)
+
+
+def test_freeze_refuses_when_target_not_ok(env):
+    _m4(env, target="breach")
+    with pytest.raises(SourceError, match="target"):
+        rolloff.cmd_freeze_anchored(_D)
+
+
+def test_freeze_refuses_without_d_usd(env):
+    """equity 段 ok 但 D_usd 缺失(损坏/旧版报告)→ 不猜。"""
+    _m4(env, D=None)
+    with pytest.raises(SourceError, match="D_usd"):
+        rolloff.cmd_freeze_anchored(_D)
+
+
+def test_freeze_refuses_when_already_frozen(env):
+    _m4(env)
+    (env / "rolloff.json").write_text(json.dumps({"k_equity": 1.0}))
+    with pytest.raises(SourceError, match="只冻一次"):
+        rolloff.cmd_freeze_anchored(_D)
+
+
+def test_freeze_refuses_when_queues_not_empty(env, monkeypatch):
+    _m4(env)
+    monkeypatch.setattr(rolloff, "alive_queues",
+                        lambda: {"mtfs": [{"queue": "L", "pair": "A/B"}]})
+    with pytest.raises(SourceError, match="未清空"):
+        rolloff.cmd_freeze_anchored(_D)
+
+
+def test_freeze_default_session_picks_latest_all_ok(env, capsys):
+    """默认锚点 = 最新一份三段全 ok;更新的坏报告要**出声**跳过,不许静默。"""
+    _m4(env, session="2026-08-26", D=88_000.0)
+    _m4(env, session="2026-08-27", equity="pending", D=99_000.0)   # 更新但没判完
+    assert rolloff.cmd_freeze_anchored(None) == 0
+    doc = json.loads((env / "rolloff.json").read_text())
+    assert doc["measured_on"] == "2026-08-26"
+    assert doc["k_equity"] == 88_000.0
+    assert "跳过 qc_reconcile_2026-08-27.json" in capsys.readouterr().out
+
+
+def test_freeze_default_refuses_when_no_clean_report(env):
+    _m4(env, equity="pending")
+    with pytest.raises(SourceError, match="没有任何一份"):
+        rolloff.cmd_freeze_anchored(None)
+
+
+# ── official_q(--measure 仍用)──────────────────────────────────────────────
 
 def test_official_q_refuses_when_a_close_is_missing(monkeypatch):
     """少一只票的收盘价 → 少算的市值会被 K 全额吸收且不报错,故必须抛。"""
@@ -112,88 +211,10 @@ def test_official_q_refuses_without_shares():
         rolloff.official_q(_D, _qc(shares={}))
 
 
-# ── 闸门:每一道单独拉下来都要拦住 ─────────────────────────────────────────
-
-def test_freeze_refuses_when_cross_check_breaches(env, monkeypatch):
-    """gross = 10,400,3bp = $3.12;差 $50 必须拦。"""
-    _m4(env)
-    monkeypatch.setattr(rolloff, "qc_snapshot",
-                        lambda: _qc(equity_reported=11_350.0))
-    with pytest.raises(SourceError, match="两条独立路径对不上"):
-        rolloff.cmd_measure(freeze=True)
-    assert not (env / "rolloff.json").exists()
-
-
-def test_freeze_refuses_without_qc_self_report(env, monkeypatch):
-    """没有第二条路径可校验时,K 就是个没人复核过的数 —— 不冻。"""
-    _m4(env)
-    monkeypatch.setattr(rolloff, "qc_snapshot",
-                        lambda: _qc(equity_reported=None))
-    with pytest.raises(SourceError, match="没有第二条路径"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_refuses_when_m4_report_missing(env):
-    with pytest.raises(SourceError, match="缺失"):
-        rolloff.cmd_measure(freeze=True)
-    assert not (env / "rolloff.json").exists()
-
-
-@pytest.mark.parametrize("st", ["pending", "partial", "breach", "incomplete"])
-def test_freeze_refuses_when_m4_equity_not_terminal_ok(env, st):
-    """partial / breach 也不行:partial 有漏项、breach 本身就是红的。"""
-    _m4(env, status=st)
-    with pytest.raises(SourceError, match=f"是 {st}"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_accepts_m4_baseline(env):
-    """首日基准也算判过 —— 它同样走完了官方 EOD 一致性与交叉校验。"""
-    _m4(env, status="baseline")
-    assert rolloff.cmd_measure(freeze=True) == 0
-
-
-def test_freeze_refuses_when_m4_q_differs_from_now(env):
-    """M4 判的是收盘那一刻;此刻 Q 不同 = 两趟之间账户变过。"""
-    _m4(env, Q=11_500.0)
-    with pytest.raises(SourceError, match="对不上"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_refuses_intraday(env, monkeypatch):
-    _m4(env)
-    monkeypatch.setattr(rolloff, "_et_now",
-                        lambda: datetime(2026, 8, 27, 11, 0, tzinfo=_ET))
-    with pytest.raises(SourceError, match="盘中/盘后波动时段"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_refuses_when_already_frozen(env):
-    _m4(env)
-    (env / "rolloff.json").write_text(json.dumps({"k_equity": 1.0}))
-    with pytest.raises(SourceError, match="只冻一次"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_refuses_when_queues_not_empty(env, monkeypatch):
-    _m4(env)
-    monkeypatch.setattr(rolloff, "cmd_check", lambda: False)
-    with pytest.raises(SourceError, match="未清空"):
-        rolloff.cmd_measure(freeze=True)
-
-
-def test_freeze_refuses_when_shares_not_converged(env, monkeypatch):
-    _m4(env)
-    monkeypatch.setattr(rolloff, "convergence",
-                        lambda sh: ([("X", 1000, 999)], 29))
-    with pytest.raises(SourceError, match="未收敛"):
-        rolloff.cmd_measure(freeze=True)
-
-
 # ── --measure 只读,永不落盘 ────────────────────────────────────────────────
 
 def test_measure_never_writes(env, capsys):
-    assert rolloff.cmd_measure(freeze=False) == 0
+    assert rolloff.cmd_measure() == 0
     assert not (env / "rolloff.json").exists()
     out = capsys.readouterr().out
     assert "11,400.00" in out and "100,000.00" in out
@@ -219,8 +240,16 @@ def _series(dates):
     }
 
 
-def _perf(tmp_path, monkeypatch, files):
+def _perf(tmp_path, monkeypatch, files, aeus_onboarded=False):
     monkeypatch.setattr(rolloff, "DATA", tmp_path)
+    # EXPORTER_STATE 一律隔离到 tmp:aeus 是否入 P 由"exporter 挂没挂 scalar"决定
+    # (P 必须镜像 QC 正在镜像的书),测试不许读生产 state。
+    st = tmp_path / "exporter_state.json"
+    scal = {"mrpt": 1.0}
+    if aeus_onboarded:
+        scal["aeus"] = 1.0
+    st.write_text(json.dumps({"scalars": scal}))
+    monkeypatch.setattr(rolloff, "EXPORTER_STATE", st)
     for fn, rows in files.items():
         (tmp_path / fn).write_text(json.dumps(rows))
 
@@ -228,7 +257,8 @@ def _perf(tmp_path, monkeypatch, files):
 def test_official_eod_by_session_reads_that_row_not_the_last(tmp_path,
                                                              monkeypatch):
     _perf(tmp_path, monkeypatch,
-          _series(["2026-08-26", "2026-08-27", "2026-08-28"]))
+          _series(["2026-08-26", "2026-08-27", "2026-08-28"]),
+          aeus_onboarded=True)
     d, off = rolloff.official_eod("2026-08-27")
     assert d == "2026-08-27"
     assert off == {"mrpt": 2.0, "mtfs": 3.0, "ssrs": 4.0, "aiss": 5.0,
@@ -285,3 +315,15 @@ def test_official_rows_refuses_empty_and_missing(tmp_path):
         rolloff.official_rows(tmp_path / "empty.json")
     with pytest.raises(SourceError, match="读不到"):
         rolloff.official_rows(tmp_path / "nope.json")
+
+
+def test_official_eod_excludes_aeus_until_qc_onboarded(tmp_path, monkeypatch):
+    """P 必须镜像 QC 正在镜像的书:aeus 官方序列先于挂载存在(实测 ~$1.16M
+    全历史已入 master json),挂载前计入会让 ΔD 凭空跳一整个策略的净值。
+    判据 = exporter scalars 有无 aeus;挂载(onboard_aeus append scalar)后自动纳入。"""
+    _perf(tmp_path, monkeypatch,
+          _series(["2026-08-27"]), aeus_onboarded=False)
+    d, off = rolloff.official_eod("2026-08-27")
+    assert "aeus" not in off
+    assert off == {"mrpt": 1.0, "mtfs": 2.0, "ssrs": 3.0, "aiss": 4.0,
+                   "bdc": 5.0}

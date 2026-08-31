@@ -47,8 +47,10 @@ Q + k_effective ≡ P,   k_effective = k_equity(冻结值) + Σ 每换仓日(镜
 ```
 
 台阶直接从历史 M4 报告 attribution 累加(报告即台账,无第二真相源);缺台阶的天点名
-并拦 ok。`--measure` 只读试算;`--freeze` 一次性冻结,闸门:当日 M4 equity 段
-ok/baseline + 收盘后无成交(Q ±$1)+ 17:00–04:00 ET 窗口。冻结后不需要"静止日"。
+并拦 ok。`--measure` 只读试算;`--freeze` 为**报告锚定制**(2026-08-31,方案 A):
+K = 锚点场次 M4 报告里**判过的** D_usd,零 QC API、不要求账户静止——闸门只剩
+"只冻一次 + L/S 队列空 + 锚点场次三段全 ok(equity 可 baseline)",`--session`
+指定锚点(默认取最新一份三段全 ok 的报告)。
 
 ## 常用命令
 
