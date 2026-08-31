@@ -271,9 +271,17 @@ ENERGY_WEEKLY = PanelSpec(
     name="energy_weekly",
     note="energy: 4 x 13 = 52 dims. Also the lambda-calibration panel — the weekly Kalshi "
          "series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS) are the only ones with a "
-         "real sample to check the synthetic one against",
-    columns=_scope(_WEEKLY_COLS, ("wti", "natgas", "rbob", "gas_retail")),
-    **_WEEKLY,
+         "real sample to check the synthetic one against. PR-32 (2026-08-31): conditioned "
+         "on ERCOT gas burn (context only, never generated) and re-based to 2019 — the "
+         "judged arm beat BOTH the same-window control (crps 0.9559->0.9508, cover gap "
+         "0.0358->0.0243) and the full-window production panel (0.9539), so the "
+         "conditioning gain pays for the nine years of rows the burn series cannot reach. "
+         "claims_weekly judged NOT ADOPTED in the same run and keeps its 2010 window",
+    columns=_scope(_WEEKLY_COLS, ("wti", "natgas", "rbob", "gas_retail"))
+    + (Column("ercot_burn", "fred", "ERCOT_GASBURN_W", "latest", "last", "dlog", "mwh",
+              generate=False),),
+    freq=_WEEKLY["freq"], horizon=_WEEKLY["horizon"], start="2019-01-05",
+    drop_spans=_WEEKLY["drop_spans"], level_lag=_WEEKLY["level_lag"],
 )
 CLAIMS_WEEKLY = PanelSpec(
     name="claims_weekly",

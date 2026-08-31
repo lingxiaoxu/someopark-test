@@ -1078,4 +1078,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 证伪 | (a) 主判据未达 → 该 panel NOT ADOPTED;(b) B 的 `boot`/`knn` 相对 A2 非逐位(context 列不进臂,但 panel 行集相同、真实行相同 → 对照臂应逐位;若动,注入错位,作废) |
 | K | ERCOT 条件化第 1 次 |
 | 影响面 | 判定 /tmp 注入;采纳=context 列入 `panel.py`(列集变、config key 变),只对新 fit/新世界生效 |
-| 结论 | 待跑 |
+| 结论 | **energy_weekly ADOPTED / claims_weekly NOT ADOPTED**(2026-08-31。第一跑作废并如实记录:手工 Column 漏 `generate=False`,B 臂误成"联合生成 ERCOT 列"(Z 变、boot 移、对照位判 VOID)——顺带一个免费数据点:联合生成使 crps 劣化 0.011–0.045,该路线勿再试。修正重跑(真·仅条件化,boot 对 A2 逐位 ✓):**energy** B vs A2 crps 0.9559→**0.9508**、cover 帽 0.0358→0.0243,且 B **优于全窗 A**(0.9539)——三条判据全过;**claims** B vs A2 crps −0.0004(无增益)、cover 帽劣化,未达。落地:ENERGY_WEEKLY 谱加 `ercot_burn` context 列、start=2019-01-05(判过的臂原样入产);config key 变,只对新 fit/新世界生效。**跟进义务**:PR-20 rho/PR-23 phi 的冻结值标定于旧 panel 拟合——新 panel 下桥相关与 acf1 是否仍在各自杠内需复核,越杠则需重标定注册。工件 pr32_validate{,2}.log、pr32_validate_run1.json、pr32_validate.json |
