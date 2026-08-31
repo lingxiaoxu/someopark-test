@@ -53,8 +53,8 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
   const setActiveArtifact = useSetArtifact();
 
   // Parse pair key
-  // single-ticker strategies (SSRS sector ETFs, AISS individual stocks) render one symbol
-  const isSsrs = strategy?.toLowerCase() === 'ssrs' || strategy?.toLowerCase() === 'aiss';
+  // single-ticker strategies (SSRS sector ETFs, AISS/AEUS individual stocks) render one symbol
+  const isSsrs = strategy?.toLowerCase() === 'ssrs' || strategy?.toLowerCase() === 'aiss' || strategy?.toLowerCase() === 'aeus';
   const ticker1 = s1 || pair?.split('/')[0] || '?';
   const ticker2 = isSsrs ? '' : (s2 || pair?.split('/')[1] || '?');
 

@@ -15,14 +15,14 @@ function getWfDir(strategy: string): string {
 export const dsrLogTool: AgentTool = {
   definition: {
     name: 'get_dsr_log',
-    description: 'MRPT/MTFS: DSR selection log. SSRS: WF fold selection detail (73 folds, per-fold selected param and method). AISS: WF fold selection detail (per-fold selected param, MCPS score, DSR p-value, method).',
+    description: 'MRPT/MTFS: DSR selection log. SSRS: WF fold selection detail (73 folds, per-fold selected param and method). AISS/AEUS: WF fold selection detail (per-fold selected param, MCPS score, DSR p-value, method).',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
-          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", "aiss", or "aeus"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus']
         },
         pair: {
           type: 'string',
@@ -42,6 +42,11 @@ export const dsrLogTool: AgentTool = {
     }
     if (strategy === 'aiss') {
       const filePath = getBackendPath('qlib-main/semiconductor_strategy/backtest_results/wf_fold_detail.json')
+      const data = await readJsonFile(filePath)
+      return { folds: data.folds, n_folds: data.n_folds, n_param_sets: data.n_param_sets, selection_log: data.selection_log }
+    }
+    if (strategy === 'aeus') {
+      const filePath = getBackendPath('qlib-main/electric_utilities_strategy/backtest_results/wf_fold_detail.json')
       const data = await readJsonFile(filePath)
       return { folds: data.folds, n_folds: data.n_folds, n_param_sets: data.n_param_sets, selection_log: data.selection_log }
     }

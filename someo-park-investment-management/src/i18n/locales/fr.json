@@ -7,7 +7,17 @@
     "foundry": "Fonderie",
     "analog_defense": "Analogique / Défensif",
     "logic_cpu": "Logique / CPU",
-    "rf_edge": "RF / Périphérie"
+    "rf_edge": "RF / Périphérie",
+    "nuclear_fuel": "Nucléaire et combustible d'uranium",
+    "gas_midstream": "Midstream gaz naturel",
+    "grid_equipment": "Équipements réseau et transformateurs",
+    "grid_epc": "Construction de réseau et EPC",
+    "ipp_wholesale": "Producteurs d'électricité indépendants",
+    "regulated_mega": "Grandes utilities réglementées",
+    "regional_utility": "Utilities régionales",
+    "dc_power_cooling": "Alimentation et refroidissement des datacenters",
+    "renewables_storage": "Renouvelables à grande échelle et stockage",
+    "water_cooling": "Eau et refroidissement"
   },
   "artifactTitles": {
     "equityCurve": "Courbe d'équité OOS",
@@ -770,7 +780,8 @@
     "daysHeld": "Jours détenus",
     "paramSet": "Jeu de paramètres",
     "zScoreEntry": "Z-Score à l'entrée",
-    "wfSource": "Source WF"
+    "wfSource": "Source WF",
+    "noHoldings": "Aucune position"
   },
   "inventoryHistory": {
     "title": "Historique des positions",
@@ -1147,6 +1158,18 @@
     "signalsTitle": "Signaux de trading (AISS)",
     "holdingsTitle": "Positions AISS — niveau action",
     "wfSummaryTitle": "Synthèse Walk-Forward — AISS ({{folds}} plis × {{subsectors}} sous-secteurs / {{stocks}} actions semi-conducteurs × {{params}} jeux de params)"
+  },
+  "aeus": {
+    "stocksTab": "Actions utilities électriques ({{count}})",
+    "colStock": "Action",
+    "colSubsector": "Sous-secteur",
+    "colLastPrice": "Dernier prix",
+    "colMarketValue": "Valeur de marché",
+    "colValue": "Valeur",
+    "subsectorLabel": "sous-secteur",
+    "signalsTitle": "Signaux de trading (AEUS)",
+    "holdingsTitle": "Positions AEUS — niveau action",
+    "wfSummaryTitle": "Synthèse Walk-Forward — AEUS ({{folds}} plis × {{subsectors}} sous-secteurs / {{stocks}} actions utilities électriques × {{params}} jeux de params)"
   },
   "macro": {
     "board": "Tableau macro",

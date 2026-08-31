@@ -15,14 +15,14 @@ export const pairUniverseTool: AgentTool = {
 For selected: returns list with s1, s2, hedge_ratio, coint_pvalue.
 For candidates: returns latest snapshot with selected/unselected marked.
 SSRS: 11 GICS sector ETFs with current weights and holdings.
-AISS: individual stocks (tradable) with subsector tag, shares, weight, price — the subsector is only a grouping label, never a tradable position.`,
+AISS/AEUS: individual stocks (tradable) with subsector tag, shares, weight, price — the subsector is only a grouping label, never a tradable position.`,
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
-          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", "aiss", or "aeus"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus']
         },
         source: {
           type: 'string',
@@ -50,8 +50,10 @@ AISS: individual stocks (tradable) with subsector tag, shares, weight, price —
         held: (holdings[ticker]?.weight || 0) > 0.01,
       }))
     }
-    if (strategy === 'aiss') {
-      const data = await readJsonFile(getBackendPath('qlib-main/semiconductor_strategy/inventory_aiss.json'))
+    if (strategy === 'aiss' || strategy === 'aeus') {
+      const data = await readJsonFile(getBackendPath(strategy === 'aeus'
+        ? 'qlib-main/electric_utilities_strategy/inventory_aeus.json'
+        : 'qlib-main/semiconductor_strategy/inventory_aiss.json'))
       const holdings = data.holdings || {}            // subsector -> {weight}
       const sh = data.stock_holdings || {}            // ticker -> {subsectors, shares, ...}
       const stocks = Object.entries(sh).map(([ticker, info]: any) => {
@@ -67,7 +69,7 @@ AISS: individual stocks (tradable) with subsector tag, shares, weight, price —
           held: (info.shares || 0) !== 0,
         }
       }).sort((a: any, b: any) => b.weight - a.weight)
-      return { strategy: 'aiss', note: 'stock-level (subsector is grouping only, not tradable)', stocks, total: stocks.length }
+      return { strategy, note: 'stock-level (subsector is grouping only, not tradable)', stocks, total: stocks.length }
     }
     if (source === 'selected') {
       const filePath = getBackendPath(`pair_universe_${strategy}.json`)

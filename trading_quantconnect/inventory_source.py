@@ -31,6 +31,10 @@ SOURCE_FILES = {
     "aiss": REPO / "qlib-main/semiconductor_strategy/account_aiss.json",
     "ssrs": REPO / "qlib-main/sector_rotation/inventory_sector_rotation.json",
     "bdc":  REPO / "inventory_bdc.json",
+    # AEUS(2026-08-31 接线):真源 = account 非 inventory(与 AISS 同构;inventory
+    # 是子板块合成层不可执行)。go-live(9/1 建仓)前文件不存在 → read_snapshot 对
+    # aeus 单独放行(见下),其余策略缺文件仍然硬失败。
+    "aeus": REPO / "qlib-main/electric_utilities_strategy/account_aeus.json",
 }
 
 PAIR_STRATEGIES = ("mrpt", "mtfs")
@@ -130,6 +134,7 @@ EXTRACTORS = {
     "mrpt": pairs_positions,
     "mtfs": pairs_positions,
     "aiss": account_positions,
+    "aeus": account_positions,
     "ssrs": holdings_positions,
     "bdc":  bdc_positions,
 }
@@ -142,6 +147,10 @@ def read_snapshot(files: dict[str, Path] | None = None) -> dict[str, dict]:
     snap = {}
     for st, p in files.items():
         if not p.exists():
+            if st == "aeus":
+                # go-live 前的预期缺席:跳过本策略,QC 目标里 aeus 贡献为空。
+                # 建仓落盘 account_aeus.json 后自动开始镜像(scalar 见 go-live 流程)。
+                continue
             raise SourceError(f"source file missing: {p}")
         snap[st] = stable_read(p)
     return snap
@@ -270,6 +279,7 @@ LEDGER_ACCOUNT_FILES = {
     "mrpt": "account_mrpt.json",
     "mtfs": "account_mtfs.json",
     "aiss": "qlib-main/semiconductor_strategy/account_aiss.json",
+    "aeus": "qlib-main/electric_utilities_strategy/account_aeus.json",
     "ssrs": "qlib-main/sector_rotation/account_ssrs.json",
     "bdc":  "account_bdc.json",
 }
@@ -282,6 +292,8 @@ OFFICIAL_ANCHORS = {   # 官方口径绩效 json(与前端面板同源;仅 go-li
              "sr_equity"),
     "aiss": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
              "aiss_equity"),
+    "aeus": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
+             "aeus_equity"),
     "bdc":  ("someo-park-investment-management/public/data/private_credit_bdc_performance.json",
              "bdc_equity"),
 }
@@ -291,6 +303,8 @@ def ledger_equities(files: dict[str, Path] | None = None) -> dict[str, float]:
     repo = (files or SOURCE_FILES)["mrpt"].parent
     out = {}
     for st, rel in LEDGER_ACCOUNT_FILES.items():
+        if st == "aeus" and not (repo / rel).exists():
+            continue        # go-live(9/1)前预期缺席;上账后自动入列
         d = stable_read(repo / rel)
         eq = d.get("equity")
         if eq is None:
@@ -306,6 +320,10 @@ def official_equities(files: dict[str, Path] | None = None) -> dict[str, float]:
     out = {}
     for st, (rel, col) in OFFICIAL_ANCHORS.items():
         rows = stable_read(repo / rel)
+        if st == "aeus" and not any(isinstance(r, dict) and r.get(col) is not None
+                                    for r in rows):
+            continue        # 官方 json 尚无 aeus 列(接线前的历史 vintage)→ 缺席
+
         nn = [r[col] for r in rows if isinstance(r, dict)
               and r.get(col) is not None]
         if not nn:

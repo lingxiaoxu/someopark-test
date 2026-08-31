@@ -31,7 +31,7 @@ export default function EquityChart({ params }: { params?: any }) {
     if (!chartData) return [];
     // SR API returns {available, param, data: [...]} — extract array
     const rows = Array.isArray(chartData) ? chartData : (chartData.data || []);
-    const srMode = strategy === 'ssrs' || strategy === 'aiss';
+    const srMode = strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus';
     const base = srMode ? 1000000 : startEquity;
     return rows.map((d: any) => {
       const eq = srMode ? (d.value_rebased || d.value || d.Equity || base) : (d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity);
@@ -54,7 +54,7 @@ export default function EquityChart({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!enrichedData || enrichedData.length === 0) return null;
 
-  const srMode = strategy === 'ssrs' || strategy === 'aiss';
+  const srMode = strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus';
   const base = srMode ? 1000000 : startEquity;
   const oosStats = srMode ? (wfSummary?.synthetic_metrics || {}) : (wfSummary?.oos_stats || {});
   const endEquity = enrichedData[enrichedData.length - 1]?._equity || base;
@@ -67,7 +67,7 @@ export default function EquityChart({ params }: { params?: any }) {
       <div className="flex items-center justify-between shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('equity.title')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

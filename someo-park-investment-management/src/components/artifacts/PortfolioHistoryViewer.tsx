@@ -47,7 +47,7 @@ function GenericTable({ headers, rows }: { headers: string[]; rows: any[] }) {
 export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [strategy, setStrategy] = useState(params?.strategy || 'mrpt');
-  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList((strategy === 'ssrs' || strategy === 'aiss') ? strategy : undefined), [strategy]);
+  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList((strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') ? strategy : undefined), [strategy]);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [sheets, setSheets] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -76,7 +76,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   // Load sheets when file selected, skip empty Sheet1
   useEffect(() => {
     if (!selectedFile) return;
-    getMonitorHistorySheets(selectedFile, (strategy === 'ssrs' || strategy === 'aiss') ? strategy : undefined)
+    getMonitorHistorySheets(selectedFile, (strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') ? strategy : undefined)
       .then(s => {
         // Sheets can be strings or objects {name, rowCount}
         const names = s.map((n: any) => typeof n === 'string' ? n : n.name);
@@ -92,7 +92,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
     if (!selectedFile || !activeSheet) return;
     setSheetLoading(true);
     setSheetData(null);  // clear old data immediately
-    getMonitorHistorySheet(selectedFile, activeSheet, (strategy === 'ssrs' || strategy === 'aiss') ? strategy : undefined)
+    getMonitorHistorySheet(selectedFile, activeSheet, (strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') ? strategy : undefined)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));
@@ -123,7 +123,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
         <div className="text-xs font-medium text-[var(--text-primary)]">{t('ssrs.portfolioHistory')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
           <button onClick={() => setStrategy('mrpt')}
-            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${(strategy !== 'ssrs' && strategy !== 'aiss') ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${(strategy !== 'ssrs' && strategy !== 'aiss' && strategy !== 'aeus') ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             MRPT/MTFS
           </button>
           <button onClick={() => setStrategy('ssrs')}
@@ -134,11 +134,15 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
             className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'aiss' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             AISS
           </button>
+          <button onClick={() => setStrategy('aeus')}
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'aeus' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            AEUS
+          </button>
         </div>
       </div>
 
       {/* SR filter row */}
-      {(strategy === 'ssrs' || strategy === 'aiss') && fileList.length > 0 && (() => {
+      {(strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') && fileList.length > 0 && (() => {
         const versions = [...new Set(fileList.map((f: any) => f.version).filter(Boolean))];
         const spans = [...new Set(fileList.map((f: any) => f.span).filter(Boolean))];
         const modes = [...new Set(fileList.map((f: any) => f.mode).filter(Boolean))];
@@ -178,7 +182,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
           onChange={e => setSelectedFile(e.target.value)}
           className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] flex-1 max-w-[450px]"
         >
-          {((strategy === 'ssrs' || strategy === 'aiss')
+          {((strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus')
             ? fileList.filter((f: any) =>
                 (filterVersion === 'all' || f.version === filterVersion) &&
                 (filterSpan === 'all' || f.span === filterSpan) &&

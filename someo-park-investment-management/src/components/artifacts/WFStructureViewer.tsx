@@ -466,7 +466,7 @@ export default function WFStructureViewer({ data, params }: { data?: any; params
   const { t } = useTranslation();
 
   // ══ SR / AISS MODE: flat file list grouped by param ══
-  if (params?.strategy === 'ssrs' || params?.strategy === 'aiss') {
+  if (params?.strategy === 'ssrs' || params?.strategy === 'aiss' || params?.strategy === 'aeus') {
     const qlibStrat = params.strategy as string;
     const [srFiles, setSrFiles] = React.useState<any>(null);
     const [srLoading, setSrLoading] = React.useState(true);

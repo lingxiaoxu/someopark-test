@@ -7,7 +7,7 @@ import ErrorState from '../ErrorState';
 
 // All three tabs serve pnl_report_YYYYMMDD.pdf with identical UX:
 //   mrpt = MRPT/MTFS pairs (trading_signals/pnl_reports)
-//   ssrs/aiss = portfolio_ledger reports (qlib-main/{dir}/trading_signals/pnl_reports)
+//   ssrs/aiss/aeus = portfolio_ledger reports (qlib-main/{dir}/trading_signals/pnl_reports)
 //
 // ── Legacy (switch back if needed) ──────────────────────────────────────────
 // ssrs/aiss previously served qlib tearsheet PDFs selected by filename:
@@ -20,11 +20,11 @@ import ErrorState from '../ErrorState';
 //     return f.filename || f.timestamp || '—';
 //   };
 // (server-side legacy dirs are documented in server/routes/pnlReport.ts)
-type Mode = 'mrpt' | 'ssrs' | 'aiss';
+type Mode = 'mrpt' | 'ssrs' | 'aiss' | 'aeus';
 
 export default function PnlReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const initial: Mode = params?.strategy === 'ssrs' ? 'ssrs' : params?.strategy === 'aiss' ? 'aiss' : 'mrpt';
+  const initial: Mode = params?.strategy === 'ssrs' ? 'ssrs' : params?.strategy === 'aiss' ? 'aiss' : params?.strategy === 'aeus' ? 'aeus' : 'mrpt';
   const [strategy, setStrategy] = useState<Mode>(initial);
   const [dates, setDates] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>('');
@@ -65,7 +65,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
   const Tabs = () => (
     <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-      {([['mrpt', 'MRPT/MTFS'], ['ssrs', 'SSRS'], ['aiss', 'AISS']] as [Mode, string][]).map(([m, label]) => (
+      {([['mrpt', 'MRPT/MTFS'], ['ssrs', 'SSRS'], ['aiss', 'AISS'], ['aeus', 'AEUS']] as [Mode, string][]).map(([m, label]) => (
         <button key={m} onClick={() => setStrategy(m)}
           className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === m ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{label}</button>
       ))}

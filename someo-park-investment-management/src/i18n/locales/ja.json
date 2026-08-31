@@ -7,7 +7,17 @@
     "foundry": "ファウンドリ",
     "analog_defense": "アナログ / ディフェンシブ",
     "logic_cpu": "ロジック / CPU",
-    "rf_edge": "RF / エッジ"
+    "rf_edge": "RF / エッジ",
+    "nuclear_fuel": "原子力・ウラン燃料",
+    "gas_midstream": "天然ガス・ミッドストリーム",
+    "grid_equipment": "送配電機器・変圧器",
+    "grid_epc": "送電網建設・EPC",
+    "ipp_wholesale": "独立系発電事業者",
+    "regulated_mega": "規制大手公益事業",
+    "regional_utility": "地域公益事業",
+    "dc_power_cooling": "データセンター電力・冷却",
+    "renewables_storage": "大規模再エネ・蓄電",
+    "water_cooling": "水道・冷却"
   },
   "artifactTitles": {
     "equityCurve": "OOS エクイティカーブ",
@@ -770,7 +780,8 @@
     "daysHeld": "保有日数",
     "paramSet": "パラメータセット",
     "zScoreEntry": "エントリー時 Z-Score",
-    "wfSource": "WF ソース"
+    "wfSource": "WF ソース",
+    "noHoldings": "保有なし"
   },
   "inventoryHistory": {
     "title": "ポジション履歴スナップショット",
@@ -1147,6 +1158,18 @@
     "signalsTitle": "トレーディングシグナル (AISS)",
     "holdingsTitle": "AISS 保有 — 銘柄レベル",
     "wfSummaryTitle": "ウォークフォワード集計 — AISS（{{folds}} フォールド × {{subsectors}} サブセクター / {{stocks}} 半導体銘柄 × {{params}} パラメータセット）"
+  },
+  "aeus": {
+    "stocksTab": "電力公益銘柄 ({{count}})",
+    "colStock": "銘柄",
+    "colSubsector": "サブセクター",
+    "colLastPrice": "終値",
+    "colMarketValue": "時価",
+    "colValue": "時価",
+    "subsectorLabel": "サブセクター",
+    "signalsTitle": "トレーディングシグナル (AEUS)",
+    "holdingsTitle": "AEUS 保有 — 銘柄レベル",
+    "wfSummaryTitle": "ウォークフォワード集計 — AEUS（{{folds}} フォールド × {{subsectors}} サブセクター / {{stocks}} 電力公益銘柄 × {{params}} パラメータセット）"
   },
   "macro": {
     "board": "マクロボード",

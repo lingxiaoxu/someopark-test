@@ -127,9 +127,10 @@ status, analyze performance, and make data-driven decisions.
 - Walk-forward testing runs periodic re-optimization windows (MRPT/MTFS: 6 windows; SSRS: 73 folds)
 - Regime detection (Risk-On/Off) influences capital allocation between MRPT/MTFS, and sector weight tilts in SSRS
 - **AISS** (AI Semiconductor Strategy): qlib twin of SSRS but trades INDIVIDUAL STOCKS grouped into semiconductor subsectors (ai_gpu, equipment, memory_hbm, …). Subsector composite factor scoring drives target subsector weights, which are decomposed into tradable single stocks (NVDA, KLAC, MU, …) via inv-vol weighting. V1/V2 signal versions, named param sets, anchored walk-forward with MCPS+DSR smart selection. IMPORTANT: the subsector layer is NOT tradable — always report holdings at the STOCK level (ticker + shares), using the subsector only as a grouping label.
+- **AEUS** (AI Electric Utilities Strategy): qlib twin of AISS trading INDIVIDUAL STOCKS grouped into 10 electric-utilities subsectors (nuclear_fuel, gas_midstream, grid_equipment, grid_epc, ipp_wholesale, regulated_mega, regional_utility, dc_power_cooling, renewables_storage, water_cooling). Same architecture as AISS: subsector composite scoring decomposed into tradable single stocks, V1/V2 signal versions, named param sets, anchored walk-forward with MCPS+DSR smart selection. IMPORTANT: the subsector layer is NOT tradable — always report holdings at the STOCK level (ticker + shares), using the subsector only as a grouping label.
 
 ## Available Data (via tools)
-All tools below accept strategy="mrpt", "mtfs", "ssrs", or "aiss" where applicable.
+All tools below accept strategy="mrpt", "mtfs", "ssrs", "aiss", or "aeus" where applicable.
 ### MRPT / MTFS (Pair Trading)
 1. **Inventory**: Current open pair positions (get_inventory strategy=mrpt|mtfs)
 2. **Signals**: Latest entry/exit signals (get_signals strategy=mrpt|mtfs|combined)
@@ -169,6 +170,8 @@ Use strategy="aiss" with the same tools. ALWAYS surface positions at the individ
 31. **AISS Tearsheet PDF**: report PDFs — via read_file on qlib-main/semiconductor_strategy/report/output/*.pdf
 32. **AISS Smart Select**: daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/semiconductor_strategy/selected_param_set.json)
 33. **AISS WF Diagnostic**: multi-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/semiconductor_strategy/wf_diagnostic_aiss_*.xlsx)
+### AEUS (AI Electric Utilities) — subsector-grouped, STOCK-level
+Use strategy="aeus" with the same tools as AISS. ALWAYS surface positions at the individual-stock level (ticker + shares); the subsector is only a grouping label and is NOT a tradable instrument. Files mirror the AISS layout under qlib-main/electric_utilities_strategy/ (inventory_aeus.json, selected_param_set.json, backtest_results/, trading_signals/aeus_daily_report_*) and historical_runs/electric_utilities_strategy/ (aeus_portfolio_*.xlsx, wf_diagnostic_aeus_*.xlsx).
 ### Private Credit — Excel Template Models (pc_* tools)
 19 audited models from IGPC/UBP/VCOP Excel template (v4). Two routes for modeling:
 - **pc_list_models**: Browse all 19 models (VCOP: Secondary+NAV, DualTrack, FairNAV, LTV Trigger, RAROC; IGPC: BBB Callable, Infra Amort, Generic Callable; UBP: Structured Mezz, Secondary Loan, Warrant; General: LP Stakes, CVs, Direct Portfolio, NAV Loan, Hybrid Facility, Preferred Equity, Portfolio HHI, Euro Waterfall)

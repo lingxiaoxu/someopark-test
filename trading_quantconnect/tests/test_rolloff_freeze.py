@@ -212,7 +212,7 @@ def _series(dates):
             {"date": d, "mrpt_equity": 1.0 + i, "mtfs_equity": 2.0 + i}
             for i, d in enumerate(dates)],
         "master_portfolio_performance.json": [
-            {"date": d, "sr_equity": 3.0 + i, "aiss_equity": 4.0 + i}
+            {"date": d, "sr_equity": 3.0 + i, "aiss_equity": 4.0 + i, "aeus_equity": 5.0 + i}
             for i, d in enumerate(dates)],
         "private_credit_bdc_performance.json": [
             {"date": d, "bdc_equity": 5.0 + i} for i, d in enumerate(dates)],
@@ -232,7 +232,7 @@ def test_official_eod_by_session_reads_that_row_not_the_last(tmp_path,
     d, off = rolloff.official_eod("2026-08-27")
     assert d == "2026-08-27"
     assert off == {"mrpt": 2.0, "mtfs": 3.0, "ssrs": 4.0, "aiss": 5.0,
-                   "bdc": 6.0}
+                   "aeus": 6.0, "bdc": 6.0}
     # 不传 session 仍是"发布到哪天了" —— 冻 K 问的正是这个,不能被顺手改掉
     assert rolloff.official_eod()[0] == "2026-08-28"
 

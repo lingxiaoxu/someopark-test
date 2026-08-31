@@ -132,11 +132,11 @@ router.get('/official', (_req, res) => {
   };
   try {
     const sp = readLast('strategy_performance.json', ['mrpt_equity', 'mtfs_equity']);
-    const mp = readLast('master_portfolio_performance.json', ['sr_equity', 'aiss_equity']);
+    const mp = readLast('master_portfolio_performance.json', ['sr_equity', 'aiss_equity', 'aeus_equity']);
     const bd = readLast('private_credit_bdc_performance.json', ['bdc_equity']);
     res.json({
       mrpt: sp.mrpt_equity, mtfs: sp.mtfs_equity,
-      ssrs: mp.sr_equity, aiss: mp.aiss_equity, bdc: bd.bdc_equity,
+      ssrs: mp.sr_equity, aiss: mp.aiss_equity, aeus: mp.aeus_equity, bdc: bd.bdc_equity,
     });
   } catch (e) {
     res.status(500).json({ error: String(e) });

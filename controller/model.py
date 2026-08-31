@@ -197,6 +197,83 @@ def _assemble_aiss(reg: Registry, S: Structure) -> str:
     return st_id
 
 
+def _latest_aeus_report() -> str:
+    files = sorted(glob.glob(os.path.join(
+        REPO, "qlib-main/electric_utilities_strategy/trading_signals/aeus_daily_report_*.json")))
+    if not files:
+        raise RegistryError("no aeus_daily_report_*.json found")
+    return files[-1]
+
+
+def _assemble_aeus(reg: Registry, S: Structure) -> str:
+    acc_p = os.path.join(REPO, "qlib-main/electric_utilities_strategy/account_aeus.json")
+    inv_p = os.path.join(REPO, "qlib-main/electric_utilities_strategy/inventory_aeus.json")
+    rep_p = _latest_aeus_report()
+    acc, inv, rep = json.load(open(acc_p)), json.load(open(inv_p)), json.load(open(rep_p))
+    for p in (acc_p, inv_p, rep_p):
+        S.sources[p] = _digest(p)
+
+    positions = {t: float(v["shares"]) for t, v in acc["positions"].items()}
+    breakdown = rep.get("stock_breakdown") or []
+    # per-branch 目标股数(report)→ 按 account 实仓逐票归一(account 是 golden)
+    tgt_by_ticker: dict[str, float] = {}
+    rows_by_ticker: dict[str, list] = {}
+    for row in breakdown:
+        t = row["ticker"]
+        tgt_by_ticker[t] = tgt_by_ticker.get(t, 0.0) + float(row["target_shares"])
+        rows_by_ticker.setdefault(t, []).append(row)
+
+    # 校验:report 覆盖必须包含全部实仓票(比例来源不能缺票)
+    missing = [t for t in positions if t not in rows_by_ticker]
+    if missing:
+        raise RegistryError(f"aeus: account 持仓 {missing} 不在 stock_breakdown —"
+                            f" report({os.path.basename(rep_p)}) 与 account 脱节,拒绝装配")
+
+    ss_children: dict[str, list] = {}
+    for t, actual in positions.items():
+        rows = rows_by_ticker[t]
+        tgt_total = tgt_by_ticker[t]
+        if tgt_total <= 0:
+            raise RegistryError(f"aeus: {t} target_shares 合计 {tgt_total} 无法归一")
+        drift = abs(actual - tgt_total) / max(actual, 1.0)
+        if drift > 0.05:                            # 目标 vs 实仓漂移 >5% 报警但不吞
+            print(f"!!!! [model ALERT] aeus {t}: account {actual} vs report target "
+                  f"{tgt_total} drift {drift:.1%}(rebalance 未执行完?)——按实仓归一")
+        isin = reg.isin_of(t)
+        for row in rows:
+            branch_shares = actual * float(row["target_shares"]) / tgt_total
+            ss_children.setdefault(row["subsector"], []).append((isin, branch_shares))
+
+    st_id = reg.spid_of("strategy", strategy_canonical_key("aeus"))
+    children = []
+    inv_w = inv.get("holdings", {})
+    for ss_key, kids in sorted(ss_children.items()):
+        sid = reg.spid_of("subsector", subsector_canonical_key("aeus", ss_key),
+                          display_name=ss_key, attrs={"strategy": "aeus"})
+        ss_attrs = {"display_name": ss_key}
+        if ss_key in inv_w:
+            ss_attrs.update({k: inv_w[ss_key][k] for k in
+                             ("weight", "days_held", "action_today", "entry_date")
+                             if k in inv_w[ss_key]})
+        S.add(sid, "subsector", children=kids, attrs=ss_attrs)
+        children.append((sid, 1.0))
+
+    S.add(st_id, "strategy", children=children,
+          attrs={"display_name": "AISS", "cash_const": float(acc["cash"]),
+                 "positions_as_of": acc.get("as_of"),
+                 "report_file": os.path.basename(rep_p)})
+    # 自检②:Σbranch ≡ account 逐票(归一构造保证,仍显式断言防回归)
+    got: dict[str, float] = {}
+    for kids in ss_children.values():
+        for isin, sh in kids:
+            got[isin] = got.get(isin, 0.0) + sh
+    for t, actual in positions.items():
+        isin = reg.isin_of(t)
+        if abs(got[isin] - actual) > 1e-6:
+            raise RegistryError(f"aeus: Σbranch({t})={got[isin]} != account {actual}")
+    return st_id
+
+
 def _assemble_ssrs(reg: Registry, S: Structure) -> str:
     acc_p = os.path.join(REPO, "qlib-main/sector_rotation/account_ssrs.json")
     inv_p = os.path.join(REPO, "qlib-main/sector_rotation/inventory_sector_rotation.json")
@@ -258,6 +335,13 @@ def assemble(reg: Registry | None = None) -> Structure:
         _assemble_ssrs(reg, S),
         _assemble_bdc(reg, S),
     ]
+    # AEUS(2026-08-31 接线):go-live 建仓后 account_aeus.json 才存在;
+    # 之前优雅缺席,不拖垮其余五策略的装配(controller 1 分钟循环在产)。
+    if os.path.exists(os.path.join(
+            REPO, "qlib-main/electric_utilities_strategy/account_aeus.json")):
+        ids.append(_assemble_aeus(reg, S))
+    else:
+        print("[model] aeus: account_aeus.json 不存在(go-live 前)— 本轮跳过装配")
     pf_id = reg.spid_of("portfolio", PORTFOLIO_KEY, display_name="PORTFOLIO")
     S.add(pf_id, "portfolio", children=[(i, 1.0) for i in ids],
           attrs={"display_name": "PORTFOLIO"})

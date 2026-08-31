@@ -63,13 +63,16 @@ consume_paths:                    # §5.8/附录 D: 全部只读
     mrpt: inventory_mrpt.json
     mtfs: inventory_mtfs.json
     aiss: qlib-main/semiconductor_strategy/inventory_aiss.json
+    aeus: qlib-main/electric_utilities_strategy/inventory_aeus.json
     ssrs: qlib-main/sector_rotation/inventory_sector_rotation.json
   accounts:
     aiss: qlib-main/semiconductor_strategy/account_aiss.json
+    aeus: qlib-main/electric_utilities_strategy/account_aeus.json
     ssrs: qlib-main/sector_rotation/account_ssrs.json
   signals_glob: trading_signals/combined_signals_*.json
   ledgers:
     aiss: qlib-main/semiconductor_strategy/trade_ledger_aiss.jsonl
+    aeus: qlib-main/electric_utilities_strategy/trade_ledger_aeus.jsonl
     ssrs: qlib-main/sector_rotation/trade_ledger_ssrs.jsonl
   aiss_subsector_map_snapshot: config 静态快照见 aiss_subsectors 节
 

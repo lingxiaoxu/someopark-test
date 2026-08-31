@@ -132,10 +132,14 @@ def _finalize_pending(api, conn, si) -> int:
     lids = tuple(c.api_football_id for c in active())
     ph = ",".join("?" * len(lids))
     st = ",".join("?" * len(_LIVE_STATUS))
+    # ISO-T bounds (see jobs/live_poller): a space-format datetime('now') upper bound
+    # can never be reached by a same-day ISO-T kickoff, so the "recently kicked off"
+    # clause silently never fired.
     rows = conn.execute(
         f"SELECT api_id, status_short FROM fixture WHERE league_id IN ({ph}) AND ("
-        f"  (status_short IN ({st}) AND kickoff_ts >= datetime('now','-8 hours'))"
-        f"  OR kickoff_ts BETWEEN datetime('now','-3 hours') AND datetime('now')"
+        f"  (status_short IN ({st}) AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-8 hours'))"
+        f"  OR kickoff_ts BETWEEN strftime('%Y-%m-%dT%H:%M:%S','now','-3 hours') "
+        f"                    AND strftime('%Y-%m-%dT%H:%M:%S','now')"
         f")", (*lids, *_LIVE_STATUS)).fetchall()
     ids = [r["api_id"] for r in rows]
     if not ids:

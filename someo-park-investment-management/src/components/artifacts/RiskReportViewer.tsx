@@ -7,13 +7,13 @@ import ErrorState from '../ErrorState';
 
 // Strategy tabs (same UX as PnlReportViewer):
 //   mrpt = MRPT/MTFS pairs RiskManager reports (risk_report_YYYYMMDD_HHMMSS.pdf)
-//   ssrs/aiss = portfolio_ledger risk reports (risk_report_YYYYMMDD.pdf, since 2026-07-02)
+//   ssrs/aiss/aeus = portfolio_ledger risk reports (risk_report_YYYYMMDD.pdf, since 2026-07-02)
 // Sources are mapped server-side in server/routes/riskReport.ts (legacy notes there).
-type Mode = 'mrpt' | 'ssrs' | 'aiss';
+type Mode = 'mrpt' | 'ssrs' | 'aiss' | 'aeus';
 
 export default function RiskReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const initial: Mode = params?.strategy === 'ssrs' ? 'ssrs' : params?.strategy === 'aiss' ? 'aiss' : 'mrpt';
+  const initial: Mode = params?.strategy === 'ssrs' ? 'ssrs' : params?.strategy === 'aiss' ? 'aiss' : params?.strategy === 'aeus' ? 'aeus' : 'mrpt';
   const [strategy, setStrategy] = useState<Mode>(initial);
   const [items, setItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>('');
@@ -57,7 +57,7 @@ export default function RiskReportViewer({ params }: { params?: any }) {
 
   const Tabs = () => (
     <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-      {([['mrpt', 'MRPT/MTFS'], ['ssrs', 'SSRS'], ['aiss', 'AISS']] as [Mode, string][]).map(([m, label]) => (
+      {([['mrpt', 'MRPT/MTFS'], ['ssrs', 'SSRS'], ['aiss', 'AISS'], ['aeus', 'AEUS']] as [Mode, string][]).map(([m, label]) => (
         <button key={m} onClick={() => setStrategy(m)}
           className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === m ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{label}</button>
       ))}

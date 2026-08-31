@@ -15,6 +15,8 @@ const FILE_SHORTCUTS: Record<string, string> = {
   selected_param_set: 'qlib-main/sector_rotation/selected_param_set.json',
   inventory_aiss: 'qlib-main/semiconductor_strategy/inventory_aiss.json',
   selected_param_set_aiss: 'qlib-main/semiconductor_strategy/selected_param_set.json',
+  inventory_aeus: 'qlib-main/electric_utilities_strategy/inventory_aeus.json',
+  selected_param_set_aeus: 'qlib-main/electric_utilities_strategy/selected_param_set.json',
 }
 
 export const queryJsonTool: AgentTool = {
@@ -24,7 +26,7 @@ export const queryJsonTool: AgentTool = {
 Examples: "$.pairs[?(@.days_held > 5)]" — pairs held >5 days
           "$.regime.mrpt_weight" — extract specific field
           "$..sharpe" — find all sharpe values recursively
-Shortcuts for file_path: inventory_mrpt, inventory_mtfs, pair_universe_mrpt, pair_universe_mtfs, inventory_ssrs, selected_param_set, inventory_aiss, selected_param_set_aiss`,
+Shortcuts for file_path: inventory_mrpt, inventory_mtfs, pair_universe_mrpt, pair_universe_mtfs, inventory_ssrs, selected_param_set, inventory_aiss, selected_param_set_aiss, inventory_aeus, selected_param_set_aeus`,
     input_schema: {
       type: 'object',
       properties: {

@@ -129,9 +129,18 @@ def _live_quote_sources(conn) -> dict:
         from prediction_market_soccer.config.leagues import active
         from prediction_market_soccer.venues.kalshi.discovery import KalshiDiscovery
         lid_to_key = {c.api_football_id: c.key for c in active()}
+        # ISO-T bounds, NOT datetime('now',...): kickoff_ts is ISO-8601 TEXT with a 'T'
+        # separator while datetime() emits a SPACE — and 'T' > ' ' in a text compare, so
+        # a same-day kickoff always failed the upper bound and live_lids came back EMPTY
+        # for any afternoon fixture. That is why Kalshi in-play quotes appeared on late
+        # kickoffs (now+6h rolls past midnight, the date digits differ, the compare goes
+        # right by accident) and vanished on everything else — measured live on Lecce v
+        # Roma with the market open and active on the venue. The kickoff_ts-is-TEXT trap
+        # has now bitten twice; every short-window compare must use ISO-T bounds.
         live_lids = {r["league_id"] for r in conn.execute(
             "SELECT DISTINCT league_id FROM fixture "
-            "WHERE kickoff_ts >= datetime('now','-6 hours') AND kickoff_ts <= datetime('now','+6 hours')")}
+            "WHERE kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-6 hours') "
+            "AND kickoff_ts <= strftime('%Y-%m-%dT%H:%M:%S','now','+6 hours')")}
         ds: dict[int, KalshiDiscovery] = {}
         for lid in live_lids:
             key = lid_to_key.get(lid)

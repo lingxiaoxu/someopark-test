@@ -7,7 +7,17 @@
     "foundry": "晶圆代工",
     "analog_defense": "模拟 / 防御",
     "logic_cpu": "逻辑 / CPU",
-    "rf_edge": "射频 / 边缘"
+    "rf_edge": "射频 / 边缘",
+    "nuclear_fuel": "核能与铀燃料",
+    "gas_midstream": "天然气中游管道",
+    "grid_equipment": "输配电设备与变压器",
+    "grid_epc": "电网建设EPC",
+    "ipp_wholesale": "独立发电商",
+    "regulated_mega": "受监管大型公用事业",
+    "regional_utility": "区域公用事业",
+    "dc_power_cooling": "数据中心电力与冷却",
+    "renewables_storage": "电网级绿电与储能",
+    "water_cooling": "水务与冷却"
   },
   "artifactTitles": {
     "equityCurve": "OOS 权益曲线",
@@ -772,7 +782,8 @@
     "daysHeld": "持有天数",
     "paramSet": "参数集",
     "zScoreEntry": "入场 Z-Score",
-    "wfSource": "WF 来源"
+    "wfSource": "WF 来源",
+    "noHoldings": "暂无持仓"
   },
   "inventoryHistory": {
     "title": "持仓历史快照",
@@ -1149,6 +1160,18 @@
     "signalsTitle": "交易信号 (AISS)",
     "holdingsTitle": "AISS 持仓 — 个股层面",
     "wfSummaryTitle": "Walk-Forward 汇总 — AISS（{{folds}} 折叠 × {{subsectors}} 子板块 / {{stocks}} 半导体个股 × {{params}} 参数集）"
+  },
+  "aeus": {
+    "stocksTab": "电力公用事业个股 ({{count}})",
+    "colStock": "个股",
+    "colSubsector": "子板块",
+    "colLastPrice": "最新价",
+    "colMarketValue": "市值",
+    "colValue": "市值",
+    "subsectorLabel": "子板块",
+    "signalsTitle": "交易信号 (AEUS)",
+    "holdingsTitle": "AEUS 持仓 — 个股层面",
+    "wfSummaryTitle": "Walk-Forward 汇总 — AEUS（{{folds}} 折叠 × {{subsectors}} 子板块 / {{stocks}} 电力公用事业个股 × {{params}} 参数集）"
   },
   "macro": {
     "board": "宏观看板",

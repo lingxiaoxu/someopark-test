@@ -13,14 +13,14 @@ export default function SignalTable({ params }: { params?: any }) {
   const { data, loading, error, refetch } = useApi(() => getLatestSignals(strategy), [strategy]);
 
   if (loading) return <LoadingState />;
-  if (error && (strategy === 'ssrs' || strategy === 'aiss')) return <ErrorState message="SR/AISS signals require Express backend running. Start: npm run dev" onRetry={refetch} />;
+  if (error && (strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus')) return <ErrorState message="SR/AISS signals require Express backend running. Start: npm run dev" onRetry={refetch} />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
   // ══════════════════════════════════════════════════════════════
-  // AISS MODE: stock-level book (subsector is a grouping label only)
+  // AISS/AEUS MODE: stock-level book (subsector is a grouping label only)
   // ══════════════════════════════════════════════════════════════
-  if (strategy === 'aiss') {
+  if (strategy === 'aiss' || strategy === 'aeus') {
     // Show ONLY the SELECTED (held) subsectors, each with its 4 stocks
     // (3 weighted tiers + reserve). Reserve / 0% rows are dimmed as FLAT.
     const sh: Record<string, any> = data.stock_holdings || {};
@@ -58,9 +58,9 @@ export default function SignalTable({ params }: { params?: any }) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">{t('aiss.signalsTitle')}</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">{t(`${strategy}.signalsTitle`)}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -73,8 +73,8 @@ export default function SignalTable({ params }: { params?: any }) {
             <table className="w-full text-left text-sm">
               <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-subtle)] text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t('aiss.colStock')}</th>
-                  <th className="px-4 py-3 font-medium">{t('aiss.colSubsector')}</th>
+                  <th className="px-4 py-3 font-medium">{t(`${strategy}.colStock`)}</th>
+                  <th className="px-4 py-3 font-medium">{t(`${strategy}.colSubsector`)}</th>
                   <th className="px-4 py-3 font-medium">{t('common.action')}</th>
                   <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
                   <th className="px-4 py-3 font-medium text-right">{t('ssrs.shares')}</th>
@@ -90,7 +90,7 @@ export default function SignalTable({ params }: { params?: any }) {
                   return (
                   <tr key={idx} className={`hover:bg-[var(--bg-secondary)] transition-colors ${held ? '' : 'opacity-40'}`}>
                     <td className="px-4 py-3">
-                      <PairBadge pair={r.ticker} direction={held ? 'long' : null} strategy="aiss" compact details={{ weight: r.weight, shares: r.shares, lastPrice: r.price }} />
+                      <PairBadge pair={r.ticker} direction={held ? 'long' : null} strategy={strategy} compact details={{ weight: r.weight, shares: r.shares, lastPrice: r.price }} />
                       {r.tier_role === 'reserve' && <span className="ml-2 text-[9px] font-mono text-[var(--text-muted)] uppercase">reserve</span>}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{subsectorName(r.subsector, t)}</td>
@@ -121,7 +121,7 @@ export default function SignalTable({ params }: { params?: any }) {
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.signalsTitle')}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
                 {s.toUpperCase()}
               </button>
@@ -190,7 +190,7 @@ export default function SignalTable({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('signals.title', { strategy: strategy.toUpperCase() })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

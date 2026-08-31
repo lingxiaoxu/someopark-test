@@ -581,7 +581,9 @@ def generate_pnl_report(strategy: str, day: str, acct_series: dict,
 
 def _limits_table(strategy: str, m: dict) -> list:
     """限额定义（amber/red）——mirror pairs limits 结构。长仓+现金账户阈值。"""
-    vol_amber, vol_red = (50.0, 80.0) if strategy == 'aiss' else (18.0, 30.0)
+    vol_amber, vol_red = ((50.0, 80.0) if strategy == 'aiss'
+                          else (30.0, 50.0) if strategy == 'aeus'   # 个股策略但公用事业波动低于半导体(AEUS_PLAN §6.7,D5 实测年化 ~24%)
+                          else (18.0, 30.0))
     lim = [
         ('single_name_pct', m.get('max_single_name_pct') or 0, 25.0, 40.0, '%'),
         ('top3_pct',        m.get('top3_weight_pct') or 0,     60.0, 80.0, '%'),
@@ -930,7 +932,10 @@ def run(strategy: str, day: str | None = None, backfill: bool = False) -> int:
     tickers = [t for t in tickers if t]
     prices = load_store_prices(strategy, tickers)
     opens = load_store_open(strategy, tickers)
-    bench = load_store_prices(BENCH_STORE_STRATEGY, _cfg(strategy)["benchmarks"])
+    # 2026-08-31 泛化:各策略基准在各自 store(AEUS 的 XLU/GRID 在 elec_strategy);
+    # SSRS 沿用历史遗留(其 SPY/SMH 在 semi store),aiss 行为逐位不变。
+    _bench_store = strategy if strategy in ("aiss", "aeus") else BENCH_STORE_STRATEGY
+    bench = load_store_prices(_bench_store, _cfg(strategy)["benchmarks"])
     days = sorted(acct_series) if backfill else [day or max(acct_series)]
     n = 0
     for d in days:

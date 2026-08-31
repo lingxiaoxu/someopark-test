@@ -108,6 +108,12 @@ const ARTIFACT_PATTERNS: Array<{
     keywords: ['aiss', 'ai semiconductor', 'semiconductor strategy', 'ai chip', 'ai-chips', '半导体策略', 'ai半导体', '芯片策略'],
     params: { strategy: 'aiss' },
   },
+  {
+    type: 'inventory',
+    title: 'AEUS Holdings',
+    keywords: ['aeus', 'ai electric utilities', 'electric utilities strategy', 'electric utility', 'utilities strategy', '电力策略', '公用事业策略', '电力公用事业'],
+    params: { strategy: 'aeus' },
+  },
 
   // ── Prediction Market (World Cup 2026) artifacts — open the rich wc_* viewer on the
   //    right when the user asks about these in Prediction Market mode. Keywords kept

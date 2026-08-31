@@ -271,6 +271,15 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")   # durable + concurrent reads (frontend)
+    # WAL permits ONE writer at a time; without a busy timeout the second writer gets an
+    # immediate "database is locked" instead of queueing. That stayed invisible while a
+    # single process owned all writes — the settle reports moving to a detached process
+    # made it a real schedule: 11 lock errors in one afternoon, a Kalshi discovery that
+    # failed to CONSTRUCT (its __init__ reads club_registry) so a live Serie A match
+    # exported with no Kalshi quotes while the venue had the market open and active,
+    # and one whole live cycle dying mid-upsert. Fifteen seconds comfortably covers the
+    # longest write transaction either process holds.
+    conn.execute("PRAGMA busy_timeout=15000")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 

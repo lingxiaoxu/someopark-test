@@ -709,6 +709,8 @@ def _ledger_accounts(session: str) -> tuple[dict, list[str]]:
     """五本 account json(须 as_of == session,否则该策略列进 stale)。"""
     acc, stale = {}, []
     for st, rel in LEDGER_ACCOUNT_FILES.items():
+        if st == "aeus" and not (REPO / rel).exists():
+            continue        # go-live(9/1)前预期缺席,不入对账也不报 stale
         d = stable_read(REPO / rel)
         if str(d.get("as_of")) != session:
             stale.append(f"{st}:as_of={d.get('as_of')}")

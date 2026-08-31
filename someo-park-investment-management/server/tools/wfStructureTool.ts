@@ -29,8 +29,8 @@ export const wfStructureTool: AgentTool = {
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
-          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", "aiss", or "aeus"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus']
         }
       },
       required: ['strategy']
@@ -39,9 +39,11 @@ export const wfStructureTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
-    if (strategy === 'ssrs' || strategy === 'aiss') {
+    if (strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') {
       const dir = getBackendPath(strategy === 'ssrs'
         ? 'historical_runs/sector_rotation'
+        : strategy === 'aeus'
+        ? 'historical_runs/electric_utilities_strategy'
         : 'historical_runs/semiconductor_strategy')
       const files = await findXlsx(dir)
       return files.map(f => ({

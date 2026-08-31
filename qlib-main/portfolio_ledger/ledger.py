@@ -28,6 +28,15 @@ INITIAL_CASH = 1_000_000.0
 
 # ── 策略配置 ────────────────────────────────────────────────────────────────
 STRATEGIES = {
+    "aeus": {
+        "dir": os.path.join(QLIB_DIR, "electric_utilities_strategy"),
+        "snap_glob": "inventory_history/inventory_aeus_*.json",
+        "holdings_key": "stock_holdings",
+        "store_dir": os.path.join(PRICE_DATA, "elec_strategy", "prices"),
+        "live_start": "2026-09-01",          # = UpdateMasterPerformance.AEUS_LIVE_START
+        "report_glob": "trading_signals/aeus_daily_report_*.json",
+        "benchmarks": ["XLU", "GRID", "SPY"],
+    },
     "aiss": {
         "dir": os.path.join(QLIB_DIR, "semiconductor_strategy"),
         "snap_glob": "inventory_history/inventory_aiss_*.json",

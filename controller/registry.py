@@ -37,7 +37,7 @@ NODES_PATH = os.path.join(REG_DIR, "node_registry.json")
 CHANGELOG = os.path.join(REG_DIR, "changelog.jsonl")
 
 _B36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-STRATEGIES = ("mrpt", "mtfs", "aiss", "ssrs", "bdc")
+STRATEGIES = ("mrpt", "mtfs", "aiss", "ssrs", "bdc", "aeus")
 
 
 class RegistryError(RuntimeError):
@@ -322,6 +322,16 @@ def collect_universe() -> list[str]:
         tickers.update(names)
     tickers.update(json.load(open(os.path.join(
         REPO, "qlib-main/sector_rotation/account_ssrs.json")))["positions"])
+    # AEUS(2026-08-31 接线):go-live(9/1)前 account 不存在 → 只并 config 宇宙
+    _aeus_acc = os.path.join(REPO, "qlib-main/electric_utilities_strategy/account_aeus.json")
+    if os.path.exists(_aeus_acc):
+        tickers.update(json.load(open(_aeus_acc))["positions"])
+    _aeus_cfg = yaml.safe_load(open(os.path.join(
+        REPO, "qlib-main/electric_utilities_strategy/config.yaml")))
+    for node in _aeus_cfg["universe"]["subsectors"].values():
+        tickers.update(t0 for t0, _w in node["members"])
+        if node.get("reserve"):
+            tickers.add(node["reserve"])
     tickers.update(json.load(open(os.path.join(
         REPO, "qlib-main/sector_rotation/inventory_sector_rotation.json")))["holdings"])
     binv = json.load(open(os.path.join(REPO, "inventory_bdc.json")))

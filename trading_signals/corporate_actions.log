@@ -226,3 +226,5 @@
 2026-08-29T13:33:31Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
 2026-08-29T13:33:31Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=14 applicable-splits=none pending=none applied=0
 2026-08-30T21:31:55Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-08-31T07:05:46Z [CA][aeus] status=ERROR | inventory not found: /Users/xuling/code/someopark-test/qlib-main/electric_utilities_strategy/inventory_aeus.json
+2026-08-31T07:06:29Z [CA][aeus] status=NO-ACTION-NEEDED | tickers=12 applicable-splits=none pending=none applied=0

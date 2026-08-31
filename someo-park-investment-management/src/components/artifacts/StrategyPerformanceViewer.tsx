@@ -24,12 +24,15 @@ interface DayData {
   // Master mode fields (optional — only in master_portfolio_performance.json)
   sr_equity?: number;
   aiss_equity?: number;
+  aeus_equity?: number;
   master_equity?: number;
   sr_pnl?: number;
   aiss_pnl?: number;
+  aeus_pnl?: number;
   master_pnl?: number;
   sr_dd?: number;
   aiss_dd?: number;
+  aeus_dd?: number;
   master_dd?: number;
   [key: string]: any;
 }
@@ -39,6 +42,7 @@ const COLORS: Record<string, string> = {
   mtfs: '#f59e0b',
   sr: '#16a34a',
   aiss: '#a855f7',
+  aeus: '#0ea5e9',
   bdc: '#e11d48',
   combined: '#111',
   master: '#111',
@@ -46,19 +50,21 @@ const COLORS: Record<string, string> = {
   smh: '#6b7280',
   soxx: '#0891b2',
   mags: '#c026d3',
+  xlu: '#65a30d',
+  grid: '#7c3aed',
 };
 const LABELS: Record<string, string> = {
-  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', aiss: 'AISS', bdc: 'PC BDC',
+  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', aiss: 'AISS', aeus: 'AEUS', bdc: 'PC BDC',
   combined: 'COMBINED 4 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
-  spy: 'SPY', smh: 'SMH', soxx: 'SOXX', mags: 'MAGS',
+  spy: 'SPY', smh: 'SMH', soxx: 'SOXX', mags: 'MAGS', xlu: 'XLU', grid: 'GRID',
 };
-const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'combined'];
-const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'master'];
+const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'combined'];
+const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'bdc', 'master'];
 const BENCHMARK_KEYS = ['spy', 'smh', 'soxx', 'mags'];  // dashed reference lines in Master mode
 
 // ── Tooltip: individual strategies first, the aggregate (COMBINED / MASTER) last ──
-const TOOLTIP_ORDER = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'spy', 'smh', 'soxx', 'mags', 'combined', 'master'];
+const TOOLTIP_ORDER = ['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'bdc', 'spy', 'smh', 'soxx', 'xlu', 'grid', 'mags', 'combined', 'master'];
 const tooltipRank = (k: string) => {
   const i = TOOLTIP_ORDER.indexOf(k);
   return i === -1 ? TOOLTIP_ORDER.length : i;
@@ -128,7 +134,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const [loading, setLoading] = useState(true);
   const [masterLoading, setMasterLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'aiss', 'combined']));
+  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'combined']));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 

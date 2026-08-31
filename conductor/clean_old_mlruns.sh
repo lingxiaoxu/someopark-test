@@ -112,7 +112,7 @@ log "✓ 移动硬盘已挂载，两个备份目录可访问"
 # 写入进程检查：mlruns 是活跃目录（每天数百个新 run）。新 run 因时间戳不会入选，
 # 但「快照校验」与「实际删除」之间若有任务往旧 run 追加文件，会被无备份删掉。
 # 有任务在跑就不清理，风险归零。
-BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
+BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|AEUSBatchRun|aeus_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
 BUSY=$(ps aux | grep -E "$BUSY_PATTERNS" | grep -v grep \
        | grep -v "prediction_market_macro" | grep -v "$(basename "$0")" || true)
 if [[ -n "$BUSY" ]]; then

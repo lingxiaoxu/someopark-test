@@ -16,8 +16,8 @@ export default function InventoryViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
-  // ══ AISS MODE — stock-level holdings grouped by subsector (subsector = label only) ══
-  if (strategy === 'aiss') {
+  // ══ AISS/AEUS MODE — stock-level holdings grouped by subsector (subsector = label only) ══
+  if (strategy === 'aiss' || strategy === 'aeus') {
     const subWeights = data.holdings || {};           // subsector -> {weight}
     const sh = data.stock_holdings || {};             // ticker -> {subsectors, shares, ...}
     const groups: Record<string, any[]> = {};
@@ -29,9 +29,9 @@ export default function InventoryViewer({ params }: { params?: any }) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventory.title', { strategy: 'AISS' })}</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventory.title', { strategy: strategy.toUpperCase() })}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -47,24 +47,30 @@ export default function InventoryViewer({ params }: { params?: any }) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto space-y-4">
+          {orderedSubs.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center py-16">
+              <div className="text-sm text-[var(--text-muted)]">{t('inventory.noHoldings', '暂无持仓')}</div>
+              {data.note && <div className="text-xs text-[var(--text-muted)] mt-2 font-mono">{data.note}</div>}
+            </div>
+          )}
           {orderedSubs.map(sub => (
             <div key={sub}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{subsectorName(sub, t)}</span>
-                <span className="font-mono text-xs font-bold text-[var(--accent-primary)]">{((subWeights[sub]?.weight || 0) * 100).toFixed(1)}% {t('aiss.subsectorLabel')}</span>
+                <span className="font-mono text-xs font-bold text-[var(--accent-primary)]">{((subWeights[sub]?.weight || 0) * 100).toFixed(1)}% {t(`${strategy}.subsectorLabel`)}</span>
               </div>
               <div className="space-y-2">
                 {groups[sub].sort((a, b) => (b.portfolio_weight || 0) - (a.portfolio_weight || 0)).map((h: any) => (
                   <div key={h.ticker} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <PairBadge pair={h.ticker} direction="long" strategy="aiss" compact
+                      <PairBadge pair={h.ticker} direction="long" strategy={strategy} compact
                         details={{ weight: h.portfolio_weight, shares: h.shares, lastPrice: h.last_price }} />
                       <span className="font-mono text-xs text-[var(--text-secondary)]">{((h.portfolio_weight || 0) * 100).toFixed(1)}%</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div><span className="text-[var(--text-muted)]">{t('ssrs.shares')}</span><br/><span className="font-mono">{h.shares?.toLocaleString()}</span></div>
                       <div><span className="text-[var(--text-muted)]">{t('ssrs.price')}</span><br/><span className="font-mono">${h.last_price?.toFixed(2)}</span></div>
-                      <div><span className="text-[var(--text-muted)]">{t('aiss.colValue')}</span><br/><span className="font-mono">${Math.round(h.target_value || 0).toLocaleString()}</span></div>
+                      <div><span className="text-[var(--text-muted)]">{t(`${strategy}.colValue`)}</span><br/><span className="font-mono">${Math.round(h.target_value || 0).toLocaleString()}</span></div>
                     </div>
                   </div>
                 ))}
@@ -85,7 +91,7 @@ export default function InventoryViewer({ params }: { params?: any }) {
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.inventoryTitle')}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -137,7 +143,7 @@ export default function InventoryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventory.title', { strategy: strategy.toUpperCase() })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

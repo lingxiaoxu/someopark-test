@@ -100,6 +100,9 @@ qlib-main/electric_utilities_strategy/backtest_results/
 qlib-main/electric_utilities_strategy/inventory_history/
 qlib-main/electric_utilities_strategy/trading_signals/
 qlib-main/electric_utilities_strategy/pipeline_state/
+# notebooks/ 补齐:semiconductor_strategy 的对应块有这一条,AEUS 块漏了,而目录里已有
+# 三个研究 notebook —— ipynb 会把执行输出(含数据)一起带进公开仓库。
+qlib-main/electric_utilities_strategy/notebooks/
 qlib-main/electric_utilities_strategy/notebooks/
 
 # Private Credit module — now tracked in someopark-test (de-nested 2026-06). Its CODE is
@@ -213,6 +216,9 @@ Claude Code Test/
 /inventory_mrpt.json
 /inventory_mtfs.json
 /inventory_bdc.json
+# BDC sleeve 的账户快照:同族的 account_mrpt/mtfs 与 inventory_bdc 早在 ac2a0e0 就已移出
+# 版本控制,唯独这个漏网,持续把 6 个实盘持仓与 $921,499 的账户快照推进公开仓库。
+/account_bdc.json
 /pair_universe_mrpt.json
 /pair_universe_mtfs.json
 /trade_ledger_mrpt.jsonl

@@ -7,7 +7,17 @@
     "foundry": "Fundición",
     "analog_defense": "Analógico / Defensivo",
     "logic_cpu": "Lógica / CPU",
-    "rf_edge": "RF / Edge"
+    "rf_edge": "RF / Edge",
+    "nuclear_fuel": "Nuclear y combustible de uranio",
+    "gas_midstream": "Midstream de gas natural",
+    "grid_equipment": "Equipos de red y transformadores",
+    "grid_epc": "Construcción de red y EPC",
+    "ipp_wholesale": "Productores independientes de energía",
+    "regulated_mega": "Grandes utilities reguladas",
+    "regional_utility": "Utilities regionales",
+    "dc_power_cooling": "Energía y refrigeración de centros de datos",
+    "renewables_storage": "Renovables a gran escala y almacenamiento",
+    "water_cooling": "Agua y refrigeración"
   },
   "artifactTitles": {
     "equityCurve": "Curva de capital OOS",
@@ -770,7 +780,8 @@
     "daysHeld": "Días mantenidos",
     "paramSet": "Conjunto de parámetros",
     "zScoreEntry": "Z-Score de entrada",
-    "wfSource": "Fuente WF"
+    "wfSource": "Fuente WF",
+    "noHoldings": "Sin posiciones"
   },
   "inventoryHistory": {
     "title": "Historial de posiciones",
@@ -1147,6 +1158,18 @@
     "signalsTitle": "Señales de trading (AISS)",
     "holdingsTitle": "Posiciones AISS — nivel de acción",
     "wfSummaryTitle": "Resumen Walk-Forward — AISS ({{folds}} pliegues × {{subsectors}} subsectores / {{stocks}} acciones de semiconductores × {{params}} conjuntos de params)"
+  },
+  "aeus": {
+    "stocksTab": "Acciones de utilities eléctricas ({{count}})",
+    "colStock": "Acción",
+    "colSubsector": "Subsector",
+    "colLastPrice": "Último precio",
+    "colMarketValue": "Valor de mercado",
+    "colValue": "Valor",
+    "subsectorLabel": "subsector",
+    "signalsTitle": "Señales de trading (AEUS)",
+    "holdingsTitle": "Posiciones AEUS — nivel de acción",
+    "wfSummaryTitle": "Resumen Walk-Forward — AEUS ({{folds}} pliegues × {{subsectors}} subsectores / {{stocks}} acciones de utilities eléctricas × {{params}} conjuntos de params)"
   },
   "macro": {
     "board": "Panel macro",

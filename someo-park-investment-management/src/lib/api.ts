@@ -32,9 +32,11 @@ async function fetchText(path: string): Promise<string> {
 // MRPT/MTFS: /api/inventory/{strategy}
 // SSRS:      /api/ssrs/inventory
 // ═══════════════════════════════════════════════════════════════════════
-// qlib-based strategies (SSRS sector rotation, AISS AI-semiconductor) share an
-// identical route shape under /api/{strategy}/...; MRPT/MTFS use the legacy paths.
-const QLIB = (s?: string): s is 'ssrs' | 'aiss' => s === 'ssrs' || s === 'aiss';
+// qlib-based strategies (SSRS sector rotation, AISS AI-semiconductor, AEUS AI
+// electric-utilities) share an identical route shape under /api/{strategy}/...;
+// MRPT/MTFS use the legacy paths.
+const QLIB = (s?: string): s is 'ssrs' | 'aiss' | 'aeus' =>
+  s === 'ssrs' || s === 'aiss' || s === 'aeus';
 
 export const getInventory = async (strategy: string) => {
   if (QLIB(strategy)) return fetchApi<any>(`/api/${strategy}/inventory`);
@@ -105,13 +107,15 @@ export const getDSRLog = (strategy: string) =>
 
 // ═══════════════════════════════════════════════════════════════════════
 // Pair Universe / Sector Universe / Stock Universe
-// SSRS → sector-universe (ETFs); AISS → stock-universe (individual stocks)
+// SSRS → sector-universe (ETFs); AISS/AEUS → stock-universe (individual stocks)
 // ═══════════════════════════════════════════════════════════════════════
 export const getPairUniverse = (strategy: string) =>
   strategy === 'ssrs'
     ? fetchApi<any>('/api/ssrs/sector-universe')
     : strategy === 'aiss'
     ? fetchApi<any>('/api/aiss/stock-universe')
+    : strategy === 'aeus'
+    ? fetchApi<any>('/api/aeus/stock-universe')
     : fetchApi<any>(`/api/pairs/${strategy}`);
 export const getPairDb = (collection: string) =>
   fetchApi<any>(`/api/pairs/db/${collection}`);
@@ -153,7 +157,7 @@ export const getDiagnosticSheet = (sheet: string, strategy?: string) =>
 // ═══════════════════════════════════════════════════════════════════════
 // PnL Report / Tearsheet
 // ═══════════════════════════════════════════════════════════════════════
-// ssrs/aiss now serve portfolio_ledger pnl_report_YYYYMMDD.pdf via the unified
+// ssrs/aiss/aeus now serve portfolio_ledger pnl_report_YYYYMMDD.pdf via the unified
 // /api/pnl-report endpoints (?strategy=). Legacy qlib tearsheet endpoints kept
 // for switchback:
 //   list: /api/${strategy}/tearsheet/list
@@ -173,7 +177,7 @@ export const getPnlReportUrl = (date?: string, strategy?: string) => {
 // ═══════════════════════════════════════════════════════════════════════
 // Risk Management Report
 // ═══════════════════════════════════════════════════════════════════════
-// ssrs/aiss serve portfolio_ledger risk_report_YYYYMMDD.pdf via ?strategy=
+// ssrs/aiss/aeus serve portfolio_ledger risk_report_YYYYMMDD.pdf via ?strategy=
 // (added 2026-07-02; pairs source/behavior unchanged when strategy omitted).
 export const getRiskReportList = (strategy?: string) =>
   fetchApi<{ date: string; timestamp: string; filename: string }[]>(
@@ -204,7 +208,7 @@ export const getMonitorHistorySheet = (filename: string, sheet: string, strategy
     : fetchApi<any>(`/api/monitor-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`);
 
 // ═══════════════════════════════════════════════════════════════════════
-// SSRS / AISS: Smart Select + Strategy Performance + Params list
+// SSRS / AISS / AEUS: Smart Select + Strategy Performance + Params list
 // (strategy defaults to ssrs for backward compatibility)
 // ═══════════════════════════════════════════════════════════════════════
 export const getSRSmartSelect = (strategy: string = 'ssrs') =>

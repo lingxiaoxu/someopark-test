@@ -693,16 +693,21 @@ def detect_other_actions(tickers, since_date: str) -> list:
 
 AISS_INVENTORY = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy',
                               'inventory_aiss.json')
+AEUS_INVENTORY = os.path.join(BASE_DIR, 'qlib-main', 'electric_utilities_strategy',
+                              'inventory_aeus.json')
 SSRS_INVENTORY = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation',
                               'inventory_sector_rotation.json')
 
 
 def run_for(scope: str, dry_run: bool = False) -> dict:
-    """四策略统一入口：mrpt / mtfs / aiss / ssrs。"""
+    """五策略统一入口：mrpt / mtfs / aiss / ssrs / aeus。"""
     if scope in ('mrpt', 'mtfs'):
         return apply_to_inventory(scope, dry_run=dry_run)
     if scope == 'aiss':
         return apply_to_stock_inventory(AISS_INVENTORY, 'stock_holdings', 'aiss',
+                                        dry_run=dry_run)
+    if scope == 'aeus':
+        return apply_to_stock_inventory(AEUS_INVENTORY, 'stock_holdings', 'aeus',
                                         dry_run=dry_run)
     if scope == 'ssrs':
         return apply_to_stock_inventory(SSRS_INVENTORY, 'holdings', 'ssrs',

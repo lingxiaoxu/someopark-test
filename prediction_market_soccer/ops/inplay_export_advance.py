@@ -161,7 +161,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
     live = conn.execute(
         "SELECT league_id, api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round "
         "FROM fixture WHERE status_short IN ({}) AND league_id IN ({}) "
-        "AND kickoff_ts >= datetime('now', '-10 hours') "
+        "AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-10 hours') "
         "ORDER BY elapsed DESC".format(",".join("?" * len(_LIVE)), ",".join("?" * len(_lids))),
         (*_LIVE, *_lids)).fetchall()
 

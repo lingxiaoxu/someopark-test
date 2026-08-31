@@ -13,11 +13,11 @@ import { API_BASE, apiHeaders } from '../../lib/api';
 // 本看板 = 永远今天的分钟级(分工互补,plan §4.3)。
 
 const COLORS: Record<string, string> = {
-  MRPT: '#2563eb', MTFS: '#f59e0b', SSRS: '#16a34a', AISS: '#a855f7',
+  MRPT: '#2563eb', MTFS: '#f59e0b', SSRS: '#16a34a', AISS: '#a855f7', AEUS: '#0ea5e9',
   BDC: '#e11d48', PORTFOLIO: '#111',
 };
 // 悬浮框固定显示顺序(用户令):策略在前,PORTFOLIO 殿后
-const TOOLTIP_ORDER = ['MRPT', 'MTFS', 'SSRS', 'AISS', 'BDC', 'PORTFOLIO'];
+const TOOLTIP_ORDER = ['MRPT', 'MTFS', 'SSRS', 'AISS', 'AEUS', 'BDC', 'PORTFOLIO'];
 const tooltipRank = (k: string) => {
   const i = TOOLTIP_ORDER.indexOf(k);
   return i === -1 ? TOOLTIP_ORDER.length : i;
@@ -77,7 +77,7 @@ interface NavLatest {
 }
 // 官方口径映射(与 reconcile_eod._ANCHORS 一致;display_name → official key)
 const OFFICIAL_KEY: Record<string, string> = {
-  MRPT: 'mrpt', MTFS: 'mtfs', SSRS: 'ssrs', AISS: 'aiss', BDC: 'bdc',
+  MRPT: 'mrpt', MTFS: 'mtfs', SSRS: 'ssrs', AISS: 'aiss', AEUS: 'aeus', BDC: 'bdc',
 };
 // 账本口径 → 官方口径是**两族**变换(2026-08-19 逐日实测确认),股数只有一族该缩放:
 //   乘性族 SSRS/AISS/BDC —— official = ledger × k(AISS k=2.68155435 连续 55 天、
@@ -88,7 +88,7 @@ const OFFICIAL_KEY: Record<string, string> = {
 //     与账本日 P&L 逐美元相等 ⇒ 敞口 1:1。**股数绝不能缩放**:MTFS 的 k(t) 实测在
 //     0.32–0.50 之间漂,按它缩放会让面板一手不交易也天天变股数,并把真实敞口低报
 //     2.6 倍、与已发布的 P&L 序列自相矛盾。它们的显示口径另案处理(加一行资金基准差)。
-const MULTIPLICATIVE = new Set(['SSRS', 'AISS', 'BDC']);
+const MULTIPLICATIVE = new Set(['SSRS', 'AISS', 'AEUS', 'BDC']);
 const ADDITIVE = new Set(['MRPT', 'MTFS']);
 // pairs 的 QC 镜像倍数按**开仓时刻**归队(2026-08-19 三队列),服务端已按
 // (pair, open_date) 解析好,前端只取现成倍数,不在这里重实现队列判定。

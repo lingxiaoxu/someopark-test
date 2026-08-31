@@ -20,6 +20,7 @@ const ANCHORS: Record<string, { file: string; col: string }> = {
   MTFS: { file: 'strategy_performance.json', col: 'mtfs_equity' },
   SSRS: { file: 'master_portfolio_performance.json', col: 'sr_equity' },
   AISS: { file: 'master_portfolio_performance.json', col: 'aiss_equity' },
+  AEUS: { file: 'master_portfolio_performance.json', col: 'aeus_equity' },
   BDC:  { file: 'private_credit_bdc_performance.json', col: 'bdc_equity' },
 }
 
@@ -116,7 +117,7 @@ export const realtimeNavTool: AgentTool = {
     name: 'get_realtime_nav',
     description: 'Get LIVE intraday portfolio valuation from the central '
       + 'valuation controller (minute-level, dual-engine verified). Returns '
-      + 'official-basis values per strategy (MRPT/MTFS/SSRS/AISS/BDC) and '
+      + 'official-basis values per strategy (MRPT/MTFS/SSRS/AISS/AEUS/BDC) and '
       + 'PORTFOLIO: official_anchored_value = official EOD × (1+day_return), '
       + 'day_return/day_pnl from the shares×price dollar account, stock-level '
       + 'holdings, pair/subsector mid-layers, quality checks (dual-engine '

@@ -11,7 +11,7 @@ import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import PairBadge from '../PairBadge';
 
-const STRATS = ['mrpt', 'mtfs', 'ssrs', 'aiss'];
+const STRATS = ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'];
 
 // serving mix 模型短名:去 baselines. 前缀、去 _YYYYMMDD 冻结日;lgbm 族统称 lgbm
 const shortModel = (m: string) => {
@@ -302,8 +302,8 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
           </div>
         )}
 
-        {/* ══ AISS:持仓 DTL + capitulation 监测(η-z 异常票排前) ══ */}
-        {strategy === 'aiss' && (
+        {/* ══ AISS/AEUS:持仓 DTL + capitulation 监测(η-z 异常票排前) ══ */}
+        {(strategy === 'aiss' || strategy === 'aeus') && (
           <div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <Card label={t('vp.aum')}>${Math.round(advice?.aum ?? 0).toLocaleString()}</Card>
@@ -316,8 +316,8 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
             <div className="space-y-2">
               {(advice?.holdings || []).map((h: any) => (
                 <div key={h.ticker} className={`${rowCls} flex items-center justify-between`}>
-                  {/* AISS 个股模式(与 SignalTable 同款:weight/shares/price 全传) */}
-                  <PairBadge pair={h.ticker} direction="long" strategy="aiss" compact
+                  {/* AISS/AEUS 个股模式(与 SignalTable 同款:weight/shares/price 全传) */}
+                  <PairBadge pair={h.ticker} direction="long" strategy={strategy} compact
                     details={{ weight: inv[h.ticker]?.weight, shares: h.shares,
                       lastPrice: inv[h.ticker]?.last_price, costBasis: inv[h.ticker]?.cost_basis,
                       openDate: inv[h.ticker]?.open_date, daysHeld: inv[h.ticker]?.days_held }} />
@@ -334,7 +334,7 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
                 {capitulation.map((c: any) => (
                   <span key={c.symbol} className="inline-flex items-center gap-1"
                     title={`η-z ${(c.eta_z ?? 0).toFixed(2)} · 5d ${((c.ret_5d ?? 0) * 100).toFixed(1)}%`}>
-                    <PairBadge pair={c.symbol} strategy="aiss" compact
+                    <PairBadge pair={c.symbol} strategy={strategy} compact
                       direction={inv[c.symbol] ? 'long' : null}
                       details={inv[c.symbol] ? { weight: inv[c.symbol].weight,
                         shares: inv[c.symbol].shares, lastPrice: inv[c.symbol].last_price } : undefined} />

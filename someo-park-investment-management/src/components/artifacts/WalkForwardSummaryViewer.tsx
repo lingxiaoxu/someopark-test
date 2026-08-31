@@ -17,16 +17,16 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
   if (!data) return null;
 
   // ══ SR MODE: synthetic OOS stats ══
-  if ((strategy === 'ssrs' || strategy === 'aiss') && data.available !== false) {
+  if ((strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') && data.available !== false) {
     const sm = data.synthetic_metrics || {};
     return (
       <div className="flex flex-col h-full space-y-4">
         <div className="flex items-center justify-between shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">{strategy === 'aiss'
-            ? t('aiss.wfSummaryTitle', { folds: data.n_folds, subsectors: data.n_subsectors ?? 8, stocks: data.n_stocks ?? 0, params: data.n_param_sets })
+          <div className="text-sm font-medium text-[var(--text-primary)]">{(strategy === 'aiss' || strategy === 'aeus')
+            ? t(`${strategy}.wfSummaryTitle`, { folds: data.n_folds, subsectors: data.n_subsectors ?? (strategy === 'aeus' ? 10 : 8), stocks: data.n_stocks ?? 0, params: data.n_param_sets })
             : t('ssrs.wfSummaryTitle', { folds: data.n_folds, etfs: 11, params: data.n_param_sets })}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -106,7 +106,7 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('wfSummary.titleFull', { strategy: strategy.toUpperCase(), windows: data.n_windows || windows.length, pairs: data.n_pairs || '?', params: data.n_param_sets || '?' })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

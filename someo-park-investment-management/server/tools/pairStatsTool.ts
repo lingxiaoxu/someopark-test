@@ -16,7 +16,7 @@ function getWfDir(s: string) {
 export const pairStatsTool: AgentTool = {
   definition: {
     name: 'get_pair_stats',
-    description: `MRPT/MTFS: comprehensive pair stats. SSRS: sector ETF stats from inventory and daily report. AISS: individual stock stats (pass a ticker like "NVDA") from stock_holdings + daily report.
+    description: `MRPT/MTFS: comprehensive pair stats. SSRS: sector ETF stats from inventory and daily report. AISS/AEUS: individual stock stats (pass a ticker like "NVDA") from stock_holdings + daily report.
 - OOS performance (pnl, sharpe, max_dd, n_trades from walk-forward)
 - DSR selection history (how many WF windows this pair was selected)
 - Current inventory (in position, days held, entry prices)
@@ -24,8 +24,8 @@ export const pairStatsTool: AgentTool = {
     input_schema: {
       type: 'object',
       properties: {
-        pair: { type: 'string', description: 'e.g. "DG_MOS" / "DG/MOS" (MRPT/MTFS), a sector ETF (SSRS), or a stock ticker like "NVDA" (AISS)' },
-        strategy: { type: 'string', enum: ['mrpt', 'mtfs', 'ssrs', 'aiss'] }
+        pair: { type: 'string', description: 'e.g. "DG_MOS" / "DG/MOS" (MRPT/MTFS), a sector ETF (SSRS), or a stock ticker like "NVDA" (AISS/AEUS)' },
+        strategy: { type: 'string', enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'] }
       },
       required: ['pair', 'strategy']
     }
@@ -33,13 +33,16 @@ export const pairStatsTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ pair, strategy }) {
-    if (strategy === 'aiss') {
-      const inv = await readJsonFile(getBackendPath('qlib-main/semiconductor_strategy/inventory_aiss.json'))
+    if (strategy === 'aiss' || strategy === 'aeus') {
+      const stratDir = strategy === 'aeus'
+        ? 'qlib-main/electric_utilities_strategy'
+        : 'qlib-main/semiconductor_strategy'
+      const inv = await readJsonFile(getBackendPath(`${stratDir}/inventory_${strategy}.json`))
       const stock = inv?.stock_holdings?.[pair] || null
-      const signalDir = getBackendPath('qlib-main/semiconductor_strategy/trading_signals')
+      const signalDir = getBackendPath(`${stratDir}/trading_signals`)
       let latestReport = null
       try {
-        const reportFile = await findLatestFile(signalDir, 'aiss_daily_report_*.json')
+        const reportFile = await findLatestFile(signalDir, `${strategy}_daily_report_*.json`)
         latestReport = await readJsonFile(reportFile)
       } catch {}
       const subsector = stock?.subsectors?.[0] ?? null

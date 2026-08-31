@@ -140,11 +140,11 @@ function SsrsSnapshotDetail({ data }: { data: any }) {
   );
 }
 
-// AISS snapshot: stock-level grouped by subsector (subsector = grouping label only)
-// ══ AISS subsector card: header = subsector (action/weight/total PnL);
+// AISS/AEUS snapshot: stock-level grouped by subsector (subsector = grouping label only)
+// ══ AISS/AEUS subsector card: header = subsector (action/weight/total PnL);
 //    each STOCK is a SectorDetail-style row with its own cost basis / price /
 //    entry / days held / PnL (all stock-level). ══
-const AissStockRow: React.FC<{ s: any; asOf?: string }> = ({ s, asOf }) => {
+const AissStockRow: React.FC<{ s: any; asOf?: string; strategy?: string }> = ({ s, asOf, strategy = 'aiss' }) => {
   const { t } = useTranslation();
   const pnlPerShare = (s.last_price || 0) - (s.cost_basis || 0);
   const totalPnl = pnlPerShare * (s.shares || 0);
@@ -153,7 +153,7 @@ const AissStockRow: React.FC<{ s: any; asOf?: string }> = ({ s, asOf }) => {
   return (
     <div className="bg-[var(--bg-primary)] rounded-md p-2 space-y-1.5 border border-[var(--border-subtle)]">
       <div className="flex items-center justify-between">
-        <PairBadge pair={s.ticker} direction="long" strategy="aiss" compact
+        <PairBadge pair={s.ticker} direction="long" strategy={strategy} compact
           details={{ weight: s.weight, shares: s.shares, costBasis: s.cost_basis, lastPrice: s.last_price, openDate: s.entry_date, daysHeld, unrealizedPnl: totalPnl, unrealizedPnlPct: pnlPct }} />
         <PnlBadge pnl={totalPnl} pct={pnlPct} />
       </div>
@@ -169,7 +169,7 @@ const AissStockRow: React.FC<{ s: any; asOf?: string }> = ({ s, asOf }) => {
   );
 };
 
-const AissSubsectorCard: React.FC<{ sub: string; holding: any; stocks: any[]; asOf?: string }> = ({ sub, holding, stocks, asOf }) => {
+const AissSubsectorCard: React.FC<{ sub: string; holding: any; stocks: any[]; asOf?: string; strategy?: string }> = ({ sub, holding, stocks, asOf, strategy = 'aiss' }) => {
   const { t } = useTranslation();
   const act = holding.action_today || 'HOLD';
   // subsector total PnL = sum of per-stock PnL
@@ -192,14 +192,14 @@ const AissSubsectorCard: React.FC<{ sub: string; holding: any; stocks: any[]; as
       </div>
       {/* each individual stock: full cost-basis / price / entry / days / PnL detail */}
       <div className="space-y-1.5">
-        {stocks.map((s: any) => <AissStockRow key={s.ticker} s={s} asOf={asOf} />)}
+        {stocks.map((s: any) => <AissStockRow key={s.ticker} s={s} asOf={asOf} strategy={strategy} />)}
       </div>
     </div>
   );
 };
 
-// ══ AISS Snapshot Expanded View (mirrors SSRS, stock-level inside subsector cards) ══
-function AissSnapshotDetail({ data }: { data: any }) {
+// ══ AISS/AEUS Snapshot Expanded View (mirrors SSRS, stock-level inside subsector cards) ══
+function AissSnapshotDetail({ data, strategy = 'aiss' }: { data: any; strategy?: string }) {
   const { t } = useTranslation();
   const holdings = data.holdings || {};                 // subsector → rich fields
   const view = data.stock_view || { subsectors: [] };
@@ -234,7 +234,7 @@ function AissSnapshotDetail({ data }: { data: any }) {
       {active
         .sort(([, a]: any, [, b]: any) => (b as any).weight - (a as any).weight)
         .map(([sub, h]: any) => (
-          <AissSubsectorCard key={sub} sub={sub} holding={h} stocks={stocksBySub[sub] || []} asOf={data.as_of} />
+          <AissSubsectorCard key={sub} sub={sub} holding={h} stocks={stocksBySub[sub] || []} asOf={data.as_of} strategy={strategy} />
         ))}
       {active.length === 0 && (
         <div className="text-[10px] text-[var(--text-muted)] py-4 text-center">{t('common.noDataAvailable')}</div>
@@ -410,7 +410,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventoryHistory.title')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'].map(s => (
             <button key={s} onClick={() => { setStrategy(s); setExpandedFile(null); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>
@@ -431,7 +431,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                 <span className="text-xs font-mono text-[var(--text-primary)]">{h.timestamp?.replace('_', ' ')}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-xs text-[var(--text-secondary)]">{h.activePairs} {t((strategy === 'ssrs' || strategy === 'aiss') ? 'inventoryHistory.activeHoldings' : 'inventoryHistory.activePairs')}</span>
+                <span className="text-xs text-[var(--text-secondary)]">{h.activePairs} {t((strategy === 'ssrs' || strategy === 'aiss' || strategy === 'aeus') ? 'inventoryHistory.activeHoldings' : 'inventoryHistory.activePairs')}</span>
                 <span className="text-xs text-[var(--text-muted)]">{(h.size / 1024).toFixed(1)} KB</span>
               </div>
             </div>
@@ -440,8 +440,8 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                 {snapshotLoading ? (
                   <div className="text-[var(--text-muted)] text-center py-4 text-xs">{t('inventoryHistory.loadingSnapshot')}</div>
                 ) : snapshotData ? (
-                  strategy === 'aiss' ? (
-                    <AissSnapshotDetail data={snapshotData} />
+                  (strategy === 'aiss' || strategy === 'aeus') ? (
+                    <AissSnapshotDetail data={snapshotData} strategy={strategy} />
                   ) : strategy === 'ssrs' ? (
                     <SsrsSnapshotDetail data={snapshotData} />
                   ) : (

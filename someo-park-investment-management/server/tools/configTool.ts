@@ -15,7 +15,7 @@ const spConfig: Record<string, any> = {
 }
 
 const VALID_SETTINGS: Record<string, { type: string; options?: string[]; description: string }> = {
-  default_strategy: { type: 'string', options: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'both'], description: 'Default strategy for queries' },
+  default_strategy: { type: 'string', options: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus', 'both'], description: 'Default strategy for queries' },
   default_model: { type: 'string', description: 'Default LLM model ID' },
   language: { type: 'string', options: ['zh', 'en'], description: 'Response language' },
   agent_max_iterations: { type: 'number', description: 'Max agent loop iterations (1-20)' },

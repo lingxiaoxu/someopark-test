@@ -46,6 +46,13 @@ AISS_LIVE_START = '2026-06-01'
 # backtest param auto-selected (best total return); live segment (>= AISS_LIVE_START)
 # follows the actual traded param via inventory_aiss stock_holdings MTM
 
+# ── AEUS (AI Electric Utilities Strategy) — 2026-08-31 接线,完整镜像 AISS 五件套 ──
+AEUS_EQUITY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'electric_utilities_strategy', 'backtest_results')
+AEUS_INVENTORY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'electric_utilities_strategy', 'inventory_history')
+AEUS_LIVE_START = '2026-09-01'
+# 固定段自 go-live 当天即冻结(splice-freeze v2 从第一天生效,不重走 AISS 5 周弯路);
+# frozen_param = 实际交易 param(pure_supply_chain),vintage 见 splice_freeze.json
+
 
 def load_pairs_equity() -> tuple[pd.Series, pd.Series, float]:
     """Load MRPT and MTFS equity from strategy_performance.json (raw, no normalization).
@@ -299,6 +306,26 @@ def load_aiss_equity_backtest() -> pd.Series:
     return df[_best_backtest_column(df, 'AISS')].dropna()
 
 
+def load_aeus_equity_backtest() -> pd.Series:
+    """AEUS 固定回测段:钉死到冻结的 param + vintage CSV(可复现)。
+    无冻结元数据时回退 best-column(响亮告警,与 AISS 同款)。"""
+    fz = _load_splice_freeze('aeus')
+    if fz and fz.get('frozen_vintage_csv') and fz.get('frozen_param'):
+        vpath = os.path.join(AEUS_EQUITY_DIR, fz['frozen_vintage_csv'])
+        if os.path.exists(vpath):
+            df = pd.read_csv(vpath, index_col=0, parse_dates=True)
+            if fz['frozen_param'] in df.columns:
+                return df[fz['frozen_param']].dropna()
+        print(f"  ⚠️  AEUS: 冻结 vintage/param 不可用({fz.get('frozen_vintage_csv')}/"
+              f"{fz.get('frozen_param')})— 用冻结值兜底")
+    files = sorted(glob.glob(os.path.join(AEUS_EQUITY_DIR, 'aeus_batch_equity_*.csv')))
+    if not files:
+        sys.exit('[ERROR] No aeus_batch_equity CSV found')
+    print('  ⚠️  AEUS: 无 splice-freeze 元数据 — 回退 best-column(不可复现!)')
+    df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
+    return df[_best_backtest_column(df, 'AEUS')].dropna()
+
+
 # Separate Polygon parquet store for SSRS sector ETFs (kept OUT of the AISS store
 # so the two universes don't mix). AISS stocks + benchmarks use the default store.
 SR_POLYGON_STORE = os.path.join(BASE_DIR, 'price_data', 'sector_etfs', 'polygon')
@@ -331,7 +358,8 @@ def _polygon_fallback_alert(label, reason):
 
 def _load_account_equity(strategy: str) -> pd.Series:
     """portfolio_ledger 账户每日 equity 序列（真实 cash/分红/费用全含）。"""
-    dirs = {'aiss': 'semiconductor_strategy', 'ssrs': 'sector_rotation'}
+    dirs = {'aiss': 'semiconductor_strategy', 'ssrs': 'sector_rotation',
+            'aeus': 'electric_utilities_strategy'}
     hd = os.path.join(BASE_DIR, 'qlib-main', dirs[strategy], 'account_history')
     out = {}
     for fp in sorted(glob.glob(os.path.join(hd, f'account_{strategy}_*.json'))):
@@ -386,6 +414,37 @@ def load_aiss_equity_live(backtest_normalized: pd.Series,
         backtest_normalized=backtest_normalized,
         trading_days=trading_days,
         label='aiss',
+    )
+
+
+def _aeus_price_loader(tickers, start, end):
+    """AEUS live 段取价:elec_strategy store(与 AISS 的 _polygon_price_loader 同构)。"""
+    qlib_dir = os.path.join(BASE_DIR, 'qlib-main')
+    if qlib_dir not in sys.path:
+        sys.path.insert(0, qlib_dir)
+    from electric_utilities_strategy.data import aeus_fetch_prices as _fp
+    return _fp.load_prices_wide(list(tickers), start=start, end=end, field='AdjClose')
+
+
+def load_aeus_equity_live(backtest_normalized: pd.Series,
+                          trading_days: pd.DatetimeIndex) -> pd.Series:
+    """AEUS live equity:优先 portfolio_ledger 账户;无账本时回退 inventory-MTM。"""
+    acct = _load_account_equity('aeus')
+    if len(acct):
+        s = _chain_account_live(acct, AEUS_LIVE_START, backtest_normalized, 'aeus')
+        if len(s):
+            print(f'  aeus: live via LEDGER account equity ({len(s)} days, '
+                  f'book ${acct.iloc[-1]:,.0f})')
+            return s
+    return _load_live_equity_from_inventory(
+        inv_dir=AEUS_INVENTORY_DIR,
+        inv_prefix='inventory_aeus',
+        holdings_key='stock_holdings',
+        price_loader=lambda tk, st, en, prices_dir=None: _aeus_price_loader(tk, st, en),
+        live_start=AEUS_LIVE_START,
+        backtest_normalized=backtest_normalized,
+        trading_days=trading_days,
+        label='aeus',
     )
 
 
@@ -513,25 +572,55 @@ def main():
     aiss.index = pd.DatetimeIndex(aiss.index)
     print(f'  AISS total: {len(aiss)} days')
 
+    # 3b. AEUS (backtest + live), normalized to combined_start — 镜像 AISS 段
+    aeus_bt = load_aeus_equity_backtest()
+    aeus_bt_from_inception = aeus_bt[aeus_bt.index >= inception_ts]
+    aeus_scale = combined_start / float(aeus_bt_from_inception.iloc[0])
+    aeus_bt_portion = aeus_bt_from_inception[aeus_bt_from_inception.index < pd.Timestamp(AEUS_LIVE_START)]
+    aeus_bt_normalized = (aeus_bt_portion * aeus_scale).round(2)
+    aeus_bt_normalized = _freeze_backtest_segment(aeus_bt_normalized, 'aeus')
+    aeus_bt_normalized.name = 'aeus'
+    print(f'  AEUS backtest: {len(aeus_bt_normalized)} days, scale={aeus_scale:.6f}, '
+          f'start=${aeus_bt_normalized.iloc[0]:,.0f} end=${aeus_bt_normalized.iloc[-1]:,.0f}')
+    aeus_live = load_aeus_equity_live(aeus_bt_normalized, mrpt.index)
+    if len(aeus_live) > 0:
+        print(f'  AEUS live: {len(aeus_live)} days, '
+              f'start=${aeus_live.iloc[0]:,.0f} end=${aeus_live.iloc[-1]:,.0f}')
+        aeus = pd.concat([aeus_bt_normalized, aeus_live])
+    else:
+        aeus = aeus_bt_normalized
+        print('  AEUS live: no live data yet')
+    aeus.index = pd.DatetimeIndex(aeus.index)
+    print(f'  AEUS total: {len(aeus)} days')
+
     # 4. BDC Private Credit (from private_credit_bdc_performance.json)
     bdc = load_bdc_equity()
     print(f'  BDC: {len(bdc)} days, start=${bdc.iloc[0]:,.0f} end=${bdc.iloc[-1]:,.0f}')
 
     # 5. Benchmarks (SPY, SMH, SOXX, MAGS) — buy-and-hold, normalized to combined_start.
     #   SPY = broad market; SMH/SOXX = semis (cap-weighted vs equal-ish); MAGS = Mag-7.
-    BENCHMARK_TICKERS = ('SPY', 'SMH', 'SOXX', 'MAGS')
+    BENCHMARK_TICKERS = ('SPY', 'SMH', 'SOXX', 'MAGS', 'XLU', 'GRID')
     benchmarks = {}
     bm_end = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
-    # Prefer Polygon (all four are in the AISS store) so benchmarks are sourced the
-    # same way as AISS/SSRS; yfinance fallback per ticker with a loud alert.
+    # Prefer Polygon so benchmarks are sourced the same way as the strategies.
+    # 2026-08-31 分店取数:SPY/SMH/SOXX/MAGS 在 AISS semi store;XLU/GRID 在 AEUS
+    # elec store —— 各取各店,loader 的"缺票自动补抓"才不会把对方的票抓进自家店
+    # (半导体票混入 elec store 的事故 D2 已发生过一次,这里是同型风险)。
+    _SEMI_BMS = [b for b in BENCHMARK_TICKERS if b not in ('XLU', 'GRID')]
+    _ELEC_BMS = [b for b in BENCHMARK_TICKERS if b in ('XLU', 'GRID')]
     bm_prices = None
     try:
-        bm_prices = _polygon_price_loader(list(BENCHMARK_TICKERS), inception_date, bm_end)
+        bm_prices = _polygon_price_loader(_SEMI_BMS, inception_date, bm_end)
+        if _ELEC_BMS:
+            _elec_bm = _aeus_price_loader(_ELEC_BMS, inception_date, bm_end)
+            if _elec_bm is not None and not _elec_bm.empty:
+                bm_prices = (_elec_bm if bm_prices is None or bm_prices.empty
+                             else bm_prices.join(_elec_bm, how='outer'))
         if bm_prices is None or bm_prices.empty:
             _polygon_fallback_alert('benchmarks', 'returned no data')
             bm_prices = None
         else:
-            print('  benchmarks: prices via Polygon store')
+            print('  benchmarks: prices via Polygon stores (semi + elec)')
     except Exception as e:
         _polygon_fallback_alert('benchmarks', repr(e))
         bm_prices = None
@@ -557,11 +646,12 @@ def main():
             print(f'  [WARN] {ticker} download failed: {e}')
 
     # 6. Merge on common dates
-    df = pd.DataFrame({'mrpt': mrpt, 'mtfs': mtfs, 'sr': sr, 'aiss': aiss, 'bdc': bdc})
+    df = pd.DataFrame({'mrpt': mrpt, 'mtfs': mtfs, 'sr': sr, 'aiss': aiss, 'aeus': aeus, 'bdc': bdc})
     for bm_key, bm_eq in benchmarks.items():
         df[bm_key] = bm_eq
     df['sr'] = df['sr'].ffill()
     df['aiss'] = df['aiss'].ffill()
+    df['aeus'] = df['aeus'].ffill()
     df['bdc'] = df['bdc'].ffill()
     for bm_key in benchmarks:
         df[bm_key] = df[bm_key].ffill()
@@ -570,10 +660,10 @@ def main():
     print(f'\n  Merged: {len(df)} trading days ({df.index[0].date()} -> {df.index[-1].date()})')
 
     # 6. Compute combined (4 AI strategies) and master (all incl BDC)
-    df['combined'] = df['mrpt'] + df['mtfs'] + df['sr'] + df['aiss']
+    df['combined'] = df['mrpt'] + df['mtfs'] + df['sr'] + df['aiss'] + df['aeus']
     df['master'] = df['combined'] + df['bdc']
 
-    components = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'combined', 'master']
+    components = ['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'bdc', 'combined', 'master']
     records = []
     peaks = {c: float(df[c].iloc[0]) for c in components}
 

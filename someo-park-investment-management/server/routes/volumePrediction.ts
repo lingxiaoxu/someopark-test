@@ -14,7 +14,7 @@ const router = Router();
 
 // advice 文件名前缀:pairs 族带 pairs_ 前缀,qlib 族不带
 const ADVICE_PREFIX: Record<string, string> = {
-  mrpt: 'pairs_mrpt', mtfs: 'pairs_mtfs', aiss: 'aiss', ssrs: 'ssrs',
+  mrpt: 'pairs_mrpt', mtfs: 'pairs_mtfs', aiss: 'aiss', ssrs: 'ssrs', aeus: 'aeus',
 };
 
 function latestAdvice(strategy: string): any | null {
@@ -59,6 +59,7 @@ const INV_PATH: Record<string, string> = {
   mtfs: 'inventory_mtfs.json',
   ssrs: path.join('qlib-main', 'sector_rotation', 'inventory_sector_rotation.json'),
   aiss: path.join('qlib-main', 'semiconductor_strategy', 'inventory_aiss.json'),
+  aeus: path.join('qlib-main', 'electric_utilities_strategy', 'inventory_aeus.json'),
 };
 
 const mapPairEntry = (v: any) => ({

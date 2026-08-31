@@ -17,6 +17,8 @@ const RISK_SOURCES: Record<string, { dir: string; re: RegExp }> = {
           re: /^risk_report_(\d{8})\.pdf$/ },
   aiss: { dir: 'qlib-main/semiconductor_strategy/trading_signals/risk_management',
           re: /^risk_report_(\d{8})\.pdf$/ },
+  aeus: { dir: 'qlib-main/electric_utilities_strategy/trading_signals/risk_management',
+          re: /^risk_report_(\d{8})\.pdf$/ },
 };
 const riskSource = (strategy?: any) =>
   RISK_SOURCES[typeof strategy === 'string' ? strategy : 'mrpt'] || RISK_SOURCES.mrpt;

@@ -103,7 +103,7 @@ done
 
 # ── 3. 写入活动检查（两道：进程名 + 实证写入痕迹）─────────────────────────
 # mlruns 由 qlib 回测 / pipeline / VolumePrediction 等任务写入，模式与模板一致。
-BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
+BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|AEUSBatchRun|aeus_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
 BUSY=$(ps aux | grep -E "$BUSY_PATTERNS" | grep -v grep \
        | grep -v "prediction_market_macro" | grep -v "$(basename "$0")" || true)
 if [[ -n "$BUSY" ]]; then

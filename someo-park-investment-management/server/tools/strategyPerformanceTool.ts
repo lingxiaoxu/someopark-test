@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export const strategyPerformanceTool: AgentTool = {
   definition: {
     name: 'get_strategy_performance',
-    description: 'Get daily performance time series across ALL strategies. Each row is keyed by `date` with per-strategy fields *_equity / *_pnl / *_dd for: mrpt (MRPT), mtfs (MTFS), sr (SSRS sector rotation), aiss (AISS semiconductor), bdc (BDC private-credit look-through). Also combined_* (= MRPT+MTFS+SSRS+AISS) and master_* (= all incl. BDC), plus benchmark equity spy_equity / smh_equity / soxx_equity / mags_equity. Report on all strategies present, not just MRPT/MTFS. Optionally filter by date range or tail.',
+    description: 'Get daily performance time series across ALL strategies. Each row is keyed by `date` with per-strategy fields *_equity / *_pnl / *_dd for: mrpt (MRPT), mtfs (MTFS), sr (SSRS sector rotation), aiss (AISS semiconductor), aeus (AEUS electric utilities), bdc (BDC private-credit look-through). Also combined_* (= MRPT+MTFS+SSRS+AISS) and master_* (= all incl. BDC), plus benchmark equity spy_equity / smh_equity / soxx_equity / mags_equity / xlu_equity / grid_equity. Report on all strategies present, not just MRPT/MTFS. Optionally filter by date range or tail.',
     input_schema: {
       type: 'object',
       properties: {

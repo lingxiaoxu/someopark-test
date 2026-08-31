@@ -445,7 +445,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
         _ph = ",".join("?" * len(_UPCOMING))
         _q = ("SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json "
               f"FROM fixture WHERE league_id=? AND season=? AND status_short IN ({_ph}) "
-              "AND kickoff_ts IS NOT NULL AND kickoff_ts >= datetime('now', '-3 hours') ")
+              "AND kickoff_ts IS NOT NULL AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-3 hours') ")
         _args: list = [comp.api_football_id, comp.season, *_UPCOMING]
         if horizon_hours:
             # A horizon keeps the 60-second live loop off fixtures whose quotes cannot
@@ -453,7 +453,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
             # out) against the venues, which took 188s — so a "60s" loop actually ran
             # every 416s during a match window, and nothing said so. The daily refresh
             # passes None and still prices the whole calendar.
-            _q += "AND kickoff_ts <= datetime('now', ?) "
+            _q += "AND kickoff_ts <= strftime('%Y-%m-%dT%H:%M:%S','now', ?) "
             _args.append(f"+{horizon_hours} hours")
         _q += "ORDER BY kickoff_ts LIMIT ?"
         _args.append(per_league_limit)

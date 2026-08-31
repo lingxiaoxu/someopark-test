@@ -15,14 +15,14 @@ function getWfDir(strategy: string): string {
 export const equityCurveTool: AgentTool = {
   definition: {
     name: 'get_equity_curve',
-    description: 'Get OOS equity curve time series for a strategy (MRPT/MTFS/SSRS). Returns array of {date, equity, daily_return}. SSRS returns synthetic metrics from walk-forward folds. Can be large — use tail to get recent data.',
+    description: 'Get OOS equity curve time series for a strategy (MRPT/MTFS/SSRS). Returns array of {date, equity, daily_return}. SSRS/AISS/AEUS return synthetic metrics from walk-forward folds. Can be large — use tail to get recent data.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
-          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", "aiss", or "aeus"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus']
         },
         tail: {
           type: 'number',
@@ -44,6 +44,11 @@ export const equityCurveTool: AgentTool = {
       const filePath = getBackendPath('qlib-main/semiconductor_strategy/backtest_results/wf_fold_detail.json')
       const data = await readJsonFile(filePath)
       return { strategy: 'aiss', synthetic_metrics: data.synthetic_metrics, n_folds: data.n_folds, mean_wfe: data.mean_wfe }
+    }
+    if (strategy === 'aeus') {
+      const filePath = getBackendPath('qlib-main/electric_utilities_strategy/backtest_results/wf_fold_detail.json')
+      const data = await readJsonFile(filePath)
+      return { strategy: 'aeus', synthetic_metrics: data.synthetic_metrics, n_folds: data.n_folds, mean_wfe: data.mean_wfe }
     }
     const dir = getWfDir(strategy)
     const filePath = await findLatestFile(dir, 'oos_equity_curve_*.csv')

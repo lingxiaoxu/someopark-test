@@ -273,7 +273,7 @@ export default function ChatArea({
   const [errorMessage, setErrorMessage] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [currentStanseAgent, setCurrentStanseAgent] = useState<DeepPartial<StanseAgentSchema> | null>(null)
-  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs' | 'ssrs' | 'aiss'>('mrpt')
+  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs' | 'ssrs' | 'aiss' | 'aeus'>('mrpt')
   // Gate all artifact/chat interactions behind login
   const guardedSetArtifact = useCallback((a: any) => {
     if (!session) { onSignInClick?.(); return }
@@ -304,13 +304,15 @@ export default function ChatArea({
   const { data: mtfsInv } = useApi(() => getInventory('mtfs'), [])
   const { data: srInv } = useApi(() => getInventory('ssrs'), [])
   const { data: aissInv } = useApi(() => getInventory('aiss'), [])
+  const { data: aeusInv } = useApi(() => getInventory('aeus'), [])
   const currentInv = selectedStrategy === 'ssrs' ? srInv
     : selectedStrategy === 'aiss' ? aissInv
+    : selectedStrategy === 'aeus' ? aeusInv
     : (selectedStrategy === 'mrpt' ? mrptInv : mtfsInv)
   const activePairs = selectedStrategy === 'ssrs'
     ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { ...h, direction: 'long' }]) : [])
-    : selectedStrategy === 'aiss'
-    // AISS: show tradable individual stocks (stock_holdings), NOT subsectors
+    : (selectedStrategy === 'aiss' || selectedStrategy === 'aeus')
+    // AISS/AEUS: show tradable individual stocks (stock_holdings), NOT subsectors
     ? (currentInv ? Object.entries(currentInv.stock_holdings || {}).map(([ticker, h]: any) => [ticker, { direction: 'long', weight: (h as any).portfolio_weight, shares: (h as any).shares, last_price: (h as any).last_price, cost_basis: (h as any).cost_basis, entry_date: (h as any).entry_date, days_held: (h as any).days_held, subsector: (h as any).subsectors?.[0] }]) : [])
     : (currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : [])
 
@@ -843,10 +845,10 @@ export default function ChatArea({
                 <div style={{ position: 'absolute', bottom: -2, left: -2, width: 6, height: 6, background: '#111' }} />
                 <div style={{ position: 'absolute', bottom: -2, right: -2, width: 6, height: 6, background: '#111' }} />
                 <div className="flex items-center justify-between mb-3">
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{(selectedStrategy === 'ssrs' || selectedStrategy === 'aiss') ? t('chat.activePositions') : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{(selectedStrategy === 'ssrs' || selectedStrategy === 'aiss' || selectedStrategy === 'aeus') ? t('chat.activePositions') : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
                   {/* Strategy toggle */}
                   <div className="flex overflow-hidden" style={{ border: '2px solid #111' }}>
-                    {(['mrpt', 'mtfs', 'ssrs', 'aiss'] as const).map((s, i) => (
+                    {(['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus'] as const).map((s, i) => (
                       <button
                         key={s}
                         onClick={() => setSelectedStrategy(s)}
@@ -875,7 +877,7 @@ export default function ChatArea({
                     {activePairs.map(([key, pos]: any) => (
                       <span key={key}>
                         <PairBadge pair={key} direction={pos.direction} strategy={selectedStrategy}
-                          details={selectedStrategy === 'aiss' ? {
+                          details={(selectedStrategy === 'aiss' || selectedStrategy === 'aeus') ? {
                             weight: pos.weight, shares: pos.shares, costBasis: pos.cost_basis,
                             lastPrice: pos.last_price, openDate: pos.entry_date, daysHeld: pos.days_held,
                             unrealizedPnl: pos.shares && pos.last_price && pos.cost_basis ? (pos.last_price - pos.cost_basis) * pos.shares : undefined,

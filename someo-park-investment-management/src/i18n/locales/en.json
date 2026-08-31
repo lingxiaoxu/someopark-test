@@ -7,7 +7,17 @@
     "foundry": "Foundry",
     "analog_defense": "Analog / Defensive",
     "logic_cpu": "Logic / CPU",
-    "rf_edge": "RF / Edge"
+    "rf_edge": "RF / Edge",
+    "nuclear_fuel": "Nuclear & Uranium Fuel",
+    "gas_midstream": "Natural Gas Midstream",
+    "grid_equipment": "Grid Equipment & Transformers",
+    "grid_epc": "Grid Construction & EPC",
+    "ipp_wholesale": "Independent Power Producers",
+    "regulated_mega": "Regulated Mega Utilities",
+    "regional_utility": "Regional Utilities",
+    "dc_power_cooling": "Datacenter Power & Cooling",
+    "renewables_storage": "Utility-Scale Renewables & Storage",
+    "water_cooling": "Water Utilities & Cooling"
   },
   "artifactTitles": {
     "equityCurve": "OOS Equity Curve",
@@ -129,7 +139,8 @@
     "daysHeld": "Days Held",
     "paramSet": "Param Set",
     "zScoreEntry": "Z-Score at Entry",
-    "wfSource": "WF Source"
+    "wfSource": "WF Source",
+    "noHoldings": "No holdings yet"
   },
   "inventoryHistory": {
     "title": "Inventory History Snapshots",
@@ -1149,6 +1160,18 @@
     "signalsTitle": "Trading Signals (AISS)",
     "holdingsTitle": "AISS Holdings — stock level",
     "wfSummaryTitle": "Walk-Forward Summary — AISS ({{folds}} Folds × {{subsectors}} Subsectors / {{stocks}} Semiconductor Stocks × {{params}} Param Sets)"
+  },
+  "aeus": {
+    "stocksTab": "Electric Utilities Stocks ({{count}})",
+    "colStock": "Stock",
+    "colSubsector": "Subsector",
+    "colLastPrice": "Last Price",
+    "colMarketValue": "Market Value",
+    "colValue": "Value",
+    "subsectorLabel": "subsector",
+    "signalsTitle": "Trading Signals (AEUS)",
+    "holdingsTitle": "AEUS Holdings — stock level",
+    "wfSummaryTitle": "Walk-Forward Summary — AEUS ({{folds}} Folds × {{subsectors}} Subsectors / {{stocks}} Electric Utilities Stocks × {{params}} Param Sets)"
   },
   "macro": {
     "board": "Macro Board",

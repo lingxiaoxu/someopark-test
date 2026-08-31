@@ -15,6 +15,7 @@ const PNL_DIRS: Record<string, string> = {
   mrpt: 'trading_signals/pnl_reports',                                   // MRPT/MTFS pairs
   ssrs: 'qlib-main/sector_rotation/trading_signals/pnl_reports',        // portfolio_ledger
   aiss: 'qlib-main/semiconductor_strategy/trading_signals/pnl_reports', // portfolio_ledger
+  aeus: 'qlib-main/electric_utilities_strategy/trading_signals/pnl_reports', // portfolio_ledger
 };
 const pnlDir = (strategy?: any): string =>
   PNL_DIRS[typeof strategy === 'string' ? strategy : 'mrpt'] || PNL_DIRS.mrpt;

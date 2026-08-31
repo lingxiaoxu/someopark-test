@@ -1,0 +1,361 @@
+# =============================================================================
+# AEUS — AI Electric Utilities Strategy Configuration
+# Mirror of AISS (semiconductor_strategy, cloned 2026-08-30) retargeted at the
+# AI-power value chain.  The strategy's tradeable "assets" are the 10 subsectors
+# (synthetic weighted baskets of 41 stocks); benchmarks are XLU / GRID / SPY.
+# Historical dates in inherited comments refer to the AISS lineage.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+data:
+  cache_dir: "../../price_data/elec_strategy/cache"       # macro pickle cache
+  price_dir: "../../price_data/elec_strategy/prices"      # 41 stocks + XLU/GRID/SPY (parquet)
+  industry_dir: "../../price_data/elec_strategy/industry" # EIA gen/price / backlog RPO / gas
+  company_dir: "../../price_data/elec_strategy/company"   # CapEx pulse / utility capex
+  altdata_dir: "../../price_data/elec_strategy/altdata"   # EIA/ERCOT/FRED alt series
+  macro_dir: "../../price_data/macro"                     # shared MacroStateStore (read-only)
+  price_source: "store"             # AEUS isolated parquet store (Polygon-backed)
+  price_start: "2016-01-01"         # well before backtest start for warm-up
+  price_end: null                   # null = today
+  macro_source: "fred"
+  fred_api_key_env: "FRED_API_KEY"
+
+# ---------------------------------------------------------------------------
+# External data sources (AEUS_PLAN §4.1/§4.3).  Keys live in the REPO-ROOT .env.
+# Fetchers hard-fail loudly when an enabled source has no key; a disabled
+# source's signals degrade to graceful-0 tilts (AISS convention).
+# ---------------------------------------------------------------------------
+external_sources:
+  eia:
+    enabled: true                   # EIA_API_KEY (root .env, shared with macro module)
+  ercot:
+    enabled: true                   # ERCOT_API_* (root .env; validated 2026-08-30)
+  pjm:
+    enabled: false                  # PJM_API_KEY pending approval email — code is
+                                    # written and wired; flip to true when the key
+                                    # lands in .env (AEUS_PLAN: 写代码不接线)
+  sec:
+    enabled: true                   # no key; AEUS_SEC_USER_AGENT optional override
+
+# ---------------------------------------------------------------------------
+# Universe (10 subsectors, 41 weighted stocks + 1 reserve each; assets = subsectors)
+# SINGLE SOURCE OF TRUTH = data/universe.py (SUBSECTORS/base_w/purity/STOCK_TIER).
+# This block mirrors it for reference and for consumers that read cfg only.
+# ---------------------------------------------------------------------------
+universe:
+  # The strategy's tradeable assets (basket names) — read by engine/signals as
+  # cfg["universe"]["etfs"] (key name kept for engine compatibility).
+  etfs:
+    - "nuclear_fuel"
+    - "gas_midstream"
+    - "grid_equipment"
+    - "grid_epc"
+    - "ipp_wholesale"
+    - "regulated_mega"
+    - "regional_utility"
+    - "dc_power_cooling"
+    - "renewables_storage"
+    - "water_cooling"
+  benchmark: "SPY"                    # broad-market benchmark for beta / info ratio
+  benchmarks: ["XLU", "GRID", "SPY"]  # XLU & GRID are the WIN hurdle (beat both)
+  benchmark_blend:                    # 50/50 daily-rebalanced blend = active-return
+    - {ticker: "XLU", weight: 0.50}   #   benchmark (AEUS_PLAN §2.2)
+    - {ticker: "GRID", weight: 0.50}
+  # members = [ticker, base_w] in basket order (first member anchors the basket);
+  # reserve carries 0% and is promoted only on accident (halt/delisting/outage).
+  subsectors:
+    nuclear_fuel:       {members: [["BWXT", 0.45], ["LEU", 0.20], ["UUUU", 0.15], ["OKLO", 0.10], ["SMR", 0.10]], reserve: "NXE"}
+    gas_midstream:      {members: [["KMI", 0.35], ["WMB", 0.30], ["OKE", 0.20], ["TRGP", 0.15]], reserve: "LNG"}
+    grid_equipment:     {members: [["ETN", 0.40], ["EMR", 0.25], ["GEV", 0.20], ["POWL", 0.15]], reserve: "VMI"}
+    grid_epc:           {members: [["PWR", 0.45], ["FIX", 0.25], ["STRL", 0.15], ["MYRG", 0.15]], reserve: "DY"}
+    ipp_wholesale:      {members: [["VST", 0.40], ["CEG", 0.30], ["NRG", 0.20], ["TLN", 0.10]], reserve: "ORA"}
+    regulated_mega:     {members: [["NEE", 0.35], ["SO", 0.25], ["DUK", 0.25], ["AEP", 0.15]], reserve: "D"}
+    regional_utility:   {members: [["AEE", 0.35], ["LNT", 0.25], ["OGE", 0.20], ["ATO", 0.20]], reserve: "BKH"}
+    dc_power_cooling:   {members: [["VRT", 0.45], ["TT", 0.25], ["CARR", 0.20], ["BE", 0.10]], reserve: "AOS"}
+    renewables_storage: {members: [["NXT", 0.40], ["FSLR", 0.25], ["FLNC", 0.20], ["ARRY", 0.15]], reserve: "SHLS"}
+    water_cooling:      {members: [["AWK", 0.40], ["WTRG", 0.30], ["AWR", 0.15], ["CWT", 0.15]], reserve: "YORW"}
+  min_history_months: 24            # non-anchor member needs this much history to enter
+  basket_base_value: 100.0
+  universe_start: "2019-01-01"
+
+# ---------------------------------------------------------------------------
+# Signals — AEUS 4-factor architecture (identical machinery to AISS)
+# ---------------------------------------------------------------------------
+signals:
+  signal_version: "v1"
+
+  # Must sum to 1.0
+  weights:
+    cs_momentum:   0.30   # cross-sectional 12-1m momentum of subsector baskets
+    supply_chain:  0.35   # knowledge-graph propagation score (core AEUS alpha)
+    capex_pulse:   0.25   # hyperscaler AI-CapEx pulse (MSFT/GOOGL/META/AMZN 3M z)
+    cycle_regime:  0.10   # VIX regime + CapEx regime tilt
+
+  cs_momentum:
+    lookback_months: 12
+    skip_months: 1
+    zscore_window: 36
+
+  supply_chain:
+    graph_version: "v2"           # v1 = hardcoded SUPPLY_CHAIN_GRAPH; v2 = graph_config below
+    use_external_macro: true      # use EIA/ERCOT/XBRL confirmation tilts when PIT-available
+    lag_decay: 0.0                # 0 = hard lag; >0 = exponential decay e^{-λk}
+    # ── V2 knowledge graph (AEUS_PLAN §3.2) ─────────────────────────────────
+    # CALIBRATED 2026-08-30 (D5): lags = IC-argmax on factor-residual returns;
+    # all 5 candidate edges kept (|IC| 0.16-0.21).  Prior graph preserved as the
+    # hardcoded V1 in signals/supply_chain.py; report at
+    # backtest_results/graph_calibration_report.json.
+    graph_config:
+      nodes:
+        power_demand_proxy:      {series: "EIA_RTO_DEMAND", transform: "weather_adj_yoy_z"}
+        power_price_proxy:       {series: "DHHNGSP",        transform: "z252"}
+        rate_env_proxy:          {series: "DGS10",          transform: "neg_yoy_z"}
+        industrial_demand_proxy: {series: "IPUTIL",         transform: "yoy_z"}
+      edges:
+        - {source: ai_capex_proxy, target: ipp_wholesale, weight: 1.0, lag_months: 12, desc: "PPA signings monetize fastest"}
+        - {source: ai_capex_proxy, target: dc_power_cooling, weight: 0.9, lag_months: 0, desc: "VRT power/cooling orders track DC builds"}
+        - {source: ai_capex_proxy, target: grid_equipment, weight: 0.8, lag_months: 0, desc: "transformer/switchgear orders lag"}
+        - {source: ai_capex_proxy, target: grid_epc, weight: 0.7, lag_months: 7, desc: "interconnect/substation construction"}
+        - {source: ai_capex_proxy, target: regulated_mega, weight: 0.6, lag_months: 1, desc: "load growth -> rate base (slowest)"}
+        - {source: ai_capex_proxy, target: nuclear_fuel, weight: 0.5, lag_months: 6, desc: "nuclear PPA / SMR orders"}
+        - {source: ai_capex_proxy, target: renewables_storage, weight: 0.5, lag_months: 0, desc: "green-compute pledges -> storage/solar"}
+        - {source: ai_capex_proxy, target: gas_midstream, weight: 0.5, lag_months: 5, desc: "DC-driven pipeline expansions"}
+        - {source: ai_capex_proxy, target: water_cooling, weight: 0.3, lag_months: 11, desc: "DC cooling-water demand (slow)"}
+        - {source: ipp_wholesale, target: nuclear_fuel, weight: 0.5, lag_months: 8, desc: "nuclear premium -> fuel chain"}
+        - {source: grid_equipment, target: grid_epc, weight: 0.6, lag_months: 0, desc: "equipment delivery precedes construction"}
+        - {source: regulated_mega, target: grid_equipment, weight: 0.5, lag_months: 4, desc: "utility capex cycle -> equipment orders"}
+        - {source: gas_midstream, target: ipp_wholesale, weight: 0.4, lag_months: 3, desc: "fuel availability -> gas-fleet output"}
+        - {source: power_demand_proxy, target: ipp_wholesale, weight: 0.8, lag_months: 0, desc: "structural demand -> merchant output"}
+        - {source: power_demand_proxy, target: regulated_mega, weight: 0.5, lag_months: 2, desc: "demand growth -> regulated volumes"}
+        - {source: power_demand_proxy, target: regional_utility, weight: 0.5, lag_months: 9, desc: "demand growth -> regional volumes"}
+        - {source: power_price_proxy, target: ipp_wholesale, weight: 0.7, lag_months: 1, desc: "power/gas price -> merchant margins"}
+        - {source: power_price_proxy, target: gas_midstream, weight: 0.7, lag_months: 0, desc: "gas price -> spreads & volumes"}
+        - {source: rate_env_proxy, target: regulated_mega, weight: 0.6, lag_months: 5, desc: "rates (negated) -> bond proxies"}
+        - {source: rate_env_proxy, target: regional_utility, weight: 0.7, lag_months: 5, desc: "rates (negated), higher small-cap beta"}
+        - {source: rate_env_proxy, target: water_cooling, weight: 0.7, lag_months: 6, desc: "rates (negated), most rate-sensitive"}
+        - {source: rate_env_proxy, target: renewables_storage, weight: 0.5, lag_months: 12, desc: "financing cost -> project IRRs"}
+        - {source: industrial_demand_proxy, target: regional_utility, weight: 0.5, lag_months: 9, desc: "industrial load -> retail volumes"}
+        - {source: power_price_proxy, target: regional_utility, weight: 0.4, lag_months: 8, desc: "power price -> regional retail margins (IC=+0.164)"}
+        - {source: grid_epc, target: regulated_mega, weight: 0.4, lag_months: 12, desc: "construction completion -> rate base (IC=+0.195)"}
+        - {source: industrial_demand_proxy, target: ipp_wholesale, weight: 0.4, lag_months: 2, desc: "industrial load -> merchant demand (IC=+0.169)"}
+        - {source: power_demand_proxy, target: gas_midstream, weight: 0.4, lag_months: 10, desc: "demand -> gas burn -> throughput (IC=+0.209)"}
+        - {source: ai_capex_proxy, target: regional_utility, weight: 0.3, lag_months: 11, desc: "secondary-market DC siting spillover (IC=+0.098)"}
+
+  capex_pulse:
+    tickers: ["MSFT", "GOOGL", "META", "AMZN"]   # shared upstream driver with AISS
+    lookback_months: 3
+    zscore_window: 24
+
+  # ── Intra-subsector purity tilt (AEUS_PLAN §2.5; AEUS extension over AISS) ──
+  # w_i ∝ eff_w_i × (1 + κ × purity_i × g_s(t)), renormalised; per-name tilt
+  # clipped at ±clip.  purity_i lives in data/universe.py (single source of
+  # truth).  κ = 0.0 here is the BYTE-IDENTITY anchor (pure AISS behaviour);
+  # Group N param sets probe 0.3/0.5 and walk-forward decides production κ.
+  purity_tilt:
+    kappa: 0.0
+    clip: 0.40
+
+  # ── V1 / V2 signal versions ──────────────────────────────────────────────
+  # V1 (default, production): monthly rebalance, 12-1 momentum.
+  # V2: semi-monthly rebalance (1st trading day + ~mid-month) with the SAME
+  #   4-factor / 12-1 signal.  smart_select chooses V1 vs V2 from per-version
+  #   OOS history.  (AISS lineage note: faster momentum (6-0) was tested there
+  #   and HURT; V2 keeps 12-1.)
+  v2:
+    weights:
+      cs_momentum:   0.30
+      supply_chain:  0.35
+      capex_pulse:   0.25
+      cycle_regime:  0.10
+    cs_momentum:
+      lookback_months: 12
+      skip_months: 1
+      zscore_window: 36
+
+  # Regime conditioning (4-state machinery, thresholds inherited from AISS —
+  # Group D/H param sets + walk-forward retune them empirically, not by hand)
+  regime:
+    method: "rules"
+    vix_high_threshold: 25.0
+    vix_extreme_threshold: 32.0
+    hy_spread_high_bps: 450
+    yield_curve_inversion: -0.10
+    ism_expansion: 50.0
+    capex_strong_zscore: 1.0
+    capex_weak_zscore: -1.0
+
+    regime_weights:
+      risk_on:
+        cs_momentum: 1.1
+        supply_chain: 1.1
+        capex_pulse: 1.2
+        cycle_regime: 0.8
+      transition_up:
+        cs_momentum: 1.1
+        supply_chain: 1.1
+        capex_pulse: 1.1
+        cycle_regime: 0.9
+      transition_down:
+        cs_momentum: 0.8
+        supply_chain: 0.9
+        capex_pulse: 0.7
+        cycle_regime: 1.3
+      risk_off:
+        cs_momentum: 0.5
+        supply_chain: 0.5
+        capex_pulse: 0.3
+        cycle_regime: 1.8
+
+    # three defensive subsectors (AEUS_PLAN §2.4: regulated/regional/water get the
+    # RISK_OFF bonus — the analog_defense mechanism, now with three seats)
+    defensive_sectors: ["regulated_mega", "regional_utility", "water_cooling"]
+    defensive_bonus_risk_off: 0.40
+
+# ---------------------------------------------------------------------------
+# Portfolio (values inherited from AISS; Group B/G param sets retune empirically)
+# ---------------------------------------------------------------------------
+portfolio:
+  optimizer: "inv_vol"
+  cov:
+    method: "ledoit_wolf"
+    lookback_days: 252
+    min_periods: 63
+  constraints:
+    max_weight: 0.55               # concentrate in the winning subsector (beat XLU/GRID mandate)
+    min_weight: 0.00
+    max_cash: 0.50
+    beta_min: 0.40                 # allow defensive low-beta tilt
+    beta_max: 3.00                 # do not fight a high-beta book back toward 1.0
+
+  top_n_sectors: 3                 # high-conviction concentration (of 10 subsectors)
+  min_zscore: -0.30
+  weight_scheme: "rank"
+
+# ---------------------------------------------------------------------------
+# Rebalancing
+# ---------------------------------------------------------------------------
+rebalance:
+  frequency: "monthly"
+  rebalance_day: "first_trading_day"
+  zscore_change_threshold: 0.5
+  emergency_derisk_vix: 36.0       # only true crises
+  emergency_cash_pct: 0.45
+  max_monthly_turnover: 0.80
+
+# ---------------------------------------------------------------------------
+# Risk Management
+# ---------------------------------------------------------------------------
+risk:
+  vol_scaling:
+    enabled: true
+    target_vol_annual: 0.30        # inherited AISS start point; Group C sweeps 0.18-0.40
+    estimation_window: 20
+    scale_threshold: 1.5           # only scale down when realized > 1.5x historical
+    historical_window: 252
+  drawdown:
+    monthly_dd_alert: -0.10
+    cumulative_dd_halve: -0.25
+    cumulative_dd_recovery: -0.12
+  vix_progressive_derisk:
+    enabled: true
+    tiers:
+      - {vix_above: 28, cash_pct: 0.10}
+      - {vix_above: 32, cash_pct: 0.25}
+  # Event-risk overlay — DISABLED phase-1 (AEUS_PLAN §6C): the shared root
+  # EventRiskDetector reads the SEMICONDUCTOR universe file; the electric
+  # universe file + detector wiring is a C-level integration that touches
+  # files outside this directory and needs separate user approval.
+  # The AISS-validated mechanism is fully preserved below for that wiring.
+  event_derisk:
+    enabled: false
+    beta_threshold: 2.5
+    nfp_window_days: 2
+    bellwether_drop: -0.045
+    sell_frac: 0.5
+    beta_mode: bottomup
+
+# ---------------------------------------------------------------------------
+# Stop-loss (extreme events only)
+# ---------------------------------------------------------------------------
+stop_loss:
+  enabled: true
+  portfolio_circuit_breaker:
+    enabled: true
+    spy_3d_limit: -0.07
+  sector_collapse:
+    enabled: true
+    max_dd_from_entry: -0.15
+  trailing_stop:
+    enabled: true
+    max_dd_from_peak: -0.18
+  cooling_off_days: 10
+
+# ---------------------------------------------------------------------------
+# Portfolio record
+# ---------------------------------------------------------------------------
+portfolio_record:
+  leverage_ratio: 0.0
+  interest_rate: 0.05
+
+# ---------------------------------------------------------------------------
+# Risk Overlay (v2 only) — OFF, mirroring AISS's decision (gating caps the
+# high-beta exposure the strategy is built to capture)
+# ---------------------------------------------------------------------------
+risk_overlay:
+  enabled: false
+  entry_ma_short: 30
+  entry_ma_long: 100
+  exit_ma: 150
+  exit_max_dd: -0.15
+  market_ma_medium: 100
+  market_ma_long: 200
+  dd_cautious: -0.10
+  dd_defensive: -0.14
+  dd_crisis: -0.18
+
+# ---------------------------------------------------------------------------
+# Backtest
+# ---------------------------------------------------------------------------
+backtest:
+  start_date: "2019-01-01"
+  end_date: null
+  initial_capital: 1_000_000.0
+  is_years: 3
+  oos_months: 6
+  walk_forward:
+    enabled: false
+    step_months: 6
+
+# ---------------------------------------------------------------------------
+# Transaction Costs (AEUS_PLAN §2.3; SINGLE SOURCE OF TRUTH = data/universe.py
+# STOCK_TIER — these lists mirror it for reference only, zero code consumers)
+# ---------------------------------------------------------------------------
+costs:
+  tier_1_tickers: ["NEE", "SO", "DUK", "AEP", "VST", "CEG", "NRG", "ETN", "EMR", "GEV", "PWR", "VRT", "TT", "CARR", "FSLR", "KMI", "WMB", "OKE", "AWK"]  # 3 bps
+  tier_2_tickers: ["D", "AEE", "LNT", "ATO", "FIX", "BWXT", "NXT", "TLN", "STRL", "TRGP", "WTRG"]  # 5 bps
+  tier_3_tickers: ["OGE", "BKH", "POWL", "AZZ", "VMI", "MYRG", "DY", "LEU", "UUUU", "OKLO", "SMR", "NXE", "ORA", "FLNC", "ARRY", "SHLS", "BE", "AOS", "AWR", "CWT", "YORW", "LNG"]  # 8 bps
+  tier_1_cost_bps: 3
+  tier_2_cost_bps: 5
+  tier_3_cost_bps: 8
+  annual_fee_bps: 0                # individual stocks: no fund management fee
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+report:
+  output_dir: "report/output"
+  figsize: [14, 8]
+  dpi: 150
+  pdf_filename: "aeus_tearsheet.pdf"
+  strategy_color: "#1f77b4"
+  benchmark_color: "#ff7f0e"
+  ew_color: "#2ca02c"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level: "INFO"
+  log_dir: "electric_utilities_strategy/logs"

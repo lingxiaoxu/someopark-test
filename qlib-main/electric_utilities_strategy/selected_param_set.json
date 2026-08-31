@@ -1,0 +1,94 @@
+{
+  "param_set": "pure_supply_chain",
+  "signal_version": "v1",
+  "selection_method": "mcps_oos_filtered",
+  "selected_at": "2026-08-31",
+  "last_updated": "2026-08-31",
+  "mcps_oos_filtered": 2.0548,
+  "recent_sharpe_12m": 2.5613,
+  "full_period_sharpe": 1.6885,
+  "full_period_calmar": 1.2119,
+  "top_candidates": [
+    {
+      "name": "no_vix_derisk",
+      "version": "v1",
+      "composite": 0.4124,
+      "mcps_score": 2.1796
+    },
+    {
+      "name": "pure_supply_chain",
+      "version": "v1",
+      "composite": 0.2829,
+      "mcps_score": 2.125
+    },
+    {
+      "name": "quality_defensive",
+      "version": "v1",
+      "composite": 0.1872,
+      "mcps_score": 2.1695
+    },
+    {
+      "name": "semivol_24",
+      "version": "v1",
+      "composite": 0.0853,
+      "mcps_score": 2.1326
+    },
+    {
+      "name": "semivol_21",
+      "version": "v1",
+      "composite": 0.067,
+      "mcps_score": 2.1377
+    },
+    {
+      "name": "broad_5",
+      "version": "v1",
+      "composite": 0.0594,
+      "mcps_score": 2.3212
+    },
+    {
+      "name": "semivol_18",
+      "version": "v1",
+      "composite": 0.0427,
+      "mcps_score": 2.1418
+    },
+    {
+      "name": "opt_risk_parity",
+      "version": "v1",
+      "composite": -0.149,
+      "mcps_score": 2.0989
+    },
+    {
+      "name": "concentrated_2",
+      "version": "v1",
+      "composite": -0.2666,
+      "mcps_score": 2.1912
+    },
+    {
+      "name": "opt_equal_weight",
+      "version": "v1",
+      "composite": -0.7213,
+      "mcps_score": 2.0354
+    }
+  ],
+  "n_candidates": 42,
+  "n_oos_survivors": 42,
+  "oos_filter_applied": true,
+  "oos_mean_sharpe": 1.4001,
+  "oos_n_selected": 15,
+  "wf_mean_wfe": 1.7565,
+  "macro_data_days": 1924,
+  "switch_history": [],
+  "health": {
+    "days_since_switch": 2,
+    "current_rank": 2,
+    "anomaly_detected": false,
+    "_consecutive_best_days": 2,
+    "_prev_best_param": "no_vix_derisk"
+  },
+  "mcps_score": 2.125,
+  "composite_score": 0.2829,
+  "version_selector": {
+    "recommended": "v1",
+    "v1_confidence": 0.8
+  }
+}

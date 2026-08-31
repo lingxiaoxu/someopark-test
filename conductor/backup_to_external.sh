@@ -112,7 +112,7 @@ done
 #     注意排除 prediction_market_macro 的 walkforward：它同名但只写
 #     prediction_market_macro/data/macro.db，与本备份的两个目录无关，
 #     若不排除会导致备份被无谓阻塞（已实测其句柄不涉及这两个目录）。
-BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
+BUSY_PATTERNS='SectorRotationBatchRun|daily_backtest\.sh|SemiconductorBatchRun|aiss_batch|AEUSBatchRun|aeus_batch|DailySignal|VolumePrediction|pipeline_runner\.sh'
 BUSY=$(ps aux | grep -E "$BUSY_PATTERNS" | grep -v grep \
        | grep -v "prediction_market_macro" | grep -v "$(basename "$0")" || true)
 if [[ -n "$BUSY" ]]; then
