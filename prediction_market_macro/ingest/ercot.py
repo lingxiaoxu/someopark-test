@@ -277,3 +277,68 @@ def backfill(conn, days: int = 150, log=None) -> dict:
             n += cur.rowcount
     conn.commit()
     return {"days": len(out), "rows_inserted": n}
+
+
+def backfill_eia930(conn, start: str = "2019-01-01", log=None) -> dict:
+    """Deep history for the SAME quantities from EIA-930 (hourly grid monitor, daily
+    rollup): ERCO demand and net generation by fuel back to 2018, via the EIA key the
+    storage ingest already uses. This is the sample the ERCOT dashboards cannot give
+    (they accrue forward only) and the zip archives price at thousands of requests.
+
+    Metrics are source-tagged (`eia_*`) rather than merged into the dashboard names:
+    EIA-930 is net generation in MWh/day, the dashboards are average MW — mixing them
+    silently would manufacture a unit break at the seam.
+    """
+    import os
+    import urllib.parse
+    say = log or (lambda *_a, **_k: None)
+    conn.executescript(_SCHEMA)
+    key = os.environ.get("EIA_API_KEY")
+    if not key:
+        raise RuntimeError("EIA_API_KEY missing from env")
+    now = datetime.now(timezone.utc).isoformat()
+
+    def pull(route, extra):
+        rows, offset = [], 0
+        while True:
+            q = [("api_key", key), ("frequency", "daily"), ("data[0]", "value"),
+                 ("facets[respondent][]", "ERCO"), ("facets[timezone][]", "Central"),
+                 ("start", start), ("length", 5000), ("offset", offset)] + extra
+            url = (f"https://api.eia.gov/v2/electricity/rto/{route}/data/?"
+                   + urllib.parse.urlencode(q))
+            with urllib.request.urlopen(url, timeout=90) as r:
+                j = json.loads(r.read())["response"]
+            rows += j["data"]
+            offset += 5000
+            if offset >= int(j.get("total") or 0):
+                return rows
+
+    n = 0
+    fuels = {"NG": "eia_gas_gen_mwh", "WND": "eia_wind_gen_mwh",
+             "SUN": "eia_solar_gen_mwh", "COL": "eia_coal_gen_mwh",
+             "NUC": "eia_nuclear_gen_mwh"}
+    for ft, metric in fuels.items():
+        rows = pull("daily-fuel-type-data", [("facets[fueltype][]", ft)])
+        say(f"  {metric}: {len(rows)} rows")
+        for r in rows:
+            if r.get("value") is None:
+                continue
+            n += conn.execute(
+                "INSERT OR REPLACE INTO ercot_daily(date, metric, value, knowledge_time,"
+                " first_seen_ts) VALUES(?,?,?,?, COALESCE((SELECT first_seen_ts FROM"
+                " ercot_daily WHERE date=? AND metric=?), ?))",
+                (r["period"], metric, float(r["value"]), now,
+                 r["period"], metric, now)).rowcount
+    rows = pull("daily-region-data", [("facets[type][]", "D")])
+    say(f"  eia_demand_mwh: {len(rows)} rows")
+    for r in rows:
+        if r.get("value") is None:
+            continue
+        n += conn.execute(
+            "INSERT OR REPLACE INTO ercot_daily(date, metric, value, knowledge_time,"
+            " first_seen_ts) VALUES(?,?,?,?, COALESCE((SELECT first_seen_ts FROM"
+            " ercot_daily WHERE date=? AND metric=?), ?))",
+            (r["period"], "eia_demand_mwh", float(r["value"]), now,
+             r["period"], "eia_demand_mwh", now)).rowcount
+    conn.commit()
+    return {"rows": n}
