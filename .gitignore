@@ -22,6 +22,7 @@ chronos-2-finetuned/
 qlib-main/*
 !qlib-main/sector_rotation
 !qlib-main/semiconductor_strategy
+!qlib-main/electric_utilities_strategy
 !qlib-main/portfolio_ledger
 !qlib-main/qlib_run_conda_export.txt
 !qlib-main/qlib_run_env.yml
@@ -92,6 +93,14 @@ qlib-main/semiconductor_strategy/inventory_history/
 qlib-main/semiconductor_strategy/trading_signals/
 qlib-main/semiconductor_strategy/pipeline_state/
 qlib-main/semiconductor_strategy/notebooks/
+# AEUS — 与 semiconductor_strategy 完全同构的处理(2026-08-31)
+qlib-main/electric_utilities_strategy/report/output/
+qlib-main/electric_utilities_strategy/logs/
+qlib-main/electric_utilities_strategy/backtest_results/
+qlib-main/electric_utilities_strategy/inventory_history/
+qlib-main/electric_utilities_strategy/trading_signals/
+qlib-main/electric_utilities_strategy/pipeline_state/
+qlib-main/electric_utilities_strategy/notebooks/
 
 # Private Credit module — now tracked in someopark-test (de-nested 2026-06). Its CODE is
 # committed here; generated data + secrets are excluded by its own
@@ -151,6 +160,11 @@ prediction_market_soccer/docs/REMOTE_DATA_ACCESS.md
 # 不入库。_pittest 是一次性试跑后缀,代码零引用。
 prediction_market_soccer/data/priors/clubs_*_pit.json
 prediction_market_soccer/data/priors/clubs_*_pittest.json
+# 日期戳版 PIT 先验(model/pit_strength 落盘缓存,建一次永复用)、其构建指纹、
+# 以及按日缓存的 ClubElo CSV —— 全部可从公开源再生,不入公开仓库。
+prediction_market_soccer/data/priors/clubs_*_pit_*.json
+prediction_market_soccer/data/priors/.pit_built_*.json
+prediction_market_soccer/data/priors/clubelo_*.csv
 
 # 根目录一次性分析脚本(读 /tmp、含硬编码绝对路径),非系统组成部分
 /econ.py
