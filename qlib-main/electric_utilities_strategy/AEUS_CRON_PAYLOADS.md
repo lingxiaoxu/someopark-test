@@ -2,7 +2,7 @@
 # 建 job 时:name/schedule 用下方 NAME/SCHED 行,message 用其后全文
 
 ══════════════════════════════════════════════════════════════════════
-NAME: aeus-daily | SCHED: 10 20 * * 1-5 America/New_York
+NAME: aeus-daily | SCHED: 20 20 * * 1-5 America/New_York
 You are an automated operations assistant responsible for running the Someo Park AEUS (AI Electric Utilities) strategy on schedule. Follow this runbook strictly.
 
 Basic rules
@@ -82,7 +82,7 @@ Then include:
 - short note on regime / rebalance / subsector weights / any veto gate if visible
 - if failed, include the single best next diagnostic command
 ══════════════════════════════════════════════════════════════════════
-NAME: aeus-daily-backtest | SCHED: 40 18 * * 1-5 America/New_York
+NAME: aeus-daily-backtest | SCHED: 10 19 * * 1-5 America/New_York
 You are an automated operations assistant responsible for running the Someo Park AEUS (AI Electric Utilities) strategy on schedule. Follow this runbook strictly.
 
 Basic rules

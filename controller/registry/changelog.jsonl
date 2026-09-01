@@ -3135,3 +3135,54 @@
 {"ts": "2026-08-29T13:43:26+00:00", "event": "build_master", "total": 231, "cusip_hit": 231, "placeholder": 0}
 {"ts": "2026-08-29T13:43:29+00:00", "event": "register_node", "spid": "SPPR062JQWL", "kind": "pair", "key": "mrpt|L:USG0450A1054|S:US4165151048", "display": "ACGL/HIG"}
 {"ts": "2026-08-29T13:43:29+00:00", "event": "register_node", "spid": "SPPRHZ7JECT", "kind": "pair", "key": "mtfs|L:US3030751057|S:US1011371077", "display": "FDS/BSX"}
+{"ts": "2026-09-01T14:13:20+00:00", "event": "register_security", "isin": "US0255371017", "ticker": "AEP", "cusip": "025537101"}
+{"ts": "2026-09-01T14:13:21+00:00", "event": "register_security", "isin": "US8318652091", "ticker": "AOS", "cusip": "831865209"}
+{"ts": "2026-09-01T14:13:21+00:00", "event": "register_security", "isin": "US04271T1007", "ticker": "ARRY", "cusip": "04271T100"}
+{"ts": "2026-09-01T14:13:21+00:00", "event": "register_security", "isin": "US0495601058", "ticker": "ATO", "cusip": "049560105"}
+{"ts": "2026-09-01T14:13:22+00:00", "event": "register_security", "isin": "US0298991011", "ticker": "AWR", "cusip": "029899101"}
+{"ts": "2026-09-01T14:13:22+00:00", "event": "register_security", "isin": "US0937121079", "ticker": "BE", "cusip": "093712107"}
+{"ts": "2026-09-01T14:13:22+00:00", "event": "register_security", "isin": "US0921131092", "ticker": "BKH", "cusip": "092113109"}
+{"ts": "2026-09-01T14:13:22+00:00", "event": "register_security", "isin": "US05605H1005", "ticker": "BWXT", "cusip": "05605H100"}
+{"ts": "2026-09-01T14:13:23+00:00", "event": "register_security", "isin": "US14448C1045", "ticker": "CARR", "cusip": "14448C104"}
+{"ts": "2026-09-01T14:13:23+00:00", "event": "register_security", "isin": "US21037T1097", "ticker": "CEG", "cusip": "21037T109"}
+{"ts": "2026-09-01T14:13:24+00:00", "event": "register_security", "isin": "US1924461023", "ticker": "CTSH", "cusip": "192446102"}
+{"ts": "2026-09-01T14:13:24+00:00", "event": "register_security", "isin": "US1307881029", "ticker": "CWT", "cusip": "130788102"}
+{"ts": "2026-09-01T14:13:25+00:00", "event": "register_security", "isin": "US2674751019", "ticker": "DY", "cusip": "267475101"}
+{"ts": "2026-09-01T14:13:25+00:00", "event": "register_security", "isin": "US2910111044", "ticker": "EMR", "cusip": "291011104"}
+{"ts": "2026-09-01T14:13:25+00:00", "event": "register_security", "isin": "USG291831034", "ticker": "ETN", "cusip": "G29183103"}
+{"ts": "2026-09-01T14:13:26+00:00", "event": "register_security", "isin": "US1999081045", "ticker": "FIX", "cusip": "199908104"}
+{"ts": "2026-09-01T14:13:26+00:00", "event": "register_security", "isin": "US34379V1035", "ticker": "FLNC", "cusip": "34379V103"}
+{"ts": "2026-09-01T14:13:27+00:00", "event": "register_security", "isin": "US36828A1016", "ticker": "GEV", "cusip": "36828A101"}
+{"ts": "2026-09-01T14:13:27+00:00", "event": "register_security", "isin": "US3687361044", "ticker": "GNRC", "cusip": "368736104"}
+{"ts": "2026-09-01T14:13:29+00:00", "event": "register_security", "isin": "US49456B1017", "ticker": "KMI", "cusip": "49456B101"}
+{"ts": "2026-09-01T14:13:29+00:00", "event": "register_security", "isin": "US15643U1043", "ticker": "LEU", "cusip": "15643U104"}
+{"ts": "2026-09-01T14:13:29+00:00", "event": "register_security", "isin": "US16411R2085", "ticker": "LNG", "cusip": "16411R208"}
+{"ts": "2026-09-01T14:13:29+00:00", "event": "register_security", "isin": "US0188021085", "ticker": "LNT", "cusip": "018802108"}
+{"ts": "2026-09-01T14:13:31+00:00", "event": "register_security", "isin": "US55405W1045", "ticker": "MYRG", "cusip": "55405W104"}
+{"ts": "2026-09-01T14:13:31+00:00", "event": "register_security", "isin": "US65339F1012", "ticker": "NEE", "cusip": "65339F101"}
+{"ts": "2026-09-01T14:13:31+00:00", "event": "register_security", "isin": "US6293775085", "ticker": "NRG", "cusip": "629377508"}
+{"ts": "2026-09-01T14:13:32+00:00", "event": "register_security", "isin": "US65340P1066", "ticker": "NXE", "cusip": "65340P106"}
+{"ts": "2026-09-01T14:13:32+00:00", "event": "register_security", "isin": "US65290E1010", "ticker": "NXT", "cusip": "65290E101"}
+{"ts": "2026-09-01T14:13:32+00:00", "event": "register_security", "isin": "US6708371033", "ticker": "OGE", "cusip": "670837103"}
+{"ts": "2026-09-01T14:13:32+00:00", "event": "register_security", "isin": "US02156V1098", "ticker": "OKLO", "cusip": "02156V109"}
+{"ts": "2026-09-01T14:13:32+00:00", "event": "register_security", "isin": "US6866881021", "ticker": "ORA", "cusip": "686688102"}
+{"ts": "2026-09-01T14:13:33+00:00", "event": "register_security", "isin": "US7391281067", "ticker": "POWL", "cusip": "739128106"}
+{"ts": "2026-09-01T14:13:34+00:00", "event": "register_security", "isin": "US7782961038", "ticker": "ROST", "cusip": "778296103"}
+{"ts": "2026-09-01T14:13:34+00:00", "event": "register_security", "isin": "US82489W1071", "ticker": "SHLS", "cusip": "82489W107"}
+{"ts": "2026-09-01T14:13:34+00:00", "event": "register_security", "isin": "US67079K1007", "ticker": "SMR", "cusip": "67079K100"}
+{"ts": "2026-09-01T14:13:34+00:00", "event": "register_security", "isin": "US8425871071", "ticker": "SO", "cusip": "842587107"}
+{"ts": "2026-09-01T14:13:34+00:00", "event": "register_security", "isin": "US8592411016", "ticker": "STRL", "cusip": "859241101"}
+{"ts": "2026-09-01T14:13:35+00:00", "event": "register_security", "isin": "US87422Q1094", "ticker": "TLN", "cusip": "87422Q109"}
+{"ts": "2026-09-01T14:13:35+00:00", "event": "register_security", "isin": "US8760301072", "ticker": "TPR", "cusip": "876030107"}
+{"ts": "2026-09-01T14:13:35+00:00", "event": "register_security", "isin": "USG8994E1031", "ticker": "TT", "cusip": "G8994E103"}
+{"ts": "2026-09-01T14:13:36+00:00", "event": "register_security", "isin": "US2926717081", "ticker": "UUUU", "cusip": "292671708"}
+{"ts": "2026-09-01T14:13:36+00:00", "event": "register_security", "isin": "US9202531011", "ticker": "VMI", "cusip": "920253101"}
+{"ts": "2026-09-01T14:13:36+00:00", "event": "register_security", "isin": "US92537N1081", "ticker": "VRT", "cusip": "92537N108"}
+{"ts": "2026-09-01T14:13:36+00:00", "event": "register_security", "isin": "US92840M1027", "ticker": "VST", "cusip": "92840M102"}
+{"ts": "2026-09-01T14:13:37+00:00", "event": "register_security", "isin": "US29670G1022", "ticker": "WTRG", "cusip": "29670G102"}
+{"ts": "2026-09-01T14:13:38+00:00", "event": "register_security", "isin": "US9871841089", "ticker": "YORW", "cusip": "987184108"}
+{"ts": "2026-09-01T14:13:38+00:00", "event": "build_master", "total": 277, "cusip_hit": 277, "placeholder": 0}
+{"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPR4HNZRSL", "kind": "pair", "key": "mrpt|L:US5260571048|S:US7782961038", "display": "LEN/ROST"}
+{"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPRK84F1KH", "kind": "pair", "key": "mtfs|L:US1924461023|S:US8760301072", "display": "CTSH/TPR"}
+{"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPROKF3TEM", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US12008R1077", "display": "VLO/BLDR"}
+{"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPR9DKLMJ6", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US3687361044", "display": "VLO/GNRC"}

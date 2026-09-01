@@ -714,8 +714,8 @@ AEUS 的三个 OpenClaw cron 任务镜像 AISS（在 isolated session 中运行�
 
 | 任务 | 调度（ET） | 命令 |
 |---|---|---|
-| `aeus-daily-backtest` | 工作日 18:40 | `bash …/daily_backtest.sh` |
-| `aeus-daily` | 工作日 20:10 | `bash …/aeus_pipeline.sh daily` |
+| `aeus-daily-backtest` | 工作日 19:10 | `bash …/daily_backtest.sh` |
+| `aeus-daily` | 工作日 20:20 | `bash …/aeus_pipeline.sh daily` |
 | `aeus-weekly` | 周日 03:30 | `bash …/aeus_pipeline.sh weekly` |
 
 > `daily` / `monthly` / `daily_backtest` 内置 NYSE 节假日检查（休市跳过 + exit 0）。详见 RUNBOOK。

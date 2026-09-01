@@ -51,6 +51,21 @@ router.post('/', async (req: Request, res: Response) => {
   }
   stanseAgent.port = spec.port
 
+  // Safety net (same spirit as the guards above): local models occasionally emit the
+  // Next.js directive UNQUOTED (`use client;`) — never valid JS, so the build always
+  // dies with "Parsing ecmascript source code failed" before anything renders. Repair
+  // exactly that broken form at the top of the file; correctly quoted directives
+  // ('use client' / "use client") don't match, and `use somethingElse` is left alone.
+  const repairDirective = (src: string): string =>
+    src.replace(/^(\s*)use (client|server)\s*;?(?=\s*(?:\r?\n|$))/, "$1'use $2';")
+  if (typeof stanseAgent.code === 'string') {
+    stanseAgent.code = repairDirective(stanseAgent.code)
+  } else if (Array.isArray(stanseAgent.code)) {
+    for (const f of stanseAgent.code as any[]) {
+      if (f && typeof f.file_content === 'string') f.file_content = repairDirective(f.file_content)
+    }
+  }
+
   try {
     const sbx = await Sandbox.create(stanseAgent.template, {
       metadata: {

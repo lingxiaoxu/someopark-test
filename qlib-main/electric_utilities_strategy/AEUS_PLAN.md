@@ -24,7 +24,7 @@ AEUS 全链分六层,每层 AEUS 都要有等价物:
 
 ```
 ┌─ 运维层  aeus_pipeline.sh(15 模式) + daily_backtest.sh + 3 个 OpenClaw cron
-│          (aeus-daily-backtest 18:40 ET / aeus-daily 20:10 ET / aeus-weekly 周日 03:30 ET,与 AISS 17:55/19:00/02:00 错开)
+│          (aeus-daily-backtest 19:10 ET / aeus-daily 20:20 ET / aeus-weekly 周日 03:30 ET,与 AISS 17:55/19:00/02:00 错开)
 ├─ 生产层  AEUSdailySignal.py:0-14 步主流程(资本=真实账本 equity → 信号 → 优化 →
 │          风控四叠层 → 调仓判定 → 子板块→个股两层分解 → inventory/报表落盘)
 ├─ 选参层  AEUSBatchRun(42 param sets,A-H+M+N 共 10 组:6/4/9/4/3/2/4/4/3+3) → walk_forward(45+ folds,
@@ -559,7 +559,7 @@ scope 串: 'aeus'(CorporateActions/ledger/QC)→ 'aeus'(daily 代码先换,接�
 | `controller/`(registry.py STRATEGIES 五元组→六元组、model.py `_assemble_aeus`) | 中央估值第六策略节点(NAV 面板的后端真源) | §6.6.1 |
 | `VolumePrediction/strategy_adapters/aeus_adapter.py` | 照 aeus_adapter 30 行薄封装 | — |
 | `conductor/backup_to_external.sh` 等 4 个 | BUSY_PATTERNS 加 aeus_batch;备份/清理范围加新目录 | — |
-| OpenClaw cron 三件套 | ✅ 时间已定:`aeus-daily-backtest` **18:40** / `aeus-daily` **20:10** / `aeus-weekly` **周日 03:30 ET**(与 AISS 17:55/19:00/周日 02:00 完全错开;由你在 OpenClaw 建) | — |
+| OpenClaw cron 三件套 | ✅ 时间已定:`aeus-daily-backtest` **19:10** / `aeus-daily` **20:20** / `aeus-weekly` **周日 03:30 ET**(与 AISS 17:55/19:00/周日 02:00 完全错开;由你在 OpenClaw 建) | — |
 
 ### 6.5 QC 实盘镜像:中途注资挂载 AEUS(2026-08-29 用户规格)⭐
 
@@ -667,7 +667,7 @@ subprocess 报表),AEUSdailySignal 同位置同构调用 —— phase-1(账本�
 | **D5 回测+校准** | 单回测跑通;graph_calibration 实证校准 → v2 图回填 config;validate vs XLU/GRID | BacktestResult 完整;IC 报告落盘;2019-2026 回测无 NaN 断链 |
 | **D6 选参全链** | batch 39 组 → WF → macro_clusters → smart_select → daily_backtest.sh | selected_param_set.json 生成;encoder/centroids/cluster_oos 产物齐;幂等门工作 |
 | **D7 测试套件** | 107 个测试全改造;test_pipeline_integration.sh --quick 全绿 | pytest 全绿(合成数据,无网络);matrix 66 回测零错误 |
-| **D8 试运行** | AEUSdailySignal --dry-run 连续数日;C 级接线逐项请示;D 级立项 | dry-run 报表合理;三只 cron(18:40/20:10/周日 03:30)由你在 OpenClaw 创建后转正 |
+| **D8 试运行** | AEUSdailySignal --dry-run 连续数日;C 级接线逐项请示;D 级立项 | dry-run 报表合理;三只 cron(19:10/20:20/周日 03:30)由你在 OpenClaw 创建后转正 |
 | **D9 go-live 拼接** | §2.6 时间线:冻结固定段(真实交易 param+vintage+逐日字面量)→ 定死 AEUS_LIVE_START=首日建仓日 → account_aeus $1M 起账 → master 接线(D 级)→ **QC 同日注资挂载(§6.5)** | aeus_splice_freeze.json 落盘且此后固定段逐日不变(连续 3 天 md5 相同);live 段首日收益来自真实账本;QC 侧 aeus 市值+cash 与账本 equity 对上 |
 
 **测试纪律(每阶段适用)**:输出一律 /tmp 或 `--no-prod-write --output-dir`;跑批前后对 `electric_utilities_strategy/`、`price_data/elec_strategy/`、`price_data/macro/` 做 md5 哨兵;绝不在 AISS 夜间窗口(17:55-20:00 ET / 周日 02:00)做重 IO 操作(两策略共享 qlib_run 与 Polygon 限速)。
@@ -685,7 +685,7 @@ subprocess 报表),AEUSdailySignal 同位置同构调用 —— phase-1(账本�
 
 **✅ 2026-08-29 追加裁决**:
 6. 初始资本 **$1,000,000**(同 AEUS C0);
-7. cron 错峰定稿:**aeus-daily-backtest 18:40 / aeus-daily 20:10 / aeus-weekly 周日 03:30 ET**(AISS 为 17:55/19:00/周日 02:00,完全错开);
+7. cron 错峰定稿:**aeus-daily-backtest 19:10 / aeus-daily 20:20 / aeus-weekly 周日 03:30 ET**(AISS 为 17:55/19:00/周日 02:00,完全错开);
 8. **FSLR 补入** renewables_storage 加权成员(§2.1);
 9. **业绩曲线拼接机制全套镜像**(§2.6):固定回测段(冻结 param+vintage+逐日字面量)→ live_start=第一天建仓日 → 账本日收益率链接;V1 月度生产、V2 研究;上线当天即冻结,不重走 AEUS 的 5 周弯路;
 10. **QC 中途注资挂载**(§6.5):QC C0=$6,000,322 不含 AEUS;建仓日 CashBook deposit K=AEUS 账本 equity(≥$1M),买入持仓+cash≥0,scalar_aeus=1.0 冻结;

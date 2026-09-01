@@ -8,14 +8,14 @@ import type { AgentTool } from './index.js'
 export const inventoryTool: AgentTool = {
   definition: {
     name: 'get_inventory',
-    description: 'Get current open positions (inventory) for a strategy. MRPT/MTFS: pair names, entry dates, prices, hedge ratios, shares. SSRS: sector ETF holdings with weights, shares, cost basis, rebalance history. AISS/AEUS: stock-level book — use the stock_holdings field (tradable individual stocks: ticker, shares, weight, subsector tag); the subsector-level holdings are only a grouping, NOT tradable.',
+    description: 'Get current open positions (inventory) for a strategy. MRPT/MTFS: pair names, entry dates, prices, hedge ratios, shares. SSRS: sector ETF holdings with weights, shares, cost basis, rebalance history. AISS/AEUS: stock-level book — use the stock_holdings field (tradable individual stocks: ticker, shares, weight, subsector tag); the subsector-level holdings are only a grouping, NOT tradable. BDC: the private-credit BDC sleeve book — BDC ticker holdings (GBDC/TSLX/OBDC/BXSL/ARCC shares, weights, DRIP events) + BIL cash leg; for the underlying loan-level look-through use portfolio_bdc_holdings.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: '"mrpt" (Mean Reversion), "mtfs" (Momentum), "ssrs" (Sector Rotation), "aiss" (AI Semiconductor), or "aeus" (AI Electric Utilities)',
-          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus']
+          description: '"mrpt" (Mean Reversion), "mtfs" (Momentum), "ssrs" (Sector Rotation), "aiss" (AI Semiconductor), "aeus" (AI Electric Utilities), or "bdc" (BDC private-credit sleeve)',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss', 'aeus', 'bdc']
         }
       },
       required: ['strategy']

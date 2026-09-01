@@ -118,6 +118,23 @@
    }
   ]
  },
+ "US0188021085": {
+  "asset_class": "equity",
+  "cik": "0000352541",
+  "cusip": "018802108",
+  "figi": "BBG000DW4Q75",
+  "name": "Alliant Energy Corporation Common Stock",
+  "polygon_ticker": "LNT",
+  "registered_at": "2026-09-01T14:13:29+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "LNT",
+    "to": null
+   }
+  ]
+ },
  "US0200021014": {
   "asset_class": "equity",
   "cik": "0000899051",
@@ -169,6 +186,23 @@
    }
   ]
  },
+ "US02156V1098": {
+  "asset_class": "equity",
+  "cik": "0001849056",
+  "cusip": "02156V109",
+  "figi": "BBG0112CBLW3",
+  "name": "Oklo Inc.",
+  "polygon_ticker": "OKLO",
+  "registered_at": "2026-09-01T14:13:32+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "OKLO",
+    "to": null
+   }
+  ]
+ },
  "US0236081024": {
   "asset_class": "equity",
   "cik": "0001002910",
@@ -182,6 +216,23 @@
    {
     "from": "2026-08-12",
     "ticker": "AEE",
+    "to": null
+   }
+  ]
+ },
+ "US0255371017": {
+  "asset_class": "equity",
+  "cik": "0000004904",
+  "cusip": "025537101",
+  "figi": "BBG000BB9KF2",
+  "name": "American Electric Power Company, Inc.",
+  "polygon_ticker": "AEP",
+  "registered_at": "2026-09-01T14:13:20+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "AEP",
     "to": null
    }
   ]
@@ -216,6 +267,23 @@
    {
     "from": "2026-08-12",
     "ticker": "AIG",
+    "to": null
+   }
+  ]
+ },
+ "US0298991011": {
+  "asset_class": "equity",
+  "cik": "0001056903",
+  "cusip": "029899101",
+  "figi": "BBG000F964B6",
+  "name": "American States Water Company",
+  "polygon_ticker": "AWR",
+  "registered_at": "2026-09-01T14:13:22+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "AWR",
     "to": null
    }
   ]
@@ -373,6 +441,23 @@
    }
   ]
  },
+ "US04271T1007": {
+  "asset_class": "equity",
+  "cik": "0001820721",
+  "cusip": "04271T100",
+  "figi": "BBG001V4SF46",
+  "name": "Array Technologies, Inc. Common Stock",
+  "polygon_ticker": "ARRY",
+  "registered_at": "2026-09-01T14:13:21+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "ARRY",
+    "to": null
+   }
+  ]
+ },
  "US04626A1034": {
   "asset_class": "equity",
   "cik": "0001736297",
@@ -390,6 +475,23 @@
    }
   ]
  },
+ "US0495601058": {
+  "asset_class": "equity",
+  "cik": "0000731802",
+  "cusip": "049560105",
+  "figi": "BBG000BRNGM2",
+  "name": "Atmos Energy Corporation",
+  "polygon_ticker": "ATO",
+  "registered_at": "2026-09-01T14:13:21+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "ATO",
+    "to": null
+   }
+  ]
+ },
  "US0534841012": {
   "asset_class": "equity",
   "cik": null,
@@ -403,6 +505,23 @@
    {
     "from": "2026-08-12",
     "ticker": "AVB",
+    "to": null
+   }
+  ]
+ },
+ "US05605H1005": {
+  "asset_class": "equity",
+  "cik": "0001486957",
+  "cusip": "05605H100",
+  "figi": "BBG000D86F25",
+  "name": "BWX Technologies, Inc.",
+  "polygon_ticker": "BWXT",
+  "registered_at": "2026-09-01T14:13:22+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "BWXT",
     "to": null
    }
   ]
@@ -458,6 +577,23 @@
    }
   ]
  },
+ "US0921131092": {
+  "asset_class": "equity",
+  "cik": "0001130464",
+  "cusip": "092113109",
+  "figi": "BBG000BD9ZM7",
+  "name": "Black Hills Corporation",
+  "polygon_ticker": "BKH",
+  "registered_at": "2026-09-01T14:13:22+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "BKH",
+    "to": null
+   }
+  ]
+ },
  "US09261X1028": {
   "asset_class": "bdc_equity",
   "cik": "0001736035",
@@ -471,6 +607,23 @@
    {
     "from": "2026-08-12",
     "ticker": "BXSL",
+    "to": null
+   }
+  ]
+ },
+ "US0937121079": {
+  "asset_class": "equity",
+  "cik": "0001664703",
+  "cusip": "093712107",
+  "figi": "BBG000N7KBZ3",
+  "name": "Bloom Energy Corporation",
+  "polygon_ticker": "BE",
+  "registered_at": "2026-09-01T14:13:22+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "BE",
     "to": null
    }
   ]
@@ -662,6 +815,23 @@
    }
   ]
  },
+ "US1307881029": {
+  "asset_class": "equity",
+  "cik": "0001035201",
+  "cusip": "130788102",
+  "figi": "BBG000D8KTN6",
+  "name": "California Water Service",
+  "polygon_ticker": "CWT",
+  "registered_at": "2026-09-01T14:13:24+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "CWT",
+    "to": null
+   }
+  ]
+ },
  "US1431301027": {
   "asset_class": "equity",
   "cik": "0001170010",
@@ -675,6 +845,23 @@
    {
     "from": "2026-08-12",
     "ticker": "KMX",
+    "to": null
+   }
+  ]
+ },
+ "US14448C1045": {
+  "asset_class": "equity",
+  "cik": "0001783180",
+  "cusip": "14448C104",
+  "figi": "BBG00RP5HYS8",
+  "name": "Carrier Global Corporation",
+  "polygon_ticker": "CARR",
+  "registered_at": "2026-09-01T14:13:23+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "CARR",
     "to": null
    }
   ]
@@ -713,6 +900,23 @@
    }
   ]
  },
+ "US15643U1043": {
+  "asset_class": "equity",
+  "cik": "0001065059",
+  "cusip": "15643U104",
+  "figi": "BBG000BQ2JM1",
+  "name": "Centrus Energy Corp.",
+  "polygon_ticker": "LEU",
+  "registered_at": "2026-09-01T14:13:29+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "LEU",
+    "to": null
+   }
+  ]
+ },
  "US1598641074": {
   "asset_class": "equity",
   "cik": "0001100682",
@@ -726,6 +930,23 @@
    {
     "from": "2026-08-12",
     "ticker": "CRL",
+    "to": null
+   }
+  ]
+ },
+ "US16411R2085": {
+  "asset_class": "equity",
+  "cik": "0000003570",
+  "cusip": "16411R208",
+  "figi": "BBG000C3HSR0",
+  "name": "Cheniere Energy Inc",
+  "polygon_ticker": "LNG",
+  "registered_at": "2026-09-01T14:13:29+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "LNG",
     "to": null
    }
   ]
@@ -815,6 +1036,23 @@
    }
   ]
  },
+ "US1924461023": {
+  "asset_class": "equity",
+  "cik": "0001058290",
+  "cusip": "192446102",
+  "figi": "BBG000BBDV81",
+  "name": "Cognizant Technology Solutions",
+  "polygon_ticker": "CTSH",
+  "registered_at": "2026-09-01T14:13:24+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "CTSH",
+    "to": null
+   }
+  ]
+ },
  "US1941621039": {
   "asset_class": "equity",
   "cik": "0000021665",
@@ -828,6 +1066,23 @@
    {
     "from": "2026-08-12",
     "ticker": "CL",
+    "to": null
+   }
+  ]
+ },
+ "US1999081045": {
+  "asset_class": "equity",
+  "cik": "0001035983",
+  "cusip": "199908104",
+  "figi": "BBG000BWN2Y9",
+  "name": "Comfort Systems USA, Inc.",
+  "polygon_ticker": "FIX",
+  "registered_at": "2026-09-01T14:13:26+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "FIX",
     "to": null
    }
   ]
@@ -862,6 +1117,23 @@
    {
     "from": "2026-08-12",
     "ticker": "CAG",
+    "to": null
+   }
+  ]
+ },
+ "US21037T1097": {
+  "asset_class": "equity",
+  "cik": "0001868275",
+  "cusip": "21037T109",
+  "figi": "BBG014KFRNP7",
+  "name": "Constellation Energy Corporation Common Stock",
+  "polygon_ticker": "CEG",
+  "registered_at": "2026-09-01T14:13:23+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "CEG",
     "to": null
    }
   ]
@@ -1087,6 +1359,57 @@
    }
   ]
  },
+ "US2674751019": {
+  "asset_class": "equity",
+  "cik": "0000067215",
+  "cusip": "267475101",
+  "figi": "BBG000C4SKT1",
+  "name": "Dycom Industries, Inc.",
+  "polygon_ticker": "DY",
+  "registered_at": "2026-09-01T14:13:25+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "DY",
+    "to": null
+   }
+  ]
+ },
+ "US2910111044": {
+  "asset_class": "equity",
+  "cik": "0000032604",
+  "cusip": "291011104",
+  "figi": "BBG000BHX7N2",
+  "name": "Emerson Electric Co.",
+  "polygon_ticker": "EMR",
+  "registered_at": "2026-09-01T14:13:25+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "EMR",
+    "to": null
+   }
+  ]
+ },
+ "US2926717081": {
+  "asset_class": "equity",
+  "cik": "0001385849",
+  "cusip": "292671708",
+  "figi": "BBG000BXTPV3",
+  "name": "Energy Fuels Inc.",
+  "polygon_ticker": "UUUU",
+  "registered_at": "2026-09-01T14:13:36+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "UUUU",
+    "to": null
+   }
+  ]
+ },
  "US29364G1031": {
   "asset_class": "equity",
   "cik": "0000065984",
@@ -1117,6 +1440,23 @@
    {
     "from": "2026-08-12",
     "ticker": "EFX",
+    "to": null
+   }
+  ]
+ },
+ "US29670G1022": {
+  "asset_class": "equity",
+  "cik": "0000078128",
+  "cusip": "29670G102",
+  "figi": "BBG000BRMJN6",
+  "name": "Essential Utilities, Inc.",
+  "polygon_ticker": "WTRG",
+  "registered_at": "2026-09-01T14:13:37+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "WTRG",
     "to": null
    }
   ]
@@ -1308,6 +1648,23 @@
    }
   ]
  },
+ "US34379V1035": {
+  "asset_class": "equity",
+  "cik": "0001868941",
+  "cusip": "34379V103",
+  "figi": "BBG012QSDSK6",
+  "name": "Fluence Energy, Inc. Class A Common Stock",
+  "polygon_ticker": "FLNC",
+  "registered_at": "2026-09-01T14:13:26+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "FLNC",
+    "to": null
+   }
+  ]
+ },
  "US3453708600": {
   "asset_class": "equity",
   "cik": "0000037996",
@@ -1389,6 +1746,40 @@
    {
     "from": "2026-08-12",
     "ticker": "BEN",
+    "to": null
+   }
+  ]
+ },
+ "US36828A1016": {
+  "asset_class": "equity",
+  "cik": "0001996810",
+  "cusip": "36828A101",
+  "figi": "BBG013G17W31",
+  "name": "GE Vernova Inc.",
+  "polygon_ticker": "GEV",
+  "registered_at": "2026-09-01T14:13:27+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "GEV",
+    "to": null
+   }
+  ]
+ },
+ "US3687361044": {
+  "asset_class": "equity",
+  "cik": "0001474735",
+  "cusip": "368736104",
+  "figi": "BBG000PQ4W72",
+  "name": "GENERAC HOLDINGS INC",
+  "polygon_ticker": "GNRC",
+  "registered_at": "2026-09-01T14:13:27+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "GNRC",
     "to": null
    }
   ]
@@ -1886,6 +2277,23 @@
    }
   ]
  },
+ "US49456B1017": {
+  "asset_class": "equity",
+  "cik": "0001506307",
+  "cusip": "49456B101",
+  "figi": "BBG0019JZ882",
+  "name": "Kinder Morgan, Inc.",
+  "polygon_ticker": "KMI",
+  "registered_at": "2026-09-01T14:13:29+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "KMI",
+    "to": null
+   }
+  ]
+ },
  "US5018892084": {
   "asset_class": "equity",
   "cik": "0001065696",
@@ -2052,6 +2460,23 @@
    {
     "from": "2026-08-12",
     "ticker": "MSCI",
+    "to": null
+   }
+  ]
+ },
+ "US55405W1045": {
+  "asset_class": "equity",
+  "cik": "0000700923",
+  "cusip": "55405W104",
+  "figi": "BBG000BC7VW9",
+  "name": "MYR Group, Inc.",
+  "polygon_ticker": "MYRG",
+  "registered_at": "2026-09-01T14:13:31+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "MYRG",
     "to": null
    }
   ]
@@ -2345,6 +2770,23 @@
    }
   ]
  },
+ "US6293775085": {
+  "asset_class": "equity",
+  "cik": "0001013871",
+  "cusip": "629377508",
+  "figi": "BBG000D8RG11",
+  "name": "NRG Energy, Inc.",
+  "polygon_ticker": "NRG",
+  "registered_at": "2026-09-01T14:13:31+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "NRG",
+    "to": null
+   }
+  ]
+ },
  "US62944T1051": {
   "asset_class": "equity",
   "cik": "0000906163",
@@ -2375,6 +2817,57 @@
    {
     "from": "2026-08-12",
     "ticker": "NTAP",
+    "to": null
+   }
+  ]
+ },
+ "US65290E1010": {
+  "asset_class": "equity",
+  "cik": "0001852131",
+  "cusip": "65290E101",
+  "figi": "BBG00835TPZ2",
+  "name": "Nextpower Inc. Common Stock",
+  "polygon_ticker": "NXT",
+  "registered_at": "2026-09-01T14:13:32+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "NXT",
+    "to": null
+   }
+  ]
+ },
+ "US65339F1012": {
+  "asset_class": "equity",
+  "cik": "0000753308",
+  "cusip": "65339F101",
+  "figi": "BBG000BJSBJ0",
+  "name": "NextEra Energy, Inc.",
+  "polygon_ticker": "NEE",
+  "registered_at": "2026-09-01T14:13:31+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "NEE",
+    "to": null
+   }
+  ]
+ },
+ "US65340P1066": {
+  "asset_class": "equity",
+  "cik": "0001698535",
+  "cusip": "65340P106",
+  "figi": "BBG004WG63P0",
+  "name": "NexGen Energy Ltd.",
+  "polygon_ticker": "NXE",
+  "registered_at": "2026-09-01T14:13:32+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "NXE",
     "to": null
    }
   ]
@@ -2515,6 +3008,40 @@
    }
   ]
  },
+ "US67079K1007": {
+  "asset_class": "equity",
+  "cik": "0001822966",
+  "cusip": "67079K100",
+  "figi": "BBG00YG48NM6",
+  "name": "NuScale Power Corporation",
+  "polygon_ticker": "SMR",
+  "registered_at": "2026-09-01T14:13:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "SMR",
+    "to": null
+   }
+  ]
+ },
+ "US6708371033": {
+  "asset_class": "equity",
+  "cik": "0001021635",
+  "cusip": "670837103",
+  "figi": "BBG000BQGLS5",
+  "name": "OGE Energy Corp.",
+  "polygon_ticker": "OGE",
+  "registered_at": "2026-09-01T14:13:32+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "OGE",
+    "to": null
+   }
+  ]
+ },
  "US67103H1077": {
   "asset_class": "equity",
   "cik": "0000898173",
@@ -2596,6 +3123,23 @@
    {
     "from": "2026-08-12",
     "ticker": "ORCL",
+    "to": null
+   }
+  ]
+ },
+ "US6866881021": {
+  "asset_class": "equity",
+  "cik": "0001296445",
+  "cusip": "686688102",
+  "figi": "BBG000Q5BQ63",
+  "name": "Ormat Technologies, Inc.",
+  "polygon_ticker": "ORA",
+  "registered_at": "2026-09-01T14:13:32+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "ORA",
     "to": null
    }
   ]
@@ -2783,6 +3327,23 @@
    {
     "from": "2026-08-12",
     "ticker": "POOL",
+    "to": null
+   }
+  ]
+ },
+ "US7391281067": {
+  "asset_class": "equity",
+  "cik": "0000080420",
+  "cusip": "739128106",
+  "figi": "BBG000BRGWN4",
+  "name": "Powell Industries Inc",
+  "polygon_ticker": "POWL",
+  "registered_at": "2026-09-01T14:13:33+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "POWL",
     "to": null
    }
   ]
@@ -2991,6 +3552,23 @@
    }
   ]
  },
+ "US7782961038": {
+  "asset_class": "equity",
+  "cik": "0000745732",
+  "cusip": "778296103",
+  "figi": "BBG000BSBZH7",
+  "name": "Ross Stores Inc",
+  "polygon_ticker": "ROST",
+  "registered_at": "2026-09-01T14:13:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "ROST",
+    "to": null
+   }
+  ]
+ },
  "US78468R6633": {
   "asset_class": "etf",
   "cik": "0001081019",
@@ -3144,6 +3722,23 @@
    }
   ]
  },
+ "US82489W1071": {
+  "asset_class": "equity",
+  "cik": "0001831651",
+  "cusip": "82489W107",
+  "figi": "BBG00YQ82275",
+  "name": "Shoals Technologies Group, Inc. Class A Common Stock",
+  "polygon_ticker": "SHLS",
+  "registered_at": "2026-09-01T14:13:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "SHLS",
+    "to": null
+   }
+  ]
+ },
  "US82706C1080": {
   "asset_class": "equity",
   "cik": "0001329394",
@@ -3195,6 +3790,40 @@
    }
   ]
  },
+ "US8318652091": {
+  "asset_class": "equity",
+  "cik": "0000091142",
+  "cusip": "831865209",
+  "figi": "BBG000BC1L02",
+  "name": "A.O. Smith Corporation",
+  "polygon_ticker": "AOS",
+  "registered_at": "2026-09-01T14:13:21+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "AOS",
+    "to": null
+   }
+  ]
+ },
+ "US8425871071": {
+  "asset_class": "equity",
+  "cik": "0000092122",
+  "cusip": "842587107",
+  "figi": "BBG000BT9DW0",
+  "name": "The Southern Company",
+  "polygon_ticker": "SO",
+  "registered_at": "2026-09-01T14:13:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "SO",
+    "to": null
+   }
+  ]
+ },
  "US8447411088": {
   "asset_class": "equity",
   "cik": "0000092380",
@@ -3242,6 +3871,23 @@
    {
     "from": "2026-08-12",
     "ticker": "STLD",
+    "to": null
+   }
+  ]
+ },
+ "US8592411016": {
+  "asset_class": "equity",
+  "cik": "0000874238",
+  "cusip": "859241101",
+  "figi": "BBG000JD6TN5",
+  "name": "Sterling Infrastructure, Inc. Common Stock",
+  "polygon_ticker": "STRL",
+  "registered_at": "2026-09-01T14:13:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "STRL",
     "to": null
    }
   ]
@@ -3310,6 +3956,40 @@
    {
     "from": "2026-08-12",
     "ticker": "TSM",
+    "to": null
+   }
+  ]
+ },
+ "US87422Q1094": {
+  "asset_class": "equity",
+  "cik": "0001622536",
+  "cusip": "87422Q109",
+  "figi": "BBG01GWQVVD3",
+  "name": "Talen Energy Corporation Common Stock",
+  "polygon_ticker": "TLN",
+  "registered_at": "2026-09-01T14:13:35+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "TLN",
+    "to": null
+   }
+  ]
+ },
+ "US8760301072": {
+  "asset_class": "equity",
+  "cik": "0001116132",
+  "cusip": "876030107",
+  "figi": "BBG000BY29C7",
+  "name": "Tapestry, Inc. Common Stock",
+  "polygon_ticker": "TPR",
+  "registered_at": "2026-09-01T14:13:35+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "TPR",
     "to": null
    }
   ]
@@ -3552,6 +4232,23 @@
    }
   ]
  },
+ "US9202531011": {
+  "asset_class": "equity",
+  "cik": "0000102729",
+  "cusip": "920253101",
+  "figi": "BBG000BWB7V4",
+  "name": "Valmont Industries, Inc.",
+  "polygon_ticker": "VMI",
+  "registered_at": "2026-09-01T14:13:36+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "VMI",
+    "to": null
+   }
+  ]
+ },
  "US92338C1036": {
   "asset_class": "equity",
   "cik": "0001967680",
@@ -3565,6 +4262,23 @@
    {
     "from": "2026-08-12",
     "ticker": "VLTO",
+    "to": null
+   }
+  ]
+ },
+ "US92537N1081": {
+  "asset_class": "equity",
+  "cik": "0001674101",
+  "cusip": "92537N108",
+  "figi": "BBG00L2B8KW8",
+  "name": "Vertiv Holdings Co Class A Common Stock",
+  "polygon_ticker": "VRT",
+  "registered_at": "2026-09-01T14:13:36+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "VRT",
     "to": null
    }
   ]
@@ -3599,6 +4313,23 @@
    {
     "from": "2026-08-12",
     "ticker": "V",
+    "to": null
+   }
+  ]
+ },
+ "US92840M1027": {
+  "asset_class": "equity",
+  "cik": "0001692819",
+  "cusip": "92840M102",
+  "figi": "BBG00DXDL6Q1",
+  "name": "Vistra Corp.",
+  "polygon_ticker": "VST",
+  "registered_at": "2026-09-01T14:13:36+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "VST",
     "to": null
    }
   ]
@@ -3756,6 +4487,23 @@
    }
   ]
  },
+ "US9871841089": {
+  "asset_class": "equity",
+  "cik": "0000108985",
+  "cusip": "987184108",
+  "figi": "BBG000BRZKC1",
+  "name": "York Water Co",
+  "polygon_ticker": "YORW",
+  "registered_at": "2026-09-01T14:13:38+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "YORW",
+    "to": null
+   }
+  ]
+ },
  "US9884981013": {
   "asset_class": "equity",
   "cik": "0001041061",
@@ -3858,6 +4606,23 @@
    }
   ]
  },
+ "USG291831034": {
+  "asset_class": "equity",
+  "cik": "0001551182",
+  "cusip": "G29183103",
+  "figi": null,
+  "name": "Eaton Corporation, plc Ordinary Shares",
+  "polygon_ticker": "ETN",
+  "registered_at": "2026-09-01T14:13:25+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "ETN",
+    "to": null
+   }
+  ]
+ },
  "USG393871086": {
   "asset_class": "equity",
   "cik": "0001709048",
@@ -3922,6 +4687,23 @@
    {
     "from": "2026-08-12",
     "ticker": "STE",
+    "to": null
+   }
+  ]
+ },
+ "USG8994E1031": {
+  "asset_class": "equity",
+  "cik": "0001466258",
+  "cusip": "G8994E103",
+  "figi": null,
+  "name": "Trane Technologies plc",
+  "polygon_ticker": "TT",
+  "registered_at": "2026-09-01T14:13:35+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-01",
+    "ticker": "TT",
     "to": null
    }
   ]

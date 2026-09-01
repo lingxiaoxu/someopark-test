@@ -63,21 +63,26 @@ w6_residual:              # N2-residual jump lead-lag, BTC+ETH perps
   # LIVE criteria (watchlist): post-registration n >= 60 AND netTT NW-t >= 2
   # AND ex-best-day still positive AND live entry slippage vs backtest < 3bps
 
-w7_noisefade:             # RE-FROZEN 2026-08-27: 15M up-side-premium fade
-                          # (buy the favorite's NO ~8min out, cost .50-.98).
-                          # Replaces the hourly noise-deficit rule — the scan
-                          # showed that family bought the PAYING side.
+w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
+                          # FLB on 15M — buy WHICHEVER side is the favorite
+                          # ~8min out, band [0.60,0.98]; [0.50,0.60) recorded
+                          # as an observation leg outside the books. v2
+                          # (favorite-NO only) closed at 259 windows -2.76c
+                          # and its rescan showed the up-tilt itself died.
   enabled: false          # prod path does not even exist — paper + demo mirror
-  demo_mirror: true       # ON 2026-08-26 (user): entries ALSO order on demo
-                          # (KXBTCD preferred, flagship fallback; deviation logged)
+  demo_mirror: true       # user 2026-08-31: mirror ALL band entries, favorite
+                          # side as-is — unified band, no demo special-casing
   contracts: 25
   # EVIDENCE kill (2026-08-29, user-approved): paper probes burn no money, so
-  # dollar stops only ever fire on noise (they did, twice). W7 now stops only
-  # when the data refutes the edge: window-clustered t <= -2 with >= 30
-  # independent windows. The dollar fields below are ignored by w7.
+  # dollar stops only ever fire on noise (they did, twice). v3 judges the kill
+  # on the PRE-REGISTERED PRIMARY CELL [0.85,0.98]: window-clustered t <= -2
+  # with >= 30 primary windows. The dollar fields below are ignored by w7.
   max_cum_loss_usd: 999999
   min_trades_for_kill: 999999
-  # LIVE criteria: post-registration INDEPENDENT WINDOWS >= 300 (raised from
-  # 200 on 2026-08-29 — realised window sigma 33.7c made the 200-window test
-  # unreachable even for a true edge; power fix uses sigma only). Plus
-  # mean > 0 AND window-clustered t >= 2.5. Five coins = one macro bet.
+  # LIVE criteria (v3, pre-registered 2026-08-31): PRIMARY cell [0.85,0.98]
+  # both sides, taker book — >= 300 independent primary windows AND mean > 0
+  # AND window-clustered t >= 2.5 (~61 primary windows/day -> ~5 days). The
+  # wide band is a MAP (its +0.54c mean would need ~14,700 windows for t 2.5);
+  # judging any other bucket requires a NEW pre-registration in the plan doc.
+  # Maker parallel book is a measurement, never a trading mode (backtest:
+  # -10.6c t -5.3, adverse selection). Five coins = one macro bet.

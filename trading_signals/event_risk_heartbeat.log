@@ -137,3 +137,5 @@
 2026-08-28T12:41:23 [MTFS] asof=2026-08-27 hit=False beta_used=2.496 smh_beta=2.496 triggers=[] active_next=False reduce_next=False close=[]
 2026-08-29T09:35:26 [MRPT] asof=2026-08-28 hit=True beta_used=2.585 smh_beta=2.585 triggers=['bellwether (NVDA earnings reaction -4.6% < -4.5%)'] active_next=True reduce_next=True close=[]
 2026-08-29T09:35:27 [MTFS] asof=2026-08-28 hit=True beta_used=2.585 smh_beta=2.585 triggers=['bellwether (NVDA earnings reaction -4.6% < -4.5%)'] active_next=True reduce_next=True close=['PLTR/ALGN']
+2026-09-01T10:03:14 [MRPT] asof=2026-08-31 hit=False beta_used=2.561 smh_beta=2.561 triggers=[] active_next=True reduce_next=False close=[]
+2026-09-01T10:03:16 [MTFS] asof=2026-08-31 hit=False beta_used=2.561 smh_beta=2.561 triggers=[] active_next=True reduce_next=False close=[]

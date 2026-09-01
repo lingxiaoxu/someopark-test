@@ -64,6 +64,28 @@ app.use('/api/pairs', pairUniverseRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/monitor-history', monitorHistoryRoutes);
 app.use('/api/chat', chatRoutes);
+// Cloudflare's tunnel kills any request that produces no response bytes for ~100s
+// (HTTP 524). The morph edit path answers in ONE non-streaming write at the very end —
+// with the local 120B model that is routinely 2-5 minutes of silence (measured 262s),
+// so the tunnel cut every "give feedback on the code" request off. Transport-layer fix
+// ONLY (morphChat.ts itself untouched): flush a 200 immediately and drip a space every
+// 20s until the handler writes its real body. Leading spaces are invisible to the
+// frontend's JSON.parse. setHeader/status become no-ops after the early flush so the
+// handler's own calls don't throw; a handler error therefore arrives as {"error":…}
+// in the 200 body, which ChatArea surfaces explicitly.
+app.use('/api/morph-chat', (req, res, next) => {
+  res.status(200);
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.flushHeaders();
+  const beat = setInterval(() => {
+    try { if (!res.writableEnded) res.write(' '); } catch { /* stream gone */ }
+  }, 20_000);
+  res.on('close', () => clearInterval(beat));
+  const noop: any = () => res;
+  res.setHeader = noop;
+  res.status = noop;
+  next();
+});
 app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
 app.use('/api/controller-nav', controllerNavRoutes);

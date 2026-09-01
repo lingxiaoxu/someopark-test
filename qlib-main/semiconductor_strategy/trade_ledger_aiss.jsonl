@@ -50,3 +50,4 @@
 {"date": "2026-08-28", "ticker": "ADI", "side": "BUY", "shares": 101, "price": 360.68, "gross": -36428.68, "dedup_key": "2026-08-28-ADI-BUY"}
 {"date": "2026-08-28", "ticker": "MCHP", "side": "BUY", "shares": 166, "price": 72.93, "gross": -12106.38, "dedup_key": "2026-08-28-MCHP-BUY"}
 {"date": "2026-08-28", "ticker": "TXN", "side": "BUY", "shares": 751, "price": 258.64, "gross": -194238.64, "dedup_key": "2026-08-28-TXN-BUY"}
+{"date": "2026-08-28", "ticker": "", "side": "FEE", "gross": -407.48, "dedup_key": "2026-08-28-FEE"}

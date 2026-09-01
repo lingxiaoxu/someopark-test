@@ -650,6 +650,14 @@ export default function ChatArea({
       let commentary = ''
       try {
         const parsed = JSON.parse(responseText)
+        // Since the morph-chat heartbeat (server/index.ts) flushes 200 up front, a
+        // handler failure arrives as {"error":…} in the 200 body instead of an HTTP
+        // error status. Surface it as the usual red error banner, not an empty reply.
+        if (parsed && parsed.error && !parsed.commentary && !parsed.code) {
+          setIsErrored(true)
+          setErrorMessage(String(parsed.error))
+          return
+        }
         // Forced role wins over the model's template (see __TEMPLATE__ above).
         if (forcedTemplate && parsed) parsed.template = forcedTemplate
         if (parsed.commentary) {

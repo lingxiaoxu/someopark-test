@@ -12,62 +12,62 @@
     {
       "name": "no_vix_derisk",
       "version": "v1",
-      "composite": 0.4124,
-      "mcps_score": 2.1796
-    },
-    {
-      "name": "pure_supply_chain",
-      "version": "v1",
-      "composite": 0.2829,
-      "mcps_score": 2.125
-    },
-    {
-      "name": "quality_defensive",
-      "version": "v1",
-      "composite": 0.1872,
-      "mcps_score": 2.1695
+      "composite": 0.4884,
+      "mcps_score": 2.3169
     },
     {
       "name": "semivol_24",
       "version": "v1",
-      "composite": 0.0853,
-      "mcps_score": 2.1326
+      "composite": 0.1731,
+      "mcps_score": 2.2685
     },
     {
       "name": "semivol_21",
       "version": "v1",
-      "composite": 0.067,
-      "mcps_score": 2.1377
-    },
-    {
-      "name": "broad_5",
-      "version": "v1",
-      "composite": 0.0594,
-      "mcps_score": 2.3212
+      "composite": 0.1423,
+      "mcps_score": 2.2713
     },
     {
       "name": "semivol_18",
       "version": "v1",
-      "composite": 0.0427,
-      "mcps_score": 2.1418
+      "composite": 0.1067,
+      "mcps_score": 2.2733
+    },
+    {
+      "name": "quality_defensive",
+      "version": "v1",
+      "composite": 0.0948,
+      "mcps_score": 2.2694
+    },
+    {
+      "name": "broad_5",
+      "version": "v1",
+      "composite": -0.0199,
+      "mcps_score": 2.4368
     },
     {
       "name": "opt_risk_parity",
       "version": "v1",
-      "composite": -0.149,
-      "mcps_score": 2.0989
+      "composite": -0.0328,
+      "mcps_score": 2.2381
+    },
+    {
+      "name": "pure_supply_chain",
+      "version": "v1",
+      "composite": -0.0912,
+      "mcps_score": 2.16
     },
     {
       "name": "concentrated_2",
       "version": "v1",
-      "composite": -0.2666,
-      "mcps_score": 2.1912
+      "composite": -0.2205,
+      "mcps_score": 2.323
     },
     {
       "name": "opt_equal_weight",
       "version": "v1",
-      "composite": -0.7213,
-      "mcps_score": 2.0354
+      "composite": -0.6407,
+      "mcps_score": 2.1615
     }
   ],
   "n_candidates": 42,
@@ -79,16 +79,16 @@
   "macro_data_days": 1924,
   "switch_history": [],
   "health": {
-    "days_since_switch": 2,
-    "current_rank": 2,
+    "days_since_switch": 4,
+    "current_rank": 8,
     "anomaly_detected": false,
-    "_consecutive_best_days": 2,
+    "_consecutive_best_days": 4,
     "_prev_best_param": "no_vix_derisk"
   },
-  "mcps_score": 2.125,
-  "composite_score": 0.2829,
+  "mcps_score": 2.16,
+  "composite_score": -0.0912,
   "version_selector": {
     "recommended": "v1",
-    "v1_confidence": 0.8
+    "v1_confidence": 0.85
   }
 }

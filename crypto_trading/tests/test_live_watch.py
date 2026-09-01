@@ -336,13 +336,20 @@ def test_noisefade_per_market_tte_gate():
 # ── W7 probe structural tests ────────────────────────────────────────────────
 
 def test_w7_shares_canonical_constants():
-    """W7 re-frozen 2026-08-27 to the 15M favorite-NO rule (up-side premium)."""
+    """W7 v3 (2026-08-31): symmetric-favorite FLB — probe and canonical module
+    must share every frozen constant so the two can never drift."""
     from crypto_trading.crypto_strategies.event_binary import research_favorite_no as fn
     from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
     assert w7.REM_MIN_TARGET is fn.REM_MIN_TARGET
-    assert (w7.COST_LO, w7.COST_HI) == (fn.COST_LO, fn.COST_HI)
+    assert (w7.COST_LO, w7.COST_HI) == (fn.COST_LO, fn.COST_HI) == (0.60, 0.98)
+    assert (w7.PRIMARY_LO, w7.PRIMARY_HI) == (0.85, 0.98)
+    assert w7.OBS_LO == 0.50 and w7.MAKER_IMPROVE == 0.01
     assert w7.MARKETS is fn.MARKETS
-    assert w7.favorite_is_no is fn.favorite_is_no and w7.no_cost is fn.no_cost
+    assert w7.favorite_side is fn.favorite_side and w7.no_cost is fn.no_cost
+    assert w7.yes_cost is fn.yes_cost
+    # side semantics: favorite = the expensive side; dead even = no trade
+    assert fn.favorite_side(0.30) == "no" and fn.favorite_side(0.70) == "yes"
+    assert fn.favorite_side(0.50) is None
 
 
 def test_favorite_no_semantics():
@@ -411,37 +418,53 @@ def test_w7_survives_state_from_a_previous_freeze(sandbox, monkeypatch):
         assert k in rep["probe"]
 
 
-def test_walk_book_for_no_is_read_only_and_prices_correctly(monkeypatch):
-    """Buying NO consumes the YES-bid ladder at 1-p, best (highest) bid first.
-    Reading the no_dollars ladder instead would price against our competition
-    rather than our counterparty (the bug this test locks out)."""
+def test_walk_book_sides_are_read_only_and_price_correctly(monkeypatch):
+    """Single book: buying a side consumes the OTHER side's resting bids at
+    1-p, best (highest) first. Reading your OWN side's ladder prices you
+    against your competition, not your counterparty (the v2 bug, 2026-08-27).
+    v3 locks the mapping for BOTH sides."""
     import inspect
 
     from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
-    src = inspect.getsource(w7.walk_book_for_no)
+    assert w7.LADDER_FOR_SIDE == {"no": "yes_dollars", "yes": "no_dollars"}
+    src = inspect.getsource(w7.walk_book)
     assert "requests.get" in src and ".post(" not in src        # read-only
-    # the ladder must be read in CODE — the docstring legitimately mentions
-    # no_dollars while explaining the bug this test locks out
-    code = "\n".join(l for l in src.splitlines() if "``" not in l)
-    assert 'ob.get("yes_dollars")' in code
-    assert 'ob.get("no_dollars")' not in code                   # right ladder
 
     class R:
         status_code = 200
         @staticmethod
         def json():
             # yes bids: 0.30 x10 (NO @0.70), 0.28 x20 (NO @0.72), 0.20 x999
+            # no bids: 0.24 x10 (YES @0.76), 0.22 x20 (YES @0.78)
             return {"orderbook_fp": {"yes_dollars": [["0.20", "999"],
                                                      ["0.28", "20"],
                                                      ["0.30", "10"]],
-                                     "no_dollars": [["0.99", "5"]]}}
+                                     "no_dollars": [["0.22", "20"],
+                                                    ["0.24", "10"]]}}
     monkeypatch.setattr("requests.get", lambda *a, **k: R())
-    d = w7.walk_book_for_no("KXBTC15M-X", 25)
+    d = w7.walk_book("KXBTC15M-X", 25, "no")
     assert d["top_cost"] == 0.70                       # 1 - best yes bid 0.30
     # 10 @0.70 + 15 @0.72 = 17.8 / 25 = 0.712
     assert d["fill_cost"] == 0.712
     assert d["filled"] == 25 and d["shortfall"] == 0
     assert d["slippage_c"] == 1.2                      # 1.2c worse than touch
+    y = w7.walk_book("KXBTC15M-X", 25, "yes")
+    assert y["top_cost"] == 0.76                       # 1 - best NO bid 0.24
+    # 10 @0.76 + 15 @0.78 = 19.3 / 25 = 0.772
+    assert y["fill_cost"] == 0.772
+
+
+def test_w7_maker_fill_proxy_semantics():
+    """Maker book fill = the opposite side CROSSES the posted level (same
+    proxy as the 2026-08-31 backtest so numbers stay comparable). A quote
+    merely moving next to the level is NOT a fill."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+    # NO buyer posted a YES ask at 0.31 (touch yes_bid was 0.30)
+    assert w7.maker_filled("no", 0.31, [(1, 0.29, 0.32), (2, 0.31, 0.33)]) is True
+    assert w7.maker_filled("no", 0.31, [(1, 0.30, 0.32), (2, 0.29, 0.31)]) is False
+    # YES buyer posted a YES bid at 0.74 (touch yes_ask was 0.75)
+    assert w7.maker_filled("yes", 0.74, [(1, 0.70, 0.76), (2, 0.71, 0.74)]) is True
+    assert w7.maker_filled("yes", 0.74, [(1, 0.70, 0.76), (2, 0.72, 0.75)]) is False
 
 
 def test_w7_evidence_kill_semantics():
@@ -453,14 +476,187 @@ def test_w7_evidence_kill_semantics():
         return {f"c{i}": {"n": 1, "wins": 0, "sum_c": v} for i, v in enumerate(vals)}
 
     # t = -0.05 world (measured 2026-08-29): must NOT kill
-    st = {"windows": W([+30, -30] * 52)}
+    st = {"windows_primary": W([+30, -30] * 52)}
     assert w7.evidence_kill(st) is False
     # clearly refuting world: 40 windows all around -10c → t << -2 → kill
-    st2 = {"windows": W([-10 + (i % 3 - 1) for i in range(40)])}
+    st2 = {"windows_primary": W([-10 + (i % 3 - 1) for i in range(40)])}
     assert w7.evidence_kill(st2) is True and "refutes" in st2["killed_reason"]
     # too few windows: never kill regardless of mean
-    st3 = {"windows": W([-50] * 10)}
+    st3 = {"windows_primary": W([-50] * 10)}
     assert w7.evidence_kill(st3) is False
+    # v3: the kill judges the PRIMARY cell — a terrible WIDE band alone
+    # must not kill while the primary cell holds up
+    st5 = {"windows": W([-50] * 60), "windows_primary": W([+3, -1] * 20)}
+    assert w7.evidence_kill(st5) is False
     # sticky
-    st4 = {"killed": True, "windows": W([+50] * 40)}
+    st4 = {"killed": True, "windows_primary": W([+50] * 40)}
     assert w7.evidence_kill(st4) is True
+
+
+def test_w7_drift_gate_and_both_side_entry(sandbox, monkeypatch):
+    """v3: the frozen LEG must hold at the ACTUAL fill price, not just on the
+    (up to 90s stale) snapshot — v2 recorded 69/972 out-of-leg trades at
+    -15.8c avg that were never the registered strategy. And the probe now
+    enters WHICHEVER side is the favorite."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now + pd.Timedelta(minutes=8)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    snap = {"recv_ts": now.timestamp(),
+            "markets": [{"ticker": "KXBTC15M-NOFAV", "close_time": close,
+                         "yes_bid_dollars": "0.25", "yes_ask_dollars": "0.27"}]}
+    monkeypatch.setattr(w7, "latest_snapshot",
+                        lambda s: snap if s == "KXBTC15M" else None)
+    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                       "cum_net_usd": 0.0})
+    cfg = {"w7_noisefade": {"enabled": False, "contracts": 25}}
+
+    # book drifted: NO now fills at 0.30 (out of leg) -> no entry, drift_skip
+    monkeypatch.setattr(w7, "walk_book",
+                        lambda t, c, side: {"top_cost": 0.30, "fill_cost": 0.30,
+                                            "filled": 25, "shortfall": 0,
+                                            "slippage_c": 0.0})
+    rep = w7.run(cfg)
+    assert rep["entries"] == [] and rep["open_virtual"] == 0
+    assert rep["probe"]["entered"] == 0 and rep["probe"]["drift_skips"] == 1
+    st = common.load_state("w7_noisefade")
+    assert "KXBTC15M-NOFAV" in st["seen_tickers"]     # one look per window
+
+    # in-leg book price -> NO-favorite enters at the book VWAP, with the
+    # maker level posted one cent inside the touch (yes_bid 0.25 -> 0.26)
+    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                       "cum_net_usd": 0.0})
+    monkeypatch.setattr(w7, "walk_book",
+                        lambda t, c, side: {"top_cost": 0.74, "fill_cost": 0.7460,
+                                            "filled": 25, "shortfall": 0,
+                                            "slippage_c": 0.6})
+    rep = w7.run(cfg)
+    assert rep["probe"]["entered"] == 1
+    assert rep["entries"][0]["side"] == "no"
+    assert rep["entries"][0]["cost"] == 0.746
+    st = common.load_state("w7_noisefade")
+    pos = st["positions"]["KXBTC15M-NOFAV"]
+    # maker posts inside the BOOK touch (top_cost 0.74 -> yes_bid 0.26 ->
+    # post 0.27), NOT the stale snapshot touch (yb 0.25 -> 0.26): the
+    # 2026-09-01 live catch — snapshot-posted levels sat 16-21c off-market.
+    assert pos["maker_posted"] == 0.27
+
+    # YES-favorite window (yes_mid 0.74) -> buys YES; obs leg when the fill
+    # lands in [0.50, 0.60): recorded as leg="obs", not counted as "entered"
+    snap2 = {"recv_ts": now.timestamp(),
+             "markets": [{"ticker": "KXBTC15M-YESFAV", "close_time": close,
+                          "yes_bid_dollars": "0.72", "yes_ask_dollars": "0.76"}],
+             }
+    monkeypatch.setattr(w7, "latest_snapshot",
+                        lambda s: snap2 if s == "KXBTC15M" else None)
+    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                       "cum_net_usd": 0.0})
+    monkeypatch.setattr(w7, "walk_book",
+                        lambda t, c, side: {"top_cost": 0.76, "fill_cost": 0.762,
+                                            "filled": 25, "shortfall": 0,
+                                            "slippage_c": 0.2})
+    rep = w7.run(cfg)
+    assert rep["entries"][0]["side"] == "yes"
+    assert rep["entries"][0]["cost"] == 0.762
+    st = common.load_state("w7_noisefade")
+    # book yes_ask (top_cost) 0.76 -> post 0.75
+    assert st["positions"]["KXBTC15M-YESFAV"]["maker_posted"] == 0.75
+
+
+def test_w7_v3_settlement_books_split(sandbox, monkeypatch):
+    """Settlement must route each leg to its book: band legs -> trades /
+    windows / cum_net_usd (and windows_primary ONLY for [0.85,0.98]); the
+    observation leg -> obs_trades and NOTHING else. Maker parallel book
+    settles from the tape with the crossing proxy."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now - pd.Timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rts = (now - pd.Timedelta(minutes=18)).timestamp()
+    common.save_state("w7_noisefade", {"positions": {
+        # primary-cell NO win (cost 0.87): result "no"
+        "T-PRIM": {"cost": 0.87, "close": close, "series": "KXBTC15M",
+                   "side": "no", "leg": "band", "maker_posted": 0.14,
+                   "entry_rts": rts,
+                   "opened": str(pd.Timestamp(rts + 30, unit="s", tz="UTC"))},
+        # band YES loss (cost 0.65): result "no"
+        "T-BAND": {"cost": 0.65, "close": close, "series": "KXETH15M",
+                   "side": "yes", "leg": "band", "maker_posted": 0.64,
+                   "entry_rts": rts,
+                   "opened": str(pd.Timestamp(rts + 30, unit="s", tz="UTC"))},
+        # observation leg YES win (cost 0.55): result "yes"
+        "T-OBS": {"cost": 0.55, "close": close, "series": "KXSOL15M",
+                  "side": "yes", "leg": "obs", "maker_posted": 0.54,
+                  "entry_rts": rts,
+                  "opened": str(pd.Timestamp(rts + 30, unit="s", tz="UTC"))},
+    }, "trades": [], "cum_net_usd": 0.0})
+    res = {"T-PRIM": "no", "T-BAND": "no", "T-OBS": "yes"}
+    monkeypatch.setattr(w7, "official_result", lambda t: res[t])
+    monkeypatch.setattr(w7, "latest_snapshot", lambda s: None)
+    # tape: T-PRIM's posted YES ask 0.14 gets crossed (yes_bid reaches it);
+    # T-BAND's posted YES bid 0.64 never crossed (ask stays above)
+    tapes = {"T-PRIM": [(rts + 60, 0.14, 0.16)],
+             "T-BAND": [(rts + 60, 0.60, 0.66)],
+             "T-OBS": [(rts + 60, 0.50, 0.56)]}
+    # the mock honours t0/t1 exactly like the real tape reader — the fill
+    # window must start at the order's wall-clock time, so quotes before
+    # ``opened`` never reach maker_filled (2026-09-01 live catch)
+    monkeypatch.setattr(w7, "tape_quotes",
+                        lambda series, tkr, t0, t1: [q for q in tapes[tkr]
+                                                     if t0 <= q[0] <= t1])
+    rep = w7.run({"w7_noisefade": {"enabled": False, "contracts": 25}})
+    assert rep["status"] == "OK" and len(rep["settled"]) == 3
+    st = common.load_state("w7_noisefade")
+    assert len(st["trades"]) == 2 and len(st["obs_trades"]) == 1
+    assert len(st["windows"]) == 1                    # same close_time
+    assert len(st["windows_primary"]) == 1            # only the 0.87 trade
+    assert st["windows_primary"][close]["n"] == 1
+    # cum book = band legs only: win 0.87 (fee 0.0079) + loss 0.65 (fee 0.0159)
+    prim_c = (1 - 0.87 - 0.07 * 0.87 * 0.13) * 100
+    band_c = (0 - 0.65 - 0.07 * 0.65 * 0.35) * 100
+    assert st["cum_net_usd"] == pytest.approx(
+        (prim_c + band_c) / 100 * 25, abs=0.01)
+    by_t = {x["ticker"]: x for x in st["trades"]}
+    assert by_t["T-PRIM"]["maker_fill"] is True
+    assert by_t["T-PRIM"]["maker_pnl_c"] == pytest.approx(
+        (1 - (1 - 0.14)) * 100, abs=0.01)             # win at cost 0.86, no fee
+    assert by_t["T-BAND"]["maker_fill"] is False
+    assert by_t["T-BAND"]["maker_pnl_c"] is None
+    assert st["obs_trades"][0]["win"] is True         # obs booked nowhere else
+
+
+def test_w7_maker_fill_window_starts_at_order_time(sandbox, monkeypatch):
+    """An order cannot fill before it exists: a cross that happened between
+    the snapshot's recv_ts and the actual posting moment (``opened``) must
+    NOT count. Live catch 2026-09-01: ETH-2230 tape never crossed 0.73 after
+    entry, but the pre-entry ask did — and was wrongly counted as a fill."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now - pd.Timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rts = (now - pd.Timedelta(minutes=18)).timestamp()
+    opened = rts + 60                                  # posted 60s after snap
+    common.save_state("w7_noisefade", {"positions": {
+        "T-PRE": {"cost": 0.74, "close": close, "series": "KXETH15M",
+                  "side": "yes", "leg": "band", "maker_posted": 0.73,
+                  "entry_rts": rts,
+                  "opened": str(pd.Timestamp(opened, unit="s", tz="UTC"))},
+    }, "trades": [], "cum_net_usd": 0.0})
+    monkeypatch.setattr(w7, "official_result", lambda t: "yes")
+    monkeypatch.setattr(w7, "latest_snapshot", lambda s: None)
+    # cross at rts+30 (BEFORE the order existed), never after
+    tape = [(rts + 30, 0.70, 0.72), (opened + 60, 0.76, 0.77),
+            (opened + 120, 0.89, 0.91)]
+    monkeypatch.setattr(w7, "tape_quotes",
+                        lambda series, tkr, t0, t1: [q for q in tape
+                                                     if t0 <= q[0] <= t1])
+    w7.run({"w7_noisefade": {"enabled": False, "contracts": 25}})
+    st = common.load_state("w7_noisefade")
+    assert st["trades"][0]["maker_fill"] is False
+    assert st["trades"][0]["maker_pnl_c"] is None

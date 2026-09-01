@@ -103,8 +103,8 @@ to avoid CPU / Polygon rate-limit contention. Full copy-paste payloads live in
 
 | Task | Schedule (ET) | Command |
 |---|---|---|
-| `aeus-daily-backtest` | weekdays 18:40 | `bash …/daily_backtest.sh` |
-| `aeus-daily` | weekdays 20:10 | `bash …/aeus_pipeline.sh daily` |
+| `aeus-daily-backtest` | weekdays 19:10 | `bash …/daily_backtest.sh` |
+| `aeus-daily` | weekdays 20:20 | `bash …/aeus_pipeline.sh daily` |
 | `aeus-weekly` | Sun 03:30 | `bash …/aeus_pipeline.sh weekly` |
 
 > **Idempotency gate (inherited from the AISS 2026-07-21 double-run incident):**

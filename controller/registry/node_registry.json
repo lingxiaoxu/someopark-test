@@ -42,6 +42,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR4HNZRSL": {
+  "aliases": [
+   "LEN/ROST"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US5260571048|S:US7782961038",
+  "display_name": "LEN/ROST",
+  "first_seen": "2026-09-01T14:13:39+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR4RIX80D": {
   "aliases": [
    "PLTR/LUV"
@@ -157,6 +172,21 @@
   "canonical_key": "mtfs|L:US7185461040|S:US65473P1057",
   "display_name": "PSX/NI",
   "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR9DKLMJ6": {
+  "aliases": [
+   "VLO/GNRC"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:US3687361044",
+  "display_name": "VLO/GNRC",
+  "first_seen": "2026-09-01T14:13:39+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -357,6 +387,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRK84F1KH": {
+  "aliases": [
+   "CTSH/TPR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US1924461023|S:US8760301072",
+  "display_name": "CTSH/TPR",
+  "first_seen": "2026-09-01T14:13:39+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRKWAXB8C": {
   "aliases": [
    "PSX/DECK"
@@ -412,6 +457,21 @@
   "canonical_key": "mtfs|L:US34959E1091|S:US65473P1057",
   "display_name": "FTNT/NI",
   "first_seen": "2026-08-28T16:50:34+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPROKF3TEM": {
+  "aliases": [
+   "VLO/BLDR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:US12008R1077",
+  "display_name": "VLO/BLDR",
+  "first_seen": "2026-09-01T14:13:39+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
