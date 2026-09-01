@@ -40,7 +40,10 @@ BOXA="someoparkdgx25@100.76.95.43"
 BOXB="someoparkdgx25@169.254.229.3"
 GAMES='~/mirofootball/games'
 TS="$(date +%Y%m%d_%H%M%S)"
-LOG="/tmp/mf_online_${TS}.log"
+# 上线日志持久化(2026-09-01,用户指示):只有真正执行 /games 上线的跑才写这里——
+# --check 在 tee 之前就 exit,连目录都不会创建;/tmp 落点曾使 08-21 那次上线的
+# 调用路径十天后不可考。目录被 .gitignore 双层排除,仓库 PUBLIC 也不会带出去。
+LOG="$REPO/prediction_market/data/logs/mf_online_${TS}.log"
 
 CHECK_ONLY=0; SKIP_DEPLOY=0; SKIP_DFM=0; MIN_GAMES=10
 for arg in "$@"; do
@@ -95,6 +98,7 @@ fi
 # ── [1]+[2] 同步 + DFM(sync 脚本一体完成;必须在 FRONT 目录下运行)────────────
 say "[1/2] 同步 + DFM 放大(约 15-20 分钟,日志: $LOG)"
 SYNC_ARGS=""; [ "$SKIP_DFM" = 1 ] && SYNC_ARGS="--skip-dfm"
+mkdir -p "$(dirname "$LOG")"
 ( cd "$FRONT" && node scripts/sync_microfootball.mjs $SYNC_ARGS ) 2>&1 | tee "$LOG"
 
 # ── [3] 校验(三道关口,任一失败即停,不部署)──────────────────────────────────
