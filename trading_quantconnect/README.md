@@ -1,4 +1,4 @@
-# trading_quantconnect — QC 模拟盘镜像 + M4 对账
+# trading_quantconnect — QC 模拟盘镜像 + 日对账(持仓/目标/净值三平面)
 
 QuantConnect paper 账户按**官方口径**镜像五策略(MRPT/MTFS/AISS/SSRS/BDC)实盘持仓。
 本目录只读五份持仓文件与 QC API,只写 `reconcile/` 与 `logs/`——不下单决策、不碰
@@ -14,10 +14,10 @@ inventory、不碰上游 state。
 ```
 
 - 面板按**决策日收盘**入账、QC **次日开盘**才成交——这段缺口是 ΔD 的永久台阶,
-  由 M4 的 `rebalance_mirror_lag` 项逐腿挂账(见下),不是误差。
+  由日对账的 `rebalance_mirror_lag`(换仓镜像滞后)项逐腿挂账(见下),不是误差。
 - 重部署会重置 paper 账户:重部署后必须 `export_once(push=True, force=True)` 强推。
 
-## M4 日对账(reconcile/qc_reconcile.py,launchd 五时点)
+## QC↔面板日对账(reconcile/qc_reconcile.py,launchd 五时点)
 
 三平面,写同一份 `reconcile/qc_reconcile_<session>.json`(`merge_section` 保证后趟
 不抹前趟终态):
@@ -46,9 +46,9 @@ legacy 出清后两边持仓逐票相同,净值差定格为现金项 K——但*
 Q + k_effective ≡ P,   k_effective = k_equity(冻结值) + Σ 每换仓日(镜像滞后+滑点)
 ```
 
-台阶直接从历史 M4 报告 attribution 累加(报告即台账,无第二真相源);缺台阶的天点名
+台阶直接从历史对账报告 attribution 累加(报告即台账,无第二真相源);缺台阶的天点名
 并拦 ok。`--measure` 只读试算;`--freeze` 为**报告锚定制**(2026-08-31,方案 A):
-K = 锚点场次 M4 报告里**判过的** D_usd,零 QC API、不要求账户静止——闸门只剩
+K = 锚点场次对账报告里**判过的** D_usd,零 QC API、不要求账户静止——闸门只剩
 "只冻一次 + L/S 队列空 + 锚点场次三段全 ok(equity 可 baseline)",`--session`
 指定锚点(默认取最新一份三段全 ok 的报告)。
 
