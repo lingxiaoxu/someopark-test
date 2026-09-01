@@ -605,3 +605,16 @@ S10a δ_team(便宜、门槛已过)→ S12a 状态通道(便宜)→ S10b 球员�
 anchored 0.587)或 V6b Spearman(0.967)回退即整项回滚。所有训练/验证跑在
 Mac 副本上,box B 照旧只读。语料继续是第一杠杆:每加一个对阵,上面每一项的
 可行域都在变大。
+
+### 10.5 执行注意项(2026-09-01 上线实录补记)
+
+- **TEAM_STRENGTH 补表纪律**:每次 box B 出现新队,上线日志会打 `WARNING: team
+  missing from TEAM_STRENGTH`(双缺同行打印,逗号分隔——grep 时别在逗号截断)。
+  09-01 批七队(Portugal/Netherlands/Croatia/Sweden/Australia/Egypt/Bosnia)按
+  08-12 先例补表后全量重跑,**22 对阵 W/D/L 两位小数全部不变**——第二次实证评分
+  维度敏感度极小(brain 用内部 rating 编战术)。补表是卫生要求,不是数字驱动。
+- **`--matchup` 部分补跑的 manifest 陷阱(未修)**:部分跑写只含该对阵的
+  manifest,而 dfm_index 构建读"最新 manifest 的 files"——部分补跑后直接重建索引
+  会把 22 对阵塌成补跑的几个。当前正确做法:凡涉及条件/通道变更一律全量重跑;
+  真修法(排队):production.py 在 --matchup 模式下应把新文件**合并**进上一份
+  全量 manifest 再落新 ts。

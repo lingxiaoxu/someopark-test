@@ -95,6 +95,14 @@ TEAM_STRENGTH = {
     # rating sensitivity is small (model.py:56: the brain compiles tactics from
     # its OWN internal ratings, which disagree with any external table anyway).
     'Germany': 1.2, 'Canada': 0.3, 'South Africa': -0.3,
+    # 2026-09-01 (the four new matchups): SEVEN sides ran the first onlining at the
+    # 0.0 fallback — Portugal/Netherlands top-tier, Bosnia well below mid — the exact
+    # repeat of the 08-12 Germany/Canada episode. Same FIFA-flavored scale; per the
+    # 08-12 measured-impact note, expect anchored W/D/L to move <2dp, and this row
+    # exists for hygiene + the never-simmed ridge path, not because numbers will jump.
+    'Portugal': 1.3, 'Netherlands': 1.2, 'Croatia': 1.0,
+    'Sweden': 0.3, 'Australia': 0.2, 'Egypt': 0.2,
+    'Bosnia and Herzegovina': -0.2,
 }
 
 RE_GOAL = re.compile(r'^Goal Scored by - (.+) - \((.+)\)$')
