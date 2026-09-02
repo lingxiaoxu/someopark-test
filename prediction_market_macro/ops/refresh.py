@@ -128,6 +128,13 @@ def _run(weekly: bool = False) -> dict:
     from prediction_market_macro.ingest import ercot
     step("ercot", lambda: ercot.refresh(conn))
     step("ercot_mirror", lambda: ercot.mirror_weekly_burn(conn))
+    # PJM grid fundamentals (2026-09-02, SHADOW per §7-bis — the deliberate twin of the
+    # ERCOT lane; PJM is the larger market, so its gas burn carries more national weight
+    # in the storage prints that move NG). One Data Miner request per refresh: the
+    # non-member rate limit is ~6/min and the AEUS strategy owns the bulk pulls.
+    from prediction_market_macro.ingest import pjm
+    step("pjm", lambda: pjm.refresh(conn))
+    step("pjm_mirror", lambda: pjm.mirror_weekly_burn(conn))
     # Cleveland Fed daily inflation nowcasts (2026-08-15, shadow per §7-bis —
     # no model reads it until a preregistered gate clears). The fetched files
     # carry full history, so this one step is backfill + daily tail in one.
