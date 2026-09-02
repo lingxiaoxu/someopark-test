@@ -258,7 +258,11 @@ def test_missing_bound_yields_no_expectation_rather_than_raising(strike_type, fl
 
 @pytest.mark.parametrize("strike_type,floor,cap,y,want", [
     ("greater", 4.3, None, 4.4, "yes"),
-    ("greater", 4.3, None, 4.3, "no"),          # strict: equality is NOT yes
+    # 2026-09-02: within the greater-family the registry flag decides the tie; this
+    # test passes default_strict=False, so a 'greater' contract on the line is YES
+    # (KXAAAGASW-26AUG31-4.080 is the settlement that made the rule). The strict
+    # reading is pinned separately in test_kxaaagasw_exact_tie_settles_yes_as_kalshi_did.
+    ("greater", 4.3, None, 4.3, "yes"),
     ("greater_or_equal", 4.3, None, 4.3, "yes"),
     ("greater_or_equal", 4.3, None, 4.2, "no"),
     ("less", None, 4.3, 4.2, "yes"),
@@ -388,3 +392,20 @@ def test_the_live_breaker_is_silent(live):
     from datetime import datetime, timezone
     flags = _settle_label_check(live, datetime.now(timezone.utc))
     assert flags == [], "\n  ".join(flags)
+
+
+def test_kxaaagasw_exact_tie_settles_yes_as_kalshi_did_on_26aug31():
+    """2026-08-31: AAA printed exactly 4.080 and Kalshi settled 'Above 4.080' YES. The
+    registry's strict_gt=True predicted NO, the health check called it a mismatch, and
+    the GLOBAL breaker tripped two mornings in a row (three positions force-exited, 104
+    opens blocked). This pins the observed rule so the flag cannot drift back to the
+    build-time assumption."""
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.research.health import _leg_expected
+    spec = REGISTRY["KXAAAGASW"]
+    assert spec.strict_gt is False
+    # the live check passes the contract's own nominal type ('greater'); the registry
+    # flag must decide the tie, and it must say YES as the settlement did
+    assert _leg_expected(4.08, "greater", 4.08, None, spec.strict_gt) == "yes"
+    # a series still registered strict keeps calling the same tie NO
+    assert _leg_expected(4.08, "greater", 4.08, None, True) == "no"

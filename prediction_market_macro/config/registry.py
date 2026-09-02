@@ -117,9 +117,18 @@ REGISTRY: dict[str, SeriesSpec] = {s.ticker: s for s in [
     SeriesSpec(
         ticker="KXAAAGASW", family="energy", cadence="weekly", calendar="AAA_WEEKLY",
         settle_source=("AAA national average regular gasoline, Monday reading, to 0.001. "
-                       "Legs 'Above X.XX0' strict >. Model anchor is the EIA weekly proxy "
+                       "Legs 'Above X.XX0' settle YES on an exact tie — observed, not "
+                       "assumed: KXAAAGASW-26AUG31-4.080 settled YES with the AAA print at "
+                       "exactly 4.080 (2026-08-31). Model anchor is the EIA weekly proxy "
                        "(GASREGW) — level offset noted in model card; shadow judges."),
-        structure="ladder", unit="$gal", round_rule=0.001, strict_gt=True,
+        # 2026-09-02: was strict_gt=True ("strict >", an assumption written at build
+        # time). The first exact tie in 867 settled legs went YES; under True the health
+        # settle-label check called it a mismatch, tripped the GLOBAL breaker two days
+        # running, force-exited every open position and blocked 104 opens. A 0.001-grid
+        # series ties for real, so this flag also moves P(y == strike) onto the YES side
+        # of leg_fair, where Kalshi puts it. Other 'greater' series keep True: no tie has
+        # been observed on them yet, and this flag is set by evidence, not by analogy.
+        structure="ladder", unit="$gal", round_rule=0.001, strict_gt=False,
         model="energy", prior_source=None, priority=1, lanes=("weekly_close",),
         fred_first_release="GASREGW"),
     SeriesSpec(
@@ -137,3 +146,33 @@ REGISTRY: dict[str, SeriesSpec] = {s.ticker: s for s in [
 
 def p0() -> list[SeriesSpec]:
     return [s for s in REGISTRY.values() if s.priority == 0]
+
+
+# When a series' tie rule was CORRECTED, the rule in force before the correction, so a
+# reader replaying a decision recorded earlier prices it the way production did then.
+# {series: ((corrected_at_iso, strict_gt_before), ...)}
+STRICT_GT_HISTORY: dict[str, tuple[tuple[str, bool], ...]] = {
+    "KXAAAGASW": (("2026-09-02T12:00:00+00:00", True),),
+}
+
+
+def effective_strike_type(series: str, strike_type: str | None,
+                          asof: str | None = None) -> str:
+    """The strike type to PRICE and SETTLE a leg with: the contract's nominal type selects
+    the family (greater / less / between), the series' registered `strict_gt` decides the
+    tie ON the line.
+
+    2026-09-02: Kalshi labels KXAAAGASW legs 'greater' and settled the first exact tie
+    (26AUG31-4.080, AAA print 4.080) YES. Every consumer read the contract's word
+    literally — `strike_type or "greater"` — so the health check called a correct
+    settlement a mismatch and tripped the global breaker two mornings running, and
+    leg_fair put the tie's probability mass on the NO side of a 0.001-grid series
+    that ties for real. `strict_gt` is set from observed settlements, not analogy; a
+    series with no observed tie keeps its registered value.
+    """
+    st = strike_type or "greater"
+    if st in ("greater", "greater_or_equal"):
+        spec = REGISTRY.get(series)
+        strict = spec.strict_gt if spec is not None else True
+        return "greater" if strict else "greater_or_equal"
+    return st

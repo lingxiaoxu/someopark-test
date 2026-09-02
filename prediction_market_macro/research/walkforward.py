@@ -41,7 +41,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from prediction_market_macro.config.registry import REGISTRY
+from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
 from prediction_market_macro.model.common import Categorical, grid_pmf
 from prediction_market_macro.ops.decide_all import _structs_categorical
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -1118,9 +1118,9 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                         if res is None or m["strike"] is None:
                             continue
                         try:
-                            fm = leg_fair(raw_pmf, m["strike_type"] or "greater",
+                            fm = leg_fair(raw_pmf, effective_strike_type(spec.ticker, m["strike_type"]),
                                           m["strike"], m["cap_strike"])
-                            fk = leg_fair(mk_pmf, m["strike_type"] or "greater",
+                            fk = leg_fair(mk_pmf, effective_strike_type(spec.ticker, m["strike_type"]),
                                           m["strike"], m["cap_strike"])
                         except Exception:                  # noqa: BLE001
                             continue

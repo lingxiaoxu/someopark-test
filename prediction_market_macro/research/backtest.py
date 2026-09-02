@@ -250,7 +250,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     tell "12 events at the live config" from "12 events at a config we abandoned".
     """
     import importlib
-    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
     from prediction_market_macro.model.common import Categorical, leg_fair
     from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
     from prediction_market_macro.research.branch_parity import branch_of as _branch_of
@@ -354,8 +354,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                     if pmf is None:                              # categorical leg
                         fair = float(probs.get(l["ticker"].rsplit("-", 1)[-1], 0.0))
                     else:
-                        st = l["strike_type"] or ("greater" if spec.strict_gt
-                                                  else "greater_or_equal")
+                        st = effective_strike_type(series, l["strike_type"])
                         fair = leg_fair(pmf, st, l["floor_strike"], l["cap_strike"])
                 except Exception:                                # noqa: BLE001
                     continue

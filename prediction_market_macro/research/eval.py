@@ -145,7 +145,7 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     one production adopted. Used only by `pit_gates.GateHistory` on behalf of
     `walkforward._GateBook`; mutually exclusive with the other two."""
     import importlib
-    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
     from prediction_market_macro.model.common import Categorical, grid_pmf
     from prediction_market_macro.ops.decide_all import _structs_categorical
     from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -430,7 +430,7 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
                 continue
             legs_scored += 1
             try:
-                fair = leg_fair(pmf, l["strike_type"] or "greater",
+                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
                                 l["floor_strike"], l["cap_strike"])
             except Exception:                              # noqa: BLE001
                 continue
@@ -723,7 +723,7 @@ def shadow_gate(conn, series: str, prefix: str, min_weekly: int = 8,
             if mp is None or l["floor_strike"] is None:
                 continue
             try:
-                fair = leg_fair(pmf, l["strike_type"] or "greater",
+                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
                                 l["floor_strike"], l["cap_strike"])
             except Exception:                             # noqa: BLE001
                 continue

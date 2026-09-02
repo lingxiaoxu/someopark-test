@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-from prediction_market_macro.config.registry import REGISTRY
+from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
 from prediction_market_macro.ops.ledger import open_positions
 from prediction_market_macro.strategy.edge import taker_fee, two_sided
 
@@ -201,7 +201,7 @@ def hold_state(conn, pos) -> dict | None:
             # the leg's OWN strike metadata — between buckets and less-type
             # legs priced correctly, not as bare survival(floor)
             try:
-                fair_yes = leg_fair(pmf, c["strike_type"] or "greater",
+                fair_yes = leg_fair(pmf, effective_strike_type(pos["series"], c["strike_type"]),
                                     c["floor_strike"], c["cap_strike"])
             except Exception:                         # noqa: BLE001
                 return None

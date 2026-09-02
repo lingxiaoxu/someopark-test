@@ -42,7 +42,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from prediction_market_macro.config.registry import REGISTRY
+from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
 from prediction_market_macro.model import ts_foundation as tf
 from prediction_market_macro.model.common import Empirical, grid_pmf, leg_fair
 from prediction_market_macro.research.backtest import _market_leg_prob, _settle_release_ts
@@ -177,7 +177,7 @@ def replay_series(conn, series: str, max_events: int, days: int,
                 out01 = 1.0 if l["result"] == "yes" else 0.0
                 mkt_acc.append((mp - out01) ** 2)
                 for v, pmf in pmfs.items():
-                    f = leg_fair(pmf, l["strike_type"] or "greater",
+                    f = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
                                  l["floor_strike"], l["cap_strike"])
                     acc[v].append((f - out01) ** 2)
                     if 0.02 <= mp <= 0.98 and (f <= 1e-9 or f >= 1 - 1e-9):

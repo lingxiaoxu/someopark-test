@@ -22,7 +22,7 @@ import math
 import random
 from datetime import datetime, timedelta, timezone
 
-from prediction_market_macro.config.registry import REGISTRY
+from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
 
 
@@ -246,7 +246,15 @@ def _leg_expected(y: float, strike_type: str | None, floor, cap,
         return 0.0 < abs(y - bound) <= _STRIKE_EPS
 
     st = strike_type or ("greater" if default_strict else "greater_or_equal")
+    # 2026-09-02: within the greater-family the TIE rule comes from the series' registry
+    # flag, not from the contract's nominal type. Kalshi labels KXAAAGASW legs 'greater'
+    # and settled the first exact tie (26AUG31-4.080, print 4.080) YES; reading the
+    # contract's word literally made this check call a correct settlement a mismatch and
+    # trip the global breaker two mornings running. The contract type still selects the
+    # family (greater / less / between); the registry, set by observed settlements,
+    # decides what happens ON the line.
     if st in ("greater", "greater_or_equal"):
+        st = "greater" if default_strict else "greater_or_equal"
         if floor is None or _ulp(floor):
             return None
         return "yes" if (y > floor if st == "greater" else y >= floor) else "no"
@@ -303,7 +311,7 @@ def _ledger_selfcheck(conn, now: datetime, k: int = 3) -> list[str]:
     inputs_json dist + structure legs — mismatch means code silently changed."""
     from prediction_market_macro.model.common import leg_fair
     rows = conn.execute(
-        "SELECT id, series, structure_json, inputs_json, fair FROM decisions"
+        "SELECT id, series, ts_utc, structure_json, inputs_json, fair FROM decisions"
         " WHERE kind='open' AND fair IS NOT NULL").fetchall()
     if not rows:
         return []
@@ -328,7 +336,11 @@ def _ledger_selfcheck(conn, now: datetime, k: int = 3) -> list[str]:
                     " WHERE ticker=?", (leg["ticker"],)).fetchone()
                 if c is None or c["floor_strike"] is None:
                     continue
-                fair = leg_fair(pmf, c["strike_type"] or "greater",
+                # the tie rule IN FORCE when this decision was recorded (registry
+                # history) — a rule corrected later must not make an older, correct
+                # decision look like silently changed code (2026-09-02, KXAAAGASW)
+                fair = leg_fair(pmf, effective_strike_type(d["series"], c["strike_type"],
+                                                           asof=d["ts_utc"]),
                                 c["floor_strike"], c["cap_strike"])
             else:
                 continue                                   # dist form not replayable
