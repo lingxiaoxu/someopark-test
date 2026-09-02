@@ -631,6 +631,16 @@ onboard_aeus.py 本身不用改(它已写 at/deposit_K)。**待用户批**。
 | 19:00 | AISS daily | 无调仓(月度已过),事件窗已关 |
 | 17:33 | VP | A/B 第 5/10 天;floor_streak 归 0 后继续盯 |
 
+**9/1 深夜事故与修复(00:45 记)**:20:44 `account_aeus.json` 建仓落盘、scalar 未写 →
+`read_snapshot` 只按"文件存在"放行,重建 target 把 12 只电力票按 ×1.0 混入 →
+23:15/23:50 trot ② 假 breach(exporter 4 小时未推 v22,疑 fail-static,反而是保护)。
+已修:`read_snapshot` 改 scalar 门(文件存在 + exporter scalars 含 aeus 才入 target,
+与 P 挂载闸同判据,80ff8bf);00:40 重跑 live trot,9/1 报告 ①② 回到 ok、③ pending。
+**明日 onboard 后新增观察点**:scalar 写入后 ~2 分钟内 exporter 应推 v22(含 aeus
+腿,= 账本股数×scalar);若无 → exporter 进程(PID 38199,自 8/19)可能挂死,
+`launchctl kickstart -k gui/$(id -u)/com.someopark.qcmirror.exporter` 重启后
+`export_once(push=True, force=True)` 强推。
+
 **失败判据**:9/1 settle 若 partial/breach → 查 `per_leg`(月度买回 12 腿定价)、`k_steps_missing`;
 onboard 后 ① 出现 aeus 票不收敛 → 先查 QC 历史首名(已五例:ORCC/NB/CMB/RCHI/COH)。
 
