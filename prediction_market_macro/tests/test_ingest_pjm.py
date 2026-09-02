@@ -80,4 +80,27 @@ def test_pjm_daily_has_no_model_consumer_yet():
     import prediction_market_macro.model as M
     root = Path(M.__file__).parent
     hits = sorted(p.name for p in root.glob("*.py") if "pjm_daily" in p.read_text())
-    assert hits == [], f"unregistered pjm_daily consumers: {hits}"
+    # PR-33 registered pjm_cov.py as the ONE consumer; it reaches models only behind
+    # params['pjm_w'] (default 0). Any other model file touching the table must arrive
+    # with its own registration and update this list.
+    assert hits == ["pjm_cov.py"], f"unregistered pjm_daily consumers: {hits}"
+
+
+def test_pjm_cov_is_silent_by_default_and_never_raises():
+    """PR-33's ground rule: pjm_w=0 is bit-identical, and the covariate can never be the
+    reason a prediction fails — empty tables, wrong series, missing columns all give 0.0."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from prediction_market_macro.model import pjm_cov
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(pjm._SCHEMA)
+    conn.executescript(
+        "CREATE TABLE ercot_daily(date TEXT, metric TEXT, value REAL,"
+        " knowledge_time TEXT, first_seen_ts TEXT);"
+        "CREATE TABLE fred_obs(sid TEXT, event_time TEXT, value REAL,"
+        " vintage_date TEXT, knowledge_time TEXT, first_seen_ts TEXT)")
+    pjm_cov.clear_cache()
+    now = datetime(2026, 9, 2, tzinfo=timezone.utc)
+    for s in ("KXJOBLESSCLAIMS", "KXNATGASW", "KXCPI", "KXOTHER"):
+        assert pjm_cov.mu_shift(conn, now, s) == 0.0
+    pjm_cov.clear_cache()

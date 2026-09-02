@@ -1079,3 +1079,26 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | K | ERCOT 条件化第 1 次 |
 | 影响面 | 判定 /tmp 注入;采纳=context 列入 `panel.py`(列集变、config key 变),只对新 fit/新世界生效 |
 | 结论 | **energy_weekly ADOPTED / claims_weekly NOT ADOPTED**(2026-08-31。第一跑作废并如实记录:手工 Column 漏 `generate=False`,B 臂误成"联合生成 ERCOT 列"(Z 变、boot 移、对照位判 VOID)——顺带一个免费数据点:联合生成使 crps 劣化 0.011–0.045,该路线勿再试。修正重跑(真·仅条件化,boot 对 A2 逐位 ✓):**energy** B vs A2 crps 0.9559→**0.9508**、cover 帽 0.0358→0.0243,且 B **优于全窗 A**(0.9539)——三条判据全过;**claims** B vs A2 crps −0.0004(无增益)、cover 帽劣化,未达。落地:ENERGY_WEEKLY 谱加 `ercot_burn` context 列、start=2019-01-05(判过的臂原样入产);config key 变,只对新 fit/新世界生效。**跟进义务已履行**(2026-08-31):新 panel + 冻结 rho/phi 下桥相关 gas/wti/rbob err 0.005/0.031/0.029、mean 0.0218 → **PR-20 杠内,无需重标定**;采纳后全量 run_joint 重算 10/10 ok(run *_20260831T045554),ERCOT 条件化世界已入产。工件 pr32_validate{,2}.log、pr32_validate_run1.json、pr32_validate.json |
+
+### PR-33 PJM+ERCOT 天气烈度协变量(KXJOBLESSCLAIMS,用户指令:用 PJM 数据改善表现)(2026-09-02)
+
+> PJM 筛选(`PJM_NOTES.md`,598 个测试)只留下一个**同时具备市场、事前机制、正确符号、
+> 无条件显著**的候选:两网需求 \|climatology z\| 的均值 → ICSA 周度变化,r=+0.195、n=251、
+> perm p=0.0016。**它是 PJM 补上 ERCOT 结构性缺口的唯一一处**:ERCOT 单独的同形状信号在
+> 上一轮筛选是 r=−0.02(得州一地),PJM+ERCOT 覆盖 13 州 6500 万人,天气代理才成立。
+> **诚实前提**:0.0016×598 远超 0.05,全屏多重性下它不显著;PR-31 判过同族(ERCOT 单独
+> \|z\|→claims)且 NOT ADOPTED(−1h −0.9%)。故本条不是采纳,是**前瞻判定**——判据先冻结,
+> 由生产 replay 说话。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-09-02,replay 之前 |
+| 改动 | `model/pjm_cov.py`(ERCOT 协变量的逐字孪生:D+2 可知、仅既往年份气候学、逐 asof 扩窗 OLS、<52 对静默 0、shift 截断 1.5×残差 sd),信号=mean(\|z_PJM\|, \|z_ERCOT\|) 需求异常;`model/claims.py` 走 `params["pjm_w"]`,**默认 0 = 生产逐位不变** |
+| 双臂 | 同一 `replay_series`,A=`params=None`,B=`params={"pjm_w":1.0}`;唯一差异是协变量 |
+| 判定系列 | KXJOBLESSCLAIMS(K=1)。其余 13 个市场本条不判——筛选里它们没有候选 |
+| 主判据 | 采纳 iff **−1h 每腿 Brier 相对改善 ≥ 2%** 且 **−24h 不劣化超 2%** |
+| 证伪 | (a) 主判据未达 → NOT ADOPTED,`pjm_w` 保持 0;(b) 两臂评到的事件集不逐一相同 → 作废(协变量不得改变覆盖);(c) 任一非 claims 系列的预测因本改动而变 → 作废(门必须只对 claims 生效) |
+| 预期声明(不作判据) | 筛选的效应弱且不过全屏多重性,PR-31 同族已判否 ⇒ **预期打平或微劣**。若 B 显著变差,说明 walk-forward β 在弱信号上添噪,同样 NOT ADOPTED |
+| K | 天气烈度→claims 这一族的第 **2** 次判定(PR-31 第 1 次,ERCOT 单独) |
+| 影响面 | 判定全在 /tmp。采纳=接线保留且 `pjm_w` 仍需另注册才能非零曝光;不改任何已生成世界 |
+| 结论 | **NOT ADOPTED**(2026-09-02,全量生产 replay,覆盖平价 14/14 ✓、门隔离 ✓(KXNATGASW/KXCPI 双臂逐位相同,证伪 (c) 未触发)。**主判据未达**:−1h 每腿 Brier 0.15132→0.15303(**−1.13%**,杠 +2%);−24h +1.18%(在 +2% 内,但主判据已否)。**与注册的预期声明一致**:筛选效应弱(r=+0.195,0.0016×598 远超 0.05)⇒ walk-forward β 在弱信号上只添噪。K=2 已报(PR-31 ERCOT 单独 −0.9%,本条 PJM+ERCOT −1.13%——**加大覆盖面没有救活这一族**,两次判定的方向一致,天气烈度→claims 这条通道就此关闭)。生产状态:`model/pjm_cov.py` 与 claims 的 `pjm_w` 门保留、默认 0 = 逐位不变,任何非零曝光需新注册。工件 `/tmp/dfm_verify/pr33_replay.py`、`pr33_verdict.json` |

@@ -178,6 +178,11 @@ def predict(conn, asof: datetime, period: str, series: str = "KXJOBLESSCLAIMS",
                     float(p["sigma_floor"]))
 
     ercot_shift = 0.0
+    # PR-33: the PJM+ERCOT weather-severity covariate, same gate shape, same default 0.
+    wp = float(p.get("pjm_w", 0.0))
+    if wp:
+        from prediction_market_macro.model import pjm_cov
+        ercot_shift += wp * pjm_cov.mu_shift(conn, asof, "KXJOBLESSCLAIMS")
     w = float(p.get("ercot_w", 0.0))
     if w:
         # PR-31 covariate (walk-forward PIT, model/ercot_cov.py); 0 by default
