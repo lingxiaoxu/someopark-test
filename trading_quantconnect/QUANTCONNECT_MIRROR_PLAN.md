@@ -649,6 +649,41 @@ AEUS 由另一线 09:04 挂载(scalar 1.1612,deposit_K 1,158,818.43),exporter 27
 QC 开盘保证金建仓(cash −$850k);历史首名再中三例 FPL→NEE / GEVW→GEV / WPH→LNT
 (价格逐票证实),已补别名。9/2 场次起 P 含 aeus、`k_onboard_step_usd`=deposit_K。
 
+**⚠ 9/2 AEUS 上车审计(5 视角对抗,20 findings / 13 survived / 7 refuted)—— 已修 + 明早闸门**
+
+**已修(e3b81af,126 tests + 变异验证)**:挂载台阶只滚进 k_effective、漏进 known,
+明早 settle 9/2 会把整笔 deposit_K(1,158,818.43)倒进 unattributed → ~+1,490bp 假 breach;
+且 breach ∈ TERMINAL、settle() 幂等跳过 ⇒ 事后修好**也无法原地重判**。三处补丁已落。
+
+**明早 settle 前必过的闸门(Gate B,不过就不要 settle)**:
+```
+ls -l qlib-main/electric_utilities_strategy/account_history/account_aeus_20260902.json
+```
+- **在** → `_chain_account_live` 让官方 aeus 从 9/2 起按实盘 mark,预测表成立;
+- **缺** → `UpdateMasterPerformance.py:654` 的 `df['aeus'].ffill()` 会把 8/31 的
+  1,158,818.43 静默前推,unattr 变成"116 万上一整天的电力股涨跌",0.2% 就吃光 3bp 预算。
+  **这是数据管道缺口,不要去 qc_reconcile.py 里"修"**;补跑 aeus 账本写入,或让 9/2 多 pending 一天。
+
+**settle 后逐项核对**:`attribution.onboarding_step.usd == 1158818.43` → `|unattributed_usd| < 800`
+→ `status == ok` → `k_onboard_step_usd == 1158818.43` → `D_minus_K_effective_usd` 在数千量级
+(**不是** ~1.16M)。判据签名:修好后 unattributed 与 D−k_eff 应是**同量级**;若两者恰好相差
+一个 deposit_K,就是台阶只入了一处。
+
+**万一仍写出 breach**:**不要 rm 报告**(close_snapshot 是 9/2 逐票收盘股数的唯一记录,
+只在 [16:00 9/2, 09:30 9/3) 可观测,且报告被 gitignore),`--settle` 也治不好(终态幂等、
+main() 无 --force)。恢复配方:原地编辑 `reconcile/qc_reconcile_2026-09-02.json`,**只**把
+`equity_check.status` 改成 `"pending"`(close_snapshot / passes / fills 一律不动),再 --settle。
+
+**已知一次性偏差,记录不修**:(1) −$253.45 = deposit_K 走 k×账本净值(小数基)而镜像滞后
+参照 N 是整股基,与 K 冻结时把五策略残差市值算进 D(08/31) 同一口径 —— 修了会在
+D−k_effective 里留永久 +253,那才是必须干净的读数;(2) +$115.80 = 9/1 报告把
+AMAT/KLAC/LRCX 的 frac 按 $0 计,使 fd(9/2) 少算同额,次日自冲。
+
+**红线(审计确认,勿犯)**:永不 `onboard_aeus --force`(onboard_step 无按策略去重,
+台阶会翻倍成 ~$2.32M 且无阈值能抓);不动 rolloff.json 的 k_equity;不改 TERMINAL /
+settle 幂等语义;不重部署 lean/main.py(会重置 paper 账户 —— 且 `initial_cash` 仍是陈的
+6,000,322.19,现金转负后重入会注入 +$6.85M 幻影现金,已 armed 但与 AEUS 无关,另案处置)。
+
 **失败判据**:9/1 settle 若 partial/breach → 查 `per_leg`(月度买回 12 腿定价)、`k_steps_missing`;
 onboard 后 ① 出现 aeus 票不收敛 → 先查 QC 历史首名(已五例:ORCC/NB/CMB/RCHI/COH)。
 
