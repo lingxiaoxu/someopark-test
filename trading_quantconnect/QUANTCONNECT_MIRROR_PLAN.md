@@ -641,6 +641,14 @@ onboard_aeus.py 本身不用改(它已写 at/deposit_K)。**待用户批**。
 `launchctl kickstart -k gui/$(id -u)/com.someopark.qcmirror.exporter` 重启后
 `export_once(push=True, force=True)` 强推。
 
+**✅ 9/2 执行记录(10:10)**:9/1 场次 08:58 已 settle **ok**(残差 −0.12bp,8 笔);
+**K_eff 首考通过**:K_eff = −12,004.77 + 台阶(滞后 8,081.90 + 滑点 1,538.75)=
+−2,384.12;D − K_eff = +1,596.05 = 股息时点 1,447.10 + 小数残差Δ 229.18 − 残差 80.23
+(逐分闭合,只剩会回冲的项)。P 正确只含五策略(挂载晚于 9/1 收盘)。
+AEUS 由另一线 09:04 挂载(scalar 1.1612,deposit_K 1,158,818.43),exporter 27 秒后推 v24,
+QC 开盘保证金建仓(cash −$850k);历史首名再中三例 FPL→NEE / GEVW→GEV / WPH→LNT
+(价格逐票证实),已补别名。9/2 场次起 P 含 aeus、`k_onboard_step_usd`=deposit_K。
+
 **失败判据**:9/1 settle 若 partial/breach → 查 `per_leg`(月度买回 12 腿定价)、`k_steps_missing`;
 onboard 后 ① 出现 aeus 票不收敛 → 先查 QC 历史首名(已五例:ORCC/NB/CMB/RCHI/COH)。
 

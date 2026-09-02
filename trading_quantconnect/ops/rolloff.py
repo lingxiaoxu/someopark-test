@@ -310,6 +310,13 @@ QC_SYMBOL_ALIAS = {
     # 2026-09-01 v18/v19 新空腿上车实测:TPR(Tapestry)的 ID 历史首名是
     # COH(Coach,2017 年更名)。−640 股与 target 分毫不差,同款纯命名差。
     "COH": "TPR",
+    # 2026-09-02 AEUS 挂载首日实测,一次三例(股数与 target 逐位吻合、QC 标价 vs
+    # 账本 avg_cost 同票):NEE 显示 FPL(Florida Power & Light,1990s 更名前身)、
+    # GEV 显示 GEVW(GE Vernova 拆分时的 when-issued 代码)、LNT 显示 WPH
+    # (WPL Holdings→Alliant)。新策略上车 = 必查历史首名,已成规律。
+    "FPL": "NEE",
+    "GEVW": "GEV",
+    "WPH": "LNT",
 }
 
 
