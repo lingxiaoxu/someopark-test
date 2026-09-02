@@ -304,6 +304,46 @@ def load_graph_from_config(sc_cfg: Optional[dict]) -> dict:
     return out or SUPPLY_CHAIN_GRAPH
 
 
+def demand_sensitivity(graph: Optional[dict] = None, floor: float = 0.5,
+                       decay: float = 0.6, max_hops: int = 4) -> Dict[str, float]:
+    """通路③ 的图谱敏感度:每个子板块对"AI 需求"的暴露。
+
+    与 AEUS 的 ``shortage_sensitivity`` 不同,AISS 图谱里 ``ai_capex_proxy`` 只有一条
+    直接出边(→ai_gpu),需求是**多跳**传导的(ai_gpu→memory_hbm/foundry→equipment)。
+    所以这里按路径累积:第 h 跳的贡献乘 decay^(h-1),H 跳截断(有 equipment↔foundry
+    的反馈环,decay<1 保证收敛)。负权(logic_cpu→ai_gpu 的竞争边)保持符号。
+    最后正值归一到均值 1,链外/非正的板块给地板值(需求好时整条链都不差,只是幅度不同)。
+    """
+    g = graph or SUPPLY_CHAIN_GRAPH
+    subs = sorted({n for pair in g.keys() for n in pair} - SPECIAL_NODES)
+    infl = {s: 0.0 for s in subs}
+    frontier: Dict[str, float] = {}
+    for (src, tgt), (w, _lag, _d) in g.items():
+        if src == NODE_AI_CAPEX and tgt in infl:
+            frontier[tgt] = frontier.get(tgt, 0.0) + float(w)
+    for t, v in frontier.items():
+        infl[t] += v
+    for _hop in range(2, max_hops + 1):
+        nxt: Dict[str, float] = {}
+        for (src, tgt), (w, _lag, _d) in g.items():
+            if src in frontier and tgt in infl:
+                nxt[tgt] = nxt.get(tgt, 0.0) + frontier[src] * float(w) * decay
+        if not nxt:
+            break
+        for t, v in nxt.items():
+            infl[t] += v
+        frontier = nxt
+    pos = [v for v in infl.values() if v > 0]
+    if not pos:
+        return {s: 1.0 for s in subs}
+    mean_pos = sum(pos) / len(pos)
+    # 地板是**所有人**的下限:三跳外的 equipment 经 decay 后原始值可能低于地板,但它
+    # (ASML/LRCX/KLAC)显然比链外的 analog_defense 更吃 AI 需求,不能被压到地板以下。
+    sens = {s: (max(v / mean_pos, floor) if v > 0 else floor) for s, v in infl.items()}
+    m = sum(sens.values()) / len(sens)
+    return {s: v / m for s, v in sens.items()}
+
+
 def build_propagation_matrix(graph: Optional[dict] = None) -> pd.DataFrame:
     """Static (source × target) edge-weight matrix for inspection / debugging."""
     graph = graph or SUPPLY_CHAIN_GRAPH

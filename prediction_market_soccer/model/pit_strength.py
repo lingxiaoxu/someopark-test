@@ -39,6 +39,29 @@ _PIT_SUFFIX = "_pit"
 _PRIOR_DAYS_BUILT: set[str] = set()
 
 
+def pit_out_dir(conn):
+    """Where this connection's point-in-time priors live. The production database writes
+    beside the live priors (data/priors); ANY other database — the test suite's in-memory
+    stores, an APFS clone, a scratch copy — gets a temp directory keyed by its path, so a
+    run against test data can never leave a prior built from fixture rows in production
+    (measured 2026-09-02: one pytest run rewrote 85 production prior files)."""
+    import hashlib
+    import tempfile
+    from pathlib import Path
+    from prediction_market_soccer.config import CONFIG
+    from prediction_market_soccer.ingest import store
+    try:
+        db = next((r[2] for r in conn.execute("PRAGMA database_list") if r[1] == "main"), "")
+    except Exception:  # noqa: BLE001
+        db = ""
+    if db and Path(db).resolve() == Path(store.DB_PATH).resolve():
+        return CONFIG.paths.priors
+    key = hashlib.sha1((db or "memory").encode("utf-8")).hexdigest()[:10]
+    d = Path(tempfile.gettempdir()) / "someopark_soccer_pit" / key
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def pit_prior(conn, comp_key: str, as_of: str):
     """The club prior as it stood on ``as_of``'s date — built, not read from today's file.
 
@@ -58,6 +81,7 @@ def pit_prior(conn, comp_key: str, as_of: str):
     day = (as_of or "")[:10]
     if not day:
         return load_prior(comp_key)
+    out_dir = pit_out_dir(conn)
     # DATE-STAMPED files, built once and reused forever. The previous scheme wrote every
     # bucket to the same clubs_<comp>_pit.json and tracked "already built" in process
     # memory — so every settle event, every calibrate run and every OOS run in a fresh
@@ -69,9 +93,8 @@ def pit_prior(conn, comp_key: str, as_of: str):
     suffix = f"{_PIT_SUFFIX}_{day}"
     import datetime as _dt
     today = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
-    from prediction_market_soccer.config import CONFIG as _CFG
-    probe = _CFG.paths.priors / f"clubs_{comp_key}{suffix}.json"
-    meta_p = _CFG.paths.priors / f".pit_built_{day}.json"
+    probe = out_dir / f"clubs_{comp_key}{suffix}.json"
+    meta_p = out_dir / f".pit_built_{day}.json"
     # The cache is only valid for the DATABASE that built it. The test suite seeds
     # small fixture sets into throwaway DBs and calls this with the same dates the
     # production DB uses; before this fingerprint, a test inherited a file built from
@@ -90,7 +113,7 @@ def pit_prior(conn, comp_key: str, as_of: str):
             _built_ok = False
     fresh_needed = (day >= today and day not in _PRIOR_DAYS_BUILT)
     if fresh_needed or not _built_ok:
-        summary = build_all(conn, as_of=day, suffix=suffix) or {}
+        summary = build_all(conn, as_of=day, suffix=suffix, out_dir=out_dir) or {}
         # A build made while ClubElo was unreachable carries no Elo anchor ("0 with Elo"
         # on every European comp). For TODAY that is rebuilt per process anyway; for a
         # PAST day the file would otherwise be fingerprinted as final and the degraded
@@ -102,7 +125,12 @@ def pit_prior(conn, comp_key: str, as_of: str):
         else:
             print(f"[pit_prior] {day}: built without Elo (ClubElo outage) — not fingerprinted, will rebuild")
         _PRIOR_DAYS_BUILT.add(day)
-    return load_prior(comp_key, suffix=suffix)
+    if not probe.exists():
+        # a store that carries no registry for this competition (the test fixtures) built
+        # nothing for it: read the LIVE prior (read-only) rather than fail — this is what
+        # such a store effectively got before the isolation, minus the production writes
+        return load_prior(comp_key)
+    return load_prior(comp_key, suffix=suffix, out_dir=out_dir)
 
 
 def bucket_start(kickoff_ts: str, *, bucket_days: int = _BUCKET_DAYS) -> str:
@@ -159,9 +187,10 @@ class WalkForwardStrength:
         from prediction_market_soccer.config.leagues import active
         pit_prior(self._conn, comp_key, day)          # builds the whole day once (or reuses the file)
         from prediction_market_soccer.ingest.club_prior import load_prior
+        _od = pit_out_dir(self._conn)
         for c in active():
             try:
-                self._priors[(c.key, day)] = load_prior(c.key, suffix=f"{_PIT_SUFFIX}_{day}")
+                self._priors[(c.key, day)] = load_prior(c.key, suffix=f"{_PIT_SUFFIX}_{day}", out_dir=_od)
             except Exception:      # a competition with no registry rows has no prior
                 self._priors[(c.key, day)] = None
         got = self._priors.get((comp_key, day))

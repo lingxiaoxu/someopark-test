@@ -62,7 +62,7 @@ from semiconductor_strategy.stock_decompose import (
 )
 from semiconductor_strategy.signals.composite import compute_composite_signals
 from semiconductor_strategy.portfolio.optimizer import optimize_weights
-from semiconductor_strategy.portfolio.risk import apply_risk_controls
+from semiconductor_strategy.portfolio.risk import apply_risk_controls, compute_exposure_amplifier
 from semiconductor_strategy.portfolio.rebalance import (
     compute_turnover,
     get_first_trading_day_of_month,
@@ -1256,6 +1256,28 @@ def run_daily_signal(
         except Exception as _e:  # noqa: BLE001
             log.warning(f"[EVENT_DERISK] skipped (non-fatal): {_e}")
 
+    # ── 通路③ 敞口放大器(2026-09-02;config risk.exposure_amplifier,默认 off)──
+    #    与 engine / portfolio.strategy 共用同一个纯函数,PIT 取 ≤signal_date 的最后可得值。
+    _amp_cfg = (risk_cfg.get("exposure_amplifier") or {})
+    _E, _phi, _z = 1.0, float("nan"), float("nan")
+    if _amp_cfg.get("enabled", False):
+        try:
+            from semiconductor_strategy.data import altdata_signals as _alt
+            from semiconductor_strategy.signals.supply_chain import (demand_sensitivity,
+                                                                     load_graph_from_config)
+            _ser = _alt.load_ai_demand_cycle(end=str(signal_date))
+            _sens = (demand_sensitivity(load_graph_from_config(sig_cfg.get("supply_chain", {})))
+                     if _amp_cfg.get("graph_weighted", True) else None)
+            if _ser is not None and len(_ser):
+                _z = float(_ser.iloc[-1])
+                _E, _phi = compute_exposure_amplifier(
+                    _z, target_weights_raw, _sens,
+                    k=float(_amp_cfg.get("k", 0.10)), lo=float(_amp_cfg.get("lo", 0.85)),
+                    hi=float(_amp_cfg.get("hi", 1.15)))
+                log.info(f"[EXPOSURE_AMP] demand_z={_z:+.2f} phi={_phi:.2f} → E={_E:.3f}")
+        except Exception as _amp_e:  # noqa: BLE001 — 非致命:缺数则中性
+            log.warning(f"[EXPOSURE_AMP] skipped (non-fatal): {_amp_e}")
+
     target_weights, cash_weight, risk_flags = apply_risk_controls(
         weights=target_weights_raw,
         portfolio_returns=portfolio_returns,
@@ -1287,7 +1309,13 @@ def run_daily_signal(
         event_derisk_active=event_active,
         event_derisk_frac=ev_cfg.get("sell_frac", 0.5),
         event_derisk_reason=event_reason,
+        exposure_mult=_E,
+        exposure_allow_leverage=bool(_amp_cfg.get("allow_leverage", False)),
+        exposure_note=(f"demand_z={_z:+.2f} phi={_phi:.2f}" if _amp_cfg.get("enabled", False) else ""),
     )
+    if _amp_cfg.get("enabled", False):
+        risk_flags.demand_z = _z
+        risk_flags.graph_phi = _phi
 
     # ── 6b. Macro anomaly auto-conservative (P3) ────────────────
     if (_smart_result and _smart_result.get("macro_positioning", {}).get("anomaly")):

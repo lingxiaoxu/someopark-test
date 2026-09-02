@@ -32,8 +32,13 @@ external_sources:
     enabled: true                   # EIA_API_KEY (root .env, shared with macro module)
   ercot:
     enabled: true                   # ERCOT_API_* (root .env; validated 2026-08-30)
+    macro_accrual: true             # 2026-09-02: read-only prediction_market_macro ercot_daily →
+                                    # demand YoY (power_demand node) + gas share / RT price (price_pulse)
   pjm:
     enabled: true                  # PJM_API_KEY landed 2026-09-01 (Data Miner 2 non-member key) — wired
+    extended: true                 # 2026-09-02: DOM basis / zone load YoY / reserve margin / outages /
+                                   # forecast error (price_pulse + demand node + shortage_score blends;
+                                   # no new tilts). false → hub-price-only wiring, byte-identical.
                                     # written and wired; flip to true when the key
                                     # lands in .env (AEUS_PLAN: 写代码不接线)
   sec:
@@ -248,6 +253,20 @@ rebalance:
 # Risk Management
 # ---------------------------------------------------------------------------
 risk:
+  # 通路③ 敞口放大器(2026-09-02 接线;AEUS_PLAN §4.2 A4):E = clip(1 + k·z·φ, lo, hi)
+  # 只改 gross 不改选谁;φ = 组合对图谱 power_demand/power_price 节点的暴露(均值 1)。
+  # 默认 off;沙盒 batch/WF 对比 on/off 赢了再翻。allow_leverage=false → 满仓时 E>1 无效。
+  exposure_amplifier:
+    # 2026-09-02 翻开:沙盒 batch(mlflow stub,/tmp)+ WF(anchored/rolling,生产参数集)双赢——
+    # WF synthetic sharpe 1.578→1.614、calmar 1.470→1.554、maxdd -26.4%→-24.6%,
+    # 逐 fold OOS sharpe 45/70 胜(wilcoxon p=0.0005);batch sharpe 1.698→1.719、maxdd -26.3%→-24.6%。
+    # 代价是总收益略降(放大器在缺电度低时留现金)。
+    enabled: true
+    k: 0.10
+    lo: 0.85
+    hi: 1.15
+    graph_weighted: true
+    allow_leverage: false
   vol_scaling:
     enabled: true
     target_vol_annual: 0.30        # inherited AISS start point; Group C sweeps 0.18-0.40

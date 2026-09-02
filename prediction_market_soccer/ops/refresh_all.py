@@ -109,6 +109,20 @@ def main() -> None:
     except Exception as e:
         print(f"  ✗ price_tick backfill: {e}")
 
+    # The LIVE club priors (clubs_<comp>.json / clubs_all.json) — rebuilt every day from
+    # today's ClubElo (website first, see ingest/clubelo_web) and the current tables. Until
+    # 2026-09-02 nothing in production called build_all: the files the live model, the
+    # in-play pricing and every export read through load_prior() were whatever the last
+    # manual run left (found stuck at 2026-08-28). The point-in-time priors the ledger and
+    # the walk-forward use are a separate, date-stamped family (model/pit_strength).
+    try:
+        from prediction_market_soccer.ingest.club_prior import build_all as _build_priors
+        _ps = _build_priors(conn)
+        print("  ✓ club priors rebuilt:", {k: v for k, v in _ps.items()
+                                          if k in ("epl", "laliga", "seriea", "bundesliga", "ligue1", "ucl", "uel", "uecl")})
+    except Exception as e:
+        print(f"  ✗ club priors: {e}")
+
     # Parameter selection FIRST — a real run, not a dry one, on the day's fresh sample.
     # It used to sit in the artifact list below with dry_run=True, which had two problems:
     # a winning candidate could never actually be adopted (the dry run withheld
@@ -126,6 +140,14 @@ def main() -> None:
               f"adopted={_param_report.get('adopted')})")
     except Exception as e:
         print(f"  ✗ param_select: {e}")
+
+    # ClubElo club-page histories (ingest/clubelo_web): the per-date reconstruction and the
+    # full-precision daily file read them. Self-throttled to once a week (~10 min sweep).
+    try:
+        from prediction_market_soccer.ingest import clubelo_web as _W
+        print(f"  ✓ clubelo histories: {_W.refresh_histories()}")
+    except Exception as e:
+        print(f"  ✗ clubelo histories: {e}")
 
     # PIT records cache for the Kalshi demo mirror (exec/kalshi_mirror) — daily warm-up;
     # settle_reports refreshes it again after each settle wave.
@@ -263,6 +285,19 @@ def main() -> None:
         print("  ✓ frontend_overview.json")
     except Exception as e:
         print(f"  ✗ frontend_overview.json: {e}")
+    # ClubElo website data-quality gate — LAST, on the day's stored fetch (ops/clubelo_quality).
+    # A FAIL here means today's Elo anchor must not be trusted; the fetch-time gate already
+    # kept such a parse out of the csv, this reports it where the operator will see it.
+    try:
+        from prediction_market_soccer.ops import clubelo_quality
+        q = clubelo_quality.run(conn=conn)
+        line = f"clubelo_quality: {q['verdict']} ({q['n_fail']} fail, {q['n_warn']} warn)"
+        print(("  ✗ " if q["verdict"] == "FAIL" else "  ✓ ") + line)
+        for c in q["checks"]:
+            if c["level"] != "OK":
+                print(f"      {c['level']}: {c['check']} — {c['detail']}")
+    except Exception as e:
+        print(f"  ✗ clubelo_quality: {e}")
     print("[refresh] done. Run `npm run sync:soccer && firebase deploy --only hosting` to publish.")
 
 

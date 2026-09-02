@@ -140,12 +140,41 @@ def _load_aux_signals(prices: pd.DataFrame, signal_kwargs: dict) -> dict:
         yoy = elec_price.pct_change(252) * 100.0
         m = yoy.rolling(756, min_periods=252)
         price_yoy_z = ((yoy - m.mean()) / m.std().replace(0, np.nan)).dropna()
+    # PJM extended (2026-09-02, config external_sources.pjm.extended): the Dominion-zone
+    # basis over Western Hub is the data-center-corridor price premium — it joins the
+    # z-mean here (no new tilt: ipp_wholesale is at the 2-tilt cap). Gate off → the
+    # list below is byte-identical to the hub-only wiring.
+    _pjm_ext = False
+    try:
+        _pjm_ext = bool(pjm._extended_enabled())
+    except Exception:  # noqa: BLE001
+        _pjm_ext = False
+    # ERCOT macro-accrual legs (2026-09-02, config external_sources.ercot.macro_accrual):
+    # gas-on-margin share + RT hub price (empty until it has accrued ≥126 days) → price_pulse;
+    # ERCOT-region EIA demand YoY → power_demand node. Same z-mean blends, no new tilts.
+    _erc_acc = False
+    try:
+        _erc_acc = bool(erc._macro_accrual_enabled())
+    except Exception:  # noqa: BLE001
+        _erc_acc = False
     price_pulse = _mean_z([
         price_yoy_z,
         _safe(alt.load_cpi_electricity_yoy, end=end),
         _safe(erc.load_hub_power_price, end=end),
         _safe(pjm.load_pjm_hub_price, end=end),      # empty until PJM wired
+        _safe(pjm.load_dom_basis, end=end) if _pjm_ext else None,
+        _safe(erc.load_macro_ercot_gas_share, end=end) if _erc_acc else None,
+        _safe(erc.load_macro_ercot_rt_price, end=end) if _erc_acc else None,
     ])
+    if _pjm_ext or _erc_acc:
+        # power_demand node = national weather-adjusted structural YoY z blended with the
+        # regional reads of the same quantity: PJM tracked-zone metered load YoY (DOM/PEPCO/
+        # BGE/AEP) and ERCOT-region EIA demand YoY. Node-level blend, not a tilt (§4.2 cap).
+        _zone = _safe(pjm.load_zone_load_yoy, end=end) if _pjm_ext else None
+        _tex = _safe(erc.load_macro_ercot_demand_yoy, end=end) if _erc_acc else None
+        _blend = _mean_z([out["demand"], _zone, _tex])
+        if _blend is not None and len(_blend):
+            out["demand"] = _blend
 
     green_gen = _mean_z([_safe(ind.load_fuel_yoy, "solar", end=end),
                          _safe(ind.load_fuel_yoy, "wind", end=end)])

@@ -61,7 +61,7 @@ $ENV.data.company_signals   --verify
 $ENV.data.industry_signals  --verify
 $ENV.data.altdata_signals   --verify
 $ENV.data.ercot_signals     --verify
-$ENV.data.pjm_signals       --verify   # OK while gated (NOT WIRED); enforced after wiring
+$ENV.data.pjm_signals       --verify   # wired: all 7 PJM series must be present + fresh (hub, DOM basis, zone load YoY, reserve margin, forced outages, forecast error, shortage_east)
 ```
 
 > `weekly` runs this same six-layer verify battery (prices / company / industry /
@@ -123,12 +123,18 @@ to avoid CPU / Polygon rate-limit contention. Full copy-paste payloads live in
 > hard-writes) and `walk_forward --output-dir /tmp/...` (skips the WF
 > diagnostic Excel). `--dry-run` daily does not write smart_select state.
 
-> Engine path note: the qlib path (`_run_qlib` → `portfolio/strategy.py`)
-> consistently raises on qlib `WeightStrategyBase`/`Exchange` compatibility and
-> falls back — **the native loop is the production engine** (same as AISS /
-> SSRS); every validated number comes from it. If you see `qlib backtest
-> execution failed …, falling back to native loop`, that fallback is benign by
-> design — not success-degraded.
+> Engine path note (**corrected 2026-09-02**): the **qlib path
+> (`_run_qlib` → `portfolio/strategy.py`) is the production engine** — it runs,
+> it does not "consistently raise and fall back". Measured: with the exposure
+> amplifier hooked only into `engine._run_native`, a full batch was
+> byte-identical ON vs OFF (the native hook never executed); after hooking
+> `portfolio/strategy.py`, the same batch changed and the amplifier fired at 61
+> rebalances. Any risk/sizing change must therefore be wired into
+> `portfolio/strategy.py` (both `generate_trade_decision` and
+> `generate_target_weight_position`), and — for parity — into
+> `engine._run_native` (the fallback) and `backtest/trade_audit.py` (the replay).
+> If you do see `qlib backtest execution failed …, falling back to native loop`,
+> the fallback is benign: the native loop carries the same hooks.
 
 **Outputs (all inside the package):**
 ```
@@ -250,7 +256,7 @@ $ENV.data.altdata_signals   --update-capacity            # EIA-860M capacity
 $ENV.data.altdata_signals   --update-state-price         # DC-heavy state price premium
 $ENV.data.altdata_signals   --snapshot-gpu               # GPU snapshot (forward-only)
 $ENV.data.ercot_signals     --update                     # ERCOT DAM SPP + AS
-$ENV.data.pjm_signals       --update                     # PJM (gated; one-line skip until keyed)
+$ENV.data.pjm_signals       --update                     # PJM: hub LMP + 5 extended feeds (incremental; exit 1 only if hub fails or ≥2 extended feeds return nothing)
 ```
 Frozen stores (capex-pulse / gas family) need `--refreeze` for a full rebuild —
 routine `--update-*` is append-only and will not rewrite history.
@@ -296,12 +302,29 @@ conda run -n qlib_run python CorporateActions.py --strategy aeus --dry-run
 
 ---
 
-## 4b. PJM 接线(拿到 key 那天)
+## 4b. PJM(2026-09-01 接线,09-02 扩展)
 
-1. `.env` 加 `PJM_API_KEY=<key>`;
-2. `config.yaml` → `external_sources.pjm.enabled: true`;
-3. `python -m electric_utilities_strategy.data.pjm_signals --init`(西枢纽 2016 起回填,自限速 ≤6 req/min);
-4. `--verify` 确认后无需其他改动(电价脉冲 tilt 自动并入 PJM 腿)。
+已完成:`.env` 有 `PJM_API_KEY`;`config.yaml` `external_sources.pjm.enabled: true`、`extended: true`;
+`--init` 已回填。日常由 `update_data` 第 9 步 `--update` 增量,weekly 六层体检里 `--verify` 判时效。
+
+**六个店**(`price_data/elec_strategy/altdata/pjm_*.json`,全部 PIT 冻结 append-only,internal-use-only,绝不 commit):
+
+| 店 | feed | 日频聚合 | 可得性 | 进哪里 |
+|---|---|---|---|---|
+| `pjm_da_lmp` | da_hrl_lmps pnode 51288(西枢纽)| 日均 $/MWh,2016+ | 当日 | price_pulse z 均值 |
+| `pjm_dom_lmp` | da_hrl_lmps pnode 34964545(DOM 区)| 日均;基差 = DOM − 西枢纽 | 当日 | price_pulse z 均值 |
+| `pjm_zone_load` | hrl_load_metered DOM/PEPCO/BC/AEP×4 + RTO | 日 MWh(仅 ≥23 小时的整日)| **+12 天**(计量滞后 ~10-11 天)| power_demand 节点 z 均值(28d 均值 YoY)|
+| `pjm_gen_capacity` | day_gen_capacity | (eco_max−committed)/eco_max 日**最小** | 当日 | shortage_east(取负)|
+| `pjm_gen_outages` | gen_outages_by_type,forecast_date==执行日 | PJM RTO 与 Dominion 的 forced/total MW | 当日 | shortage_east(RTO forced)|
+| `pjm_load_forecast` | load_frcstd_hist RTO/DOM,运行日前最后一次评估 | 24h 合计 MWh | 与计量对齐 +12 天 | 预报误差 = \|预报−计量 RTO\|/计量 30d MAPE → shortage_east |
+
+要点:
+- **存档墙**:非会员 Data Miner 2 对 >~731 天的过滤查询返回 400/0 行,扩展 feed 自 `EXT_START=2024-09-15` 起;
+  z252 预热后约 2025-10 起可用;之前的 composite 混合自动只含既有腿(历史不变)。已有数据永不因时间流逝丢失(append-only)。
+- **不新增 tilt**:ipp_wholesale 已满 2 条;新序列全部进既有 z 均值(price_pulse / demand 节点 / shortage_score)。
+- **退回**:`extended: false` → 仅西枢纽腿,与 09-01 接线逐字节等价。
+- **退出码**:`--update` 在 wired 下西枢纽 0 行 → exit 1;≥2 个扩展 feed 0 行 → exit 1;单个 miss 只 WARN(weekly `--verify` 兜底时效)。
+- 测试:`tests/test_pjm_extended.py`(tmp_path 店 + 注入 fetch,零网络零生产写入)。
 
 ---
 
@@ -335,7 +358,7 @@ bash qlib-main/electric_utilities_strategy/tests/test_pipeline_integration.sh --
 | risk.event_derisk | enabled | **false** | phase-1 off (C-level wiring pending, §1b) |
 | rebalance | emergency_derisk_vix | 36 | only true crises |
 | signals.regime | vix_high / vix_extreme | 25 / 32 | regime tilt thresholds |
-| external_sources | eia / ercot / pjm / sec | true / true / **false** / true | PJM flips true when keyed (§4b) |
+| external_sources | eia / ercot / pjm / sec | true / true / **true** / true | PJM wired 2026-09-01; `pjm.extended: true` (§4b) |
 | backtest | start_date | 2019-01-01 | late-IPO floor |
 
 ---
@@ -367,7 +390,7 @@ bash qlib-main/electric_utilities_strategy/tests/test_pipeline_integration.sh --
 | ERCOT tilt is 0 before 2024 | Expected — the ERCOT archive floor is 2023-12, pre-2024 the tilt is graceful-0, not an error |
 | Long background job silently vanishes | macOS kills detached background processes — run long jobs in the foreground or via a cron session (same as AISS) |
 | `validate` FAIL | Check which benchmark/metric failed; `select` auto-rotates params — only intervene on repeated FAILs |
-| `qlib backtest execution failed … falling back to native loop` | **Benign / expected** — native loop is the production engine (same as AISS/SSRS). Do NOT treat as failure or degraded. |
+| `qlib backtest execution failed … falling back to native loop` | **Benign** — the native loop carries the same risk/sizing hooks as the qlib path. Not a failure. (Normal production runs use the **qlib** path; see the engine path note above, corrected 2026-09-02.) |
 | V2 win-criterion FAIL | V2 is research-only in phase-1; production runs V1 (PASS). Not an error. |
 | Regime always risk_on / macro stale | `price_data/macro/` is maintained by the someopark main pipeline; `AEUSdailySignal` self-heals once then degrades non-fatally |
 

@@ -244,7 +244,7 @@ def _assemble_aeus(reg: Registry, S: Structure) -> str:
             branch_shares = actual * float(row["target_shares"]) / tgt_total
             ss_children.setdefault(row["subsector"], []).append((isin, branch_shares))
 
-    st_id = reg.spid_of("strategy", strategy_canonical_key("aeus"))
+    st_id = reg.spid_of("strategy", strategy_canonical_key("aeus"), display_name="AEUS")
     children = []
     inv_w = inv.get("holdings", {})
     for ss_key, kids in sorted(ss_children.items()):
@@ -259,7 +259,7 @@ def _assemble_aeus(reg: Registry, S: Structure) -> str:
         children.append((sid, 1.0))
 
     S.add(st_id, "strategy", children=children,
-          attrs={"display_name": "AISS", "cash_const": float(acc["cash"]),
+          attrs={"display_name": "AEUS", "cash_const": float(acc["cash"]),
                  "positions_as_of": acc.get("as_of"),
                  "report_file": os.path.basename(rep_p)})
     # 自检②:Σbranch ≡ account 逐票(归一构造保证,仍显式断言防回归)

@@ -125,7 +125,7 @@ POLYGON_API_KEY=your_polygon_api_key_here   # 股票价格 + SEC 数据
 FRED_API_KEY=your_fred_api_key_here         # 宏观指标
 EIA_API_KEY=your_eia_api_key_here           # EIA v2（与 macro 模块共享）
 ERCOT_API_...                               # ERCOT Public API 四变量（2026-08-30 已验证）
-PJM_API_KEY=...                             # 待批复；到手后 config 翻开关即可
+PJM_API_KEY=...                             # 2026-09-01 到手（Data Miner 2 非会员 key）；config 已翻 true
 ```
 
 > `.env` 已在 `.gitignore`。Pipeline 会自动从 `.env` grep 出所需 key（不调用 `source .env`，避免 job-control 噪音）。SEC 无需 key（`AEUS_SEC_USER_AGENT` 可选覆盖）。
@@ -250,7 +250,7 @@ AEUS 的"另类数据"层全部隔离在 `price_data/elec_strategy/` 下（`pric
 | `industry_signals` | EIA 售电 + 燃料结构（EPM 滞后 56d）、backlog RPO（成分匹配 YoY）、gas 价格 proxy（z252 + 库存 blend，库存**只读** `price_data/eia/` macro 镜像）、IPUTIL | EIA v2 + SEC XBRL + FRED | `--update-elec-gen` / `--update-fuel-mix` / `--update-backlog` / `--update-gas` / `--update-pmi` | EPM 发布 / filed / release |
 | `altdata_signals` | 日频需求（2015-07+，滞后 3d，STEO CDD/HDD **去天气**）、860M 装机（滞后 60d）、DC 州电价溢价、变压器 PPI/CPI/建筑用工、缺电度、ai_demand_cycle 敞口放大器、GPU（forward-only） | EIA v2 + FRED | `--update-demand` / `--update-dd` / `--update-capacity` / `--update-state-price` / `--update-fred` / `--snapshot-gpu` | 各系列发布日 |
 | `ercot_signals` | 凭证回填 **991 天** DAM SPP 枢纽电价 + AS（受 2023-12 档案下限约束）；macro 模块 dashboard 增量**只读** | ERCOT Public API | `--update` | 日 |
-| `pjm_signals` | **代码完成，门控中**：`external_sources.pjm.enabled` + `PJM_API_KEY`；数据 internal-use-only，**绝不 commit** | PJM API | `--update`（未接线时单行日志跳过） | — |
+| `pjm_signals` | **已接线（2026-09-01）+ 扩展（09-02）**：西枢纽 DA LMP（2016+）+ 五个扩展 feed —— DOM 区基差 / DOM+PEPCO+BGE+AEP 计量负荷 YoY / 日备用裕度 / 日 0 强迫停机 / DA 负荷预报误差 → `shortage_east`；全部 PIT 冻结 append-only；扩展 feed 受 ~731 天非会员存档墙限制，自 2024-09-15 起；数据 internal-use-only，**绝不 commit** | PJM API | `--init` 回填全部 / `--update` 增量全部 / `--verify` 7 序列时效 | `external_sources.pjm.extended=false` 可退回仅西枢纽（逐字节等价） |
 
 ### 首次初始化（一次）
 
@@ -333,7 +333,7 @@ qlib-main/electric_utilities_strategy/
 │   ├── industry_signals.py         EIA 售电/燃料 + backlog RPO + gas proxy + IPUTIL
 │   ├── altdata_signals.py          日频需求/度日/装机/州电价/FRED altdata/GPU
 │   ├── ercot_signals.py            ERCOT DAM SPP + AS（凭证回填 + dashboard 只读增量）
-│   └── pjm_signals.py              PJM 西枢纽（代码完成，key 门控）
+│   └── pjm_signals.py              PJM 西枢纽 + DOM 基差 / 分区负荷 / 备用裕度 / 停机 / 预报误差（已接线）
 │
 ├── signals/
 │   ├── momentum.py                 横截面 12-1m 动量
@@ -522,7 +522,7 @@ wf_diagnostic_aeus_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | `risk.event_derisk` | enabled | `false` | **phase-1 关闭**（C 级接线 TODO） |
 | `rebalance` | emergency_derisk_vix | `36.0` | 仅真危机 |
 | `signals.regime` | vix_high / vix_extreme | `25` / `32` | regime 倾斜阈值 |
-| `external_sources` | eia / ercot / pjm / sec | true / true / **false** / true | PJM 等 key 落地后翻开关 |
+| `external_sources` | eia / ercot / pjm / sec | true / true / **true** / true | PJM 2026-09-01 接线；`pjm.extended: true` 打开五个扩展 feed |
 | `backtest` | start_date | `"2019-01-01"` | 晚期 IPO 地板 |
 | `backtest` | initial_capital | `1_000_000` | 初始资金 USD |
 
@@ -545,7 +545,8 @@ wf_diagnostic_aeus_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | `macro_source` | `"fred"` | 宏观来源 |
 | `external_sources.eia.enabled` | `true` | EIA_API_KEY（根 .env，与 macro 模块共享） |
 | `external_sources.ercot.enabled` | `true` | ERCOT_API_*（2026-08-30 已验证） |
-| `external_sources.pjm.enabled` | `false` | **门控**：PJM_API_KEY 待批；代码已写好，key 落地翻 true |
+| `external_sources.pjm.enabled` | `true` | 2026-09-01 接线（key 已落 .env）|
+| `external_sources.pjm.extended` | `true` | 2026-09-02：DOM 基差进 `price_pulse` z 均值、分区负荷 YoY 进 power_demand 节点 z 均值、`shortage_east` 进 shortage_score z 均值；**不新增 tilt**（ipp_wholesale 已满 2 条）；`false` → 仅西枢纽腿，历史逐字节不变 |
 | `external_sources.sec.enabled` | `true` | 无需 key；`AEUS_SEC_USER_AGENT` 可选覆盖 |
 
 > enabled 源缺 key 时 fetcher 响亮硬失败；disabled 源的信号降级为 graceful-0 tilt（AISS 惯例）。
@@ -745,7 +746,12 @@ AEUS 定于 **2026-09-01 建仓上线**，业绩曲线机制**从第一天就用
 | 天然气价格 / 库存 | FRED DHHNGSP + `price_data/eia/` 镜像（只读） | power_price_proxy |
 | 变压器 PPI / 电力 CPI / 建筑用工 | FRED（PCU335311335311 等） | 确认 tilt |
 | ERCOT DAM SPP + AS | ERCOT Public API（凭证，回填 991 天） | 得州枢纽电价 + 电网紧张度温度计 |
-| PJM 西枢纽 | PJM API（**门控**，等 key） | 电价脉冲 tilt 的 PJM 腿 |
+| PJM 西枢纽 DA LMP | PJM Data Miner 2 `da_hrl_lmps`（pnode 51288，2016+）| 电价脉冲 z 均值的 PJM 腿 |
+| PJM DOM 区基差 | `da_hrl_lmps` pnode 34964545 − 西枢纽（2024-09-15+）| 数据中心走廊电价溢价 → 电价脉冲 z 均值 |
+| PJM 分区计量负荷 | `hrl_load_metered` DOM/PEPCO/BC/AEP×4（+RTO），日 MWh，28d 均值 YoY，可得性 +12d | power_demand 节点的区域腿（z 均值）|
+| PJM 日备用裕度 | `day_gen_capacity` 逐时 (eco_max−committed)/eco_max 取日最小 | `shortage_east`（取负）|
+| PJM 日 0 强迫停机 | `gen_outages_by_type` forecast_date==执行日，PJM RTO（+Dominion 存档）| `shortage_east` |
+| PJM DA 负荷预报误差 | `load_frcstd_hist` 运行日前最后一次评估 vs `hrl_load_metered` RTO，30d MAPE，+12d | `shortage_east` |
 | 宏观（VIX, 利差, ISM…） | `price_data/macro/`（只读）+ FRED | regime + cycle_regime + MCPS 23 维 |
 
 **数据新鲜度自愈**：

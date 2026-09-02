@@ -28,7 +28,7 @@ import io
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from prediction_market_soccer.config import CONFIG
@@ -142,7 +142,7 @@ def _path(comp_key: str) -> Path:
     return _PRIORS / f"clubs_{comp_key}.json"
 
 
-def load_prior(league: str | None = None, *, suffix: str = "") -> ClubPriorSnapshot:
+def load_prior(league: str | None = None, *, suffix: str = "", out_dir: Path | None = None) -> ClubPriorSnapshot:
     """Load one competition's club prior; ``league=None`` loads the merged all-comps
     snapshot (clubs_all.json — cross-league Elo ranks, used by confidence tiers).
 
@@ -150,7 +150,8 @@ def load_prior(league: str | None = None, *, suffix: str = "") -> ClubPriorSnaps
     walk-forward builds point-in-time priors under "_pit" so a backtest never reads,
     and never overwrites, the nightly file the live exports price from.
     """
-    path = (_PRIORS / f"clubs_all{suffix}.json") if league is None else _path(league + suffix)
+    base = out_dir or _PRIORS
+    path = (base / f"clubs_all{suffix}.json") if league is None else (base / f"clubs_{league}{suffix}.json")
     if not path.exists():
         raise PriorValidationError(f"club prior not found: {path} (run: python -m "
                                    "prediction_market_soccer.ingest.club_prior --build)")
@@ -225,57 +226,168 @@ def _market_champion_probs(comp_key: str) -> dict[str, float]:
 
 
 def _fetch_clubelo(as_of: str) -> list[dict]:
-    """One CSV = every European club's Elo. Cached on disk per date."""
-    import requests
+    """Elo rows for ``as_of`` in the API CSV schema. WEBSITE FIRST, API as the fallback.
+
+    Order (2026-09-02, after the API was found frozen since July — see ingest/clubelo_web):
+      1. cached clubelo_<as_of>.csv, unless its provenance is a frozen API file;
+      2. as_of within a day of today → the website (world table + European country pages),
+         written as clubelo_<as_of>.csv with a `.source = web` sidecar;
+      3. a past date → reconstruction from the stored club histories (`web_history`);
+      4. the API (http only, fast-fail on 5xx, 10-minute cool-down) — and its answer is
+         checked against the previous day's file: a snapshot with every club identical is
+         refused as frozen, and the most recent website-derived file is used instead
+         (`web_stale`) rather than serving eight-week-old ratings as fresh.
+    Raises only when nothing usable exists; build_all then builds without the Elo anchor."""
+    import time as _time
+    from prediction_market_soccer.ingest import clubelo_web as W
     cache = _PRIORS / f"clubelo_{as_of}.csv"
-    if cache.exists():
-        text = cache.read_text(encoding="utf-8")
-    else:
-        # Outage cool-down. Without it every PROCESS that needed an uncached date paid the
-        # full retry ladder itself — measured 230s for one _pit_strength(today) while
-        # api.clubelo.com was timing out, and the live loop spawns a fresh process per
-        # cycle. A failed fetch leaves a dated marker; for the next 10 minutes callers
-        # fail fast (<1s) and build without the anchor, exactly as they would have after
-        # the slow failure. A later success caches the CSV and the marker is moot.
-        import time as _time
-        marker = _PRIORS / f".clubelo_unavailable_{as_of}"
-        _COOLDOWN_S = 600
-        if marker.exists() and (_time.time() - marker.stat().st_mtime) < _COOLDOWN_S:
-            raise RuntimeError(f"clubelo unavailable (cool-down after a failed fetch <{_COOLDOWN_S}s ago)")
-        last_err = None
-        text = None
-        # http ONLY. api.clubelo.com has never served TLS — port 443 does not answer, so the
-        # old https "fallback" was a guaranteed connect-timeout that turned every failure
-        # into minutes of waiting (measured 2026-09-01: http 502 in 0.4s, https 90s × 3).
-        # A 5xx is the site's own backend failing (IIS answers, the data app behind it does
-        # not); it is not going to change within seconds, so one short retry and out.
-        url = f"http://api.clubelo.com/{as_of}"
-        for attempt in range(2):
+    src = W._read_source(as_of)
+    if cache.exists() and src != "api_frozen":
+        return list(csv.DictReader(io.StringIO(cache.read_text(encoding="utf-8"))))
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    errors: list[str] = []
+
+    # A FUTURE date has no data anywhere yet: serve the latest website-derived rows and
+    # write nothing (the real day fetches for itself). Without this, asking for tomorrow at
+    # 23:00 UTC pinned today's site state as tomorrow's file and daily/ parse.
+    if as_of > today:
+        stale = _latest_web_csv()
+        if stale is not None:
+            return stale[1]
+        # no website file at all: fall through to the API for whatever it has
+
+    # 2. the website — ONLY for today: the site shows "now", nothing else. Yesterday goes to
+    #    the stored histories below (a PIT prior fingerprinted for yesterday must not carry
+    #    today's ratings).
+    if as_of == today:
+        marker = _PRIORS / f".clubelo_web_unavailable_{as_of}"
+        if not (marker.exists() and (_time.time() - marker.stat().st_mtime) < 600):
             try:
-                r = requests.get(url, timeout=(8, 60))     # connect 8s, read 60s
-                if r.status_code >= 500:
-                    last_err = RuntimeError(f"HTTP {r.status_code} from api.clubelo.com (server-side)")
-                    if attempt == 0:
-                        _time.sleep(1.5)
-                    continue
-                r.raise_for_status()
-                text = r.text
-                break
-            except requests.RequestException as e:  # noqa: BLE001 — retry once, then surface
-                last_err = e
+                site_rows = W.load_daily(as_of) or W.fetch_daily(as_of)
+                probs = W.validate_daily(site_rows)
+                if probs:
+                    raise RuntimeError("website parse failed sanity checks: " + "; ".join(probs))
+                nm = W.load_name_map()
+                if not nm:
+                    nm = W.build_name_map(site_rows, histories=W.load_histories())
+                    W.save_name_map(nm)
+                rows = W.to_api_rows(site_rows, as_of, name_map=nm, histories=W.load_histories())
+                W.write_csv(rows, as_of, source="web")
+                try:
+                    marker.unlink()
+                except OSError:
+                    pass
+                return rows
+            except Exception as e:  # noqa: BLE001 — fall through to the API
+                errors.append(f"web: {str(e)[:160]}")
+                try:
+                    marker.write_text(str(e)[:200], encoding="utf-8")
+                except OSError:
+                    pass
+        else:
+            errors.append("web: cool-down after a recent failure")
+
+    # 3. a past date → the stored histories
+    if as_of < today:
+        hist = W.load_histories()
+        if hist:
+            rows, prov = W.reconstruct_date(as_of, histories=hist, name_map=W.load_name_map(),
+                                            frozen_api_rows=W._api_fillers_for(as_of), table_rows=W.load_daily(as_of))
+            if rows:
+                W.write_csv(rows, as_of, source="web_history")
+                W._write_json(_PRIORS / f"clubelo_{as_of}.provenance.json", prov)
+                return rows
+
+    # 4. the API — http only, fast-fail, cool-down; then the freeze check. The comparison is
+    #    against the API's OWN previous snapshot (never a website file: the two sit ~66 Elo
+    #    apart, so a frozen API answer would always look "different" from a web file and be
+    #    accepted as fresh — exactly the failure the detector exists for).
+    try:
+        rows = _fetch_clubelo_api(as_of)
+    except Exception as e:  # noqa: BLE001 — last resorts below
+        errors.append(f"api: {str(e)[:160]}")
+        rows = None
+    if rows is not None:
+        prev_api = W.latest_api_rows()
+        if prev_api is not None and prev_api[0] != as_of and W.is_frozen(rows, prev_api[1]):
+            stale = _latest_web_csv()
+            if stale is not None:
+                print(f"[club_prior] API snapshot for {as_of} is FROZEN (identical to its {prev_api[0]} snapshot); "
+                      f"using the latest website-derived file ({stale[0]}) instead")
+                W.write_csv([{**r, "From": as_of, "To": as_of} for r in stale[1]], as_of, source="web_stale")
+                return stale[1]
+            (_PRIORS / f"clubelo_{as_of}.source").write_text("api_frozen", encoding="utf-8")
+            print(f"[club_prior] API snapshot for {as_of} is FROZEN and no website file exists — using it, flagged")
+            return rows
+        (_PRIORS / f"clubelo_{as_of}.source").write_text("api", encoding="utf-8")
+        return rows
+    # 5. last resorts: the latest website-derived file, else the flagged frozen cache —
+    #    stale Elo (rank-correlated 0.94 with the truth) beats no Elo anchor at all
+    stale = _latest_web_csv()
+    if stale is not None:
+        print(f"[club_prior] {as_of}: website and API both unavailable ({'; '.join(errors)}) — "
+              f"using the latest website-derived file ({stale[0]})")
+        return stale[1]
+    if cache.exists():
+        print(f"[club_prior] {as_of}: only the flagged frozen API cache is available — using it")
+        return list(csv.DictReader(io.StringIO(cache.read_text(encoding="utf-8"))))
+    raise RuntimeError("ClubElo unavailable: " + "; ".join(errors))
+
+
+def _latest_web_csv(max_back_days: int = 14) -> tuple[str, list[dict]] | None:
+    """The most recent clubelo_<date>.csv whose provenance is the website."""
+    from prediction_market_soccer.ingest import clubelo_web as W
+    d = datetime.now(timezone.utc)
+    for k in range(0, max_back_days + 1):
+        ds = (d - timedelta(days=k)).strftime("%Y-%m-%d")
+        if W._read_source(ds) in ("web", "web_history", "web_stale"):
+            rows = W.read_csv(ds)
+            if rows:
+                return ds, rows
+    return None
+
+
+def _fetch_clubelo_api(as_of: str) -> list[dict]:
+    """The API path (fallback): one CSV = every European club's Elo. Cached per date."""
+    import requests
+    import time as _time
+    cache = _PRIORS / f"clubelo_{as_of}.csv"
+    marker = _PRIORS / f".clubelo_unavailable_{as_of}"
+    _COOLDOWN_S = 600
+    if marker.exists() and (_time.time() - marker.stat().st_mtime) < _COOLDOWN_S:
+        raise RuntimeError(f"clubelo unavailable (cool-down after a failed fetch <{_COOLDOWN_S}s ago)")
+    last_err = None
+    text = None
+    # http ONLY — api.clubelo.com has never served TLS (port 443 does not answer); a 5xx is
+    # the site's own backend failing, so one short retry and out (measured 2026-09-01).
+    url = f"http://api.clubelo.com/{as_of}"
+    for attempt in range(2):
+        try:
+            r = requests.get(url, timeout=(8, 60))
+            if r.status_code >= 500:
+                last_err = RuntimeError(f"HTTP {r.status_code} from api.clubelo.com (server-side)")
                 if attempt == 0:
                     _time.sleep(1.5)
-        if not text:
-            try:
-                marker.write_text(str(last_err)[:200], encoding="utf-8")
-            except OSError:
-                pass
-            raise RuntimeError(f"clubelo fetch failed after retries: {last_err}")
-        cache.write_text(text, encoding="utf-8")
+                continue
+            r.raise_for_status()
+            text = r.text
+            break
+        except requests.RequestException as e:  # noqa: BLE001
+            last_err = e
+            if attempt == 0:
+                _time.sleep(1.5)
+    if not text:
         try:
-            marker.unlink()
+            marker.write_text(str(last_err)[:200], encoding="utf-8")
         except OSError:
             pass
+        raise RuntimeError(f"clubelo fetch failed after retries: {last_err}")
+    cache.write_text(text, encoding="utf-8")
+    try:
+        marker.unlink()
+    except OSError:
+        pass
     return list(csv.DictReader(io.StringIO(text)))
 
 
@@ -370,12 +482,18 @@ def _current_table(conn, comp, season, as_of: str) -> dict:
     return out
 
 def build_all(conn, *, as_of: str | None = None, season: int | None = None,
-              suffix: str = "") -> dict:
+              suffix: str = "", out_dir: Path | None = None) -> dict:
     """Build clubs_<comp>.json for every enabled comp + merged clubs_all.json.
 
     Requires: sync_teams + sync_standings(season) + sync_standings(season-1)
     already ingested. Zero API-Football calls here; one ClubElo CSV fetch."""
     as_of = as_of or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # out_dir: where the (suffixed) files go — the production priors dir by default; the
+    # point-in-time builds of a NON-production database (the test suite's in-memory
+    # stores) are routed to a temp dir so they can never overwrite live files.
+    _p = (lambda key: (out_dir / f"clubs_{key}.json")) if out_dir else _path
+    if out_dir:
+        out_dir.mkdir(parents=True, exist_ok=True)
     try:
         elo_rows = _fetch_clubelo(as_of)
     except Exception as e:
@@ -519,7 +637,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
             ],
             "clubs": clubs,
         }
-        _path(comp.key + suffix).write_text(
+        _p(comp.key + suffix).write_text(
             json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
         n_elo = sum(1 for c in clubs if c["elo"] is not None)
         summary[comp.key] = f"{len(clubs)} clubs, {n_elo} with Elo"
@@ -567,7 +685,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     for comp in active():
         if comp.kind not in ("league", "league_playoffs"):
             continue
-        dp = _path(comp.key + suffix)
+        dp = _p(comp.key + suffix)
         if not dp.exists():
             continue
         for c in json.loads(dp.read_text(encoding="utf-8"))["clubs"]:
@@ -575,7 +693,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
                 domestic[c["club_id"]] = c["anchor_points"]
 
     for comp in active():
-        p = _path(comp.key + suffix)
+        p = _p(comp.key + suffix)
         if not p.exists():
             continue
         doc = json.loads(p.read_text(encoding="utf-8"))
@@ -607,7 +725,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     # files on every loaned club. Rebuilt from the files as they finally stand.
     _best_final: dict[str, dict] = {}
     for comp in active():
-        fp = _path(comp.key + suffix)
+        fp = _p(comp.key + suffix)
         if not fp.exists():
             continue
         for c in json.loads(fp.read_text(encoding="utf-8"))["clubs"]:
@@ -633,7 +751,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
         "teams": [{"team": c["name"], "fifa_rank": c.get("elo_rank") or 999}
                   for c in _best_final.values()],
     }
-    (_PRIORS / f"clubs_all{suffix}.json").write_text(
+    ((out_dir or _PRIORS) / f"clubs_all{suffix}.json").write_text(
         json.dumps(merged, ensure_ascii=False, indent=1), encoding="utf-8")
     print("[club_prior] built:", json.dumps(summary, ensure_ascii=False))
     return summary

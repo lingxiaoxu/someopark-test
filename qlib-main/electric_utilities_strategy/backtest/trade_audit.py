@@ -28,6 +28,8 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 SR_ROOT   = os.path.join(REPO_ROOT, "qlib-main", "electric_utilities_strategy")
 
 
+_AMP_CACHE: dict = {}   # 通路③:缺电度序列/图谱敏感度按进程缓存一次
+
 def main(output_dir: str | None = None) -> None:
     # ── path setup(原模块顶层副作用,移入 main)────────────────────────────────
     sys.path.insert(0, os.path.join(REPO_ROOT, "qlib-main"))
@@ -41,7 +43,7 @@ def main(output_dir: str | None = None) -> None:
         compute_turnover, should_emergency_rebalance, get_monthly_rebalance_dates,
         apply_zscore_threshold_filter, cap_turnover,
     )
-    from electric_utilities_strategy.portfolio.risk      import apply_risk_controls
+    from electric_utilities_strategy.portfolio.risk      import apply_risk_controls, compute_exposure_amplifier
     from electric_utilities_strategy.portfolio.optimizer import optimize_weights
     from electric_utilities_strategy.backtest.costs      import compute_transaction_costs
     from electric_utilities_strategy.data.loader         import load_prices, load_macro_data as load_macro
@@ -170,8 +172,33 @@ def main(output_dir: str | None = None) -> None:
 
             # ── Step 4: risk controls ─────────────────────────────────────────
             macro_slice = macro.loc[:dt] if dt in macro.index else macro
+            # 通路③ 敞口放大器(2026-09-02):审计重放必须与 portfolio/strategy.py 同语义
+            _E, _phi, _z = 1.0, float("nan"), float("nan")
+            _amp_cfg = (risk_cfg.get("exposure_amplifier") or {})
+            if _amp_cfg.get("enabled", False):
+                if "_amp_series" not in _AMP_CACHE:
+                    try:
+                        from electric_utilities_strategy.data import altdata_signals as _alt
+                        from electric_utilities_strategy.data.loader import load_config as _lc
+                        from electric_utilities_strategy.signals.supply_chain import load_graph_from_config, shortage_sensitivity
+                        _AMP_CACHE["_amp_series"] = _alt.load_shortage_score()
+                        _AMP_CACHE["_amp_sens"] = (shortage_sensitivity(load_graph_from_config(
+                            (_lc().get("signals", {}) or {}).get("supply_chain", {})))
+                            if _amp_cfg.get("graph_weighted", True) else None)
+                    except Exception:  # noqa: BLE001 — 缺数则中性
+                        _AMP_CACHE["_amp_series"], _AMP_CACHE["_amp_sens"] = None, None
+                _ser = _AMP_CACHE.get("_amp_series")
+                if _ser is not None and len(_ser.loc[:dt]):
+                    _z = float(_ser.loc[:dt].iloc[-1])
+                    _E, _phi = compute_exposure_amplifier(_z, filtered, _AMP_CACHE.get("_amp_sens"),
+                                                          k=float(_amp_cfg.get("k", 0.10)),
+                                                          lo=float(_amp_cfg.get("lo", 0.85)),
+                                                          hi=float(_amp_cfg.get("hi", 1.15)))
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights            = filtered,
+                exposure_mult      = _E,
+                exposure_allow_leverage = bool(_amp_cfg.get("allow_leverage", False)),
+                exposure_note      = (f"shortage_z={_z:+.2f} phi={_phi:.2f}" if _amp_cfg.get("enabled", False) else ""),
                 portfolio_returns  = portfolio_daily_returns.iloc[-252:] if len(portfolio_daily_returns) > 0 else pd.Series(dtype=float),
                 macro              = macro_slice,
                 # DD-circuit fix(2026-07-21): 与 strategy.py 同步——用重放自身的

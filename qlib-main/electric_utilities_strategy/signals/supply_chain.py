@@ -300,6 +300,25 @@ def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
     return z.fillna(0.0)
 
 
+def shortage_sensitivity(graph: Optional[dict] = None, floor: float = 0.5) -> Dict[str, float]:
+    """通路③ 的图谱敏感度:每个板块对"缺电"的暴露 = 来自 power_demand_proxy 与
+    power_price_proxy 的入边权重之和,归一到均值 1;没有这两类入边的板块给地板值
+    (缺电时整条链都受益,只是幅度不同)。graph=None → 用硬编码 V1 图。"""
+    g = graph or SUPPLY_CHAIN_GRAPH
+    subs = sorted({tgt for (_, tgt) in g.keys()})
+    raw = {s: 0.0 for s in subs}
+    for (src, tgt), (w, _lag, _d) in g.items():
+        if src in (NODE_DEMAND, NODE_POWER_PRICE) and tgt in raw:
+            raw[tgt] += abs(float(w))
+    pos = [v for v in raw.values() if v > 0]
+    if not pos:
+        return {s: 1.0 for s in subs}
+    mean_pos = sum(pos) / len(pos)
+    sens = {s: (v / mean_pos if v > 0 else floor) for s, v in raw.items()}
+    m = sum(sens.values()) / len(sens)
+    return {s: v / m for s, v in sens.items()}
+
+
 def load_graph_from_config(sc_cfg: Optional[dict]) -> dict:
     """Build the propagation graph dict from a ``signals.supply_chain`` config block.
 

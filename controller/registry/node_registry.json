@@ -672,6 +672,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPSSFHWGX54": {
+  "aliases": [
+   "grid_equipment"
+  ],
+  "attrs": {
+   "strategy": "aeus"
+  },
+  "canonical_key": "aeus|SS:grid_equipment",
+  "display_name": "grid_equipment",
+  "first_seen": "2026-09-02T01:34:26+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPSSJ0BHDUM": {
   "aliases": [
    "analog_defense"
@@ -732,6 +747,36 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPSSQU27LDA": {
+  "aliases": [
+   "regional_utility"
+  ],
+  "attrs": {
+   "strategy": "aeus"
+  },
+  "canonical_key": "aeus|SS:regional_utility",
+  "display_name": "regional_utility",
+  "first_seen": "2026-09-02T01:34:26+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSTIG455J": {
+  "aliases": [
+   "regulated_mega"
+  ],
+  "attrs": {
+   "strategy": "aeus"
+  },
+  "canonical_key": "aeus|SS:regulated_mega",
+  "display_name": "regulated_mega",
+  "first_seen": "2026-09-02T01:34:26+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPSSWVV4EHE": {
   "aliases": [
    "foundry"
@@ -768,6 +813,19 @@
   "canonical_key": "strategy:bdc",
   "display_name": "BDC",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSTJQV96C7": {
+  "aliases": [
+   "AEUS"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:aeus",
+  "display_name": "AEUS",
+  "first_seen": "2026-09-02T01:34:26+00:00",
   "kind": "strategy",
   "probe": 0,
   "retired_at": null,

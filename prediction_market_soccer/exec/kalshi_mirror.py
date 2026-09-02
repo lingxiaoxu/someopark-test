@@ -81,7 +81,7 @@ _TRUTHY = ("1", "true", "yes", "on")
 MAX_ORDER_USD = float(CONFIG.decision.max_stake_usd)          # $2.00
 MAX_ORDERS_PER_DAY = 80
 MAX_OPEN_POSITIONS = 40
-MAX_ATTEMPTS = 3                # venue-side failures (5xx / IOC missed the moving ask) retried up to this
+MAX_ATTEMPTS = 4                # venue-side failures (5xx / IOC missed the ask / no ask yet) retried up to this
 PRE_WINDOW_BEFORE_MIN = 25      # a PRE row is stashed ≤20' pre-kickoff; scan a little wider
 PRE_LATE_GRACE_MIN = 5          # still mirror a PRE bet discovered ≤5' after kickoff
 _REG_MAX_MIN = 95               # regulation incl. stoppage (same clamp as smart_exit)
@@ -564,10 +564,13 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
         return {"terminal": False}
     ask = float(ob.yes_ask) if ob.yes_ask is not None else None
     if ask is None or not (0.0 < ask < 1.0):
-        _insert(conn, {**base, "ticker": ticker, "count": 0, "status": "skipped",
-                       "note": f"no executable ask (yes_ask={ask})"})
-        _log("entry_skipped_no_ask", fixture=fid, track=track, ticker=ticker)
-        return {"terminal": True}
+        # the demo book can show no YES offer on a heavy favourite for a while (measured on
+        # Flamengo 83¢: bid 78, no ask) — a liquidity gap, not a decision: keep retrying on
+        # the next cycles (bounded by MAX_ATTEMPTS) instead of writing the bet off
+        _insert(conn, {**base, "ticker": ticker, "count": 0, "status": "unfilled",
+                       "note": f"no executable ask (yes_ask={ask}) — retry"})
+        _log("entry_no_ask", fixture=fid, track=track, ticker=ticker, attempt=attempts)
+        return {"terminal": attempts >= MAX_ATTEMPTS}
     n = contracts(ask, stake)
     coid = f"mirror-{track}-{fid}-{uuid.uuid4().hex[:8]}"
     # write the intent BEFORE the HTTP call: the row is the idempotency key, so a crash

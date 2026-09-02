@@ -22,3 +22,16 @@ def no_ratings_cache_io(monkeypatch):
         return clubctx.strength_for(comp_key)
 
     monkeypatch.setattr(strength_cache, "cached_strength", _in_memory_fit)
+
+
+@pytest.fixture(autouse=True)
+def no_clubelo_network(monkeypatch):
+    """Tests never reach clubelo.com or api.clubelo.com. A cached clubelo_<date>.csv is
+    read as usual; a date with no cache builds the prior without the Elo anchor."""
+    from prediction_market_soccer.ingest import club_prior, clubelo_web
+
+    def _no_net(*a, **k):
+        raise RuntimeError("network disabled in tests")
+    monkeypatch.setattr(clubelo_web, "fetch_daily", _no_net)
+    monkeypatch.setattr(clubelo_web, "fetch_history", _no_net)
+    monkeypatch.setattr(club_prior, "_fetch_clubelo_api", _no_net)

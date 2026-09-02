@@ -46,6 +46,9 @@ class RiskFlags:
     cash_pct: float = 0.0
     event_derisk_triggered: bool = False
     event_derisk_reason: str = ""
+    exposure_mult: float = 1.0          # 通路③ 敞口放大器 E(1.0 = 未启用/中性)
+    shortage_z: float = float("nan")    # 输入:缺电度 z(PIT)
+    graph_phi: float = float("nan")     # 图谱敏感度加权的组合暴露系数 φ
     notes: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -221,6 +224,35 @@ def estimate_sector_betas(
 # Main risk management pipeline
 # ---------------------------------------------------------------------------
 
+def compute_exposure_amplifier(
+    shortage_z: float,
+    weights: pd.Series,
+    sensitivity: Optional[Dict[str, float]] = None,
+    k: float = 0.10,
+    lo: float = 0.85,
+    hi: float = 1.15,
+) -> Tuple[float, float]:
+    """通路③ 敞口放大器(AEUS_PLAN §4.2 A4):E = clip(1 + k · z · φ, lo, hi)。
+
+    知识图谱用法(2026-09-02):缺电不是对所有板块一视同仁——它沿图谱里
+    ``power_demand_proxy`` / ``power_price_proxy`` 的出边传导。φ 是**当前组合**
+    对这两个节点的暴露:φ = Σ_s w_s·sens_s / Σ_s w_s,sens_s 由入边权重归一
+    (均值 1,无入边的板块给地板值——"缺电=整条链都受益",只是幅度不同)。
+    于是同一个缺电度 z:满仓 IPP/gas_midstream 的组合被放大得多,满仓 water_cooling
+    的组合几乎不动。z 缺数(NaN)→ E=1,φ=NaN。sensitivity 为 None → φ=1(纯标量版)。
+    """
+    if shortage_z is None or not np.isfinite(shortage_z):
+        return 1.0, float("nan")
+    w = weights.clip(lower=0.0) if weights is not None else pd.Series(dtype=float)
+    tot = float(w.sum()) if len(w) else 0.0
+    if sensitivity and tot > 0:
+        phi = float(sum(float(w[s]) * float(sensitivity.get(s, 1.0)) for s in w.index) / tot)
+    else:
+        phi = 1.0
+    e = 1.0 + k * float(shortage_z) * phi
+    return float(min(max(e, lo), hi)), phi
+
+
 def apply_risk_controls(
     weights: pd.Series,
     portfolio_returns: pd.Series,
@@ -247,6 +279,9 @@ def apply_risk_controls(
     event_derisk_active: bool = False,
     event_derisk_frac: float = 0.5,
     event_derisk_reason: str = "",
+    exposure_mult: float = 1.0,            # 通路③:E(compute_exposure_amplifier);1.0 = 逐字节等价旧行为
+    exposure_allow_leverage: bool = False, # False → 放大只能吃掉现金,总仓位封顶 100%
+    exposure_note: str = "",
 ) -> Tuple[pd.Series, float, RiskFlags]:
     """
     Apply all risk controls and return adjusted weights + cash allocation.
@@ -518,6 +553,35 @@ def apply_risk_controls(
     if adjusted_weights.sum() > 0:
         invested_pct = 1.0 - cash_pct
         adjusted_weights = adjusted_weights / adjusted_weights.sum() * invested_pct
+
+    # -------------------------------------------------------------------
+    # 通路③ 敞口放大器(2026-09-02):E 只改 gross,不改选谁。
+    # 作用在所有风控档之后:vol/VIX/DD 决定的现金是"防守",E 决定的是"进攻幅度";
+    # 不允许杠杆时 E>1 只能吃掉既有现金(满仓时无效),E<1 一律多留现金。
+    # 单板块上限 max_weight 仍然成立(放大不能把集中度顶穿)。E=1 → 上面结果逐字节不变。
+    # -------------------------------------------------------------------
+    if exposure_mult != 1.0 and adjusted_weights.sum() > 0:
+        invested = float(adjusted_weights.sum())
+        # 防守优先(2026-09-02):vol/VIX/DD/事件档已经决定要留现金时,放大器只许继续减,
+        # 不许把防守现金买回去 —— 缺电度尖峰恰好撞上危机时不能自动复仓。
+        _defensive = (flags.vol_scaling_triggered or flags.vix_emergency_triggered
+                      or flags.dd_circuit_triggered or flags.event_derisk_triggered)
+        if _defensive and exposure_mult > 1.0:
+            exposure_mult = 1.0
+        target = invested * float(exposure_mult)
+        if not exposure_allow_leverage:
+            target = min(target, 1.0)     # 不许杠杆 → 满仓时 E>1 无效,放大器实为单向减仓器
+        scale = target / invested
+        wmax = float(adjusted_weights.max())
+        if wmax * scale > max_weight + 1e-9:
+            scale = min(scale, max_weight / wmax)
+        adjusted_weights = adjusted_weights * scale
+        cash_pct = max(0.0, 1.0 - float(adjusted_weights.sum()))
+        flags.exposure_mult = float(exposure_mult)
+        flags.notes.append(f"Exposure amplifier E={exposure_mult:.3f} → gross {invested:.0%}→{adjusted_weights.sum():.0%}"
+                           + (f" ({exposure_note})" if exposure_note else ""))
+        logger.info("EXPOSURE AMPLIFIER: E=%.3f gross %.1f%% → %.1f%% %s",
+                    exposure_mult, invested * 100, adjusted_weights.sum() * 100, exposure_note)
 
     flags.cash_pct = cash_pct
     return adjusted_weights, cash_pct, flags

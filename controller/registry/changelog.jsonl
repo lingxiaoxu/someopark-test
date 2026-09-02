@@ -3186,3 +3186,9 @@
 {"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPRK84F1KH", "kind": "pair", "key": "mtfs|L:US1924461023|S:US8760301072", "display": "CTSH/TPR"}
 {"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPROKF3TEM", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US12008R1077", "display": "VLO/BLDR"}
 {"ts": "2026-09-01T14:13:39+00:00", "event": "register_node", "spid": "SPPR9DKLMJ6", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US3687361044", "display": "VLO/GNRC"}
+{"ts": "2026-09-02T01:34:26+00:00", "event": "register_node", "spid": "SPSTJQV96C7", "kind": "strategy", "key": "strategy:aeus", "display": null}
+{"ts": "2026-09-02T01:34:26+00:00", "event": "register_node", "spid": "SPSSFHWGX54", "kind": "subsector", "key": "aeus|SS:grid_equipment", "display": "grid_equipment"}
+{"ts": "2026-09-02T01:34:26+00:00", "event": "register_node", "spid": "SPSSQU27LDA", "kind": "subsector", "key": "aeus|SS:regional_utility", "display": "regional_utility"}
+{"ts": "2026-09-02T01:34:26+00:00", "event": "register_node", "spid": "SPSSTIG455J", "kind": "subsector", "key": "aeus|SS:regulated_mega", "display": "regulated_mega"}
+{"ts": "2026-09-02T01:45:59+00:00", "event": "rename_display", "spid": "SPSTJQV96C7", "kind": "strategy", "key": "strategy:aeus", "from": "strategy:aeus", "to": "AEUS", "note": "2026-09-01 首次装配时 _assemble_aeus 未传 display_name(seed_nodes 未跑),前端 OFFICIAL_KEY 失配致面板退回账本口径;人工纠正,用户批准"}
+{"ts": "2026-09-02T12:58:44+00:00", "event": "build_master", "total": 277, "cusip_hit": 277, "placeholder": 0}

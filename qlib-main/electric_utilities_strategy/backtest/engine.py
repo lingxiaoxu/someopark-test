@@ -100,7 +100,7 @@ from ..portfolio.rebalance import (
     cap_turnover,
     should_emergency_rebalance,
 )
-from ..portfolio.risk import apply_risk_controls
+from ..portfolio.risk import apply_risk_controls, compute_exposure_amplifier
 from ..signals.composite import compute_composite_signals
 
 logger = logging.getLogger(__name__)
@@ -627,6 +627,22 @@ class AEUSBacktest:
 
         rebalance_date_set = set(rebalance_dates)
         emergency_active = False           # cooldown state: True = already in emergency mode
+
+        # ── 通路③ 敞口放大器(2026-09-02,config risk.exposure_amplifier,默认 off)──
+        # 缺电度序列按可得性日期索引(PIT);每个调仓日只取 ≤dt 的最后一个值。
+        _amp_cfg = self.risk_cfg.get("exposure_amplifier", {}) or {}
+        _amp_on = bool(_amp_cfg.get("enabled", False))
+        _amp_series, _amp_sens = None, None
+        if _amp_on:
+            try:
+                from ..data import altdata_signals as _alt
+                from ..signals.supply_chain import load_graph_from_config, shortage_sensitivity
+                _amp_series = _alt.load_shortage_score()
+                _amp_sens = (shortage_sensitivity(load_graph_from_config(self.sig_cfg.get("supply_chain", {})))
+                             if _amp_cfg.get("graph_weighted", True) else None)
+            except Exception as _e:  # noqa: BLE001 — graceful: amplifier neutral
+                logger.warning("exposure amplifier unavailable (%s) — E=1", _e)
+                _amp_on = False
         vix_threshold    = self.reb_cfg.get("emergency_derisk_vix", 35.0)
 
         # Stop-loss infrastructure (extreme events only)
@@ -717,6 +733,15 @@ class AEUSBacktest:
                         if prog_cfg.get("enabled", False)
                         else []
                     )
+                    _E, _phi, _z = 1.0, float("nan"), float("nan")
+                    if _amp_on and _amp_series is not None and len(_amp_series):
+                        _hist = _amp_series.loc[:dt]
+                        if len(_hist):
+                            _z = float(_hist.iloc[-1])
+                            _E, _phi = compute_exposure_amplifier(
+                                _z, filtered_weights, _amp_sens,
+                                k=float(_amp_cfg.get("k", 0.10)), lo=float(_amp_cfg.get("lo", 0.85)),
+                                hi=float(_amp_cfg.get("hi", 1.15)))
                     adj_weights, cash_pct, flags = apply_risk_controls(
                         weights=filtered_weights,
                         portfolio_returns=portfolio_daily_returns.iloc[-252:] if len(portfolio_daily_returns) > 0 else pd.Series(dtype=float),
@@ -731,7 +756,12 @@ class AEUSBacktest:
                         dd_release_rebound=self.risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
                         vix_progressive_tiers=prog_tiers,
+                        exposure_mult=_E,
+                        exposure_allow_leverage=bool(_amp_cfg.get("allow_leverage", False)),
+                        exposure_note=(f"shortage_z={_z:+.2f} phi={_phi:.2f}" if _amp_on else ""),
                     )
+                    if _amp_on:
+                        flags.shortage_z = _z; flags.graph_phi = _phi
 
                     # ── Risk Overlay (v2): entry/exit gate + optional market/DD multipliers
                     if signal_kwargs.get("signal_version") == "v2":

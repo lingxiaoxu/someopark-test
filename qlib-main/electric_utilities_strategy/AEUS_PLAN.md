@@ -731,3 +731,95 @@ subprocess 报表),AEUSdailySignal 同位置同构调用 —— phase-1(账本�
 某读码 agent 报的 4/0.40/35/−0.15/0.12 是错的,plan 未采用✓);capex tickers 单源
 `universe.CAPEX_PULSE_TICKERS`(company_signals:62 引用)✓;IPO_DATES 仅 4 票需门控✓;
 文件覆盖清单齐(45 源文件 + 14 测试全部有裁决行)✓。
+
+## 11. PJM 扩展接入核验记录(2026-09-02 01:00–02:10 ET,用户令"马上、最高标准、明天带新数据")
+
+**范围**:在 09-01 西枢纽 DA LMP 接线之上,新增 5 个 Data Miner 2 feed → 6 个 PIT 冻结店 → 7 条派生序列,
+**不新增 tilt**(ipp_wholesale 已满 2 条),只进既有 z 均值:`price_pulse`(+DOM 基差)、power_demand
+节点(+分区计量负荷 YoY)、`shortage_score`(+`shortage_east` = mean_z(−备用裕度, 日 0 强迫停机, DA 预报误差))。
+门控 `external_sources.pjm.extended`(默认 true;false → 与 09-01 接线逐字节等价)。
+
+| 项 | 实测 |
+|---|---|
+| 字段/命名(实时探测)| DOM 区 pnode_id **34964545**(type=ZONE);计量负荷 load_area = DOM / PEPCO / **BC**(=BGE)/ AEP 四分区(AEPAPT/AEPIMP/AEPKPT/AEPOPT)+ RTO;停机 region = "PJM RTO" / "Mid Atlantic - Dominion" / "Western";预报每 6h 一次评估(05:45/11:45/17:45/23:45)|
+| 存档墙 | 2024-08-15 查询 → 400/0 行;`EXT_START=2024-09-15`;已入店数据 append-only,不随时间流逝丢失 |
+| 可得性滞后 | 计量负荷 9/2 只到 8/30(~3-11 天浮动)→ `ZONE_LOAD_LAG_DAYS=12`;预报误差同滞后;LMP/裕度/停机当日 |
+| 回填结果 | hub 640d(2024-12-02→9/2)/ DOM 718d / 负荷 715d×8 区 / 裕度 716d / 停机 717d×4 列 / 预报 718d×2 区;6 店 16–165KB |
+| `--verify` | 7/7 序列 OK、STALE 0、exit 0(显示日期已按可得性截到今天)|
+| 测试 | 新 `tests/test_pjm_extended.py` **8/8**(tmp_path 店 + 注入 fetch,零网络零生产写入);回归 **173/173** |
+| cron 同环境 | `env -i` 无 conda PATH、不预 source .env 跑 `update_data` → 9/9 OK(见 §4b 加固)|
+| 历史不变性(只读对比 extended 开/关)| price_pulse / demand 节点 / shortage_score 在各自新腿首日之前 **max\|Δ\| = 0.0000,长度不变**(7002 / 2153 / 1651)|
+| 新腿生效后 | price_pulse 末值 −0.198→−0.026(post corr .95,max\|Δ\| 1.18z);demand 节点 +0.397→+0.170(新腿仅自 2026-02-21,corr .77,max\|Δ\| 1.91z);shortage_score −0.372→−0.486(corr .79,max\|Δ\| 2.22z)|
+| 期间修掉的两个自伤 | ① shortage 融合初版对混合序列重做 `_ts_z` → 历史被裁 251 行并重标定(n 1651→1400),改为 z 空间行均值不重 z;② 首版对比脚本用固定 2025-10 截点误判"历史变了",改按各新腿真实首日 |
+| 退出码 | `--update`:wired 下 hub 0 行 → exit 1;≥2 扩展 feed 0 行 → exit 1;单个 miss 只 WARN(weekly `--verify` 兜底时效)|
+
+**对 9/2 20:20 daily 的含义**:signal 将首次带 DOM 基差 / 分区负荷 / 东部紧缺三条新信息;新腿只改 2025-04 之后的
+输入,生产参数 `pure_supply_chain v1` 的回测结论在那之前不受影响。若要回到 09-01 状态:`extended: false`。
+
+## 12. 三条数据→仓位通路的接线与裁决(2026-09-02,用户令"三条全做、最高标准")
+
+用户的问题一直是同一个:EIA 装机、ERCOT 稀缺、PJM 东部紧缺这些数据**到底有没有进仓位**。
+逐条查完的结论是:①②④ 三条通路都活着(节点 z / confirmation tilt / purity),
+**通路③(敞口放大器)从建成起就没接线**;EIA-860M 的 by_source 永远是空的,
+`renewables_storage` 的第二条 tilt 因此从来没生效过;ERCOT 三条 macro accrual 序列也没有消费者。
+
+### 12.1 通路③ 敞口放大器(AEUS 已翻开 / AISS 接好但不开)
+
+**做法**:纯函数 `portfolio/risk.compute_exposure_amplifier(z, weights, sensitivity, k, lo, hi)`
+→ `E = clip(1 + k·z·φ, 0.85, 1.15)`,作为 `apply_risk_controls(exposure_mult=E, …)` 的入参,
+在**所有风控档之后**只改 gross、不改选谁。
+
+**知识图谱怎么用的(φ)**:缺电不是对所有子板块一视同仁——它沿图谱里 `power_demand_proxy` /
+`power_price_proxy` 的出边传导。`signals/supply_chain.shortage_sensitivity()` 把这两个节点的入边
+权重按板块汇总、归一到均值 1(无入边的给地板值 0.5,"缺电时整条链都受益,只是幅度不同"),
+再用**当前组合权重**加权:φ = Σ w_s·sens_s / Σ w_s。生产图谱(v2)算出来是
+`ipp_wholesale 2.14 / gas_midstream 1.57 / regional_utility 1.29 / 其余 0.71`。
+于是同一个缺电度 z:压在 IPP/中游燃气的组合被放大得多,躲在 water_cooling 的组合几乎不动。
+全期实测 φ ∈ [0.71, 1.29],E ∈ [0.85, 1.15],61 次调仓带放大器。
+
+**接线位置(四处,一个纯函数)**:`portfolio/strategy.py`(**qlib = 真生产路径**,两个调用点)、
+`backtest/engine.py::_run_native`(fallback)、`backtest/trade_audit.py`(审计重放)、`AEUSdailySignal.py`(实盘)。
+> 踩过的坑:先只接了 `_run_native`,沙盒 batch ON≡OFF 逐字节相同——**native 根本不被调用**。
+> RUNBOOK 里"native 是生产引擎"的旧说法据此已更正。
+
+**两条安全约束**:① 不许杠杆(默认)时 `target = min(gross·E, 1.0)`,而调仓时 gross 恒为 100%
+→ **E>1 实际无效,放大器是单向减仓器**(想要上行必须显式开 `allow_leverage`);
+② **防守优先**:vol/VIX/DD/事件任一档已触发时 E>1 被钳到 1.0,缺电尖峰不得把防守现金买回去(E<1 仍可继续减)。
+单板块 `max_weight` 上限在放大后依然成立。E=1 → 结果逐字节等于旧行为。
+
+**沙盒裁决(全部 /tmp,mlflow 打桩,零生产写入;生产参数集 pure_supply_chain v1)**
+
+| | batch sharpe | batch calmar | batch maxdd | WF sharpe | WF calmar | WF maxdd | 逐 fold OOS sharpe |
+|---|---|---|---|---|---|---|---|
+| AEUS OFF | 1.6979 | 1.2749 | −26.31% | 1.578 | 1.470 | −26.38% | — |
+| AEUS **ON** | **1.7207** | **1.3534** | **−24.55%** | **1.618** | **1.554** | **−24.62%** | **48/70 胜**,mean +0.041,wilcoxon p=0.0002 |
+
+代价:总收益 8.12→7.96(缺电度低时留现金)。**判定:赢 → `risk.exposure_amplifier.enabled: true`(2026-09-02 起生效)。**
+
+**AISS 镜像**:同一套(`compute_exposure_amplifier` + `demand_sensitivity` 多跳传导 + 四处接线 + 6 项测试),
+输入换成 `altdata_signals.load_ai_demand_cycle()`(hyperscaler capex / 韩国出口 / 电子新订单 z 混合),
+φ 从 `ai_capex_proxy` 沿供应链**多跳**传导(每跳 decay 0.6,地板是所有人的下限):
+`ai_gpu 1.99 / foundry 1.23 / custom_asic 1.06 / memory_hbm 0.96 / equipment 0.92 / 其余 0.62`。
+沙盒:WF sharpe 1.315→1.297、calmar 1.484→1.421、逐 fold 26/70 胜(p=0.17)、总收益 −7%。
+**判定:没赢 → AISS `enabled: false` 保持不动**(代码接好、随时可开,关闭时逐字节等价旧行为)。
+
+### 12.2 EIA-860M 分来源(by_source)
+
+两个 bug 叠在一起,导致 `load_renewables_adds_yoy` 自建店起永远空、`renewables_storage` 第二条 tilt 从未生效:
+1. **字段名**:EIA v2 的 facet 列是下划线 `energy_source_code`(连字符版只存在于 desc 列),代码读的是连字符 → `by_source={}`。
+2. **抓取方式**:`--refreeze` 用「2019-01 到今天」一个大窗口翻页,EIA 的 offset 分页在深处急剧退化
+   (offset 1.5M 单页 23 s)→ 2019 年起的重建跑了 13 小时没完。改为**按月一个请求窗口**
+   (每月 ~20–26k 行 = 5–6 页,单页 <25k offset,约 20 s/月),并按 `period == 窗口月`过滤,
+   即使 stub 忽略 start/end 也不会重复计数。增量路径(最后一个已存月 → 今天)只有 2–4 个月,成本与旧版相当。
+
+### 12.3 ERCOT macro accrual 三条序列
+
+`ercot_demand_yoy`(EIA 德州用电 28 日 YoY 的 z)、`ercot_gas_share`、`ercot_rt_price` 三条此前没有任何消费者。
+现在:gas_share 与 rt_price 并进 `price_pulse` 的 z 均值,demand_yoy 并进 power_demand 节点的 z 均值
+(与 PJM 分区负荷 YoY 同一层)。`--verify` 会打印这三行;rt_price 需 ≥126 点才出值(当前 4/126,累积中)。
+
+### 12.4 顺带修掉的一件
+
+**AEUS 首日没有 PnL/Risk 报告**:9/1 daily 在 20:41 跑,而 `account_aeus.json` 20:44 才由建账生成 →
+`portfolio_ledger.daily_update("aeus")` 走"无账户文件"分支返回 0 → 旧闸门 `if _n_led > 0` 把报告子进程整个跳过。
+模块与 AISS 完全一致,不是缺件。闸门改为「账本推进了 **或** 当日报告还不存在(且账本已存在)」,幂等。

@@ -212,6 +212,17 @@ risk:
     monthly_dd_alert: -0.10
     cumulative_dd_halve: -0.25     # semis routinely draw 20%+; only halve in true crashes
     cumulative_dd_recovery: -0.12
+  # 通路③ 敞口放大器(2026-09-02, AEUS 镜像): E = clip(1 + k·z·φ, lo, hi) 乘到 gross。
+  # z = altdata_signals.load_ai_demand_cycle()(hyperscaler capex / 韩国出口 / 电子新订单),
+  # φ = signals.supply_chain.demand_sensitivity() 从图谱 ai_capex_proxy 多跳传导算出的组合暴露。
+  # 默认 off —— 需先跑沙盒 batch/WF 对比 on/off,赢了才翻(AEUS 已翻,AISS 待验)。
+  exposure_amplifier:
+    enabled: false
+    k: 0.10
+    lo: 0.85
+    hi: 1.15
+    graph_weighted: true
+    allow_leverage: false
   vix_progressive_derisk:
     enabled: true
     tiers:

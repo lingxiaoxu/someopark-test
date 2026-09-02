@@ -62,7 +62,7 @@ from electric_utilities_strategy.stock_decompose import (
 )
 from electric_utilities_strategy.signals.composite import compute_composite_signals
 from electric_utilities_strategy.portfolio.optimizer import optimize_weights
-from electric_utilities_strategy.portfolio.risk import apply_risk_controls
+from electric_utilities_strategy.portfolio.risk import apply_risk_controls, compute_exposure_amplifier
 from electric_utilities_strategy.portfolio.rebalance import (
     compute_turnover,
     get_first_trading_day_of_month,
@@ -1244,6 +1244,28 @@ def run_daily_signal(
         except Exception as _e:  # noqa: BLE001
             log.warning(f"[EVENT_DERISK] skipped (non-fatal): {_e}")
 
+    # ── 通路③ 敞口放大器(2026-09-02;config risk.exposure_amplifier,默认 off;与 engine 同一函数)──
+    _amp_cfg = risk_cfg.get("exposure_amplifier", {}) or {}
+    _amp_E, _amp_phi, _amp_z = 1.0, float("nan"), float("nan")
+    if _amp_cfg.get("enabled", False):
+        try:
+            from electric_utilities_strategy.data import altdata_signals as _alt
+            from electric_utilities_strategy.signals.supply_chain import (load_graph_from_config,
+                                                                          shortage_sensitivity)
+            from electric_utilities_strategy.data.loader import load_config as _load_cfg_amp
+            _ss = _alt.load_shortage_score(end=str(pd.Timestamp(signal_date).date()))
+            if len(_ss):
+                _amp_z = float(_ss.iloc[-1])
+                _sens = (shortage_sensitivity(load_graph_from_config(
+                            (_load_cfg_amp().get("signals", {}) or {}).get("supply_chain", {})))
+                         if _amp_cfg.get("graph_weighted", True) else None)
+                _amp_E, _amp_phi = compute_exposure_amplifier(
+                    _amp_z, target_weights_raw, _sens, k=float(_amp_cfg.get("k", 0.10)),
+                    lo=float(_amp_cfg.get("lo", 0.85)), hi=float(_amp_cfg.get("hi", 1.15)))
+            log.info(f"[EXPOSURE_AMP] z={_amp_z:+.2f} phi={_amp_phi:.2f} E={_amp_E:.3f}")
+        except Exception as _e:  # noqa: BLE001
+            log.warning(f"[EXPOSURE_AMP] skipped (non-fatal): {_e}")
+
     target_weights, cash_weight, risk_flags = apply_risk_controls(
         weights=target_weights_raw,
         portfolio_returns=portfolio_returns,
@@ -1275,7 +1297,12 @@ def run_daily_signal(
         event_derisk_active=event_active,
         event_derisk_frac=ev_cfg.get("sell_frac", 0.5),
         event_derisk_reason=event_reason,
+        exposure_mult=_amp_E,
+        exposure_allow_leverage=bool(_amp_cfg.get("allow_leverage", False)),
+        exposure_note=(f"shortage_z={_amp_z:+.2f} phi={_amp_phi:.2f}" if _amp_cfg.get("enabled", False) else ""),
     )
+    if _amp_cfg.get("enabled", False):
+        risk_flags.shortage_z = _amp_z; risk_flags.graph_phi = _amp_phi
 
     # ── 6b. Macro anomaly auto-conservative (P3) ────────────────
     if (_smart_result and _smart_result.get("macro_positioning", {}).get("anomaly")):
@@ -1608,10 +1635,16 @@ def run_daily_signal(
     if not dry_run:
         try:
             from portfolio_ledger.ledger import daily_update as _ledger_update
+            from portfolio_ledger.ledger import account_path as _ledger_account_path
             _n_led = _ledger_update("aeus")
             # 账本已含当日成交 → 回填 cost_basis(加权平均真源)并改写同一快照
             _sync_cost_basis_from_ledger(inv, _snap_path)
-            if _n_led > 0:
+            # 2026-09-02: 原闸门只看 _n_led>0。9/1 首跑时账本尚未建成(replay 在 daily 之后
+            # 才跑),daily_update 返回 0 → 当日 PnL/Risk 报告整个被跳过。改为「账本推进了
+            # 或今天的报告还不存在」——幂等(reports 覆写同名 PDF),且账本缺失时仍然不跑。
+            _rep_missing = not (SIGNALS_DIR / "pnl_reports" /
+                                f"pnl_report_{signal_date:%Y%m%d}.pdf").exists()
+            if _n_led > 0 or (_rep_missing and Path(_ledger_account_path("aeus")).exists()):
                 # 同步执行（勿改回 Popen fire-and-forget：cron 包装器在主进程
                 # 退出时回收进程组，子进程在 conda 启动阶段就被杀 —— 2026-07-02
                 # AEUS 首战报告因此丢失）。

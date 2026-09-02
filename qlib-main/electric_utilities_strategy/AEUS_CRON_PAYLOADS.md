@@ -206,7 +206,7 @@ Expected internal behavior
  - data.industry_signals --verify (EIA gen & fuel mix / backlog RPO / gas proxy / IPUTIL)
  - data.altdata_signals --verify (EIA daily demand / degree days / 860M capacity / state prices / FRED transformer PPI etc.)
  - data.ercot_signals --verify (ERCOT DAM SPP + ancillary)
- - data.pjm_signals --verify (reports OK while gated / NOT WIRED; after wiring, empty or stale fails)
+ - data.pjm_signals --verify (wired since 2026-09-01; 7 series — hub LMP, DOM basis, zone load YoY, reserve margin, forced outages, forecast error, shortage_east — must all be present and fresh; any STALE fails)
 2) Weekly review: multi-horizon backtest for top candidates, parameter drift analysis (rolling Sharpe), regime trend, and V1-vs-V2 version preference trend. Output under qlib-main/electric_utilities_strategy/backtest_results/. This step is non-fatal — if it fails, the pipeline continues.
 3) One dry-run verification of the full signal pipeline without writing inventory, to confirm end-to-end health.
 4) Weekly always runs regardless of NYSE holiday (no market-calendar gate). Normal runtime: a few to ~15 minutes.

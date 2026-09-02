@@ -118,7 +118,10 @@ def test_strength_ordering_follows_the_anchor():
     by_anchor = [t.club_id for t in sorted(prior.teams, key=lambda t: -t.anchor_points)]
     by_rating = sorted(sm.ratings, key=lambda c: -sm.ratings[c])
     assert by_rating[0] == by_anchor[0] == "arsenal"
-    assert by_rating[-1] == by_anchor[-1]
+    # the live prior is rebuilt DAILY from the running table (since 2026-09-02); results in
+    # the fixture store can reorder the bottom by a place or two — the tail must still sit
+    # in the anchor's bottom three, not anywhere
+    assert by_rating[-1] in by_anchor[-3:]
     b = sm.cfg.rating_bound
     assert all(-b <= r <= b for r in sm.ratings.values())
 

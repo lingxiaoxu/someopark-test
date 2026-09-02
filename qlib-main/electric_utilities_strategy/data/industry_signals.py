@@ -617,10 +617,17 @@ def verify() -> bool:
 
     gas = load_gas_price_proxy()
     if len(gas):
-        tag = pit.stale_tag(gas.index[-1].date(), "daily")
-        # FRED DHHNGSP 天然滞后 ~1 周(EIA→FRED 转载);双倍容忍
+        # FRED DHHNGSP 是 EIA 每周批量转载的日频序列,发布方本身滞后 ~1 周(2026-09-02
+        # 实测:FRED obs_end 8/25、last_updated 8/26 —— 店内与发布方逐日一致)。原代码
+        # 只写了"双倍容忍"的注释却按 5 交易日判,每周必误报 STALE;且标签不影响 ok,
+        # 真死掉也不会拉红 weekly。现在:容忍 2×STALE_TRADING_DAYS,超出即 ok=False。
+        age, unit, _, base_limit = pit.staleness(gas.index[-1].date(), "daily")
+        limit = 2 * base_limit
+        tag = "" if age <= limit else f"  ← STALE ({age}{unit} > {limit}{unit}, 周批源双倍容忍)"
         print(f"  gas_proxy   : {len(gas):4} pts {gas.index[0].date()}→{gas.index[-1].date()} "
               f"last z={gas.iloc[-1]:+.2f}{tag}")
+        if tag:
+            ok = False
     else:
         print("  gas_proxy   : MISSING"); ok = False
 

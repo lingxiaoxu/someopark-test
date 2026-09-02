@@ -303,6 +303,11 @@ def freeze_settled_bets(conn=None) -> int:
              json.dumps(inplay, ensure_ascii=False) if inplay else None,
              (cal or {}).get("method"), (cal or {}).get("param"), (cal or {}).get("n"), now))
         n += 1
+        # commit per fixture: the first INSERT opens the write transaction and the next
+        # fixture's PIT pricing (_inplay_entry, smart_exit) runs INSIDE it — one commit at
+        # the end held the write lock for minutes and the live loop's own writes hit
+        # "database is locked" past the 60s busy timeout (12 times on 2026-09-02 02:24)
+        conn.commit()
     conn.commit()
     return n
 

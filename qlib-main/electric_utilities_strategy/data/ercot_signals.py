@@ -309,6 +309,90 @@ def load_macro_ercot_metric(metric: str) -> pd.Series:
 
 
 # ===========================================================================
+# Macro-accrual derived signals (2026-09-02, config external_sources.ercot.macro_accrual)
+#   prediction_market_macro's ercot_daily table accrues three families daily:
+#   EIA-derived (2019+): eia_demand_mwh / eia_{gas,coal,nuclear,solar,wind}_gen_mwh
+#   dashboard (2026-04+): dam_spp_hubavg, demand_avg_mw, rt_spp_hubavg, gas_share, …
+#   Everything below is READ-ONLY on that sqlite; PIT = value for day D is written by
+#   the macro refresh the next morning → availability D+1 (ACCRUAL_LAG_DAYS).
+# ===========================================================================
+ACCRUAL_LAG_DAYS = 1
+_Z_WINDOW_ACC = 252
+
+
+def _macro_accrual_enabled() -> bool:
+    try:
+        import yaml
+        cfg = yaml.safe_load((_THIS_DIR.parent / "config.yaml").read_text())
+        return bool((cfg.get("external_sources", {}).get("ercot", {}) or {}).get("macro_accrual", True))
+    except Exception:
+        return True
+
+
+def _z252_acc(s: pd.Series, name: str) -> pd.Series:
+    s = s.sort_index().astype(float)
+    m = s.rolling(_Z_WINDOW_ACC, min_periods=_Z_WINDOW_ACC // 2)
+    z = ((s - m.mean()) / m.std().replace(0, np.nan)).dropna()
+    z.name = name
+    return z
+
+
+def _bound_acc(z: pd.Series, start, end) -> pd.Series:
+    if start:
+        z = z.loc[pd.Timestamp(start):]
+    if end:
+        z = z.loc[:pd.Timestamp(end)]
+    return z
+
+
+def load_macro_ercot_demand_yoy(start=None, end=None) -> pd.Series:
+    """ERCOT-region EIA demand (MWh/day) → 28d mean YoY → z252, availability D+1.
+    Blended into the power_demand graph node (Texas leg of the same quantity)."""
+    if not _macro_accrual_enabled():
+        return pd.Series(dtype="float64", name="ercot_demand_yoy")
+    s = load_macro_ercot_metric("eia_demand_mwh")
+    if len(s) < 400:
+        return pd.Series(dtype="float64", name="ercot_demand_yoy")
+    d = s.asfreq("D")
+    ma = d.rolling(28, min_periods=24).mean()
+    yoy = ((ma / ma.shift(364) - 1.0) * 100.0).dropna()
+    if yoy.empty:
+        return pd.Series(dtype="float64", name="ercot_demand_yoy")
+    yoy.index = yoy.index + pd.Timedelta(days=ACCRUAL_LAG_DAYS)
+    return _bound_acc(_z252_acc(yoy, "ercot_demand_yoy"), start, end)
+
+
+def load_macro_ercot_gas_share(start=None, end=None) -> pd.Series:
+    """Gas share of ERCOT generation (gas / Σ gas+coal+nuclear+solar+wind), 28d mean → z252,
+    availability D+1. Gas on the margin → power-price pressure → price_pulse leg."""
+    if not _macro_accrual_enabled():
+        return pd.Series(dtype="float64", name="ercot_gas_share")
+    parts = {k: load_macro_ercot_metric(f"eia_{k}_gen_mwh") for k in ("gas", "coal", "nuclear", "solar", "wind")}
+    if any(len(v) < 400 for v in parts.values()):
+        return pd.Series(dtype="float64", name="ercot_gas_share")
+    df = pd.concat(parts, axis=1).dropna()
+    share = (df["gas"] / df.sum(axis=1).replace(0, np.nan)).dropna()
+    ma = share.asfreq("D").rolling(28, min_periods=24).mean().dropna()
+    if ma.empty:
+        return pd.Series(dtype="float64", name="ercot_gas_share")
+    ma.index = ma.index + pd.Timedelta(days=ACCRUAL_LAG_DAYS)
+    return _bound_acc(_z252_acc(ma, "ercot_gas_share"), start, end)
+
+
+def load_macro_ercot_rt_price(start=None, end=None) -> pd.Series:
+    """ERCOT real-time hub-average SPP (dashboard accrual, 2026-08+) → z252.
+    Empty until ≥126 daily points have accrued (~2027-01); then it joins price_pulse
+    automatically — no code change needed when the history is long enough."""
+    if not _macro_accrual_enabled():
+        return pd.Series(dtype="float64", name="ercot_rt_price")
+    s = load_macro_ercot_metric("rt_spp_hubavg")
+    if len(s) < _Z_WINDOW_ACC // 2:
+        return pd.Series(dtype="float64", name="ercot_rt_price")
+    s.index = s.index + pd.Timedelta(days=ACCRUAL_LAG_DAYS)
+    return _bound_acc(_z252_acc(s, "ercot_rt_price"), start, end)
+
+
+# ===========================================================================
 # Verify / CLI
 # ===========================================================================
 
@@ -337,6 +421,20 @@ def verify() -> bool:
         except Exception:
             pass
     print(f"  macro accrual   : {n_macro} rows (read-only, fuel-mix/demand/RT)")
+    if _macro_accrual_enabled():
+        for name, s in (("ercot_demand_yoy", load_macro_ercot_demand_yoy()),
+                        ("ercot_gas_share", load_macro_ercot_gas_share())):
+            if len(s):
+                tag = pit.stale_tag(s.index[-1].date(), "daily")
+                print(f"  {name:16}: {len(s):5} pts →{s.index[-1].date()} z={s.iloc[-1]:+.2f}{tag}")
+                if tag:
+                    ok = False
+            else:
+                print(f"  {name:16}: EMPTY (macro.db eia_* series missing)"); ok = False
+        rt = load_macro_ercot_rt_price()
+        n_rt = len(load_macro_ercot_metric("rt_spp_hubavg"))
+        print(f"  ercot_rt_price  : {len(rt):5} pts" + (f" →{rt.index[-1].date()} z={rt.iloc[-1]:+.2f}" if len(rt)
+              else f" (accruing: {n_rt}/{_Z_WINDOW_ACC // 2} days before it joins price_pulse)"))
     print("=" * 70)
     print("RESULT:", "OK" if ok else "INCOMPLETE")
     return ok

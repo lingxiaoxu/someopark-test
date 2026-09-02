@@ -434,25 +434,40 @@ def update_capacity(start: str = CAPACITY_START, refreeze: bool = False) -> int:
     existing = {} if refreeze else pit.load_json(CAPACITY_PATH, default={}).get("records", {})
     if existing:
         start = max(existing)          # refetch last stored month + newer
-    rows = _eia_get("electricity/operating-generator-capacity", {
-        "frequency": "monthly", "data[0]": "nameplate-capacity-mw",
-        "facets[status][]": "OP",
-        "start": start,
-        "sort[0][column]": "period", "sort[0][direction]": "asc",
-    })
-    if not rows:
+    # One request window per month (2026-09-02): the endpoint is ~20k generator rows/month
+    # and EIA's offset paging degrades super-linearly on a multi-year window (offset 1.5M
+    # took 23 s/page → a 2019+ refreeze ran for hours and never finished). Month windows keep
+    # every page at offset < 25k (~2 s). Rows are filtered to the window's own period so a
+    # stub/proxy that ignores start/end can never double-count.
+    months = [str(m) for m in pd.period_range(start, pd.Timestamp.today().to_period("M"), freq="M")]
+    agg: dict = {}
+    n_rows = 0
+    for i, per_m in enumerate(months):
+        rows = _eia_get("electricity/operating-generator-capacity", {
+            "frequency": "monthly", "data[0]": "nameplate-capacity-mw",
+            "facets[status][]": "OP",
+            "start": per_m, "end": per_m,
+            "sort[0][column]": "period", "sort[0][direction]": "asc",
+        })
+        for r in rows:
+            # EIA v2 returns facet columns with underscores ("energy_source_code"); the hyphenated
+            # name only exists for the description column. Reading the wrong key left by_source={}
+            # for every month since init (2026-09-02 fix) → renewables_adds_yoy was always empty.
+            per, es, mw = (r.get("period"), r.get("energy_source_code") or r.get("energy-source-code"),
+                           r.get("nameplate-capacity-mw"))
+            if per != per_m or mw is None:
+                continue
+            n_rows += 1
+            rec = agg.setdefault(per, {"period": per, "total_mw": 0.0, "by_source": {}})
+            mw = float(mw)
+            rec["total_mw"] += mw
+            if es:
+                rec["by_source"][es] = rec["by_source"].get(es, 0.0) + mw
+        if (i + 1) % 12 == 0 or i == len(months) - 1:
+            log.info("capacity: fetched %d/%d months (%d rows so far)", i + 1, len(months), n_rows)
+    if not agg:
         log.error("capacity: EIA returned no rows")
         return 0
-    agg: dict = {}
-    for r in rows:
-        per, es, mw = r.get("period"), r.get("energy-source-code"), r.get("nameplate-capacity-mw")
-        if not per or mw is None:
-            continue
-        rec = agg.setdefault(per, {"period": per, "total_mw": 0.0, "by_source": {}})
-        mw = float(mw)
-        rec["total_mw"] += mw
-        if es:
-            rec["by_source"][es] = rec["by_source"].get(es, 0.0) + mw
     for per, rec in agg.items():
         rec["total_mw"] = round(rec["total_mw"], 1)
         rec["by_source"] = {k: round(v, 1) for k, v in
@@ -587,6 +602,23 @@ def load_shortage_score(start=None, end=None) -> pd.Series:
         return pd.Series(dtype="float64", name="shortage_score")
     gap = df.iloc[:, 0] - _ts_z(df.iloc[:, 1])          # both in z-space
     z = _ts_z(gap.dropna())
+    # PJM extended (2026-09-02, config external_sources.pjm.extended): eastern-grid
+    # tightness evidence — mean_z(−reserve margin, day-0 forced outages, DA forecast
+    # error) — blended with the national demand-vs-capacity gap and re-z'd. The PJM
+    # leg only exists inside the ~731-day archive wall (≈2025-10+ after z warm-up);
+    # before that the row-mean is the national leg alone, so history is unchanged.
+    try:
+        from electric_utilities_strategy.data import pjm_signals as _pjm
+        if _pjm._extended_enabled():
+            east = _pjm.load_shortage_east(end=end)
+            if not east.empty:
+                # row-mean of the two z legs, NO re-z: where the eastern leg is absent (before
+                # ~2025-05) the row is the national z alone → history and length unchanged;
+                # re-z'ing the blend would drop the first warm-up window and rescale the past.
+                east_al = east.reindex(z.index.union(east.index)).ffill().reindex(z.index)
+                z = pd.concat([z, east_al], axis=1).mean(axis=1, skipna=True)
+    except Exception:  # noqa: BLE001 — graceful: national leg only
+        pass
     z.name = "shortage_score"
     if start:
         z = z.loc[pd.Timestamp(start):]

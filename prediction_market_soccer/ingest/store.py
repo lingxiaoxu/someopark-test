@@ -316,9 +316,10 @@ def connect() -> sqlite3.Connection:
     # made it a real schedule: 11 lock errors in one afternoon, a Kalshi discovery that
     # failed to CONSTRUCT (its __init__ reads club_registry) so a live Serie A match
     # exported with no Kalshi quotes while the venue had the market open and active,
-    # and one whole live cycle dying mid-upsert. Fifteen seconds comfortably covers the
-    # longest write transaction either process holds.
-    conn.execute("PRAGMA busy_timeout=15000")
+    # and one whole live cycle dying mid-upsert. Sixty seconds: the settle path used to
+    # hold one write transaction across a whole freeze (now committed per fixture), and a
+    # PIT prior rebuild inside the background report can still take tens of seconds.
+    conn.execute("PRAGMA busy_timeout=60000")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 

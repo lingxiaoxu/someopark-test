@@ -246,3 +246,9 @@ crypto_trading/tests/test_fee_defeat_research.py
 crypto_trading/tests/test_rotation_research.py
 crypto_trading/tests/test_ml_directional.py
 prediction_market_soccer/data/priors/.clubelo_unavailable_*
+# ClubElo website scrape store (data, mirrored to ~/clubelo_web_backup) + per-date provenance sidecars
+prediction_market_soccer/data/priors/clubelo_web/
+prediction_market_soccer/data/priors/clubelo_*.csv.frozen_api
+prediction_market_soccer/data/priors/clubelo_*.source
+prediction_market_soccer/data/priors/clubelo_*.provenance.json
+prediction_market_soccer/data/priors/.clubelo_web_unavailable_*

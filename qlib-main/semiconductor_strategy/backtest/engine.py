@@ -93,6 +93,7 @@ from .metrics import compute_metrics, subperiod_analysis, find_drawdown_episodes
 from ..data.loader import load_all, load_returns, load_config
 from ..data.universe import get_tickers, UNIVERSE_START
 from ..portfolio.optimizer import optimize_weights
+from ..portfolio.risk import compute_exposure_amplifier
 from ..portfolio.rebalance import (
     get_monthly_rebalance_dates,
     apply_zscore_threshold_filter,
@@ -597,6 +598,21 @@ class AISSBacktest:
         portfolio_daily_returns = pd.Series(dtype=float)
         equity_level = initial_capital
 
+        # ── 通路③ 敞口放大器(2026-09-02;config risk.exposure_amplifier,默认 off)──
+        _amp_cfg = self.risk_cfg.get("exposure_amplifier", {}) or {}
+        _amp_on = bool(_amp_cfg.get("enabled", False))
+        _amp_series, _amp_sens = None, None
+        if _amp_on:
+            try:
+                from ..data import altdata_signals as _alt
+                from ..signals.supply_chain import demand_sensitivity, load_graph_from_config
+                _amp_series = _alt.load_ai_demand_cycle()
+                _amp_sens = (demand_sensitivity(load_graph_from_config(self.sig_cfg.get("supply_chain", {})))
+                             if _amp_cfg.get("graph_weighted", True) else None)
+            except Exception as _e:  # noqa: BLE001 — 缺数则中性
+                logger.warning("exposure amplifier unavailable (%s) — E=1", _e)
+                _amp_on = False
+
         rebalance_date_set = set(rebalance_dates)
         emergency_active = False           # cooldown state: True = already in emergency mode
         vix_threshold    = self.reb_cfg.get("emergency_derisk_vix", 35.0)
@@ -689,6 +705,15 @@ class AISSBacktest:
                         if prog_cfg.get("enabled", False)
                         else []
                     )
+                    _E, _phi, _z = 1.0, float("nan"), float("nan")
+                    if _amp_on and _amp_series is not None and len(_amp_series):
+                        _hist = _amp_series.loc[:dt]
+                        if len(_hist):
+                            _z = float(_hist.iloc[-1])
+                            _E, _phi = compute_exposure_amplifier(
+                                _z, filtered_weights, _amp_sens,
+                                k=float(_amp_cfg.get("k", 0.10)), lo=float(_amp_cfg.get("lo", 0.85)),
+                                hi=float(_amp_cfg.get("hi", 1.15)))
                     adj_weights, cash_pct, flags = apply_risk_controls(
                         weights=filtered_weights,
                         portfolio_returns=portfolio_daily_returns.iloc[-252:] if len(portfolio_daily_returns) > 0 else pd.Series(dtype=float),
@@ -703,7 +728,13 @@ class AISSBacktest:
                         dd_release_rebound=self.risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
                         vix_progressive_tiers=prog_tiers,
+                        exposure_mult=_E,
+                        exposure_allow_leverage=bool(_amp_cfg.get("allow_leverage", False)),
+                        exposure_note=(f"demand_z={_z:+.2f} phi={_phi:.2f}" if _amp_on else ""),
                     )
+                    if _amp_on:
+                        flags.demand_z = _z
+                        flags.graph_phi = _phi
 
                     # ── Risk Overlay (v2): entry/exit gate + optional market/DD multipliers
                     if signal_kwargs.get("signal_version") == "v2":

@@ -50,7 +50,7 @@ sys.stderr = _stderr
 
 # Our own portfolio modules
 from .optimizer import optimize_weights
-from .risk import apply_risk_controls
+from .risk import apply_risk_controls, compute_exposure_amplifier
 from .rebalance import (
     apply_zscore_threshold_filter,
     compute_turnover,
@@ -140,6 +140,25 @@ else:
             self._reb_cfg = reb_cfg
             self._risk_cfg = risk_cfg
             self._cost_cfg = cost_cfg
+            # ── 通路③ 敞口放大器(2026-09-02;config risk.exposure_amplifier,默认 off)──
+            # qlib 路径是 AEUS batch/WF 的真实生产路径(沙盒实测 engine._run_native 从不被调用),
+            # 与 engine 原生循环 / AEUSdailySignal 用同一个纯函数 compute_exposure_amplifier。
+            self._amp_cfg = (risk_cfg.get("exposure_amplifier") or {})
+            self._amp_on = bool(self._amp_cfg.get("enabled", False))
+            self._amp_series, self._amp_sens = None, None
+            if self._amp_on:
+                try:
+                    from electric_utilities_strategy.data import altdata_signals as _alt
+                    from electric_utilities_strategy.data.loader import load_config as _lc
+                    from electric_utilities_strategy.signals.supply_chain import (load_graph_from_config,
+                                                                                  shortage_sensitivity)
+                    self._amp_series = _alt.load_shortage_score()
+                    if self._amp_cfg.get("graph_weighted", True):
+                        self._amp_sens = shortage_sensitivity(load_graph_from_config(
+                            (_lc().get("signals", {}) or {}).get("supply_chain", {})))
+                except Exception as _e:  # noqa: BLE001 — graceful: amplifier neutral
+                    logger.warning("exposure amplifier unavailable (%s) — E=1", _e)
+                    self._amp_on = False
             self._initial_capital = initial_capital
             # v2 Risk Overlay 接线(2026-07-22): 此前只在 native 路径生效
             self._signal_version = signal_version
@@ -224,6 +243,7 @@ else:
 
             # Risk controls (vol scaling, VIX emergency, DD circuit)
             macro_slice = self._macro_pit.loc[:trade_start_time] if trade_start_time in self._macro_pit.index else self._macro_pit
+            _E, _phi, _z = self._exposure_mult(trade_start_time, filtered_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=filtered_weights,
                 portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
@@ -241,7 +261,12 @@ else:
                 dd_halve_threshold=self._risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
                 dd_release_rebound=self._risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                 max_weight=self._port_cfg.get("constraints", {}).get("max_weight", 0.40),
+                exposure_mult=_E,
+                exposure_allow_leverage=bool(self._amp_cfg.get("allow_leverage", False)),
+                exposure_note=(f"shortage_z={_z:+.2f} phi={_phi:.2f}" if self._amp_on else ""),
             )
+            if self._amp_on:
+                flags.shortage_z = _z; flags.graph_phi = _phi
 
             # ── Risk Overlay (v2) — 2026-07-22 接线,镜像 native 路径的同名块
             # (此前 qlib 生产路径从不应用: 入场闸门+市场乘数+DD 三档乘数)
@@ -299,6 +324,20 @@ else:
 
             return TradeDecisionWO(order_list, self)
 
+        def _exposure_mult(self, dt: pd.Timestamp, weights: pd.Series):
+            """PIT: 缺电度取 ≤dt 的最后一个可得值;缺数 → (1.0, nan, nan)。"""
+            if not self._amp_on or self._amp_series is None or not len(self._amp_series):
+                return 1.0, float("nan"), float("nan")
+            hist = self._amp_series.loc[:dt]
+            if not len(hist):
+                return 1.0, float("nan"), float("nan")
+            z = float(hist.iloc[-1])
+            e, phi = compute_exposure_amplifier(
+                z, weights, self._amp_sens,
+                k=float(self._amp_cfg.get("k", 0.10)), lo=float(self._amp_cfg.get("lo", 0.85)),
+                hi=float(self._amp_cfg.get("hi", 1.15)))
+            return e, phi, z
+
         # ------------------------------------------------------------------
         # Required override: generate_target_weight_position
         # ------------------------------------------------------------------
@@ -319,6 +358,7 @@ else:
             """
             proposed_weights = self._compute_proposed_weights(score, trade_start_time)
             macro_slice = self._macro.loc[:trade_start_time] if trade_start_time in self._macro.index else self._macro
+            _E, _phi, _z = self._exposure_mult(trade_start_time, proposed_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=proposed_weights,
                 portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
@@ -329,6 +369,9 @@ else:
                 # I-1/I-3 仅接开关类参数保证参数集在此路径同语义
                 vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
                 dd_release_rebound=self._risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
+                exposure_mult=_E,
+                exposure_allow_leverage=bool(self._amp_cfg.get("allow_leverage", False)),
+                exposure_note=(f"shortage_z={_z:+.2f} phi={_phi:.2f}" if self._amp_on else ""),
             )
             return {
                 ticker: float(adj_weights.get(ticker, 0.0))
