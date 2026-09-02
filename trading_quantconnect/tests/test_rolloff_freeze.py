@@ -240,15 +240,18 @@ def _series(dates):
     }
 
 
-def _perf(tmp_path, monkeypatch, files, aeus_onboarded=False):
+def _perf(tmp_path, monkeypatch, files, aeus_onboarded=False, onboard_at=None):
     monkeypatch.setattr(rolloff, "DATA", tmp_path)
     # EXPORTER_STATE 一律隔离到 tmp:aeus 是否入 P 由"exporter 挂没挂 scalar"决定
     # (P 必须镜像 QC 正在镜像的书),测试不许读生产 state。
     st = tmp_path / "exporter_state.json"
     scal = {"mrpt": 1.0}
+    doc = {"scalars": scal}
     if aeus_onboarded:
         scal["aeus"] = 1.0
-    st.write_text(json.dumps({"scalars": scal}))
+        if onboard_at:
+            doc["onboard_log"] = [{"strategy": "aeus", "at": onboard_at}]
+    st.write_text(json.dumps(doc))
     monkeypatch.setattr(rolloff, "EXPORTER_STATE", st)
     for fn, rows in files.items():
         (tmp_path / fn).write_text(json.dumps(rows))
@@ -327,3 +330,17 @@ def test_official_eod_excludes_aeus_until_qc_onboarded(tmp_path, monkeypatch):
     assert "aeus" not in off
     assert off == {"mrpt": 1.0, "mtfs": 2.0, "ssrs": 3.0, "aiss": 4.0,
                    "bdc": 5.0}
+
+
+def test_official_eod_aeus_gated_by_session_close_vs_onboard_time(tmp_path,
+                                                                  monkeypatch):
+    """挂载是一个时刻:之前收盘的场次 QC 还没这笔入金/持仓,P 不能含 aeus;
+    之后收盘的场次才含。onboard_log.at = 8/27 21:00Z(= 17:00 ET,8/27 收盘后)
+    → 8/27 排除、8/28 纳入;末行模式(session=None)按 scalar 在即纳入。"""
+    _perf(tmp_path, monkeypatch, _series(["2026-08-27", "2026-08-28"]),
+          aeus_onboarded=True, onboard_at="2026-08-27T21:00:00+00:00")
+    _, off27 = rolloff.official_eod("2026-08-27")
+    _, off28 = rolloff.official_eod("2026-08-28")
+    assert "aeus" not in off27
+    assert off28["aeus"] == 6.0
+    assert "aeus" in rolloff.official_eod()[1]

@@ -132,6 +132,29 @@ def official_rows(p: Path) -> list:
     return rows
 
 
+def _mirrored_by(st: str, session: str | None, ex_state: dict) -> bool:
+    """该策略在 session **收盘时**是否已被 QC 镜像(P 的入选判据)。
+
+    scalar 在 = 挂载过;但挂载发生在某个时刻,之前的场次收盘时 QC 还没有这笔
+    入金/持仓 —— 那些场次的 P 不能含它,否则 ΔD 凭空跳一整个策略净值。
+    onboard_aeus 写 onboard_log[].at(UTC);判据 = at < session 收盘 16:00 ET。
+    session=None(末行模式,--measure)或没有 at 记录(legacy/--force)→ 退回
+    "scalar 在即算镜像"。
+    """
+    scalars = ex_state.get("scalars") or {}
+    if st not in scalars:
+        return False
+    ats = [e.get("at") for e in ex_state.get("onboard_log") or []
+           if e.get("strategy") == st and e.get("at")]
+    if session is None or not ats:
+        return True
+    from zoneinfo import ZoneInfo
+    close = datetime.fromisoformat(session).replace(
+        hour=16, minute=0, tzinfo=ZoneInfo("America/New_York"))
+    at = datetime.fromisoformat(max(ats).replace("Z", "+00:00"))
+    return at < close
+
+
 def official_eod(session: str | None = None) -> tuple[str, dict[str, float]]:
     """已发布的官方 EOD 净值(五策略必须同一天,否则拒绝)。
 
@@ -156,10 +179,11 @@ def official_eod(session: str | None = None) -> tuple[str, dict[str, float]]:
     # 挂载前 P 凭空多一个策略、ΔD 跳 +$1.16M 假 breach;挂载(onboard_aeus
     # append scalar + CashBook 入金)当日起 P 与 Q 同步 +aeus,D 才连续。
     # 判据 = exporter scalars 里有没有该策略:scalar 是"QC 在镜像它"的唯一凭证。
-    scalars = (_load(EXPORTER_STATE, {}) or {}).get("scalars") or {}
+    ex_state = _load(EXPORTER_STATE, {}) or {}
+    scalars = ex_state.get("scalars") or {}
     for st, (fn, field) in OFFICIAL_FIELDS.items():
-        if st == "aeus" and st not in scalars:
-            continue                      # 未挂载 QC → 不入 P(挂载后自动纳入)
+        if st == "aeus" and not _mirrored_by(st, session, ex_state):
+            continue                      # 该场次收盘时 QC 尚未镜像 → 不入 P
         rows = cache.get(fn)
         if rows is None:
             rows = official_rows(DATA / fn)

@@ -954,7 +954,12 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     prev_cum = (pe.get("cumulative_dividends") or {})
     cum = {}
     for st, a in acc.items():
+        # 累计股息对**所有**在册账本都记(明天它入 P 时才有前日基准可比),
+        # 但"缺基准"只对**进了 P** 的策略成立:QC 还没镜像的策略(如挂载前的
+        # aeus)不在 P 里,它的股息本来就不该进时点项,更不该把裁决拦成 partial。
         cum[st] = float(a.get("cumulative_dividends") or 0.0)
+        if st not in off:
+            continue
         if st not in prev_cum:
             div_missing.append(st)
             continue

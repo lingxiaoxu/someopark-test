@@ -1139,3 +1139,22 @@ def test_k_effective_missing_step_blocks_verdict(monkeypatch, tmp_path,
     assert row["k_steps_missing"] == ["2026-08-26"]
     assert any("k_effective 缺" in b for b in row["blocked_terms"])
     assert row["status"] == "partial"
+
+
+def test_dividend_basis_only_required_for_strategies_in_P(monkeypatch, eq_env):
+    """在册但未入 P 的账本(挂载前的 aeus)不许把裁决拦成 partial;
+    但它的累计股息照记 —— 明天它入 P 时才有前日基准可比。"""
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0 - 602.0, 388.0, frac=5.0))
+    monkeypatch.setattr(qr, "_ledger_accounts", lambda s: (
+        {st: {"as_of": s, "equity": 1_000_000.0, "cumulative_dividends": 0.0}
+         for st in ("mrpt", "mtfs", "ssrs", "aiss", "bdc", "aeus")}, []))
+    built = {"legacy_alive": {"mtfs": [{"pair": "A/B",
+                                        "open_date": "2026-08-05"}]},
+             "scaled_alive": {}}
+    snap = _snap_pair("A/B", [{"date": "2026-08-26", "unrealized_pnl": 0.0},
+                              {"date": "2026-08-27", "unrealized_pnl": 602.0}])
+    row = qr.equity_plane("2026-08-27", _qc(388.0), [], built, snap, {})
+    assert "aeus" in row["cumulative_dividends"]          # 照记
+    assert not any("aeus" in b for b in row.get("blocked_terms", []))
+    assert row["status"] == "ok"
