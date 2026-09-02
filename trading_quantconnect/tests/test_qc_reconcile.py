@@ -1184,8 +1184,11 @@ def test_k_effective_rolls_onboarding_deposit_as_step(monkeypatch, tmp_path,
         {"strategy": "aeus", "at": "2026-08-26T21:00:00+00:00",
          "deposit_K": 1_000.0}]}))
     monkeypatch.setattr(rolloff, "EXPORTER_STATE", exst)
+    # 前一日 D 必须比今日**低一个台阶**:策略上车那天 P 多出它的净值而 Q 不变,
+    # ΔD 必然跳 +deposit_K。原夹具写 100,000(ΔD=0 却又挂载了)物理上自相矛盾,
+    # 正是那个矛盾让"台阶没进 known"在测试里无声通过。
     monkeypatch.setattr(qr, "prev_report",
-                        lambda s: _prev(100_000.0, 2000.0, frac=5.0))
+                        lambda s: _prev(99_000.0, 2000.0, frac=5.0))
     row = qr.equity_plane("2026-08-27", _qc(2000.0), [],
                           {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
     assert row["k_onboard_step_usd"] == 1_000.0
@@ -1193,3 +1196,11 @@ def test_k_effective_rolls_onboarding_deposit_as_step(monkeypatch, tmp_path,
     # 归属唯一:同一挂载不能既算进 8/26 又算进 8/27
     assert qr.onboard_step("2026-08-26") == 0.0
     assert qr.onboard_step("2026-08-27") == 1_000.0
+    # —— 台阶必须**同时**进 k_effective 与 known(成对入账)——
+    # 只进前者:ΔD 跳了一整个 deposit_K 而判据无人认领 → unattributed 吞下整笔,
+    # 在一本干净的账上报假 breach(2026-09-02 AEUS 上车实测 ~1,490bp)。
+    # 只进后者:D − k_eff 会跳一个台阶,把"真漂移"这个读数废掉。
+    assert row["attribution"]["onboarding_step"]["usd"] == 1_000.0
+    assert row["unattributed_usd"] == 0.0
+    assert row["D_minus_K_effective_usd"] == 0.0
+    assert row["status"] == "ok"        # ← 旧版缺这行,bug 就是从这里溜过去的

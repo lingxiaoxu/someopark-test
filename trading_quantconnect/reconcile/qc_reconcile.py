@@ -371,10 +371,12 @@ def k_effective(frozen: dict, upto_session: str, include_upto: bool = False
              .get("attribution") or {})
         lag = (a.get("rebalance_mirror_lag") or {}).get("usd")
         sl = (a.get("slippage") or {}).get("usd")
+        ob_s = onboard_step(s)         # 台阶的真源是 exporter_state,不是报告
         if lag is None and sl is None:
             missing.append(s)          # 那天还没出归因(pending/缺文件)
+            k += ob_s                  # 归因缺席不该顺手吞掉挂载台阶
             continue
-        k += (lag or 0.0) + (sl or 0.0) + onboard_step(s)
+        k += (lag or 0.0) + (sl or 0.0) + ob_s
         n_steps += 1
     return k, n_steps, missing
 
@@ -1010,10 +1012,23 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
         "transition_contaminated": bool(q["per_pair"]),
         "note": "本地按除息日入账、QC 按付息日到现金,差额即时点项;过渡期内 "
                 "L/S 队列的股息也落在这里(QC 根本没持有那些腿)"}
+    # 挂载台阶:QC 无活的入金通道,新策略是保证金建仓 —— 本场次起 P 多出该策略
+    # 官方净值而 Q 不变,ΔD 里因此坐着一整个台阶。它必须和 lag/slip 一样进 known:
+    # 它同时滚进 k_effective,两处**成对入账**才保住 Q + k_eff ≡ P。只滚 k_eff 不进
+    # known,等于让判据去解释一笔没人告诉它的钱 —— 2026-09-02 AEUS 上车实测,
+    # 那会把整笔 deposit_K 倒进 unattributed,在一本干净的账上报 ~1,490bp 假 breach。
+    # 无条件计算(不放进 frozen 分支):K 未冻结的部署同样要归因。
+    ob = onboard_step(session)
+    if ob:
+        attrib["onboarding_step"] = {
+            "usd": round(ob, 2),
+            "basis": "onboard_log[].deposit_K 落在 (上一场次收盘, 本场次收盘]",
+            "note": "QC 无入金通道、保证金建仓 ⇒ P 多一个策略净值、Q 不变,"
+                    "永久台阶;与 k_effective 是同一笔,成对入账"}
     row["attribution"] = attrib
 
     # —— 残差与裁决 ——
-    known: list[float] = [q["total_usd"], slip, lag]
+    known: list[float] = [q["total_usd"], slip, lag, ob]
     blocked: list[str] = []
     if q["unresolved"]:
         blocked.append(f"{len(q['unresolved'])} 对 L/S 队列盈亏取不到读数")
@@ -1063,8 +1078,7 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     # D − k_effective 才是"真漂移":它只应剩股息时点等会自己回冲的项。
     if frozen and frozen.get("measured_on"):
         k_eff, n_steps, k_miss = k_effective(frozen, session)
-        ob = onboard_step(session)
-        k_eff += lag + slip + ob
+        k_eff += lag + slip + ob      # ob 已在归因段算出并入 known,此处复用
         if ob:
             row["k_onboard_step_usd"] = round(ob, 2)   # 本场次挂载台阶(留痕)
         row["k_effective_usd"] = round(k_eff, 2)
