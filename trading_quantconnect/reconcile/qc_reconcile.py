@@ -304,6 +304,41 @@ def prev_report(session: str) -> dict | None:
     return None
 
 
+def onboard_step(session: str) -> float:
+    """挂载台阶:该 session 内(上一场次收盘, 本场次收盘] 落地的策略挂载,其
+    deposit_K 之和。
+
+    QC 没有活的入金通道(算法 _init_cash 只在部署首版跑一次;改算法=重部署=
+    重置 paper 账户),新策略挂载时 QC 用保证金建仓:Q 不变、P 从该场次起多出
+    该策略官方净值 —— 差额恰是"QC 物理上没有的那笔钱",正是 K 的定义域。
+    以 onboard_log[].deposit_K 作永久台阶滚入 k_effective,Q + K_eff ≡ P 照样
+    成立;该场次内 官方净值(收盘) − deposit_K(挂载时刻) 的小差落 unattributed,
+    一次性。时刻→场次的归属与 rolloff._mirrored_by 同一判据(at < 收盘 16:00 ET)。
+    """
+    st = _load(rolloff.EXPORTER_STATE, {}) or {}
+    log = st.get("onboard_log") or []
+    if not log:
+        return 0.0
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    close = _dt.fromisoformat(session).replace(hour=16, minute=0, tzinfo=et)
+    try:
+        prev_close = _dt.fromisoformat(prev_trading_session(session)).replace(
+            hour=16, minute=0, tzinfo=et)
+    except SourceError:
+        prev_close = None
+    total = 0.0
+    for e in log:
+        at_s, dep = e.get("at"), e.get("deposit_K")
+        if not at_s or dep is None:
+            continue
+        at = _dt.fromisoformat(str(at_s).replace("Z", "+00:00"))
+        if at < close and (prev_close is None or at >= prev_close):
+            total += float(dep)
+    return total
+
+
 def k_effective(frozen: dict, upto_session: str, include_upto: bool = False
                 ) -> tuple[float, int, list[str]]:
     """冻结后的有效常数:k_equity + Σ 每个换仓日的永久台阶(镜像滞后+滑点)。
@@ -339,7 +374,7 @@ def k_effective(frozen: dict, upto_session: str, include_upto: bool = False
         if lag is None and sl is None:
             missing.append(s)          # 那天还没出归因(pending/缺文件)
             continue
-        k += (lag or 0.0) + (sl or 0.0)
+        k += (lag or 0.0) + (sl or 0.0) + onboard_step(s)
         n_steps += 1
     return k, n_steps, missing
 
@@ -1028,7 +1063,10 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     # D − k_effective 才是"真漂移":它只应剩股息时点等会自己回冲的项。
     if frozen and frozen.get("measured_on"):
         k_eff, n_steps, k_miss = k_effective(frozen, session)
-        k_eff += lag + slip
+        ob = onboard_step(session)
+        k_eff += lag + slip + ob
+        if ob:
+            row["k_onboard_step_usd"] = round(ob, 2)   # 本场次挂载台阶(留痕)
         row["k_effective_usd"] = round(k_eff, 2)
         row["D_minus_K_effective_usd"] = round(D - k_eff, 2)
         row["k_steps_counted"] = n_steps + 1

@@ -611,4 +611,27 @@ settle:③ **ok**,ΔD +20,301.70 = 镜像滞后 +5,454.98 + 滑点 +14,941.73 + 
 0 天台阶 ✓,盘中 D−K_eff = +235.90(股息级瞬时项)。首考待明日:session 9/1
 (月度满仓买回)判定时应出 k_effective 字段、台阶自动滚入。
 
+**2026-09-02(周三)作战卡 —— K_eff 首考 + AEUS 挂载 + AISS 月度买回**(9/1 晚定)
+
+发现(9/1 晚):QC **没有活的入金通道**——`lean/main.py._init_cash` 只在部署首版跑一次
+(`cash_initialized = applied_version > 0`),qc_api 无存取款端点;改算法 = 重部署 =
+重置 paper 账户。故 onboard_aeus 设计里的"CashBook 显式入金"做不了。**改为 K 台阶
+制**:QC 用保证金建 AEUS 仓(Q 不变),P 从挂载场次起多出 aeus 官方净值,差额
+= onboard_log.deposit_K 作永久台阶滚入 k_effective(`qc_reconcile.onboard_step`,
+按"at < 场次收盘"归属,与 P 的挂载闸同判据)→ Q + K_eff ≡ P 仍成立,零改算法。
+onboard_aeus.py 本身不用改(它已写 at/deposit_K)。**待用户批**。
+
+| 时点(ET) | 动作/观察 | 判据 |
+|---|---|---|
+| ~09:30 开盘 | QC 成交 AISS 月度买回(v21 的 12 腿)| 10:05 早查:收敛、cash 下降 ~$0.5M |
+| ~10:05 | 官方 EOD 落地后**手动 settle 9/1** | ③ **ok**;首次出现 `k_effective_usd` / `D−K_eff`;9/1 月度买回台阶(镜像滞后+滑点)自动滚入;残差 ≤3bp(含 −12,004.77 锚点连续性)|
+| settle 之后 | 用户批准后跑 `onboard_aeus`(写 scalar + at + deposit_K)→ exporter 推 aeus 腿 → QC 盘中成交 | 收敛检查;cash 转负(保证金)属预期 |
+| 16:20 | trot(session 9/2)| ① 含 aeus 腿全配平;③ pending |
+| 9/3 上午 | settle 9/2 | P 首次含 aeus(闸按 at 判);`k_onboard_step_usd` = deposit_K 出现;残差 = aeus 收盘净值 − deposit_K 的一次性小差 |
+| 19:00 | AISS daily | 无调仓(月度已过),事件窗已关 |
+| 17:33 | VP | A/B 第 5/10 天;floor_streak 归 0 后继续盯 |
+
+**失败判据**:9/1 settle 若 partial/breach → 查 `per_leg`(月度买回 12 腿定价)、`k_steps_missing`;
+onboard 后 ① 出现 aeus 票不收敛 → 先查 QC 历史首名(已五例:ORCC/NB/CMB/RCHI/COH)。
+
 **周日(8/30)已验支撑事实**:QC 周末零成交(自报净值/cash 与 8/28 收盘快照逐位同);QC↔v17 差 = 恰好 20 腿周末决策(AISS 12 + MTFS 4:PLTR/ALGN 平·FDS/BSX 开 + MRPT 4:CDW/ROP 平 −1,156·ACGL/HIG 开 1248/−890),无一笔无法解释;BDC 五持仓+BIL 与 QC+残差账逐票闭合(闭合差 0;ORCC=OBDC 历史首名);面板 K 备忘行"未镜像 $0 / legacy 0 对"与 legacy 出清一致。

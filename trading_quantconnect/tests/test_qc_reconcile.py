@@ -1158,3 +1158,38 @@ def test_dividend_basis_only_required_for_strategies_in_P(monkeypatch, eq_env):
     assert "aeus" in row["cumulative_dividends"]          # 照记
     assert not any("aeus" in b for b in row.get("blocked_terms", []))
     assert row["status"] == "ok"
+
+
+def test_k_effective_rolls_onboarding_deposit_as_step(monkeypatch, tmp_path,
+                                                      eq_env):
+    """策略挂载(QC 保证金建仓,无物理入金)= P 多一个策略净值而 Q 不变,
+    差额是 K 的定义域:onboard_log.deposit_K 按"落在哪个场次"滚入 K_eff。
+    挂载时刻 8/26 21:00Z(= 8/26 收盘后)→ 归 8/27 场次;当天内存台阶要算,
+    盘上走读(其他天)不能重复算。"""
+    _closes_by_session(monkeypatch, {
+        "2026-08-27": {"X": 10.0, "Y": 1.0},
+        "2026-08-26": {"X": 10.0, "Y": 1.0},
+    })
+    roll = tmp_path / "rolloff.json"
+    roll.write_text(json.dumps({"measured_on": "2026-08-25",
+                                "k_equity": 99_000.0}))
+    monkeypatch.setattr(qr, "ROLLOFF_PATH", roll)
+    rep_dir = tmp_path / "reports"; rep_dir.mkdir()
+    (rep_dir / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "equity_check": {"attribution": {
+            "rebalance_mirror_lag": {"usd": 0.0}, "slippage": {"usd": 0.0}}}}))
+    monkeypatch.setattr(qr, "REPORT_DIR", rep_dir)
+    exst = tmp_path / "exporter_state.json"
+    exst.write_text(json.dumps({"scalars": {"aeus": 1.0}, "onboard_log": [
+        {"strategy": "aeus", "at": "2026-08-26T21:00:00+00:00",
+         "deposit_K": 1_000.0}]}))
+    monkeypatch.setattr(rolloff, "EXPORTER_STATE", exst)
+    monkeypatch.setattr(qr, "prev_report",
+                        lambda s: _prev(100_000.0, 2000.0, frac=5.0))
+    row = qr.equity_plane("2026-08-27", _qc(2000.0), [],
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert row["k_onboard_step_usd"] == 1_000.0
+    assert row["k_effective_usd"] == 100_000.0          # 99,000 + 0(8/26) + 1,000
+    # 归属唯一:同一挂载不能既算进 8/26 又算进 8/27
+    assert qr.onboard_step("2026-08-26") == 0.0
+    assert qr.onboard_step("2026-08-27") == 1_000.0
