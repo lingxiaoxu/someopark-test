@@ -41,7 +41,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
+from prediction_market_macro.config.registry import REGISTRY, effective_strike_type, strict_gt_at
 from prediction_market_macro.model.common import Categorical, grid_pmf
 from prediction_market_macro.ops.decide_all import _structs_categorical
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -1089,7 +1089,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                     w = _pool_weights(ev["series"])
                     if mk_pmf and w:
                         pmf = log_pool({"model": pmf, "market": mk_pmf}, w)
-                structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
+                structs = enumerate_structs(meta, pmf, strict=strict_gt_at(spec.ticker, day))
                 pv = [v for v in pmf.values() if v > 0]
                 model_mean = sum(k * v for k, v in pmf.items())
                 # decide()'s sanity gate compares the model fair against the DEVIGGED
@@ -1107,7 +1107,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                     if _im.get("pmf"):
                         market_fairs = {ms.desc: ms.fair for ms in enumerate_structs(
                             meta, {float(k): v for k, v in _im["pmf"].items()},
-                            strict=spec.strict_gt)}
+                            strict=strict_gt_at(spec.ticker, day))}
                 # queue this event's model/market scores for post-close flush
                 if fair_mode == "pooled" and mk_pmf:
                     from prediction_market_macro.model.common import leg_fair
@@ -1118,9 +1118,9 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                         if res is None or m["strike"] is None:
                             continue
                         try:
-                            fm = leg_fair(raw_pmf, effective_strike_type(spec.ticker, m["strike_type"]),
+                            fm = leg_fair(raw_pmf, effective_strike_type(spec.ticker, m["strike_type"], asof=day),
                                           m["strike"], m["cap_strike"])
-                            fk = leg_fair(mk_pmf, effective_strike_type(spec.ticker, m["strike_type"]),
+                            fk = leg_fair(mk_pmf, effective_strike_type(spec.ticker, m["strike_type"], asof=day),
                                           m["strike"], m["cap_strike"])
                         except Exception:                  # noqa: BLE001
                             continue

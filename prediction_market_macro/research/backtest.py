@@ -354,7 +354,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                     if pmf is None:                              # categorical leg
                         fair = float(probs.get(l["ticker"].rsplit("-", 1)[-1], 0.0))
                     else:
-                        st = effective_strike_type(series, l["strike_type"])
+                        st = effective_strike_type(series, l["strike_type"], asof=asof)
                         fair = leg_fair(pmf, st, l["floor_strike"], l["cap_strike"])
                 except Exception:                                # noqa: BLE001
                     continue

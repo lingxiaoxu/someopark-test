@@ -44,7 +44,7 @@ import importlib
 import math
 from datetime import datetime, timedelta, timezone
 
-from prediction_market_macro.config.registry import REGISTRY
+from prediction_market_macro.config.registry import REGISTRY, strict_gt_at
 from prediction_market_macro.model.common import Categorical, grid_pmf
 from prediction_market_macro.ops.decide_all import _structs_categorical
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -370,7 +370,7 @@ def event_pnl(conn, series: str, tok: str, key: str, close_ts: datetime,
             pv = [v for v in probs.values() if v > 0]
         else:
             pmf = grid_pmf(pred.dist, spec.round_rule)
-            structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
+            structs = enumerate_structs(meta, pmf, strict=strict_gt_at(spec.ticker, day))
             pv = [v for v in pmf.values() if v > 0]
             model_mean = sum(k * v for k, v in pmf.items())
             if db_gates:
@@ -385,7 +385,7 @@ def event_pnl(conn, series: str, tok: str, key: str, close_ts: datetime,
                 if _im.get("pmf"):
                     market_fairs = {ms.desc: ms.fair for ms in enumerate_structs(
                         meta, {float(k): v for k, v in _im["pmf"].items()},
-                        strict=spec.strict_gt)}
+                        strict=strict_gt_at(spec.ticker, day))}
         entropy_norm = (-sum(p * math.log(p) for p in pv) / math.log(len(pv))
                         if len(pv) > 1 else None)
 

@@ -174,5 +174,22 @@ def effective_strike_type(series: str, strike_type: str | None,
     if st in ("greater", "greater_or_equal"):
         spec = REGISTRY.get(series)
         strict = spec.strict_gt if spec is not None else True
+        if asof is not None:
+            # PIT: the flag in force at `asof` — STRICT_GT_HISTORY lists corrections
+            # newest-last, each row = (corrected_at, flag_before_that_correction)
+            asof_s = asof.isoformat() if hasattr(asof, "isoformat") else str(asof)
+            for corrected_at, before in STRICT_GT_HISTORY.get(series, ()):
+                if asof_s < corrected_at:
+                    strict = before
+                    break
         return "greater" if strict else "greater_or_equal"
     return st
+
+
+def strict_gt_at(series: str, asof=None) -> bool:
+    """The series' tie rule as a bool, PIT: the flag in force at `asof` (datetime or ISO
+    string; None = now). For `enumerate_structs(..., strict=...)` call sites that price a
+    whole ladder at once."""
+    return effective_strike_type(series, None, asof=None if asof is None
+                                 else (asof.isoformat() if hasattr(asof, "isoformat")
+                                       else str(asof))) == "greater"

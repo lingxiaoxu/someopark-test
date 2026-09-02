@@ -177,7 +177,7 @@ def replay_series(conn, series: str, max_events: int, days: int,
                 out01 = 1.0 if l["result"] == "yes" else 0.0
                 mkt_acc.append((mp - out01) ** 2)
                 for v, pmf in pmfs.items():
-                    f = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
+                    f = leg_fair(pmf, effective_strike_type(series, l["strike_type"], asof=asof),
                                  l["floor_strike"], l["cap_strike"])
                     acc[v].append((f - out01) ** 2)
                     if 0.02 <= mp <= 0.98 and (f <= 1e-9 or f >= 1 - 1e-9):

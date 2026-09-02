@@ -430,7 +430,7 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
                 continue
             legs_scored += 1
             try:
-                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
+                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"], asof=asof),
                                 l["floor_strike"], l["cap_strike"])
             except Exception:                              # noqa: BLE001
                 continue
@@ -723,7 +723,7 @@ def shadow_gate(conn, series: str, prefix: str, min_weekly: int = 8,
             if mp is None or l["floor_strike"] is None:
                 continue
             try:
-                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"]),
+                fair = leg_fair(pmf, effective_strike_type(series, l["strike_type"], asof=asof),
                                 l["floor_strike"], l["cap_strike"])
             except Exception:                             # noqa: BLE001
                 continue
