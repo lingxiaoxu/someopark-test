@@ -127,6 +127,14 @@ def main() -> None:
     except Exception as e:
         print(f"  ✗ param_select: {e}")
 
+    # PIT records cache for the Kalshi demo mirror (exec/kalshi_mirror) — daily warm-up;
+    # settle_reports refreshes it again after each settle wave.
+    try:
+        from prediction_market_soccer.exec.kalshi_mirror import build_pit_cache
+        print(f"  ✓ pit_records cache: {build_pit_cache(conn)}")
+    except Exception as e:
+        print(f"  ✗ pit_records cache: {e}")
+
     # Refit the probability calibration next (on the current sample) so the gate
     # and the calibrated predictions below all use the fresh map.
     from prediction_market_soccer.ops import calibrate_fit

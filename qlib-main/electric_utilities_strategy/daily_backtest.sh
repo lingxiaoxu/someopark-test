@@ -25,12 +25,24 @@ SEL="$SCRIPT_DIR/selected_param_set.json"
 LOG_DIR="$SCRIPT_DIR/logs"; mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/aeus_daily_backtest_$(date +%Y%m%d_%H%M%S).log"
 BK_V1="$(mktemp -t aeus_sel_v1)"; BK_V2="$(mktemp -t aeus_sel_v2)"
+# Pre-run backup of the CURRENT production selection (non-empty only): if the V1 suite
+# fails, the restore step below puts this back instead of an empty temp file.
+[ -s "$SEL" ] && cp "$SEL" "$BK_V1"
 
 if [ -f "$REPO_ROOT/.env" ]; then
     export POLYGON_API_KEY="$(grep -E '^POLYGON_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"')"
     export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"')"
 fi
 cd "$QLIB_DIR"
+# ── 2026-09-01 hardening: openclaw exec may spawn a NON-LOGIN shell with no conda on PATH
+# (19:10 aeus-daily-backtest died "conda: command not found", then the unconditional
+#  restore copied an EMPTY mktemp over selected_param_set.json). Resolve conda ourselves.
+if ! command -v conda >/dev/null 2>&1; then
+    for _c in /Users/xuling/miniforge3 "$HOME/miniforge3" "$HOME/miniconda3" /opt/homebrew/Caskroom/miniforge/base; do
+        if [ -f "$_c/etc/profile.d/conda.sh" ]; then . "$_c/etc/profile.d/conda.sh"; break; fi
+    done
+    command -v conda >/dev/null 2>&1 || { echo "FATAL: conda not found (PATH=$PATH)" >&2; exit 2; }
+fi
 PY() { conda run -n qlib_run --no-capture-output python "$@"; }
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 getp() { PY -c "import json;print(json.load(open('$SEL')).get('param_set','?'),json.load(open('$SEL')).get('signal_version','?'))" 2>/dev/null; }
@@ -87,6 +99,14 @@ fi
 
 log "══ AEUS DAILY BACKTEST — V1 + V2 full suite ══"
 
+# ── 2026-09-01 mutual exclusion with aeus_pipeline.sh daily/monthly(pipeline_lock.sh)。
+#    放在幂等门与 NYSE 检查之后、套件之前:拿不到锁 = 什么都没写,重试无需 --force。
+. "$SCRIPT_DIR/pipeline_lock.sh"
+if ! aeus_lock_acquire "daily_backtest" "${AEUS_LOCK_WAIT:-1200}"; then
+    log "══ AEUS DAILY BACKTEST FAILED — pipeline lock busy (daily/monthly still running); nothing was run, retry later ══"
+    exit 3
+fi
+
 # Each --select --save-equity --tearsheet run produces, for that version:
 #   • per-set IS portfolio Excel        (one per param set)
 #   • per-set IS-OOS portfolio Excel     (one per param set)
@@ -94,20 +114,25 @@ log "══ AEUS DAILY BACKTEST — V1 + V2 full suite ══"
 #   • PDF tearsheet                      (1)
 #   • selected_param_set.json + _v{1,2} P0 caches (for smart_select)
 
+FAIL=0
 log "Step 1/3: V1 full suite (batch IS + WF IS-OOS + diagnostic + PDF + select)"
 if PY -m $PKG.AEUSBatchRun --select --save-equity --tearsheet --signal-version v1 >> "$LOG" 2>&1; then
     log "  ✅ V1 done — selected: $(getp)"; [ -f "$SEL" ] && cp "$SEL" "$BK_V1"
 else
-    log "  ⚠️  V1 suite failed (see $LOG)"
+    log "  ⚠️  V1 suite failed (see $LOG)"; FAIL=1
 fi
 
 log "Step 2/3: V2 full suite (then restore V1 to production)"
 if PY -m $PKG.AEUSBatchRun --select --save-equity --tearsheet --signal-version v2 >> "$LOG" 2>&1; then
     log "  ✅ V2 done — selected: $(getp)"; [ -f "$SEL" ] && cp "$SEL" "$BK_V2"
 else
-    log "  ⚠️  V2 suite failed (see $LOG)"
+    log "  ⚠️  V2 suite failed (see $LOG)"; FAIL=1
 fi
-[ -f "$BK_V1" ] && cp "$BK_V1" "$SEL" && log "  Restored production V1: $(getp)"
+if [ -s "$BK_V1" ]; then
+    cp "$BK_V1" "$SEL.tmp.$$" && mv -f "$SEL.tmp.$$" "$SEL" && log "  Restored production V1: $(getp)"   # atomic: readers never see a partial file
+else
+    log "  ⚠️  no non-empty V1 backup — selected_param_set.json left untouched"; FAIL=1
+fi
 
 log "Step 3/3: win-criterion validation (both versions)"
 PY -m $PKG.validate --signal-version v1 2>&1 | grep -iE 'WIN CRITERION' | sed 's/^/  V1 /' | tee -a "$LOG" || true
@@ -124,4 +149,10 @@ log "  WF diagnostic Excel   : $(ls "$_OUT"/wf_diagnostic_aeus_*_$(date +%Y%m%d)
 log "  PDF tearsheets        : $(ls "$_PDF"/*_$(date +%Y%m%d)_*.pdf 2>/dev/null | wc -l | tr -d ' ')"
 
 rm -f "$BK_V1" "$BK_V2"
+# COMPLETE is the idempotency marker: only write it when BOTH suites succeeded and V1 was
+# restored. A failed run prints FAILED (cron agent judges on that word) and stays retryable.
+if [ "${FAIL:-0}" -ne 0 ]; then
+    log "══ AEUS DAILY BACKTEST FAILED ══  (log: $LOG) — production selection: $(getp)"
+    exit 1
+fi
 log "══ AEUS DAILY BACKTEST COMPLETE ══  (log: $LOG)"

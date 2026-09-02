@@ -25,12 +25,25 @@ SEL="$SCRIPT_DIR/selected_param_set.json"
 LOG_DIR="$SCRIPT_DIR/logs"; mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/aiss_daily_backtest_$(date +%Y%m%d_%H%M%S).log"
 BK_V1="$(mktemp -t aiss_sel_v1)"; BK_V2="$(mktemp -t aiss_sel_v2)"
+# Pre-run backup of the CURRENT production selection (non-empty only): if the V1 suite
+# fails, the restore step below puts this back instead of an empty temp file.
+[ -s "$SEL" ] && cp "$SEL" "$BK_V1"
 
 if [ -f "$REPO_ROOT/.env" ]; then
     export POLYGON_API_KEY="$(grep -E '^POLYGON_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"')"
     export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"')"
 fi
 cd "$QLIB_DIR"
+# ── 2026-09-01 hardening (mirrored from AEUS, same-night incident): openclaw exec may spawn a
+# NON-LOGIN shell with no conda on PATH (AEUS 19:10 daily-backtest died "conda: command not
+# found", then the unconditional restore copied an EMPTY mktemp over selected_param_set.json).
+# Resolve conda ourselves instead of trusting the caller's shell.
+if ! command -v conda >/dev/null 2>&1; then
+    for _c in /Users/xuling/miniforge3 "$HOME/miniforge3" "$HOME/miniconda3" /opt/homebrew/Caskroom/miniforge/base; do
+        if [ -f "$_c/etc/profile.d/conda.sh" ]; then . "$_c/etc/profile.d/conda.sh"; break; fi
+    done
+    command -v conda >/dev/null 2>&1 || { echo "FATAL: conda not found (PATH=$PATH)" >&2; exit 2; }
+fi
 PY() { conda run -n qlib_run --no-capture-output python "$@"; }
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 getp() { PY -c "import json;print(json.load(open('$SEL')).get('param_set','?'),json.load(open('$SEL')).get('signal_version','?'))" 2>/dev/null; }
@@ -94,20 +107,25 @@ log "══ AISS DAILY BACKTEST — V1 + V2 full suite ══"
 #   • PDF tearsheet                      (1)
 #   • selected_param_set.json + _v{1,2} P0 caches (for smart_select)
 
+FAIL=0
 log "Step 1/3: V1 full suite (batch IS + WF IS-OOS + diagnostic + PDF + select)"
 if PY -m $PKG.AISSBatchRun --select --save-equity --tearsheet --signal-version v1 >> "$LOG" 2>&1; then
     log "  ✅ V1 done — selected: $(getp)"; [ -f "$SEL" ] && cp "$SEL" "$BK_V1"
 else
-    log "  ⚠️  V1 suite failed (see $LOG)"
+    log "  ⚠️  V1 suite failed (see $LOG)"; FAIL=1
 fi
 
 log "Step 2/3: V2 full suite (then restore V1 to production)"
 if PY -m $PKG.AISSBatchRun --select --save-equity --tearsheet --signal-version v2 >> "$LOG" 2>&1; then
     log "  ✅ V2 done — selected: $(getp)"; [ -f "$SEL" ] && cp "$SEL" "$BK_V2"
 else
-    log "  ⚠️  V2 suite failed (see $LOG)"
+    log "  ⚠️  V2 suite failed (see $LOG)"; FAIL=1
 fi
-[ -f "$BK_V1" ] && cp "$BK_V1" "$SEL" && log "  Restored production V1: $(getp)"
+if [ -s "$BK_V1" ]; then
+    cp "$BK_V1" "$SEL" && log "  Restored production V1: $(getp)"
+else
+    log "  ⚠️  no non-empty V1 backup — selected_param_set.json left untouched"; FAIL=1
+fi
 
 log "Step 3/3: win-criterion validation (both versions)"
 PY -m $PKG.validate --signal-version v1 2>&1 | grep -iE 'WIN CRITERION' | sed 's/^/  V1 /' | tee -a "$LOG" || true
@@ -124,4 +142,10 @@ log "  WF diagnostic Excel   : $(ls "$_OUT"/wf_diagnostic_aiss_*_$(date +%Y%m%d)
 log "  PDF tearsheets        : $(ls "$_PDF"/*_$(date +%Y%m%d)_*.pdf 2>/dev/null | wc -l | tr -d ' ')"
 
 rm -f "$BK_V1" "$BK_V2"
+# COMPLETE is the idempotency marker: only write it when BOTH suites succeeded and V1 was
+# restored. A failed run prints FAILED (cron agent judges on that word) and stays retryable.
+if [ "${FAIL:-0}" -ne 0 ]; then
+    log "══ AISS DAILY BACKTEST FAILED ══  (log: $LOG) — production selection: $(getp)"
+    exit 1
+fi
 log "══ AISS DAILY BACKTEST COMPLETE ══  (log: $LOG)"

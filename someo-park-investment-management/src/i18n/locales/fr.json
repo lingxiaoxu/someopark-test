@@ -1933,7 +1933,7 @@
     "rolloffTitle": "Mesuré au jour de sortie : capitaux propres du compte QC {{qc}} + K = total base officielle du panneau {{panel}}.\nLes deux cohortes vidées, QC détient exactement le nombre d'actions de la base officielle sur chaque ligne ; l'écart de VNI n'est plus que de la trésorerie et ne dérive plus avec le marché.\nToute dérive résiduelle ne provient ensuite que des écarts de prix d'exécution (QC exécute au marché, le registre comptabilise le prix d'ouverture de DailySignal)."
   },
   "vp": {
-    "title": "VP Conseil de liquidité — {{strategy}}",
+    "title": "Prévision de volume · Conseil de liquidité — {{strategy}}",
     "freshThrough": "Données à jour au",
     "staleDays": "{{n}}j de retard",
     "production": "Modèle en production",
@@ -1954,7 +1954,7 @@
     "noCandidates": "Aucun candidat d'entrée aujourd'hui",
     "excluded": "exclu",
     "notSelected": "non retenu",
-    "aum": "AUM",
+    "aum": "AUM · base portefeuille de stratégie",
     "liqTrend": "Tendance de liquidité vs MA5",
     "etfImpact": "Coût d'impact ETF",
     "shares": "act.",
@@ -1974,6 +1974,22 @@
     "abWinner": "Meilleur",
     "abTieTitle": "Colonnes identiques : après la couverture complète RNN, blend3 et production partagent le même chemin de service sur les titres détenus — l'égalité est la norme",
     "abHeld": "N détenus",
-    "abNote": "Décalé : prévision du jour de préd. vs volume réel du jour réel ; vert = MAPE plus bas ; = signifie prévisions identiques des deux routes (la norme après couverture complète RNN) ; blend3 = routage RNN→lgbm→ma5"
+    "abNote": "Décalé : prévision du jour de préd. vs volume réel du jour réel ; vert = MAPE plus bas ; = signifie prévisions identiques des deux routes (la norme après couverture complète RNN) ; blend3 = routage RNN→lgbm→ma5",
+    "aumAsOf": "EOD {{date}}",
+    "aumTitle": "Même source que le panneau NAV temps réel : ancre officielle des capitaux propres EOD (strategy_performance / master_portfolio_performance). La base « grand livre » d'account_*.json diffère de la constante figée au go-live et n'est pas affichée ici",
+    "capitulationTitle": "Signal = z-score 60 j de η > 2,5 et rendement 5 j > −1 % (prix stabilisé). Périmètre : stratégies mono-titre = titres détenus ; paires = les deux jambes des positions ouvertes ; SSRS = ETF détenus",
+    "capNA": "Pas de données de capitulation pour cette stratégie",
+    "noAdvice": "Aucun conseil produit pour cette date",
+    "corpActions": "Opérations sur titres (traitées automatiquement par l'adaptateur)",
+    "caDelisted": "radié {{date}}",
+    "caRenamed": "renommé → {{current}}",
+    "caSlots": "emplacements concernés",
+    "caEmptySlot": "emplacement vide",
+    "caHandledStale": "ADV de la jambe bloqué comme périmé — exclu du sizing",
+    "caHandledForward": "récupération des données redirigée vers le nom actuel",
+    "caSuccessor": "même CIK encore coté — possible renommage, à vérifier",
+    "otherWarnings": "Autres alertes",
+    "etfHoldings": "Liquidité et coût d'impact des ETF détenus ({{n}})",
+    "eventsWindow": "Événements à venir · 5 prochains jours de bourse"
   }
 }

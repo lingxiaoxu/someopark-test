@@ -1,8 +1,17 @@
-// VolumePredictionViewer — VP 每日产出面板(选择性展示,不搬运全量 parquet)
+// VolumePredictionViewer — 成交量预测(Volume Prediction)每日产出面板
 // 数据链:launchd vp.shadowdaily(17:33 ET)→ VolumePrediction/outputs/ →
 // server /api/vp/daily/:strategy(只读)→ 这里。
-// 展示原则:健康状态 + 当前策略的流动性建议(持仓 DTL / 入场候选 / 事件)+
-// blend3 vs production 的滞后 AB 近况;逐票 13,000 行预测留在磁盘上不进前端。
+//
+// 版式(2026-09-01 重设计):
+//   ① 顶部 6 卡对五策略**取并集、口径一致**:数据新鲜至 / 实际服务模型 / 模型漂移 /
+//      建议日期 / AUM(策略组合口径 = 实时净值面板同源)/ Capitulation 触发
+//   ② 公司行为块:server 把 adapter 的文本告警解析成结构化条目(退市/改名 → 槽位
+//      → 已处理方式);被解释掉的 "no VP data" 冗余行不再重复出现
+//   ③ 每策略三段,段标题即段内容:
+//        pairs(MRPT/MTFS): 活跃持仓清算力 → 入场候选 → 模型 AB
+//        SSRS:            持仓 ETF 清算力与冲击成本 → 未来事件 → 模型 AB
+//        AISS/AEUS:       持仓清算力 → Capitulation 监测 → 模型 AB
+// 逐票 13,000 行预测留在磁盘上不进前端。
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
@@ -40,12 +49,14 @@ const fmtAdv = (v: number | null | undefined) =>
 // DTL(days-to-liquidate)极小值显示下限,避免一排 0.00 假装没信息
 const fmtDtl = (v: number | null | undefined) =>
   v == null ? '—' : v === 0 ? '0' : v < 0.01 ? '<0.01' : v.toFixed(2);
+const fmtUsd = (v: number | null | undefined) =>
+  v == null ? '—' : `$${Math.round(v).toLocaleString()}`;
 
-function Card({ label, children, tone }: {
-  label: string; children: React.ReactNode; tone?: 'ok' | 'warn';
+function Card({ label, children, tone, title }: {
+  label: string; children: React.ReactNode; tone?: 'ok' | 'warn'; title?: string;
 }) {
   return (
-    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3" title={title}>
       <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">{label}</div>
       <div className={`text-sm font-mono ${tone === 'warn' ? 'text-amber-600'
         : tone === 'ok' ? 'text-emerald-600' : 'text-[var(--text-primary)]'}`}>{children}</div>
@@ -61,6 +72,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+type CorpAction = {
+  type: 'delisted' | 'renamed'; ticker: string; name?: string; date?: string;
+  current?: string; slots: { pair: string; active: boolean }[]; successor: string[];
+};
+
 export default function VolumePredictionViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [strategy, setStrategy] = useState(
@@ -75,9 +91,14 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
   const mix = normalizeMix(data.serving_mix || []);
   const inv: Record<string, any> = data.inv || {};
   const sig: Record<string, any> = data.sig || {};
+  const aumOfficial: { date: string; value: number } | null = data.aum_official ?? null;
+  const corpActions: CorpAction[] = data.corp_actions || [];
+  const warnings: string[] = data.warnings || [];
+  const capSummary: { triggered: string[]; total: number } | null = data.capitulation_summary ?? null;
+
   const pairsMode = strategy === 'mrpt' || strategy === 'mtfs';
+  const stockMode = strategy === 'aiss' || strategy === 'aeus';
   const stale = !!health?.stale;
-  const warnings: string[] = advice?.warnings || [];
 
   // pairs:advice.positions 覆盖 inventory 全量条目(含已平),只留有 DTL 的活仓
   const livePositions = pairsMode
@@ -95,7 +116,7 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
   const events = (advice?.upcoming_events || []).filter((e: any) =>
     e.early_close || e.triple_witching || e.double_witching || e.russell_rebalance || e.n_earnings > 0);
 
-  // aiss:capitulation 面板按 |eta_z| 降序,异常票排前
+  // aiss/aeus:capitulation 面板按 |eta_z| 降序,异常票排前
   const capitulation = [...(advice?.capitulation || [])]
     .sort((a: any, b: any) => Math.abs(b.eta_z || 0) - Math.abs(a.eta_z || 0));
 
@@ -103,7 +124,7 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* 头部:标题 + 策略选择器(与 InventoryViewer 同款) */}
+      {/* 头部:全称标题 + 策略选择器(与 InventoryViewer 同款) */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">
           {t('vp.title', { strategy: strategy.toUpperCase() })}
@@ -120,38 +141,89 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
         </div>
       </div>
 
-      {/* 服务健康:数据日期 / 生产模型 / 覆盖 / refreeze 漂移 */}
-      <div className="grid grid-cols-2 gap-4 mb-4 shrink-0">
+      {/* ① 顶部 6 卡:五策略同一套(并集),没有数据的格子画 — 而不是整格消失 */}
+      <div className="grid grid-cols-3 gap-3 mb-4 shrink-0">
         <Card label={t('vp.freshThrough')} tone={stale ? 'warn' : 'ok'}>
           {health?.fresh_through ?? '—'}{stale
             ? ` ⚠ ${t('vp.staleDays', { n: health?.staleness_days ?? '?' })}` : ' ✓'}
         </Card>
-        <Card label={t('vp.servingMix')}>
-          <span title={t('vp.servingMixTitle', {
+        <Card label={t('vp.servingMix')}
+          title={t('vp.servingMixTitle', {
             prod: health?.production ?? '—', rnn: health?.model_version ?? '—',
             n: health?.coverage_n?.toLocaleString() ?? '—' })}>
-            {mix.length
-              ? mix.map(m => `${m.short} ${m.n.toLocaleString()}`).join(' · ')
-              : health?.production ?? '—'}
-          </span>
+          {mix.length
+            ? mix.map(m => `${m.short} ${m.n.toLocaleString()}`).join(' · ')
+            : health?.production ?? '—'}
         </Card>
         <Card label={t('vp.modelDrift')} tone={health?.refreeze_due ? 'warn' : undefined}>
           {health?.model_drift_tradedays ?? '—'} {t('vp.tradedays')}
           {health?.refreeze_due ? ` · ${t('vp.refreezeDue')}` : ''}
         </Card>
-        <Card label={t('vp.adviceDate')}>
+        <Card label={t('vp.adviceDate')} tone={advice ? undefined : 'warn'}>
           {advice?.date ?? '—'}
+          {!advice && <span className="text-[10px] ml-1">{t('vp.noAdvice')}</span>}
+        </Card>
+        <Card label={t('vp.aum')} title={t('vp.aumTitle')}>
+          {fmtUsd(aumOfficial?.value)}
+          {aumOfficial?.date && (
+            <span className="text-[10px] text-[var(--text-muted)] ml-1.5">
+              {t('vp.aumAsOf', { date: aumOfficial.date })}
+            </span>
+          )}
+        </Card>
+        <Card label={t('vp.capitulationCount')} title={t('vp.capitulationTitle')}
+          tone={capSummary ? (capSummary.triggered.length > 0 ? 'warn' : 'ok') : undefined}>
+          {capSummary
+            ? <>
+                {capSummary.triggered.length} / {capSummary.total}
+                {capSummary.triggered.length > 0 && (
+                  <span className="text-red-500 font-bold ml-1.5">{capSummary.triggered.join(' ')}</span>
+                )}
+              </>
+            : <span className="text-[var(--text-muted)]" title={t('vp.capNA')}>—</span>}
         </Card>
       </div>
 
+      {/* ② 公司行为:结构化、已处理 → 中性底色;解释不了的残余告警才用琥珀色 */}
+      {corpActions.length > 0 && (
+        <div className="mb-3 shrink-0 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-1">{t('vp.corpActions')}</div>
+          {corpActions.map(ca => (
+            <div key={`${ca.type}:${ca.ticker}`} className="py-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className={`px-1.5 py-0.5 rounded-sm border text-[10px] ${ca.type === 'delisted'
+                ? 'border-red-400 text-red-500' : 'border-amber-400 text-amber-600'}`}>
+                {ca.type === 'delisted'
+                  ? t('vp.caDelisted', { date: ca.date ?? '?' })
+                  : t('vp.caRenamed', { current: ca.current ?? '?' })}
+              </span>
+              <span className="font-bold text-[var(--text-primary)]">{ca.ticker}</span>
+              {ca.name && <span className="text-[var(--text-muted)]">({ca.name})</span>}
+              {ca.slots.length > 0 && (
+                <span className="text-[var(--text-secondary)]">
+                  {t('vp.caSlots')}: {ca.slots.map(s =>
+                    `${s.pair}${s.active ? '' : `(${t('vp.caEmptySlot')})`}`).join(', ')}
+                </span>
+              )}
+              <span className="text-[var(--text-muted)]">
+                · {ca.type === 'delisted' ? t('vp.caHandledStale') : t('vp.caHandledForward')}
+              </span>
+              {ca.successor.length > 0 && (
+                <span className="text-amber-600">· {t('vp.caSuccessor')}: {ca.successor.join(', ')}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {warnings.length > 0 && (
         <div className="mb-4 shrink-0 border border-amber-500 text-amber-600 rounded-lg p-2 text-xs font-mono">
+          <div className="text-[10px] uppercase tracking-wider mb-1">{t('vp.otherWarnings')}</div>
           {warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
         </div>
       )}
 
+      {/* ③ 三段正文(按策略族) */}
       <div className="flex-1 overflow-y-auto space-y-4">
-        {/* ══ pairs(MRPT/MTFS):活仓 DTL + 流动性最紧的入场候选 ══ */}
+        {/* ══ pairs(MRPT/MTFS):活仓 DTL → 流动性最紧的入场候选 ══ */}
         {pairsMode && (
           <div>
             <SectionTitle>{t('vp.livePositions', { n: livePositions.length })}</SectionTitle>
@@ -254,18 +326,16 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
           </div>
         )}
 
-        {/* ══ SSRS:ETF 冲击成本 + 流动性趋势 + 事件日历 ══ */}
+        {/* ══ SSRS:持仓 ETF 清算力与冲击成本 → 未来事件 ══ */}
         {strategy === 'ssrs' && (
           <div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Card label={t('vp.aum')}>${Math.round(advice?.aum ?? 0).toLocaleString()}</Card>
-              <Card label={t('vp.liqTrend')}
-                tone={(advice?.liquidity_trend_vs_ma5 ?? 0) < -0.2 ? 'warn' : undefined}>
-                {advice?.liquidity_trend_vs_ma5 == null ? '—'
-                  : `${(advice.liquidity_trend_vs_ma5 * 100).toFixed(1)}%`}
-              </Card>
-            </div>
-            <SectionTitle>{t('vp.etfImpact')}</SectionTitle>
+            <SectionTitle>{t('vp.etfHoldings', { n: (advice?.etfs || []).length })}</SectionTitle>
+            {advice?.liquidity_trend_vs_ma5 != null && (
+              <div className={`text-[10px] font-mono px-1 mb-2 ${advice.liquidity_trend_vs_ma5 < -0.2
+                ? 'text-amber-600' : 'text-[var(--text-muted)]'}`}>
+                {t('vp.liqTrend')}: {(advice.liquidity_trend_vs_ma5 * 100).toFixed(1)}%
+              </div>
+            )}
             <div className="space-y-2">
               {(advice?.etfs || []).map((e: any) => (
                 <div key={e.etf} className={`${rowCls} flex items-center justify-between`}>
@@ -277,14 +347,19 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
                   <span className="font-mono text-xs text-[var(--text-secondary)]">
                     {e.shares?.toLocaleString()} {t('vp.shares')} · ADV {fmtAdv(e.adv_forecast)}
                   </span>
-                  <span className="font-mono text-xs" title={t('vp.impactTitle')}>
-                    ${(e.impact_per_100k ?? 0).toFixed(2)}/100K
+                  <span className="font-mono text-xs">
+                    {t('vp.dtl')} {fmtDtl(e.dtl)}
+                    <span className="text-[var(--text-muted)]"> · </span>
+                    <span title={t('vp.impactTitle')}>${(e.impact_per_100k ?? 0).toFixed(2)}/100K</span>
                   </span>
                 </div>
               ))}
+              {(advice?.etfs || []).length === 0 && (
+                <div className="text-center text-[var(--text-muted)] text-xs py-4">{t('vp.noLive')}</div>
+              )}
             </div>
             <div className="mt-4">
-              <SectionTitle>{t('vp.events')}</SectionTitle>
+              <SectionTitle>{t('vp.eventsWindow')}</SectionTitle>
               {events.length === 0
                 ? <div className="text-[var(--text-muted)] text-xs px-1">{t('vp.noEvents')}</div>
                 : events.map((e: any) => (
@@ -302,16 +377,9 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
           </div>
         )}
 
-        {/* ══ AISS/AEUS:持仓 DTL + capitulation 监测(η-z 异常票排前) ══ */}
-        {(strategy === 'aiss' || strategy === 'aeus') && (
+        {/* ══ AISS/AEUS:持仓清算力 → capitulation 监测(η-z 异常票排前) ══ */}
+        {stockMode && (
           <div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Card label={t('vp.aum')}>${Math.round(advice?.aum ?? 0).toLocaleString()}</Card>
-              <Card label={t('vp.capitulationCount')}
-                tone={capitulation.some((c: any) => c.capitulation) ? 'warn' : 'ok'}>
-                {capitulation.filter((c: any) => c.capitulation).length} / {capitulation.length}
-              </Card>
-            </div>
             <SectionTitle>{t('vp.holdings', { n: (advice?.holdings || []).length })}</SectionTitle>
             <div className="space-y-2">
               {(advice?.holdings || []).map((h: any) => (
@@ -327,6 +395,9 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
                   <span className="font-mono text-xs">{t('vp.dtl')} {fmtDtl(h.dtl)}</span>
                 </div>
               ))}
+              {(advice?.holdings || []).length === 0 && (
+                <div className="text-center text-[var(--text-muted)] text-xs py-4">{t('vp.noLive')}</div>
+              )}
             </div>
             <div className="mt-4">
               <SectionTitle>{t('vp.capitulation')}</SectionTitle>
@@ -344,12 +415,15 @@ export default function VolumePredictionViewer({ params }: { params?: any }) {
                     </span>
                   </span>
                 ))}
+                {capitulation.length === 0 && (
+                  <span className="text-[var(--text-muted)] text-xs">{t('vp.capNA')}</span>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ══ 模型 AB(全策略共用):blend3 vs production,持仓票滞后 MAPE ══ */}
+        {/* ══ 模型 AB(全策略共用第三段):blend3 vs production,持仓票滞后 MAPE ══ */}
         {ab?.length > 0 && (
           <div>
             <SectionTitle>{t('vp.abTitle')}</SectionTitle>

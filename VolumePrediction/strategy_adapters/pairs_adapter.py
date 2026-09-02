@@ -104,9 +104,19 @@ def run(strategy: str = "mrpt", date: Optional[str] = None,
                 f"CORPORATE ACTION [renamed] {t} → {d['current']} "
                 f"— 影响槽位 {', '.join(slots)};取数已自动转发至现名")
 
+    # 投降量监测(2026-09-01):与 aiss/aeus/ssrs 同一 svc.signals.capitulation,
+    # 让五策略面板顶部的 "Capitulation 触发" 卡口径一致。范围 = 活仓(任一腿
+    # DTL>0)的所有腿 —— 空槽位(inventory 里 direction=None 的 universe 位)不算,
+    # 否则 MTFS 151 个槽位里一堆退市/无数据票会把信号淹没。
+    active_legs = sorted({t for p in positions
+                          if (p.get("s1_dtl") or 0) > 0 or (p.get("s2_dtl") or 0) > 0
+                          for t in (p["s1"], p["s2"])})
+    cap = svc.signals.capitulation(active_legs, date=date) if active_legs else None
+
     advice = {"schema_version": "v1", "strategy": strategy, "date": date,
               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
               "positions": positions, "candidates": candidates,
+              "capitulation": (cap.to_dict("records") if cap is not None else []),
               "warnings": warnings}
     # 非有限值 → null + warning(裸 NaN 会让 jq/JS 解析炸;BK 改名票实证)
     advice, _nan = sanitize_for_json(advice)

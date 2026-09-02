@@ -2333,7 +2333,7 @@
     "rolloffTitle": "退場日の実測：QC 口座純資産 {{qc}} + K = パネル公式ベース合計 {{panel}}。\n両コホートが空になると QC は全銘柄で公式ベースと同じ株数を保有するため、純資産差は現金項のみとなり相場で動かなくなります。\n以降の残差は約定価格差のみ（QC は成行約定、台帳は DailySignal の建値で記帳）。"
   },
   "vp": {
-    "title": "VP 流動性アドバイス — {{strategy}}",
+    "title": "出来高予測 · 流動性アドバイス — {{strategy}}",
     "freshThrough": "データ最新日",
     "staleDays": "{{n}}日遅延",
     "production": "本番モデル",
@@ -2354,7 +2354,7 @@
     "noCandidates": "本日のエントリー候補なし",
     "excluded": "除外",
     "notSelected": "未選定",
-    "aum": "AUM",
+    "aum": "AUM · 戦略ポートフォリオ基準",
     "liqTrend": "流動性トレンド vs MA5",
     "etfImpact": "ETF インパクトコスト",
     "shares": "株",
@@ -2374,6 +2374,22 @@
     "abWinner": "優位",
     "abTieTitle": "両列同値:RNN 全カバレッジ後、blend3 と production は保有銘柄で同一サービス経路 — 同値が常態",
     "abHeld": "N 保有",
-    "abNote": "ラグ基準:予測日の予測 vs 実際日の実出来高;緑 = MAPE が低い方;= は両経路の保有銘柄予測が完全一致(RNN 全カバレッジ後の常態);blend3 = RNN→lgbm→ma5 ルーティング"
+    "abNote": "ラグ基準:予測日の予測 vs 実際日の実出来高;緑 = MAPE が低い方;= は両経路の保有銘柄予測が完全一致(RNN 全カバレッジ後の常態);blend3 = RNN→lgbm→ma5 ルーティング",
+    "aumAsOf": "EOD {{date}}",
+    "aumTitle": "リアルタイム NAV パネルと同一ソース:公式 EOD 資産アンカー(strategy_performance / master_portfolio_performance)。account_*.json の帳簿基準はゴーライブ固定定数分だけ異なり、ここでは表示しません",
+    "capitulationTitle": "η の 60 日 z>2.5 かつ 5 日リターン>−1%(価格安定)= 発火。対象:個別株戦略=保有銘柄;ペア戦略=建玉の両脚;SSRS=保有 ETF",
+    "capNA": "この戦略にはカピチュレーションデータがありません",
+    "noAdvice": "当日のアドバイス出力なし",
+    "corpActions": "コーポレートアクション(アダプターが自動処理済み)",
+    "caDelisted": "上場廃止 {{date}}",
+    "caRenamed": "改名 → {{current}}",
+    "caSlots": "影響スロット",
+    "caEmptySlot": "空スロット",
+    "caHandledStale": "当該脚の ADV は stale として遮断、サイジング対象外",
+    "caHandledForward": "データ取得は現行名へ自動転送済み",
+    "caSuccessor": "同一 CIK が取引継続中、改名の可能性あり要確認",
+    "otherWarnings": "その他の警告",
+    "etfHoldings": "保有 ETF 流動性とインパクトコスト ({{n}})",
+    "eventsWindow": "今後のイベント · 5 営業日"
   }
 }

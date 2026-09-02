@@ -54,12 +54,29 @@ mkdir -p "$LOG_DIR"
 TS="$(date +%Y%m%d_%H%M%S)"
 
 CONDA_ENV="qlib_run"
+# ── 2026-09-01 hardening: openclaw exec may spawn a NON-LOGIN shell with no conda on PATH
+# (19:10 aeus-daily-backtest died "conda: command not found", then the unconditional
+#  restore copied an EMPTY mktemp over selected_param_set.json). Resolve conda ourselves.
+if ! command -v conda >/dev/null 2>&1; then
+    for _c in /Users/xuling/miniforge3 "$HOME/miniforge3" "$HOME/miniconda3" /opt/homebrew/Caskroom/miniforge/base; do
+        if [ -f "$_c/etc/profile.d/conda.sh" ]; then . "$_c/etc/profile.d/conda.sh"; break; fi
+    done
+    command -v conda >/dev/null 2>&1 || { echo "FATAL: conda not found (PATH=$PATH)" >&2; exit 2; }
+fi
 PY() { conda run -n "$CONDA_ENV" --no-capture-output python "$@"; }
 
 # --- load .env (only the keys we need; avoids the & job-control noise) -------
 if [ -f "$REPO_ROOT/.env" ]; then
     export POLYGON_API_KEY="$(grep -E '^POLYGON_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
     export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    # 2026-09-01 P1: 数据层(industry/altdata/ercot/pjm)按 os.environ 读下面五个 key;此前只导出
+    # POLYGON/FRED,导致 cron daily 的 update_data 里 EIA "not set → no rows"、ERCOT "credentials
+    # missing" 静默跳过(9/1 20:40 实证),store 只靠手工 source .env 的 init 撑着。
+    export EIA_API_KEY="$(grep -E '^EIA_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    export ERCOT_API_SUBSCRIPTION_KEY="$(grep -E '^ERCOT_API_SUBSCRIPTION_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    export ERCOT_API_USERNAME="$(grep -E '^ERCOT_API_USERNAME=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    export ERCOT_API_PASSWORD="$(grep -E '^ERCOT_API_PASSWORD=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    export PJM_API_KEY="$(grep -E '^PJM_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
 fi
 
 # ── Mode parsing (first positional arg, default: help) ───────────────────────
@@ -156,6 +173,18 @@ run_update_data() {
     else log "update_data complete WITH FAILURES — 见上面的 WARN 行。"; fi
     return "$rc"
 }
+
+# ── 2026-09-01 mutual exclusion(pipeline_lock.sh):daily/monthly/select/batch/wf 与
+#    daily_backtest.sh 都会读写 selected_param_set.json + P0 缓存;openclaw 独立点火,
+#    任何时间重叠都可能让 daily 读到 V2 当生产。谁后到谁等;等不到就明确 FAILED 退出,不带病跑。
+case "$MODE" in
+    daily|monthly|daily_backtest|daily-backtest|select|batch|walk-forward|wf)
+        . "$SCRIPT_DIR/pipeline_lock.sh"
+        if ! aeus_lock_acquire "aeus_pipeline:$MODE" "${AEUS_LOCK_WAIT:-1500}"; then
+            log "══ AEUS ${MODE} FAILED — pipeline lock busy (another AEUS job is writing selected_param_set / P0 caches); nothing was run. Re-run later: bash $SELF $MODE ══"
+            exit 3
+        fi ;;
+esac
 
 case "$MODE" in
     update_data|update-data)

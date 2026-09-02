@@ -5,11 +5,11 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readOfficialEquity } from '../utils/officialEquity.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.join(__dirname, '..', '..', '..');
 const OUT = path.join(REPO, 'controller', 'output');
-const DATA = path.join(__dirname, '..', '..', 'public', 'data');
 
 const router = Router();
 
@@ -119,25 +119,11 @@ router.get('/prev-close', (_req, res) => {
 });
 
 // 官方 EOD 锚(V_base;锚定映射与 controller/reconcile_eod.py 一致,原始源)
+// 读取逻辑抽到 utils/officialEquity.ts(2026-09-01):VolumePrediction 面板的 AUM 卡
+// 也要同一口径,单一真源放共享模块,响应形状不变。
 router.get('/official', (_req, res) => {
-  const readLast = (file: string, cols: string[]) => {
-    const rows = JSON.parse(fs.readFileSync(path.join(DATA, file), 'utf-8'));
-    const out: Record<string, { date: string; value: number }> = {};
-    for (const col of cols) {
-      for (let i = rows.length - 1; i >= 0; i--) {
-        if (rows[i][col] != null) { out[col] = { date: rows[i].date, value: rows[i][col] }; break; }
-      }
-    }
-    return out;
-  };
   try {
-    const sp = readLast('strategy_performance.json', ['mrpt_equity', 'mtfs_equity']);
-    const mp = readLast('master_portfolio_performance.json', ['sr_equity', 'aiss_equity', 'aeus_equity']);
-    const bd = readLast('private_credit_bdc_performance.json', ['bdc_equity']);
-    res.json({
-      mrpt: sp.mrpt_equity, mtfs: sp.mtfs_equity,
-      ssrs: mp.sr_equity, aiss: mp.aiss_equity, aeus: mp.aeus_equity, bdc: bd.bdc_equity,
-    });
+    res.json(readOfficialEquity());
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

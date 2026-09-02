@@ -231,22 +231,51 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
     if cache.exists():
         text = cache.read_text(encoding="utf-8")
     else:
+        # Outage cool-down. Without it every PROCESS that needed an uncached date paid the
+        # full retry ladder itself — measured 230s for one _pit_strength(today) while
+        # api.clubelo.com was timing out, and the live loop spawns a fresh process per
+        # cycle. A failed fetch leaves a dated marker; for the next 10 minutes callers
+        # fail fast (<1s) and build without the anchor, exactly as they would have after
+        # the slow failure. A later success caches the CSV and the marker is moot.
+        import time as _time
+        marker = _PRIORS / f".clubelo_unavailable_{as_of}"
+        _COOLDOWN_S = 600
+        if marker.exists() and (_time.time() - marker.stat().st_mtime) < _COOLDOWN_S:
+            raise RuntimeError(f"clubelo unavailable (cool-down after a failed fetch <{_COOLDOWN_S}s ago)")
         last_err = None
         text = None
-        for url in (f"http://api.clubelo.com/{as_of}", f"https://api.clubelo.com/{as_of}"):
-            for attempt in range(3):
-                try:
-                    r = requests.get(url, timeout=90)
-                    r.raise_for_status()
-                    text = r.text
-                    break
-                except Exception as e:  # noqa: BLE001 — retry then surface
-                    last_err = e
-            if text:
+        # http ONLY. api.clubelo.com has never served TLS — port 443 does not answer, so the
+        # old https "fallback" was a guaranteed connect-timeout that turned every failure
+        # into minutes of waiting (measured 2026-09-01: http 502 in 0.4s, https 90s × 3).
+        # A 5xx is the site's own backend failing (IIS answers, the data app behind it does
+        # not); it is not going to change within seconds, so one short retry and out.
+        url = f"http://api.clubelo.com/{as_of}"
+        for attempt in range(2):
+            try:
+                r = requests.get(url, timeout=(8, 60))     # connect 8s, read 60s
+                if r.status_code >= 500:
+                    last_err = RuntimeError(f"HTTP {r.status_code} from api.clubelo.com (server-side)")
+                    if attempt == 0:
+                        _time.sleep(1.5)
+                    continue
+                r.raise_for_status()
+                text = r.text
                 break
+            except requests.RequestException as e:  # noqa: BLE001 — retry once, then surface
+                last_err = e
+                if attempt == 0:
+                    _time.sleep(1.5)
         if not text:
+            try:
+                marker.write_text(str(last_err)[:200], encoding="utf-8")
+            except OSError:
+                pass
             raise RuntimeError(f"clubelo fetch failed after retries: {last_err}")
         cache.write_text(text, encoding="utf-8")
+        try:
+            marker.unlink()
+        except OSError:
+            pass
     return list(csv.DictReader(io.StringIO(text)))
 
 

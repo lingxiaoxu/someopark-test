@@ -55,6 +55,9 @@ def run(date: Optional[str] = None,
         rows.append({
             "etf": etf, "shares": shares,
             "adv_forecast": svc.adv.get_adv_forecast(etf, date=date),
+            # 清仓天数(2026-09-01):与 pairs/aiss/aeus 同一 svc.execute 定义,
+            # 面板三族 "清算力" 段才能用同一把尺
+            "dtl": svc.execute.days_to_liquidate(etf, shares or 0, date=date).get("days"),
             "impact_per_100k": cost.get("cost_dollars"),
             "objective": "ssrs_rebalance"})
 
@@ -69,9 +72,14 @@ def run(date: Optional[str] = None,
             f"CORPORATE ACTION [renamed] {t} → {d['current']} — 取数已转发至现名")
 
     outlook = svc.signals.market_liquidity_outlook(date=date, horizon=5)
+    # 投降量监测(2026-09-01):与 pairs/aiss/aeus adapter 同一 svc.signals.capitulation,
+    # 让五策略面板顶部的 "Capitulation 触发" 卡口径一致。范围 = 有持仓股数的 ETF。
+    held_etfs = [r["etf"] for r in rows if (r.get("shares") or 0) > 0]
+    cap = svc.signals.capitulation(held_etfs, date=date) if held_etfs else None
     advice = {"schema_version": "v1", "strategy": "ssrs", "date": date,
               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
               "aum": aum, "etfs": rows,
+              "capitulation": (cap.to_dict("records") if cap is not None else []),
               "liquidity_trend_vs_ma5": outlook.get("trend_vs_ma5"),
               "upcoming_events": (outlook.get("upcoming_events").to_dict("records")
                                   if outlook.get("upcoming_events") is not None else []),

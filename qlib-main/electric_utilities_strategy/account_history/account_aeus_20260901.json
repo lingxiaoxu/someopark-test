@@ -1,0 +1,75 @@
+{
+  "as_of": "2026-09-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": -1991.54,
+  "positions": {
+    "ETN": {
+      "shares": 235,
+      "avg_cost": 401.88,
+      "entry_date": "2026-08-31"
+    },
+    "EMR": {
+      "shares": 389,
+      "avg_cost": 152.44,
+      "entry_date": "2026-08-31"
+    },
+    "GEV": {
+      "shares": 51,
+      "avg_cost": 898.53,
+      "entry_date": "2026-08-31"
+    },
+    "POWL": {
+      "shares": 200,
+      "avg_cost": 179.73,
+      "entry_date": "2026-08-31"
+    },
+    "NEE": {
+      "shares": 1615,
+      "avg_cost": 82.34,
+      "entry_date": "2026-08-31"
+    },
+    "SO": {
+      "shares": 1086,
+      "avg_cost": 88.0,
+      "entry_date": "2026-08-31"
+    },
+    "DUK": {
+      "shares": 794,
+      "avg_cost": 119.91,
+      "entry_date": "2026-08-31"
+    },
+    "AEP": {
+      "shares": 467,
+      "avg_cost": 122.43,
+      "entry_date": "2026-08-31"
+    },
+    "AEE": {
+      "shares": 1286,
+      "avg_cost": 105.26,
+      "entry_date": "2026-08-31"
+    },
+    "LNT": {
+      "shares": 1424,
+      "avg_cost": 67.98,
+      "entry_date": "2026-08-31"
+    },
+    "OGE": {
+      "shares": 1683,
+      "avg_cost": 45.63,
+      "entry_date": "2026-08-31"
+    },
+    "ATO": {
+      "shares": 461,
+      "avg_cost": 166.13,
+      "entry_date": "2026-08-31"
+    }
+  },
+  "cumulative_realized": 0.0,
+  "cumulative_dividends": 0.0,
+  "cumulative_fees": 0.0,
+  "equity": 997976.77,
+  "liabilities": {},
+  "unrealized": -2023.23,
+  "position_value": 999968.31
+}

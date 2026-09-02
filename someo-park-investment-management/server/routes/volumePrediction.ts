@@ -5,6 +5,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readOfficialEquity } from '../utils/officialEquity.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.join(__dirname, '..', '..', '..');
@@ -183,6 +184,56 @@ function servingMix(): { model: string; n: number }[] {
   });
 }
 
+// ── 公司行为告警结构化(2026-09-01)──────────────────────────────────────────
+// adapter 把公司行为写成人类可读的文本告警(见 strategy_adapters/*_adapter.py),
+// 面板原样铺出来又长又重复:退市/改名各一行,后面 sanitize 还会补一行
+// "no VP data (null-ed …)" 把同一批 AVB 字段再点一遍名。这里把文本解析成结构化
+// 条目(类型 / 票 / 日期或现名 / 受影响槽位 / 处理方式),并把**已被公司行为解释**
+// 的 null-ed 行吞掉;解释不了的残余告警原样保留(不能丢信息)。
+// 槽位 active 标记:槽位在 inventory join 结果里(有方向)= 真持仓,否则是
+// universe 空槽位 —— MTFS 151 个槽位里含 AVB 的 5 个全是空槽,面板要能一眼看出。
+type CorpAction = {
+  type: 'delisted' | 'renamed'; ticker: string; name?: string; date?: string;
+  current?: string; slots: { pair: string; active: boolean }[]; successor: string[];
+};
+function parseWarnings(raw: string[], inv: Record<string, any>) {
+  const corp: CorpAction[] = [];
+  const rest: string[] = [];
+  const nulled: string[] = [];
+  for (const w of raw || []) {
+    const m = /^CORPORATE ACTION \[(delisted|renamed)\] (\S+)/.exec(w);
+    if (m) {
+      const type = m[1] as CorpAction['type'];
+      const ticker = m[2];
+      const slotsRaw = /影响槽位 ([^;]+)/.exec(w)?.[1];
+      const slots = slotsRaw
+        ? slotsRaw.split(',').map(s => s.trim()).filter(Boolean)
+        : [ticker];                                  // aiss/ssrs:槽位就是持仓票本身
+      corp.push({
+        type, ticker,
+        name: /\(([^)]*)\)/.exec(w)?.[1],
+        date: /(?:摘牌|清盘)于 (\d{4}-\d{2}-\d{2})/.exec(w)?.[1],
+        current: / → (\S+)/.exec(w)?.[1],
+        slots: slots.map(pair => ({ pair, active: pair in inv })),
+        successor: (/同 CIK 仍在交易: ([^;(]+)/.exec(w)?.[1] ?? '')
+          .split(',').map(s => s.trim()).filter(Boolean),
+      });
+    } else if (/^no VP data \(null-ed/.test(w)) {
+      nulled.push(w);
+    } else {
+      rest.push(w);
+    }
+  }
+  // null-ed 行:路径尾巴是票名(…adv_forecast.AVB);全部被上面某条公司行为覆盖 → 吞掉
+  const explained = new Set(corp.map(c => c.ticker));
+  for (const w of nulled) {
+    const tickers = [...w.matchAll(/\.([A-Z][A-Z0-9.\-]*)'/g)].map(x => x[1]);
+    if (tickers.length && tickers.every(t => explained.has(t))) continue;
+    rest.push(w);
+  }
+  return { corp, rest };
+}
+
 // 单端点:health + 当前策略最新 advice + AB 近 5 行,切策略一次取齐
 router.get('/daily/:strategy', (req, res) => {
   const strategy = String(req.params.strategy);
@@ -203,8 +254,20 @@ router.get('/daily/:strategy', (req, res) => {
         .map((p: any) => p.pair);
       Object.assign(inv, pairsFallback(strategy, missing));
     }
+    // AUM 一律走官方 EOD 权益锚(与实时净值面板 /controller-nav/official 同一函数)。
+    // advice.aum 是 adapter 从 account_*.json 读的**账本口径**(AISS 显示 ~$1.0M,
+    // 官方口径 $2.76M),两者差 go-live 冻结常数,面板不再展示账本数。
+    const aumOfficial = readOfficialEquity()[strategy] ?? null;
+    const { corp, rest } = parseWarnings(advice?.warnings || [], inv);
+    // 五策略 adapter 现都产出 capitulation(pairs=活仓腿 / ssrs=持仓 ETF / 个股=持仓票)
+    const cap: any[] | null = Array.isArray(advice?.capitulation) ? advice.capitulation : null;
+    const capitulationSummary = cap
+      ? { triggered: cap.filter(c => c?.capitulation).map(c => c.symbol), total: cap.length }
+      : null;
     res.json({ health, advice, ab: abRecent(5), serving_mix: servingMix(), inv,
-      sig: pairsMode ? { ...excludedPairs(strategy), ...latestSignals(strategy) } : {} });
+      sig: pairsMode ? { ...excludedPairs(strategy), ...latestSignals(strategy) } : {},
+      aum_official: aumOfficial, corp_actions: corp, warnings: rest,
+      capitulation_summary: capitulationSummary });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

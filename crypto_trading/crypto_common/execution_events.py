@@ -60,7 +60,8 @@ def ask_cents(m: dict, side: str) -> int | None:
 
 
 def choose_demo_market(markets: list[dict], close_time: str, side: str,
-                       entry_price: float) -> tuple[str, int, str] | None:
+                       entry_price: float, *, now_iso: str | None = None,
+                       exact_only: bool = False) -> tuple[str, int, str] | None:
     """Pure selection with graceful degradation.
 
     Preferred: a QUOTED demo market for the same close hour, ask nearest the
@@ -70,12 +71,21 @@ def choose_demo_market(markets: list[dict], close_time: str, side: str,
     close. The deviation is returned (mapped close_time) so every mirror log
     shows exactly how far the rehearsal drifted from the prod intent.
     Returns (ticker, ask_cents, mapped_close) or None if nothing is quoted.
+
+    ``now_iso``: candidates whose close_time is not strictly in the future
+    are dropped — the cached list can hold windows that closed since the
+    fetch (measured 2026-09-01: 117 mirror orders → 409 market_closed).
+    ``exact_only``: no fallback at all — for 15-minute windows a different
+    close is a different bet, so the only honest answer is no_demo_market.
     """
     def cands(require_close):
         out = []
         for m in markets:
-            if require_close and m.get("close_time") != close_time:
+            ct_m = m.get("close_time") or ""
+            if require_close and ct_m != close_time:
                 continue
+            if now_iso and ct_m <= now_iso:
+                continue                            # already closed
             ask_c = ask_cents(m, side)
             if ask_c is None:
                 continue
@@ -86,6 +96,8 @@ def choose_demo_market(markets: list[dict], close_time: str, side: str,
     if exact:
         _, ct, tkr, ask_c = min(exact)
         return tkr, ask_c, ct
+    if exact_only:
+        return None
     any_q = cands(False)
     if not any_q:
         return None
@@ -96,6 +108,7 @@ def choose_demo_market(markets: list[dict], close_time: str, side: str,
 
 _MKT_CACHE: dict = {}
 _MKT_CACHE_TTL = 300.0
+_MKT_CACHE_TTL_15M = 90.0      # 15M windows are born every 15 min — one tape cycle
 
 
 def _demo_markets_cached(series_tuple: tuple = ("KXBTC",)) -> list[dict] | None:
@@ -112,8 +125,10 @@ def _demo_markets_cached(series_tuple: tuple = ("KXBTC",)) -> list[dict] | None:
 
     from crypto_trading.crypto_common.kalshi.enums import rest_base
     now = time.time()
+    ttl = (_MKT_CACHE_TTL_15M if any("15M" in x for x in series_tuple)
+           else _MKT_CACHE_TTL)
     slot = _MKT_CACHE.setdefault("|".join(series_tuple), {"ts": 0.0, "markets": None})
-    if slot["markets"] is not None and now - slot["ts"] < _MKT_CACHE_TTL:
+    if slot["markets"] is not None and now - slot["ts"] < ttl:
         return slot["markets"]
     try:
         # Quoted markets hide behind a wall of ~5,000 unquoted hourly strikes
@@ -122,8 +137,12 @@ def _demo_markets_cached(series_tuple: tuple = ("KXBTC",)) -> list[dict] | None:
         # the far-dated flagship events anyway. A plain near-page is added as
         # a fallback so nearer quotes (if demo ever adds them) are not missed.
         quoted = []
+        ok_any = False                       # at least one 200 → list is REAL
         for series in series_tuple:
-            for extra in ({"min_close_ts": int(now + 12 * 3600)}, {}):
+            # 15M windows live only ~an hour ahead: the +12h probe can never
+            # hit them and just spends a request (5 threads at once → 429).
+            probes = ({},) if "15M" in series else ({"min_close_ts": int(now + 12 * 3600)}, {})
+            for extra in probes:
                 r = requests.get(rest_base("demo") + "/markets",
                                  params={"series_ticker": series,
                                          "status": "open", "limit": 1000, **extra},
@@ -131,13 +150,19 @@ def _demo_markets_cached(series_tuple: tuple = ("KXBTC",)) -> list[dict] | None:
                                  headers={"User-Agent": "someopark-crypto/0.1"})
                 if r.status_code != 200:
                     continue
+                ok_any = True
                 quoted += [m for m in r.json().get("markets", [])
                            if ask_cents(m, "yes") or ask_cents(m, "no")]
                 if quoted:
                     break
             if quoted:
                 break
-        if quoted:
+        if quoted or ok_any:
+            # an EMPTY but successful answer is a real answer ("demo quotes
+            # nothing here right now") and must map to no_demo_market, not
+            # to "list unavailable" (2026-09-01: 24 mislabelled skips once the
+            # flagship fallback — which always had far-dated quotes — was
+            # removed for 15M)
             slot.update(ts=now, markets=quoted)
             return quoted
     except requests.RequestException:
@@ -171,10 +196,20 @@ class EventExecutionRouter:
         try:
             from crypto_trading.crypto_common.kalshi.rest_event import (
                 KalshiEventOrderClient)
+            # 15-minute windows: same-window ONLY, no flagship fallback — a
+            # different close is a different bet, and the flagship fallback
+            # produced garbage fills (2026-09-01: 409 market_closed x117 and
+            # a stale April market). Hourly/daily keep the graceful path.
+            strict = any("15M" in x for x in series)
+            if strict:
+                series = tuple(x for x in series if "15M" in x)
             mkts = _demo_markets_cached(series)
             if mkts is None:
                 return {"status": "skipped_market_list_unavailable"}
-            pick = choose_demo_market(mkts, close_time, side, entry_price)
+            import datetime as _dt
+            now_iso = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            pick = choose_demo_market(mkts, close_time, side, entry_price,
+                                      now_iso=now_iso, exact_only=strict)
             if pick is None:
                 return {"status": "no_demo_market", "close": close_time}
             tkr, ask_c, mapped_close = pick

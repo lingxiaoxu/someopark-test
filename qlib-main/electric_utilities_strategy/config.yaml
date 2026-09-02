@@ -33,7 +33,7 @@ external_sources:
   ercot:
     enabled: true                   # ERCOT_API_* (root .env; validated 2026-08-30)
   pjm:
-    enabled: false                  # PJM_API_KEY pending approval email — code is
+    enabled: true                  # PJM_API_KEY landed 2026-09-01 (Data Miner 2 non-member key) — wired
                                     # written and wired; flip to true when the key
                                     # lands in .env (AEUS_PLAN: 写代码不接线)
   sec:

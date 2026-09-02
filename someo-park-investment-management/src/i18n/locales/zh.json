@@ -2337,7 +2337,7 @@
     "rolloffTitle": "退场日实测:QC 账户净值 {{qc}} + K = 面板官方口径合计 {{panel}}。\n两队清空后 QC 逐票持有与官方口径相同的股数,净值差只剩现金项,不再随行情漂移。\n此后的残余偏离只来自成交价差(QC 按市价成交,账本按 DailySignal 开仓价记账)。"
   },
   "vp": {
-    "title": "VP 流动性建议 — {{strategy}}",
+    "title": "成交量预测 · 流动性建议 — {{strategy}}",
     "freshThrough": "数据新鲜至",
     "staleDays": "滞后 {{n}} 天",
     "production": "生产模型",
@@ -2358,7 +2358,7 @@
     "noCandidates": "今日无入场候选",
     "excluded": "已排除",
     "notSelected": "未选用",
-    "aum": "AUM",
+    "aum": "AUM · 策略组合口径",
     "liqTrend": "流动性趋势 vs MA5",
     "etfImpact": "ETF 冲击成本",
     "shares": "股",
@@ -2378,6 +2378,22 @@
     "abWinner": "更优",
     "abTieTitle": "两列相同:RNN 全覆盖后 blend3 与 production 在持仓票上服务路径重合,平局是常态",
     "abHeld": "N 持仓",
-    "abNote": "滞后口径:预测日的预测 vs 实际日的真实成交量;绿色 = MAPE 更低者;= 表示两路由持仓票预测完全一致(RNN 全覆盖后的常态);blend3 = RNN→lgbm→ma5 路由"
+    "abNote": "滞后口径:预测日的预测 vs 实际日的真实成交量;绿色 = MAPE 更低者;= 表示两路由持仓票预测完全一致(RNN 全覆盖后的常态);blend3 = RNN→lgbm→ma5 路由",
+    "aumAsOf": "EOD {{date}}",
+    "aumTitle": "与实时净值面板同源:官方 EOD 权益锚(strategy_performance / master_portfolio_performance)。账本口径 account_*.json 的 equity 与之差一个 go-live 冻结常数,不在此展示",
+    "capitulationTitle": "η 的 60 日 z>2.5 且 5 日收益>−1%(价企稳)= 触发。范围:个股策略=持仓票;配对策略=活仓两腿;SSRS=持仓 ETF",
+    "capNA": "本策略暂无 capitulation 数据",
+    "noAdvice": "无当日建议产出",
+    "corpActions": "公司行为(适配器已自动处理)",
+    "caDelisted": "退市 {{date}}",
+    "caRenamed": "改名 → {{current}}",
+    "caSlots": "影响槽位",
+    "caEmptySlot": "空槽位",
+    "caHandledStale": "该腿 ADV 已按 stale 拦截,不参与 sizing",
+    "caHandledForward": "取数已自动转发至现名",
+    "caSuccessor": "同 CIK 仍在交易,疑似改名请复核",
+    "otherWarnings": "其他告警",
+    "etfHoldings": "持仓 ETF 清算力与冲击成本 ({{n}})",
+    "eventsWindow": "未来事件 · 5 个交易日"
   }
 }

@@ -234,6 +234,45 @@ CREATE TABLE IF NOT EXISTS settled_bet (
     cal_method TEXT, cal_param REAL, cal_n INTEGER,   -- the PIT calibration used (audit)
     settled_at TEXT NOT NULL                          -- when first frozen
 );
+-- ── Kalshi DEMO mirror of the 择时(实现) strategy (exec/kalshi_mirror.py) ────────
+-- One row per (fixture, track): the demo order that mirrors the paper ledger's
+-- pre-match bet ('pre') or causal in-play entry ('inplay'), its fills, and its
+-- smart-exit / settlement close-out. ledger_* columns record what the paper ledger
+-- will freeze for the same bet (best-venue ask, $ stake) so the two can be reconciled.
+CREATE TABLE IF NOT EXISTS kalshi_mirror (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_api_id INTEGER NOT NULL,
+    track TEXT NOT NULL,                      -- 'pre' | 'inplay'
+    comp TEXT,
+    side TEXT NOT NULL,                       -- home | draw | away
+    ticker TEXT NOT NULL,
+    bet_kind TEXT,                            -- value | argmax (pre) | relative_value (inplay)
+    entry_min INTEGER NOT NULL DEFAULT 0,     -- 0 = pre-match; milestone minute for in-play
+    ledger_entry_c REAL, ledger_venue TEXT, ledger_stake_usd REAL, ledger_edge REAL,
+    ask_c REAL,                               -- demo book ask at submission (what we paid up to)
+    count INTEGER NOT NULL,                   -- contracts requested
+    fill_count REAL NOT NULL DEFAULT 0,
+    avg_fill_c REAL,
+    order_id TEXT, client_order_id TEXT UNIQUE,
+    status TEXT NOT NULL,                     -- pending|open|unfilled|exited|settled|error|skipped
+    submitted_at TEXT, filled_at TEXT,
+    exit_reason TEXT,                         -- smart_exit | settled
+    exit_min INTEGER, exit_bid_c REAL, exit_fair_c REAL,
+    exit_order_id TEXT, exit_client_order_id TEXT,
+    exit_fill_count REAL NOT NULL DEFAULT 0, exit_avg_c REAL, exited_at TEXT,
+    won INTEGER, pnl_c REAL,                  -- per-contract realised ¢ once closed
+    attempts INTEGER NOT NULL DEFAULT 1,      -- venue-side failures are retried (≤3)
+    note TEXT, raw_json TEXT,
+    UNIQUE (fixture_api_id, track)
+);
+-- Every milestone_snapshot row is evaluated for a mirror entry exactly once.
+CREATE TABLE IF NOT EXISTS kalshi_mirror_eval (
+    fixture_api_id INTEGER NOT NULL,
+    milestone TEXT NOT NULL,
+    evaluated_at TEXT NOT NULL,
+    verdict TEXT,
+    PRIMARY KEY (fixture_api_id, milestone)
+);
 -- ── club-soccer additions (TRANSFORM_PLAN §3.0/§3.6) ─────────────────────────
 CREATE TABLE IF NOT EXISTS club_registry (
     club_id TEXT, comp TEXT, api_team_id INTEGER, name TEXT, zh TEXT,
@@ -299,6 +338,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for col in _MILESTONE_ADDED_COLS:
         if col not in have:
             conn.execute(f"ALTER TABLE milestone_snapshot ADD COLUMN {col} REAL")
+    km = {r["name"] for r in conn.execute("PRAGMA table_info(kalshi_mirror)")}
+    if km and "attempts" not in km:
+        conn.execute("ALTER TABLE kalshi_mirror ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")
 
 
 def init_db(conn: sqlite3.Connection | None = None) -> sqlite3.Connection:

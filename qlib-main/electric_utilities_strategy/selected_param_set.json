@@ -2,72 +2,72 @@
   "param_set": "pure_supply_chain",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-08-31",
-  "last_updated": "2026-08-31",
-  "mcps_oos_filtered": 2.0548,
-  "recent_sharpe_12m": 2.5613,
-  "full_period_sharpe": 1.6885,
-  "full_period_calmar": 1.2119,
+  "selected_at": "2026-09-01",
+  "last_updated": "2026-09-01",
+  "mcps_oos_filtered": 1.5784,
+  "recent_sharpe_12m": 2.4883,
+  "full_period_sharpe": 1.685,
+  "full_period_calmar": 1.209,
   "top_candidates": [
     {
       "name": "no_vix_derisk",
       "version": "v1",
-      "composite": 0.4884,
-      "mcps_score": 2.3169
+      "composite": 0.47,
+      "mcps_score": 1.8055
     },
     {
       "name": "semivol_24",
       "version": "v1",
-      "composite": 0.1731,
-      "mcps_score": 2.2685
+      "composite": 0.1874,
+      "mcps_score": 1.7782
     },
     {
       "name": "semivol_21",
       "version": "v1",
-      "composite": 0.1423,
-      "mcps_score": 2.2713
+      "composite": 0.1627,
+      "mcps_score": 1.7843
     },
     {
       "name": "semivol_18",
       "version": "v1",
-      "composite": 0.1067,
-      "mcps_score": 2.2733
+      "composite": 0.1361,
+      "mcps_score": 1.7897
     },
     {
-      "name": "quality_defensive",
+      "name": "supply_chain_heavy",
       "version": "v1",
-      "composite": 0.0948,
-      "mcps_score": 2.2694
-    },
-    {
-      "name": "broad_5",
-      "version": "v1",
-      "composite": -0.0199,
-      "mcps_score": 2.4368
+      "composite": 0.0767,
+      "mcps_score": 1.8594
     },
     {
       "name": "opt_risk_parity",
       "version": "v1",
-      "composite": -0.0328,
-      "mcps_score": 2.2381
+      "composite": -0.0212,
+      "mcps_score": 1.758
     },
     {
-      "name": "pure_supply_chain",
+      "name": "derisk_loose",
       "version": "v1",
-      "composite": -0.0912,
-      "mcps_score": 2.16
+      "composite": -0.0785,
+      "mcps_score": 1.8075
+    },
+    {
+      "name": "vol_target_24",
+      "version": "v1",
+      "composite": -0.1759,
+      "mcps_score": 1.7856
     },
     {
       "name": "concentrated_2",
       "version": "v1",
-      "composite": -0.2205,
-      "mcps_score": 2.323
+      "composite": -0.3171,
+      "mcps_score": 1.7876
     },
     {
-      "name": "opt_equal_weight",
+      "name": "pure_supply_chain",
       "version": "v1",
-      "composite": -0.6407,
-      "mcps_score": 2.1615
+      "composite": -0.4401,
+      "mcps_score": 1.5877
     }
   ],
   "n_candidates": 42,
@@ -76,19 +76,19 @@
   "oos_mean_sharpe": 1.4001,
   "oos_n_selected": 15,
   "wf_mean_wfe": 1.7565,
-  "macro_data_days": 1924,
+  "macro_data_days": 1925,
   "switch_history": [],
   "health": {
-    "days_since_switch": 4,
-    "current_rank": 8,
+    "days_since_switch": 1,
+    "current_rank": 10,
     "anomaly_detected": false,
-    "_consecutive_best_days": 4,
+    "_consecutive_best_days": 1,
     "_prev_best_param": "no_vix_derisk"
   },
-  "mcps_score": 2.16,
-  "composite_score": -0.0912,
+  "mcps_score": 1.5877,
+  "composite_score": -0.4401,
   "version_selector": {
     "recommended": "v1",
-    "v1_confidence": 0.85
+    "v1_confidence": 0.8
   }
 }

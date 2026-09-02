@@ -57,6 +57,15 @@ def main() -> None:
         _write_both("performance_report.json", asdict(rep))
         print(f"[settle_reports] performance_report.json ({time.time() - t0:.0f}s)")
 
+        # PIT (P,Y) records the demo mirror's pre-match decision calibrates on — the same
+        # settle_bets._pit_py the ledger freezes with. Rebuilt here (post-settle, background)
+        # so the live loop never pays the ~140 strength fits inline.
+        try:
+            from prediction_market_soccer.exec.kalshi_mirror import build_pit_cache
+            print(f"[settle_reports] pit_records: {build_pit_cache(conn)} ({time.time() - t0:.0f}s)")
+        except Exception as e:  # noqa: BLE001
+            print(f"[settle_reports] pit cache skipped: {e}")
+
         try:
             from prediction_market_soccer.model import oos_eval
             _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))

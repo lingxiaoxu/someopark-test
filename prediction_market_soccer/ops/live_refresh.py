@@ -625,6 +625,19 @@ def refresh_once(conn=None) -> dict:
             print(f"[live_refresh] xv_matches rebuild skipped: {e}")
 
 
+    # Kalshi DEMO mirror of the 择时(实现) strategy. Placed AFTER the upcoming block (which
+    # stashes the PRE quotes ≤20' pre-kickoff) and after milestone capture, so both the
+    # pre-match and the in-play entry are placed on the SAME cycle — on the same rows — the
+    # paper ledger will later freeze from; exits are re-evaluated every cycle. Off unless
+    # KALSHI_DEMO_MIRROR=true; refuses anything but the demo host. Never raises into the loop.
+    try:
+        from prediction_market_soccer.exec import kalshi_mirror
+        if kalshi_mirror.enabled():
+            _mr = kalshi_mirror.run_cycle(conn, inplay)
+            if _mr.get("actions") or _mr.get("errors"):
+                print(f"[live_refresh] kalshi mirror: {_mr.get('summary')}")
+    except Exception as e:
+        print(f"[live_refresh] kalshi mirror skipped: {e}")
     # Risk / Venues & Gates view — its venue balances are LIVE Kalshi/Poly API calls,
     # so refresh it on a ~10-min throttle (not every minute) to keep the balance current
     # without hammering the venues.

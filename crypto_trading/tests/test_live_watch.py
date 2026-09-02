@@ -235,6 +235,32 @@ def test_choose_demo_market_maps_close_hour_and_zone():
         "2026-08-26T03:00:00Z", "yes", 0.3) is None
 
 
+def test_choose_demo_market_15m_is_same_window_only_and_never_closed():
+    """15M mirror (2026-09-01): a cached list can hold windows that already
+    closed (117 x 409 market_closed measured) and the flagship fallback maps
+    a 15-minute bet onto a different market entirely. With now_iso closed
+    windows are dropped; with exact_only there is no fallback at all."""
+    from crypto_trading.crypto_common.execution_events import choose_demo_market
+    mkts = [
+        {"ticker": "OLD", "close_time": "2026-09-01T20:30:00Z", "yes_ask": 70, "no_ask": 32},
+        {"ticker": "CUR", "close_time": "2026-09-01T21:15:00Z", "yes_ask": 71, "no_ask": 31},
+        {"ticker": "NXT", "close_time": "2026-09-01T21:30:00Z", "yes_ask": 69, "no_ask": 33},
+    ]
+    now = "2026-09-01T21:07:00Z"
+    # exact window present → it, never the closed one even if price-closer
+    assert choose_demo_market(mkts, "2026-09-01T21:15:00Z", "yes", 0.70,
+                              now_iso=now, exact_only=True) == (
+        "CUR", 71, "2026-09-01T21:15:00Z")
+    # exact window absent → None (no fallback to NXT), instead of a wrong bet
+    assert choose_demo_market(mkts, "2026-09-01T21:45:00Z", "yes", 0.70,
+                              now_iso=now, exact_only=True) is None
+    # graceful (non-15M) path still falls back, but only to FUTURE closes
+    t, a, ct = choose_demo_market(mkts, "2026-09-01T21:45:00Z", "yes", 0.70,
+                                  now_iso=now)
+    assert t in ("CUR", "NXT") and ct > now
+    # legacy call without now_iso is unchanged (old tests above)
+
+
 def test_w5_module_has_no_venue_code():
     """The strategy file must not touch venue clients directly."""
     import inspect
@@ -660,3 +686,26 @@ def test_w7_maker_fill_window_starts_at_order_time(sandbox, monkeypatch):
     st = common.load_state("w7_noisefade")
     assert st["trades"][0]["maker_fill"] is False
     assert st["trades"][0]["maker_pnl_c"] is None
+
+
+def test_demo_market_list_empty_is_an_answer_not_an_outage(monkeypatch):
+    """A 200 with no quoted markets means "demo quotes nothing here" →
+    [] → no_demo_market. Only a transport failure may return None
+    (2026-09-01: 24 mirrors mislabelled skipped_market_list_unavailable)."""
+    import crypto_trading.crypto_common.execution_events as ee
+    ee._MKT_CACHE.clear()
+    calls = []
+
+    class R:
+        def __init__(self, code, mkts): self.status_code, self._m = code, mkts
+        def json(self): return {"markets": self._m}
+    monkeypatch.setattr("requests.get",
+                        lambda url, params=None, **k: calls.append(params) or
+                        R(200, [{"ticker": "Q", "close_time": "2099-01-01T00:00:00Z",
+                                 "yes_ask": 0, "no_ask": 100}]))     # unquoted
+    assert ee._demo_markets_cached(("KXBTC15M",)) == []
+    # 15M: exactly one plain probe, never the +12h one
+    assert len(calls) == 1 and "min_close_ts" not in (calls[0] or {})
+    ee._MKT_CACHE.clear()
+    monkeypatch.setattr("requests.get", lambda *a, **k: R(429, []))
+    assert ee._demo_markets_cached(("KXBTC15M",)) is None       # real outage

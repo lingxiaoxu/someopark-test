@@ -1,68 +1,68 @@
 {
-  "as_of": "2026-08-31",
-  "last_updated": "2026-08-03",
-  "last_daily_update": "2026-08-31",
-  "capital": 1037340.86,
+  "as_of": "2026-09-01",
+  "last_updated": "2026-09-01",
+  "last_daily_update": "2026-09-01",
+  "capital": 1036632.86,
   "holdings": {
     "XLB": {
       "weight": 0.146978,
-      "shares": 2885,
-      "last_price": 52.69,
-      "cost_basis": 51.92,
+      "shares": 2926,
+      "last_price": 52.07,
+      "cost_basis": 51.9221,
       "entry_date": "2026-04-27",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 80,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 81,
+      "action_today": "HOLD"
     },
     "XLI": {
       "weight": 0.154771,
-      "shares": 846,
-      "last_price": 175.13,
-      "cost_basis": 172.47,
+      "shares": 928,
+      "last_price": 172.73,
+      "cost_basis": 172.493,
       "entry_date": "2026-04-27",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 80,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 81,
+      "action_today": "HOLD"
     },
     "XLRE": {
       "weight": 0.17065,
-      "shares": 3783,
-      "last_price": 44.11,
-      "cost_basis": 42.894,
+      "shares": 4016,
+      "last_price": 44.04,
+      "cost_basis": 42.9605,
       "entry_date": "2026-06-01",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 61,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 62,
+      "action_today": "HOLD"
     },
     "XLV": {
       "weight": 0.198887,
-      "shares": 1227,
-      "last_price": 170.54,
+      "shares": 1200,
+      "last_price": 171.67,
       "cost_basis": 159.54,
       "entry_date": "2026-07-01",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 43,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 44,
+      "action_today": "HOLD"
     },
     "XLK": {
       "weight": 0.150786,
-      "shares": 848,
-      "last_price": 186.5,
-      "cost_basis": 185.62,
+      "shares": 851,
+      "last_price": 183.64,
+      "cost_basis": 185.613,
       "entry_date": "2026-07-01",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 43,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 44,
+      "action_today": "HOLD"
     },
     "XLE": {
       "weight": 0.177927,
-      "shares": 3031,
-      "last_price": 63.96,
+      "shares": 2847,
+      "last_price": 64.77,
       "cost_basis": 58.79,
       "entry_date": "2026-08-03",
-      "last_rebalance_date": "2026-08-03",
-      "days_held": 21,
-      "action_today": "ENTER"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 22,
+      "action_today": "HOLD"
     }
   },
   "cash_weight": 0.0,
@@ -72,21 +72,20 @@
     "XLRE": 0.17065,
     "XLV": 0.198887,
     "XLK": 0.150786,
-    "XLE": 0.177927,
-    "XLP": 0.0
+    "XLE": 0.177927
   },
   "prev_composite_scores": {
-    "XLE": 0.9034,
-    "XLB": 0.8243,
-    "XLI": -0.5943,
-    "XLY": -0.3839,
-    "XLP": -0.2768,
-    "XLV": 1.7754,
-    "XLF": 0.3354,
-    "XLK": -0.4893,
-    "XLC": -1.97,
-    "XLU": -0.5791,
-    "XLRE": 0.4549
+    "XLE": 1.0189,
+    "XLB": 0.9967,
+    "XLI": -1.0436,
+    "XLY": -0.3983,
+    "XLP": -0.1434,
+    "XLV": 1.7005,
+    "XLF": 0.4293,
+    "XLK": -0.413,
+    "XLC": -1.713,
+    "XLU": -0.6781,
+    "XLRE": 0.2439
   },
   "rebalance_history": [
     {
@@ -236,9 +235,36 @@
         "XLU": -0.5791,
         "XLRE": 0.4549
       }
+    },
+    {
+      "date": "2026-09-01",
+      "reason": "monthly_rebalance",
+      "regime": "risk_on",
+      "weights": {
+        "XLB": 0.146978,
+        "XLI": 0.154771,
+        "XLRE": 0.17065,
+        "XLV": 0.198887,
+        "XLK": 0.150786,
+        "XLE": 0.177927
+      },
+      "cash_weight": 0.0,
+      "composite_scores": {
+        "XLE": 1.0189,
+        "XLB": 0.9967,
+        "XLI": -1.0436,
+        "XLY": -0.3983,
+        "XLP": -0.1434,
+        "XLV": 1.7005,
+        "XLF": 0.4293,
+        "XLK": -0.413,
+        "XLC": -1.713,
+        "XLU": -0.6781,
+        "XLRE": 0.2439
+      }
     }
   ],
   "emergency_mode_active": false,
   "vol_derisk_streak": 0,
-  "vol_derisk_streak_date": "2026-08-31"
+  "vol_derisk_streak_date": "2026-09-01"
 }

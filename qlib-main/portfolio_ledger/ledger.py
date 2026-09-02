@@ -283,7 +283,11 @@ class Account:
         cost_total = sum(p["shares"] * p["avg_cost"] for p in positions.values())
         cash = round(INITIAL_CASH - cost_total, 2)
         if cash < 0:
-            raise AssertionError(f"[{strategy}] opening cash < 0 ({cash}) — 快照成本超过 $1M")
+            # 2026-09-01(用户批准):开账现金为负不再拦——与 daily_update 对负现金的口径一致
+            # (AISS 9/1 月度买回后 cash −11,660 直接入账)。根因是满仓 sizing 用旧权益/旧成本,
+            # 首例 AEUS 9/1 开账 −1,991.54。留大声 WARNING 供人核对 sizing,不静默。
+            log.warning(f"[{strategy}] opening cash < 0 ({cash}) — 快照成本超过 $1M;允许开账"
+                        f"(负现金按透支记入 cash,与 daily_update 口径一致),请核对 sizing 缓冲")
         data = {"as_of": as_of, "base_currency": "USD", "initial_cash": INITIAL_CASH,
                 "cash": cash, "positions": positions,
                 "cumulative_realized": 0.0, "cumulative_dividends": 0.0,

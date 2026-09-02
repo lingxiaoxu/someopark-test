@@ -1,63 +1,59 @@
 {
-  "as_of": "2026-08-31",
-  "last_updated": "2026-08-31",
+  "as_of": "2026-09-01",
+  "last_updated": "2026-09-01",
   "capital": 1000000,
   "holdings": {
     "grid_equipment": {
-      "weight": 0.230059,
-      "shares": 250,
-      "last_price": 917.6439,
+      "weight": 0.230048,
+      "shares": 257,
+      "last_price": 894.3903,
       "cost_basis": 917.6439,
       "entry_date": "2026-08-31",
-      "last_rebalance_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "regulated_mega": {
-      "weight": 0.382801,
-      "shares": 854,
-      "last_price": 447.7608,
+      "weight": 0.38283,
+      "shares": 851,
+      "last_price": 449.7371,
       "cost_basis": 447.7608,
       "entry_date": "2026-08-31",
-      "last_rebalance_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "regional_utility": {
-      "weight": 0.38714,
-      "shares": 1444,
-      "last_price": 267.9274,
+      "weight": 0.387122,
+      "shares": 1439,
+      "last_price": 268.8682,
       "cost_basis": 267.9274,
       "entry_date": "2026-08-31",
-      "last_rebalance_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "last_rebalance_date": "2026-09-01",
+      "days_held": 2,
+      "action_today": "HOLD"
     }
   },
   "cash_weight": 0.0,
   "prev_weights": {
-    "nuclear_fuel": 0.0,
+    "grid_equipment": 0.230048,
+    "regulated_mega": 0.38283,
+    "regional_utility": 0.387122,
     "gas_midstream": 0.0,
-    "grid_equipment": 0.230059,
     "grid_epc": 0.0,
-    "ipp_wholesale": 0.0,
-    "regulated_mega": 0.382801,
-    "regional_utility": 0.38714,
-    "dc_power_cooling": 0.0,
-    "renewables_storage": 0.0,
-    "water_cooling": 0.0
+    "ipp_wholesale": 0.0
   },
   "prev_composite_scores": {
-    "nuclear_fuel": -0.7669,
-    "gas_midstream": -1.6769,
-    "grid_equipment": 1.2229,
-    "grid_epc": -0.9495,
-    "ipp_wholesale": 0.4667,
-    "regulated_mega": 1.3053,
-    "regional_utility": 0.8953,
-    "dc_power_cooling": -0.5672,
-    "renewables_storage": -0.2436,
-    "water_cooling": 0.3138
+    "nuclear_fuel": -1.1744,
+    "gas_midstream": -0.7699,
+    "grid_equipment": 1.6065,
+    "grid_epc": -1.4616,
+    "ipp_wholesale": -0.4118,
+    "regulated_mega": 0.6246,
+    "regional_utility": 1.2447,
+    "dc_power_cooling": -0.1438,
+    "renewables_storage": 0.0649,
+    "water_cooling": 0.4208
   },
   "rebalance_history": [
     {
@@ -89,12 +85,38 @@
         "renewables_storage": -0.2436,
         "water_cooling": 0.3138
       }
+    },
+    {
+      "date": "2026-09-01",
+      "reason": "monthly_rebalance",
+      "regime": "risk_on",
+      "weights": {
+        "grid_equipment": 0.230048,
+        "regulated_mega": 0.38283,
+        "regional_utility": 0.387122,
+        "gas_midstream": 0.0,
+        "grid_epc": 0.0,
+        "ipp_wholesale": 0.0
+      },
+      "cash_weight": 0.0,
+      "composite_scores": {
+        "nuclear_fuel": -1.1744,
+        "gas_midstream": -0.7699,
+        "grid_equipment": 1.6065,
+        "grid_epc": -1.4616,
+        "ipp_wholesale": -0.4118,
+        "regulated_mega": 0.6246,
+        "regional_utility": 1.2447,
+        "dc_power_cooling": -0.1438,
+        "renewables_storage": 0.0649,
+        "water_cooling": 0.4208
+      }
     }
   ],
   "emergency_mode_active": false,
   "vol_derisk_streak": 0,
-  "vol_derisk_streak_date": "2026-08-31",
-  "last_daily_update": "2026-08-31",
+  "vol_derisk_streak_date": "2026-09-01",
+  "last_daily_update": "2026-09-01",
   "param_set": "pure_supply_chain",
   "signal_version": "v1",
   "stock_holdings": {
@@ -102,157 +124,157 @@
       "subsectors": [
         "grid_equipment"
       ],
-      "portfolio_weight": 0.092024,
-      "shares": 228,
-      "last_price": 401.88,
-      "target_value": 92023.62,
+      "portfolio_weight": 0.092019,
+      "shares": 235,
+      "last_price": 390.71,
+      "target_value": 92019.23,
       "cost_basis": 401.88,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "EMR": {
       "subsectors": [
         "grid_equipment"
       ],
-      "portfolio_weight": 0.057515,
-      "shares": 377,
-      "last_price": 152.44,
-      "target_value": 57514.76,
+      "portfolio_weight": 0.057512,
+      "shares": 389,
+      "last_price": 147.63,
+      "target_value": 57512.02,
       "cost_basis": 152.44,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "GEV": {
       "subsectors": [
         "grid_equipment"
       ],
-      "portfolio_weight": 0.046012,
+      "portfolio_weight": 0.04601,
       "shares": 51,
       "last_price": 898.53,
-      "target_value": 46011.81,
+      "target_value": 46009.62,
       "cost_basis": 898.53,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "POWL": {
       "subsectors": [
         "grid_equipment"
       ],
-      "portfolio_weight": 0.034509,
-      "shares": 192,
-      "last_price": 179.73,
-      "target_value": 34508.86,
+      "portfolio_weight": 0.034507,
+      "shares": 200,
+      "last_price": 172.14,
+      "target_value": 34507.21,
       "cost_basis": 179.73,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "NEE": {
       "subsectors": [
         "regulated_mega"
       ],
-      "portfolio_weight": 0.13398,
-      "shares": 1627,
-      "last_price": 82.34,
-      "target_value": 133980.19,
+      "portfolio_weight": 0.133991,
+      "shares": 1615,
+      "last_price": 82.93,
+      "target_value": 133990.6,
       "cost_basis": 82.34,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "SO": {
       "subsectors": [
         "regulated_mega"
       ],
-      "portfolio_weight": 0.0957,
-      "shares": 1087,
-      "last_price": 88.0,
-      "target_value": 95700.14,
+      "portfolio_weight": 0.095708,
+      "shares": 1086,
+      "last_price": 88.09,
+      "target_value": 95707.57,
       "cost_basis": 88.0,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "DUK": {
       "subsectors": [
         "regulated_mega"
       ],
-      "portfolio_weight": 0.0957,
-      "shares": 798,
-      "last_price": 119.91,
-      "target_value": 95700.14,
+      "portfolio_weight": 0.095708,
+      "shares": 794,
+      "last_price": 120.39,
+      "target_value": 95707.57,
       "cost_basis": 119.91,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "AEP": {
       "subsectors": [
         "regulated_mega"
       ],
-      "portfolio_weight": 0.05742,
-      "shares": 469,
-      "last_price": 122.43,
-      "target_value": 57420.08,
+      "portfolio_weight": 0.057425,
+      "shares": 467,
+      "last_price": 122.96,
+      "target_value": 57424.54,
       "cost_basis": 122.43,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "AEE": {
       "subsectors": [
         "regional_utility"
       ],
-      "portfolio_weight": 0.135499,
-      "shares": 1287,
-      "last_price": 105.26,
-      "target_value": 135499.14,
+      "portfolio_weight": 0.135493,
+      "shares": 1286,
+      "last_price": 105.34,
+      "target_value": 135492.57,
       "cost_basis": 105.26,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "LNT": {
       "subsectors": [
         "regional_utility"
       ],
-      "portfolio_weight": 0.096785,
-      "shares": 1423,
-      "last_price": 67.98,
-      "target_value": 96785.1,
+      "portfolio_weight": 0.09678,
+      "shares": 1424,
+      "last_price": 67.92,
+      "target_value": 96780.41,
       "cost_basis": 67.98,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "OGE": {
       "subsectors": [
         "regional_utility"
       ],
-      "portfolio_weight": 0.077428,
-      "shares": 1696,
-      "last_price": 45.63,
-      "target_value": 77428.08,
+      "portfolio_weight": 0.077424,
+      "shares": 1683,
+      "last_price": 45.99,
+      "target_value": 77424.33,
       "cost_basis": 45.63,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "ATO": {
       "subsectors": [
         "regional_utility"
       ],
-      "portfolio_weight": 0.077428,
-      "shares": 466,
-      "last_price": 166.13,
-      "target_value": 77428.08,
+      "portfolio_weight": 0.077424,
+      "shares": 461,
+      "last_price": 167.7,
+      "target_value": 77424.33,
       "cost_basis": 166.13,
       "entry_date": "2026-08-31",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     }
   }
 }

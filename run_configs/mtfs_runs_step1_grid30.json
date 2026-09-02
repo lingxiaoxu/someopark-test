@@ -13,38 +13,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -53,19 +53,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -79,38 +79,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -119,19 +119,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -145,38 +145,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -185,19 +185,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -211,38 +211,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -251,19 +251,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -277,38 +277,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -317,19 +317,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -343,38 +343,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -383,19 +383,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -409,38 +409,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -449,19 +449,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -475,38 +475,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -515,19 +515,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -541,38 +541,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -581,19 +581,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -607,38 +607,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -647,19 +647,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -673,38 +673,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -713,19 +713,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -739,38 +739,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -779,19 +779,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -805,38 +805,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -845,19 +845,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -871,38 +871,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -911,19 +911,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -937,38 +937,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -977,19 +977,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1003,38 +1003,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1043,19 +1043,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1069,38 +1069,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1109,19 +1109,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1135,38 +1135,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1175,19 +1175,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1201,38 +1201,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1241,19 +1241,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1267,38 +1267,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1307,19 +1307,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1333,38 +1333,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1373,19 +1373,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1399,38 +1399,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1439,19 +1439,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1465,38 +1465,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1505,19 +1505,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1531,38 +1531,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1571,19 +1571,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1597,38 +1597,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1637,19 +1637,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1663,38 +1663,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1703,19 +1703,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1729,38 +1729,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1769,19 +1769,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1795,38 +1795,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1835,19 +1835,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1861,38 +1861,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1901,19 +1901,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1927,38 +1927,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -1967,19 +1967,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -1993,38 +1993,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2033,19 +2033,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2059,38 +2059,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2099,19 +2099,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2125,38 +2125,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2165,19 +2165,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2191,38 +2191,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2231,19 +2231,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2257,38 +2257,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2297,19 +2297,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2323,38 +2323,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2363,19 +2363,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2389,38 +2389,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2429,19 +2429,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     },
@@ -2455,38 +2455,38 @@
         ],
         [
           "MU",
-          "EIX"
-        ],
-        [
-          "CRM",
           "PNR"
         ],
         [
           "CRM",
-          "PCG"
-        ],
-        [
-          "VLO",
           "BLDR"
         ],
         [
+          "CRM",
+          "NCLH"
+        ],
+        [
           "VLO",
+          "EIX"
+        ],
+        [
+          "VLO",
+          "PCG"
+        ],
+        [
+          "PSX",
           "GNRC"
         ],
         [
-          "FTNT",
-          "NCLH"
+          "PSX",
+          "DECK"
         ],
         [
           "FTNT",
           "ENPH"
         ],
         [
-          "CTSH",
-          "DECK"
-        ],
-        [
-          "CTSH",
+          "FTNT",
           "TPR"
         ],
         [
@@ -2495,19 +2495,19 @@
         ],
         [
           "FDS",
+          "ALGN"
+        ],
+        [
+          "RVTY",
           "TXT"
         ],
         [
-          "PLTR",
+          "RVTY",
           "LOW"
         ],
         [
-          "PLTR",
-          "SRE"
-        ],
-        [
-          "PAYX",
-          "CCL"
+          "COP",
+          "MCD"
         ]
       ]
     }

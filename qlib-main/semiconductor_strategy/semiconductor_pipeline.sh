@@ -54,6 +54,16 @@ mkdir -p "$LOG_DIR"
 TS="$(date +%Y%m%d_%H%M%S)"
 
 CONDA_ENV="qlib_run"
+# ── 2026-09-01 hardening (mirrored from AEUS, same-night incident): openclaw exec may spawn a
+# NON-LOGIN shell with no conda on PATH (AEUS 19:10 daily-backtest died "conda: command not
+# found", then the unconditional restore copied an EMPTY mktemp over selected_param_set.json).
+# Resolve conda ourselves instead of trusting the caller's shell.
+if ! command -v conda >/dev/null 2>&1; then
+    for _c in /Users/xuling/miniforge3 "$HOME/miniforge3" "$HOME/miniconda3" /opt/homebrew/Caskroom/miniforge/base; do
+        if [ -f "$_c/etc/profile.d/conda.sh" ]; then . "$_c/etc/profile.d/conda.sh"; break; fi
+    done
+    command -v conda >/dev/null 2>&1 || { echo "FATAL: conda not found (PATH=$PATH)" >&2; exit 2; }
+fi
 PY() { conda run -n "$CONDA_ENV" --no-capture-output python "$@"; }
 
 # --- load .env (only the keys we need; avoids the & job-control noise) -------

@@ -25,3 +25,9 @@
 {"date": "2026-08-03", "ticker": "XLV", "side": "SELL", "shares": 289, "price": 162.24, "gross": 46887.36, "avg_cost_at_trade": 159.54, "realized_pnl": 780.3, "dedup_key": "2026-08-03-XLV-SELL"}
 {"date": "2026-08-03", "ticker": "XLE", "side": "BUY", "shares": 3031, "price": 58.79, "gross": -178192.49, "dedup_key": "2026-08-03-XLE-BUY"}
 {"date": "2026-08-03", "ticker": "", "side": "FEE", "gross": -138.51, "dedup_key": "2026-08-03-FEE"}
+{"date": "2026-09-01", "ticker": "XLE", "side": "SELL", "shares": 184, "price": 64.77, "gross": 11917.68, "avg_cost_at_trade": 58.79, "realized_pnl": 1100.32, "dedup_key": "2026-09-01-XLE-SELL"}
+{"date": "2026-09-01", "ticker": "XLV", "side": "SELL", "shares": 27, "price": 171.67, "gross": 4635.09, "avg_cost_at_trade": 159.54, "realized_pnl": 327.51, "dedup_key": "2026-09-01-XLV-SELL"}
+{"date": "2026-09-01", "ticker": "XLB", "side": "BUY", "shares": 41, "price": 52.07, "gross": -2134.87, "dedup_key": "2026-09-01-XLB-BUY"}
+{"date": "2026-09-01", "ticker": "XLI", "side": "BUY", "shares": 82, "price": 172.73, "gross": -14163.86, "dedup_key": "2026-09-01-XLI-BUY"}
+{"date": "2026-09-01", "ticker": "XLK", "side": "BUY", "shares": 3, "price": 183.64, "gross": -550.92, "dedup_key": "2026-09-01-XLK-BUY"}
+{"date": "2026-09-01", "ticker": "XLRE", "side": "BUY", "shares": 233, "price": 44.04, "gross": -10261.32, "dedup_key": "2026-09-01-XLRE-BUY"}

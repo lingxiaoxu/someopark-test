@@ -90,8 +90,17 @@ def pit_prior(conn, comp_key: str, as_of: str):
             _built_ok = False
     fresh_needed = (day >= today and day not in _PRIOR_DAYS_BUILT)
     if fresh_needed or not _built_ok:
-        build_all(conn, as_of=day, suffix=suffix)
-        meta_p.write_text(json.dumps({"db": _db, "day": day}), encoding="utf-8")
+        summary = build_all(conn, as_of=day, suffix=suffix) or {}
+        # A build made while ClubElo was unreachable carries no Elo anchor ("0 with Elo"
+        # on every European comp). For TODAY that is rebuilt per process anyway; for a
+        # PAST day the file would otherwise be fingerprinted as final and the degraded
+        # prior served forever. Leave the fingerprint unwritten so the next call rebuilds.
+        _euro = [v for k, v in summary.items() if k in ("epl", "laliga", "seriea", "bundesliga", "ligue1")]
+        degraded = bool(_euro) and all("0 with Elo" in str(v) for v in _euro)
+        if not degraded:
+            meta_p.write_text(json.dumps({"db": _db, "day": day}), encoding="utf-8")
+        else:
+            print(f"[pit_prior] {day}: built without Elo (ClubElo outage) — not fingerprinted, will rebuild")
         _PRIOR_DAYS_BUILT.add(day)
     return load_prior(comp_key, suffix=suffix)
 

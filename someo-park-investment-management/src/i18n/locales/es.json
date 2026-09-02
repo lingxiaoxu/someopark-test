@@ -1933,7 +1933,7 @@
     "rolloffTitle": "Medido el día de retirada: patrimonio de la cuenta QC {{qc}} + K = total en base oficial del panel {{panel}}.\nCon ambas cohortes vacías, QC mantiene exactamente el número de acciones de la base oficial en cada valor, por lo que la diferencia de NAV es solo efectivo y deja de moverse con el mercado.\nCualquier desviación residual posterior proviene únicamente de diferencias de precio de ejecución (QC ejecuta a mercado, el libro contabiliza el precio de apertura de DailySignal)."
   },
   "vp": {
-    "title": "VP Consejo de liquidez — {{strategy}}",
+    "title": "Predicción de volumen · Consejo de liquidez — {{strategy}}",
     "freshThrough": "Datos al día hasta",
     "staleDays": "{{n}}d de retraso",
     "production": "Modelo en producción",
@@ -1954,7 +1954,7 @@
     "noCandidates": "Sin candidatos de entrada hoy",
     "excluded": "excluido",
     "notSelected": "no seleccionado",
-    "aum": "AUM",
+    "aum": "AUM · base cartera de estrategia",
     "liqTrend": "Tendencia de liquidez vs MA5",
     "etfImpact": "Coste de impacto ETF",
     "shares": "acc.",
@@ -1974,6 +1974,22 @@
     "abWinner": "Mejor",
     "abTieTitle": "Columnas idénticas: tras la cobertura completa RNN, blend3 y production comparten la misma ruta de servicio en los títulos en cartera — el empate es la norma",
     "abHeld": "N en cartera",
-    "abNote": "Desfasado: pronóstico del día de pred. vs volumen real del día real; verde = MAPE más bajo; = significa pronósticos idénticos de ambas rutas (la norma tras la cobertura completa RNN); blend3 = enrutamiento RNN→lgbm→ma5"
+    "abNote": "Desfasado: pronóstico del día de pred. vs volumen real del día real; verde = MAPE más bajo; = significa pronósticos idénticos de ambas rutas (la norma tras la cobertura completa RNN); blend3 = enrutamiento RNN→lgbm→ma5",
+    "aumAsOf": "EOD {{date}}",
+    "aumTitle": "Misma fuente que el panel NAV en tiempo real: ancla oficial de patrimonio EOD (strategy_performance / master_portfolio_performance). La base contable de account_*.json difiere en la constante congelada del go-live y no se muestra aquí",
+    "capitulationTitle": "Señal = z-score 60 d de η > 2,5 y retorno 5 d > −1 % (precio estabilizado). Alcance: estrategias de acción única = posiciones; pares = ambas patas de posiciones vivas; SSRS = ETF en cartera",
+    "capNA": "Sin datos de capitulación para esta estrategia",
+    "noAdvice": "Sin consejo generado para esta fecha",
+    "corpActions": "Eventos corporativos (gestionados automáticamente por el adaptador)",
+    "caDelisted": "excluido {{date}}",
+    "caRenamed": "renombrado → {{current}}",
+    "caSlots": "huecos afectados",
+    "caEmptySlot": "hueco vacío",
+    "caHandledStale": "ADV de la pata bloqueado como obsoleto — excluido del sizing",
+    "caHandledForward": "obtención de datos redirigida al nombre actual",
+    "caSuccessor": "mismo CIK sigue cotizando — posible cambio de nombre, verificar",
+    "otherWarnings": "Otras alertas",
+    "etfHoldings": "Liquidez y coste de impacto de ETF en cartera ({{n}})",
+    "eventsWindow": "Próximos eventos · 5 días de bolsa"
   }
 }

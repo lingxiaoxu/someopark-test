@@ -59,6 +59,7 @@ def dry_run_report(svc: VolumeService, date: Optional[str]) -> dict:
         for f in (f"pairs_mrpt_advice_{target}.json",
                   f"pairs_mtfs_advice_{target}.json",
                   f"aiss_advice_{target}.json",
+                  f"aeus_advice_{target}.json",
                   f"ssrs_advice_{target}.json")]
     return {"mode": "dry_run", "target_date": target,
             "raw_cached": raw_exists,
@@ -127,15 +128,19 @@ def run(date: Optional[str] = None, fetch: bool = True,
         log.error(f"alias discovery failed (non-fatal): {e}")
         aliases = {"status": "error", "error": str(e)}
 
-    # 3) 三类 adapter 建议文件(pairs 两策略共 4 份;单个失败不阻断)
+    # 3) 五策略 adapter 建议文件(pairs×2 / aiss / aeus / ssrs;单个失败不阻断)
+    #    aeus_adapter 2026-09-01 接线:此前文件已就位但从未进任务清单,
+    #    面板 AEUS 页因此常年空白(建议日期 —、AUM $0)。
     adapters: dict[str, dict] = {}
     if not skip_adapters:
-        from VolumePrediction.strategy_adapters import (aiss_adapter,
+        from VolumePrediction.strategy_adapters import (aeus_adapter,
+                                                        aiss_adapter,
                                                         pairs_adapter,
                                                         ssrs_adapter)
         jobs = [("pairs_mrpt", lambda: pairs_adapter.run("mrpt", date=asof, service=svc)),
                 ("pairs_mtfs", lambda: pairs_adapter.run("mtfs", date=asof, service=svc)),
                 ("aiss", lambda: aiss_adapter.run(date=asof, service=svc)),
+                ("aeus", lambda: aeus_adapter.run(date=asof, service=svc)),
                 ("ssrs", lambda: ssrs_adapter.run(date=asof, service=svc))]
         for name, job in jobs:
             try:

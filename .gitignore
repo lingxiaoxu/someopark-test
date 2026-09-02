@@ -245,3 +245,4 @@ crypto_trading/tests/test_cross_venue.py
 crypto_trading/tests/test_fee_defeat_research.py
 crypto_trading/tests/test_rotation_research.py
 crypto_trading/tests/test_ml_directional.py
+prediction_market_soccer/data/priors/.clubelo_unavailable_*

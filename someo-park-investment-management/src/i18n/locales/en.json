@@ -1937,7 +1937,7 @@
     "rolloffTitle": "Measured on roll-off day: QC account equity {{qc}} + K = panel official-basis total {{panel}}.\nWith both cohorts empty QC holds exactly the official-basis share count in every name, so the NAV difference is pure cash and no longer drifts with the market.\nAny residual drift after this comes only from execution price differences (QC fills at market, the ledger books DailySignal's open price)."
   },
   "vp": {
-    "title": "VP Liquidity Advice — {{strategy}}",
+    "title": "Volume Prediction · Liquidity Advice — {{strategy}}",
     "freshThrough": "Fresh through",
     "staleDays": "{{n}}d stale",
     "production": "Production model",
@@ -1958,7 +1958,7 @@
     "noCandidates": "No entry candidates today",
     "excluded": "excluded",
     "notSelected": "not selected",
-    "aum": "AUM",
+    "aum": "AUM · strategy-portfolio basis",
     "liqTrend": "Liquidity trend vs MA5",
     "etfImpact": "ETF impact cost",
     "shares": "sh",
@@ -1978,6 +1978,22 @@
     "abWinner": "Better",
     "abTieTitle": "Identical columns: after RNN full coverage, blend3 and production share the same serving path on held names — ties are the norm",
     "abHeld": "N held",
-    "abNote": "Lagged: forecast on pred date vs realized volume on actual date; green = lower MAPE; = means both routes produced identical held-name forecasts (the norm after RNN full coverage); blend3 = RNN→lgbm→ma5 routing"
+    "abNote": "Lagged: forecast on pred date vs realized volume on actual date; green = lower MAPE; = means both routes produced identical held-name forecasts (the norm after RNN full coverage); blend3 = RNN→lgbm→ma5 routing",
+    "aumAsOf": "EOD {{date}}",
+    "aumTitle": "Same source as the Realtime NAV panel: official EOD equity anchor (strategy_performance / master_portfolio_performance). The ledger-basis equity in account_*.json differs by the go-live frozen constant and is not shown here",
+    "capitulationTitle": "Flag = 60d z-score of η > 2.5 and 5-day return > −1% (price stabilised). Scope: single-stock strategies = held names; pairs = both legs of live positions; SSRS = held ETFs",
+    "capNA": "No capitulation data for this strategy",
+    "noAdvice": "No advice output for this date",
+    "corpActions": "Corporate actions (auto-handled by the adapter)",
+    "caDelisted": "delisted {{date}}",
+    "caRenamed": "renamed → {{current}}",
+    "caSlots": "affected slots",
+    "caEmptySlot": "empty slot",
+    "caHandledStale": "leg ADV blocked as stale — excluded from sizing",
+    "caHandledForward": "data fetch auto-forwarded to the current name",
+    "caSuccessor": "same CIK still trading — possible rename, verify",
+    "otherWarnings": "Other warnings",
+    "etfHoldings": "Held ETF liquidity & impact cost ({{n}})",
+    "eventsWindow": "Upcoming events · next 5 trading days"
   }
 }
