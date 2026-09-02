@@ -146,14 +146,26 @@ def read_snapshot(files: dict[str, Path] | None = None) -> dict[str, dict]:
     files = files or SOURCE_FILES
     snap = {}
     for st, p in files.items():
+        if st == "aeus" and not _onboarded("aeus"):
+            # 挂载(onboard_aeus 写 scalar)之前一律缺席 —— 只看"账本文件存在"
+            # 不够:2026-09-01 20:44 account_aeus.json 落盘、scalar 未写,重建
+            # target 立刻把 12 只电力票按 ×1.0 混进来(② 假 breach;exporter 若推
+            # 出去 QC 就按未缩放、未批准的规模建仓)。scalar 是"QC 在镜像它"的
+            # 唯一凭证,与 rolloff.official_eod 的 P 挂载闸同判据。
+            continue
         if not p.exists():
-            if st == "aeus":
-                # go-live 前的预期缺席:跳过本策略,QC 目标里 aeus 贡献为空。
-                # 建仓落盘 account_aeus.json 后自动开始镜像(scalar 见 go-live 流程)。
-                continue
             raise SourceError(f"source file missing: {p}")
         snap[st] = stable_read(p)
     return snap
+
+
+def _onboarded(st: str) -> bool:
+    """exporter scalars 里有该策略 = 已挂载 QC(onboard 脚本写入)。"""
+    try:
+        doc = json.loads((_THIS_DIR / "state" / "exporter_state.json").read_text())
+    except (OSError, ValueError):
+        return False
+    return st in (doc.get("scalars") or {})
 
 
 def build_target(snap: dict[str, dict],
