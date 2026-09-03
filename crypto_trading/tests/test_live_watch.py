@@ -444,40 +444,35 @@ def test_w7_survives_state_from_a_previous_freeze(sandbox, monkeypatch):
         assert k in rep["probe"]
 
 
-def test_walk_book_sides_are_read_only_and_price_correctly(monkeypatch):
+def test_walk_ladder_sides_are_read_only_and_price_correctly(monkeypatch):
     """Single book: buying a side consumes the OTHER side's resting bids at
     1-p, best (highest) first. Reading your OWN side's ladder prices you
     against your competition, not your counterparty (the v2 bug, 2026-08-27).
-    v3 locks the mapping for BOTH sides."""
+    Locked for BOTH sides, on the functions the probe actually runs."""
     import inspect
 
     from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
     assert w7.LADDER_FOR_SIDE == {"no": "yes_dollars", "yes": "no_dollars"}
-    src = inspect.getsource(w7.walk_book)
+    src = inspect.getsource(w7.fetch_orderbook)
     assert "requests.get" in src and ".post(" not in src        # read-only
 
-    class R:
-        status_code = 200
-        @staticmethod
-        def json():
-            # yes bids: 0.30 x10 (NO @0.70), 0.28 x20 (NO @0.72), 0.20 x999
-            # no bids: 0.24 x10 (YES @0.76), 0.22 x20 (YES @0.78)
-            return {"orderbook_fp": {"yes_dollars": [["0.20", "999"],
-                                                     ["0.28", "20"],
-                                                     ["0.30", "10"]],
-                                     "no_dollars": [["0.22", "20"],
-                                                    ["0.24", "10"]]}}
-    monkeypatch.setattr("requests.get", lambda *a, **k: R())
-    d = w7.walk_book("KXBTC15M-X", 25, "no")
+    # yes bids: 0.30 x10 (NO @0.70), 0.28 x20 (NO @0.72), 0.20 x999
+    # no bids: 0.24 x10 (YES @0.76), 0.22 x20 (YES @0.78)
+    ob = {"yes_dollars": [["0.20", "999"], ["0.28", "20"], ["0.30", "10"]],
+          "no_dollars": [["0.22", "20"], ["0.24", "10"]]}
+    d = w7.walk_ladder(ob, "no", 25)
     assert d["top_cost"] == 0.70                       # 1 - best yes bid 0.30
     # 10 @0.70 + 15 @0.72 = 17.8 / 25 = 0.712
     assert d["fill_cost"] == 0.712
     assert d["filled"] == 25 and d["shortfall"] == 0
     assert d["slippage_c"] == 1.2                      # 1.2c worse than touch
-    y = w7.walk_book("KXBTC15M-X", 25, "yes")
+    y = w7.walk_ladder(ob, "yes", 25)
     assert y["top_cost"] == 0.76                       # 1 - best NO bid 0.24
     # 10 @0.76 + 15 @0.78 = 19.3 / 25 = 0.772
     assert y["fill_cost"] == 0.772
+    # a thin book reports the shortfall instead of pretending to fill
+    thin = w7.walk_ladder({"yes_dollars": [["0.30", "4"]]}, "no", 25)
+    assert thin["filled"] == 4 and thin["shortfall"] == 21
 
 
 def test_w7_maker_fill_proxy_semantics():
@@ -517,78 +512,6 @@ def test_w7_evidence_kill_semantics():
     # sticky
     st4 = {"killed": True, "windows_primary": W([+50] * 40)}
     assert w7.evidence_kill(st4) is True
-
-
-def test_w7_drift_gate_and_both_side_entry(sandbox, monkeypatch):
-    """v3: the frozen LEG must hold at the ACTUAL fill price, not just on the
-    (up to 90s stale) snapshot — v2 recorded 69/972 out-of-leg trades at
-    -15.8c avg that were never the registered strategy. And the probe now
-    enters WHICHEVER side is the favorite."""
-    import pandas as pd
-
-    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
-
-    now = pd.Timestamp.now(tz="UTC")
-    close = (now + pd.Timedelta(minutes=8)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    snap = {"recv_ts": now.timestamp(),
-            "markets": [{"ticker": "KXBTC15M-NOFAV", "close_time": close,
-                         "yes_bid_dollars": "0.25", "yes_ask_dollars": "0.27"}]}
-    monkeypatch.setattr(w7, "latest_snapshot",
-                        lambda s: snap if s == "KXBTC15M" else None)
-    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
-                                       "cum_net_usd": 0.0})
-    cfg = {"w7_noisefade": {"enabled": False, "contracts": 25}}
-
-    # book drifted: NO now fills at 0.30 (out of leg) -> no entry, drift_skip
-    monkeypatch.setattr(w7, "walk_book",
-                        lambda t, c, side: {"top_cost": 0.30, "fill_cost": 0.30,
-                                            "filled": 25, "shortfall": 0,
-                                            "slippage_c": 0.0})
-    rep = w7.run(cfg)
-    assert rep["entries"] == [] and rep["open_virtual"] == 0
-    assert rep["probe"]["entered"] == 0 and rep["probe"]["drift_skips"] == 1
-    st = common.load_state("w7_noisefade")
-    assert "KXBTC15M-NOFAV" in st["seen_tickers"]     # one look per window
-
-    # in-leg book price -> NO-favorite enters at the book VWAP, with the
-    # maker level posted one cent inside the touch (yes_bid 0.25 -> 0.26)
-    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
-                                       "cum_net_usd": 0.0})
-    monkeypatch.setattr(w7, "walk_book",
-                        lambda t, c, side: {"top_cost": 0.74, "fill_cost": 0.7460,
-                                            "filled": 25, "shortfall": 0,
-                                            "slippage_c": 0.6})
-    rep = w7.run(cfg)
-    assert rep["probe"]["entered"] == 1
-    assert rep["entries"][0]["side"] == "no"
-    assert rep["entries"][0]["cost"] == 0.746
-    st = common.load_state("w7_noisefade")
-    pos = st["positions"]["KXBTC15M-NOFAV"]
-    # maker posts inside the BOOK touch (top_cost 0.74 -> yes_bid 0.26 ->
-    # post 0.27), NOT the stale snapshot touch (yb 0.25 -> 0.26): the
-    # 2026-09-01 live catch — snapshot-posted levels sat 16-21c off-market.
-    assert pos["maker_posted"] == 0.27
-
-    # YES-favorite window (yes_mid 0.74) -> buys YES; obs leg when the fill
-    # lands in [0.50, 0.60): recorded as leg="obs", not counted as "entered"
-    snap2 = {"recv_ts": now.timestamp(),
-             "markets": [{"ticker": "KXBTC15M-YESFAV", "close_time": close,
-                          "yes_bid_dollars": "0.72", "yes_ask_dollars": "0.76"}],
-             }
-    monkeypatch.setattr(w7, "latest_snapshot",
-                        lambda s: snap2 if s == "KXBTC15M" else None)
-    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
-                                       "cum_net_usd": 0.0})
-    monkeypatch.setattr(w7, "walk_book",
-                        lambda t, c, side: {"top_cost": 0.76, "fill_cost": 0.762,
-                                            "filled": 25, "shortfall": 0,
-                                            "slippage_c": 0.2})
-    rep = w7.run(cfg)
-    assert rep["entries"][0]["side"] == "yes"
-    assert rep["entries"][0]["cost"] == 0.762
-    st = common.load_state("w7_noisefade")
-    # book yes_ask (top_cost) 0.76 -> post 0.75
-    assert st["positions"]["KXBTC15M-YESFAV"]["maker_posted"] == 0.75
 
 
 def test_w7_v3_settlement_books_split(sandbox, monkeypatch):
@@ -709,3 +632,233 @@ def test_demo_market_list_empty_is_an_answer_not_an_outage(monkeypatch):
     ee._MKT_CACHE.clear()
     monkeypatch.setattr("requests.get", lambda *a, **k: R(429, []))
     assert ee._demo_markets_cached(("KXBTC15M",)) is None       # real outage
+
+
+def test_w7_pooled_stats_is_the_money_and_clusters_on_windows():
+    """The verdict runs on P&L PER CONTRACT with a window-cluster-robust SE.
+    Equal-weighting windows is a different estimand and reads several times
+    better here, because window size is informative: a five-coin window is one
+    big macro move and those lose (live 2026-09-02: equal-weight +2.24c vs
+    pooled +0.48c). Getting this backwards could promote a losing rule."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    # two tiny winning windows, one big losing window: pooled must be negative
+    # (the money), equal-weight positive (the average window)
+    W = {"a": {"n": 1, "wins": 1, "sum_c": 10.0},
+         "b": {"n": 1, "wins": 1, "sum_c": 10.0},
+         "c": {"n": 10, "wins": 0, "sum_c": -100.0}}
+    n_tr, n_w, mu, t = w7.pooled_stats(W)
+    assert (n_tr, n_w) == (12, 3)
+    assert mu == pytest.approx((10 + 10 - 100) / 12)      # = -6.67c per contract
+    _, mu_eq, _ = w7.window_stats(W)
+    assert mu_eq == pytest.approx((10 + 10 - 10) / 3)     # = +3.33c per window
+    assert mu < 0 < mu_eq                                 # opposite signs
+
+    # Zero between-window variance yields t = 0, NOT infinity: a variance-free
+    # book is pathological (a constant, or a bug) and a gate that promotes
+    # toward real money must refuse to call that significance. Same convention
+    # as window_stats. Degenerate inputs are 0.0, never NaN.
+    same = {str(i): {"n": 2, "wins": 2, "sum_c": 8.0} for i in range(40)}
+    assert w7.pooled_stats(same)[2] == pytest.approx(4.0)   # mean still right
+    assert w7.pooled_stats(same)[3] == 0.0
+    assert w7.pooled_stats({})[3] == 0.0
+    assert w7.pooled_stats({"x": {"n": 3, "wins": 1, "sum_c": 1.0}})[3] == 0.0
+
+
+def test_w7_kill_boundary_is_valid_under_continuous_monitoring():
+    """The kill is re-tested every cycle (~1,440x/day), so a fixed |t|>=2 bar
+    is not a 2.3% rule — it measured 6.2% under the null. The mixture boundary
+    must be strictly wider than 2, tightest near the pre-registered n, and
+    monotonically looser for small samples."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    b30, b300, b1000 = (w7.always_valid_bound(n) for n in (30, 300, 1000))
+    assert b30 > b300 and b300 > 3.0 and b1000 > 2.5     # always stricter than 2
+    assert b30 > b300 > 2.0
+    assert w7.always_valid_bound(1) == float("inf")      # cannot kill on n<2
+
+    # With realistic window-to-window dispersion, a book that clears the OLD
+    # fixed -2 bar must NOT kill any more — that bar is what measured 6.2%
+    # false stops under continuous monitoring.
+    spread = (-1.5, -0.5, 0.5, 1.5)                      # mean 0, sd ~1.12
+    mild = {str(i): {"n": 1, "wins": 0, "sum_c": -9.5 + 20 * spread[i % 4]}
+            for i in range(40)}
+    _, _, _, t = w7.pooled_stats(mild)
+    assert -w7.always_valid_bound(40) < t < -2.0         # past the old bar only
+    assert w7.evidence_kill({"windows_primary": mild}) is False
+    # ...while a book that clears the mixture boundary still kills
+    hard = {str(i): {"n": 1, "wins": 0, "sum_c": -20.0 + 15 * spread[i % 4]}
+            for i in range(40)}
+    _, _, _, t2 = w7.pooled_stats(hard)
+    assert t2 <= -w7.always_valid_bound(40)
+    st2 = {"windows_primary": hard}
+    assert w7.evidence_kill(st2) is True and "refutes" in st2["killed_reason"]
+
+
+def test_w7_verdict_latches_once_at_the_registered_size(sandbox, monkeypatch):
+    """A fixed-n gate read every 60s is optional stopping. The verdict must not
+    exist before 300 primary windows, must be computed once, and must never
+    re-open afterwards even if later data would flip it."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    win = {str(i): {"n": 1, "wins": 1, "sum_c": 6.0 + (i % 7)} for i in range(299)}
+    st = {"windows_primary": dict(win)}
+    assert w7.latch_verdict(st) is None and "verdict" not in st   # 299 < 300
+    st["windows_primary"]["299"] = {"n": 1, "wins": 1, "sum_c": 9.0}
+    v = w7.latch_verdict(st)
+    assert v["passed"] is True and v["decided_at_windows"] == 300
+    assert v["pooled_mean_c"] > 0 and v["pooled_t_clustered"] >= 2.5
+    # later data cannot re-open the decision
+    for i in range(300, 400):
+        st["windows_primary"][str(i)] = {"n": 5, "wins": 0, "sum_c": -400.0}
+    again = w7.latch_verdict(st)
+    assert again == v and again["decided_at_windows"] == 300
+
+
+def test_save_state_is_atomic(sandbox):
+    """The paper book is the money truth but had weaker durability than the
+    tape: a torn 380KB write leaves invalid JSON and every later cycle dies on
+    load. Readers must see the old book or the new one, never half of one."""
+    import json as _json
+
+    common.save_state("w7_noisefade", {"trades": [1, 2, 3]})
+    p = common.state_path("w7_noisefade")
+    before = p.read_text()
+
+    class Boom(Exception):
+        pass
+
+    real = common.json.dumps
+    common.json.dumps = lambda *a, **k: (_ for _ in ()).throw(Boom("disk full"))
+    try:
+        with pytest.raises(Boom):
+            common.save_state("w7_noisefade", {"trades": [4, 5, 6]})
+    finally:
+        common.json.dumps = real
+    # the live book is untouched, and no half-written twin is left beside it
+    assert p.read_text() == before
+    assert _json.loads(p.read_text())["trades"] == [1, 2, 3]
+    assert not p.with_suffix(".json.tmp").exists()
+    # and a normal save still replaces it wholesale
+    common.save_state("w7_noisefade", {"trades": [7]})
+    assert _json.loads(p.read_text())["trades"] == [7]
+
+
+def test_w7_entry_is_priced_and_timed_off_live_data_not_the_tape(sandbox, monkeypatch):
+    """v3.1: the tape only says a window EXISTS; the probe's own clock decides
+    WHEN (the 90s tape cadence divides the 900s window exactly, so its phase
+    was locked and silently chose how good the strategy looked — +2.28c at rem
+    7.5-8.0 vs +0.64c at 8.5-9.0), and one live orderbook call decides side,
+    price and leg. A stale tape must therefore still produce entries."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now + pd.Timedelta(minutes=8.0)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def snap(age_s, price_hint="0.99"):
+        # the snapshot's own quotes are deliberately absurd: if any of them
+        # reached the decision, the asserted cost below would not match
+        return {"recv_ts": now.timestamp() - age_s,
+                "markets": [{"ticker": "KXBTC15M-LIVE", "close_time": close,
+                             "yes_bid_dollars": price_hint,
+                             "yes_ask_dollars": price_hint}]}
+
+    # a self-consistent thin book: yes 0.10/0.12, so NO is the favorite at
+    # 1-0.10 = 0.90 (inside the primary cell) and YES is the longshot at 0.12
+    book = {"yes_bid": 0.10, "yes_ask": 0.12,
+            "no": {"top_cost": 0.90, "fill_cost": 0.902, "filled": 25,
+                   "shortfall": 0, "slippage_c": 0.2, "levels": 3, "top_size": 40},
+            "yes": {"top_cost": 0.12, "fill_cost": 0.122, "filled": 25,
+                    "shortfall": 0, "slippage_c": 0.2, "levels": 3, "top_size": 40}}
+    monkeypatch.setattr(w7, "walk_book_both", lambda t, c: book)
+    cfg = {"w7_noisefade": {"enabled": False, "contracts": 25}}
+
+    def run_with(snapshot):
+        monkeypatch.setattr(w7, "latest_snapshot",
+                            lambda s: snapshot if s == "KXBTC15M" else None)
+        common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                           "cum_net_usd": 0.0})
+        return w7.run(cfg)
+
+    # a 5-minute-old tape is fine for DISCOVERY, and the entry is priced from
+    # the book (0.882), never from the snapshot's 0.99
+    rep = run_with(snap(300))
+    assert len(rep["entries"]) == 1
+    e = rep["entries"][0]
+    assert e["side"] == "no" and e["cost"] == 0.902 and e["leg"] == "band"
+    assert 7.4 <= e["rem_min"] <= 8.6            # centred on the registered 8.0
+    # only a genuinely dead recorder stops entries
+    assert run_with(snap(600))["markets"]["KXBTC15M"].startswith("STALE")
+
+
+def test_w7_side_and_leg_come_from_the_book(sandbox, monkeypatch):
+    """Both sides are read from ONE orderbook payload, so the favorite, the
+    price and the leg are decided together on live prices — there is no stale
+    guess left to re-validate, which is what the old drift gate did by
+    discarding 19% of windows on a post-signal price move."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now + pd.Timedelta(minutes=8.0)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    snap = {"recv_ts": now.timestamp(),
+            "markets": [{"ticker": "KXETH15M-BOOK", "close_time": close,
+                         "yes_bid_dollars": "0.50", "yes_ask_dollars": "0.51"}]}
+    monkeypatch.setattr(w7, "latest_snapshot",
+                        lambda s: snap if s == "KXETH15M" else None)
+    cfg = {"w7_noisefade": {"enabled": False, "contracts": 25}}
+
+    def run_book(yes_bid, yes_ask, no_fill, yes_fill):
+        book = {"yes_bid": yes_bid, "yes_ask": yes_ask,
+                "no": {"top_cost": 1 - yes_bid, "fill_cost": no_fill,
+                       "filled": 25, "shortfall": 0, "slippage_c": 0.0},
+                "yes": {"top_cost": yes_ask, "fill_cost": yes_fill,
+                        "filled": 25, "shortfall": 0, "slippage_c": 0.0}}
+        monkeypatch.setattr(w7, "walk_book_both", lambda t, c: book)
+        common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                           "cum_net_usd": 0.0})
+        return w7.run(cfg)
+
+    # YES is the favorite (mid 0.72) -> buy YES at its fill price, band leg
+    rep = run_book(0.71, 0.73, 0.30, 0.735)
+    assert rep["entries"][0]["side"] == "yes"
+    assert rep["entries"][0]["cost"] == 0.735 and rep["entries"][0]["leg"] == "band"
+    # NO is the favorite but only just: cost 0.55 lands in the OBSERVATION leg
+    rep = run_book(0.44, 0.46, 0.55, 0.46)
+    assert rep["entries"][0]["side"] == "no" and rep["entries"][0]["leg"] == "obs"
+    assert rep["probe"]["entered"] == 0 and rep["probe"]["obs_entered"] == 1
+    # a dead-even book has no favorite, and a price outside [0.50,0.98] is not
+    # the rule's universe at all
+    assert run_book(0.49, 0.51, 0.50, 0.51)["entries"] == []
+    rep = run_book(0.71, 0.73, 0.30, 0.995)
+    assert rep["entries"] == [] and rep["probe"]["looked"] == 1
+    # an unavailable book is counted, never silently skipped
+    monkeypatch.setattr(w7, "walk_book_both", lambda t, c: None)
+    common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                       "cum_net_usd": 0.0})
+    assert w7.run(cfg)["probe"]["book_unavailable"] == 1
+
+
+def test_walk_book_both_reads_one_payload_for_two_sides(monkeypatch):
+    """One fetch, both ladders: buying NO consumes resting YES bids at 1-p,
+    buying YES consumes resting NO bids at 1-p, and the implied touch on each
+    side must come back consistent."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    monkeypatch.setattr(w7, "fetch_orderbook", lambda t: {
+        "yes_dollars": [["0.20", "999"], ["0.28", "20"], ["0.30", "10"]],
+        "no_dollars": [["0.22", "20"], ["0.24", "10"]]})
+    d = w7.walk_book_both("KXBTC15M-X", 25)
+    assert d["yes_bid"] == 0.30                    # best resting yes bid
+    assert d["yes_ask"] == 0.76                    # 1 - best no bid 0.24
+    assert d["no"]["fill_cost"] == 0.712           # 10@0.70 + 15@0.72
+    assert d["yes"]["fill_cost"] == 0.772          # 10@0.76 + 15@0.78
+    # an empty side makes the whole quote unusable rather than half-known
+    monkeypatch.setattr(w7, "fetch_orderbook",
+                        lambda t: {"yes_dollars": [["0.30", "10"]], "no_dollars": []})
+    assert w7.walk_book_both("KXBTC15M-X", 25) is None
+    monkeypatch.setattr(w7, "fetch_orderbook", lambda t: None)
+    assert w7.walk_book_both("KXBTC15M-X", 25) is None

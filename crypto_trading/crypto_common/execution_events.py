@@ -106,6 +106,16 @@ def choose_demo_market(markets: list[dict], close_time: str, side: str,
     return tkr, ask_c, ct
 
 
+class _Stale(list):
+    """A market list served from an expired cache after a failed refetch.
+    Still a list (callers can use it), but carries the age so the mirror log
+    can say "we could not ask" instead of "the venue had nothing"."""
+
+    def __init__(self, markets, age_s):
+        super().__init__(markets)
+        self.age_s = age_s
+
+
 _MKT_CACHE: dict = {}
 _MKT_CACHE_TTL = 300.0
 _MKT_CACHE_TTL_15M = 90.0      # 15M windows are born every 15 min — one tape cycle
@@ -167,9 +177,14 @@ def _demo_markets_cached(series_tuple: tuple = ("KXBTC",)) -> list[dict] | None:
             return quoted
     except requests.RequestException:
         pass
-    # stale cache (≤30min) beats nothing for a link rehearsal
+    # A stale cache is fine for a link rehearsal, but it must not LAUNDER a
+    # failure into "demo quotes nothing here": the mirror ledger's only job is
+    # to answer, before prod arming, whether the venue had our window or we
+    # failed to ask. 15M dispatches are 900s apart so the 90s TTL is always
+    # expired — this branch is the normal path, not a corner case. Signal the
+    # staleness to the caller instead of hiding it (2026-09-02 audit).
     if slot["markets"] is not None and now - slot["ts"] < 1800:
-        return slot["markets"]
+        return _Stale(slot["markets"], round(now - slot["ts"]))
     return None
 
 
@@ -211,6 +226,10 @@ class EventExecutionRouter:
             pick = choose_demo_market(mkts, close_time, side, entry_price,
                                       now_iso=now_iso, exact_only=strict)
             if pick is None:
+                stale = getattr(mkts, "age_s", None)
+                if stale is not None:
+                    return {"status": "skipped_market_list_unavailable",
+                            "close": close_time, "stale_list_age_s": stale}
                 return {"status": "no_demo_market", "close": close_time}
             tkr, ask_c, mapped_close = pick
             r = KalshiEventOrderClient(env="demo").create_order(

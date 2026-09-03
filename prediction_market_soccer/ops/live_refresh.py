@@ -516,6 +516,17 @@ def refresh_once(conn=None) -> dict:
     from prediction_market_soccer.ingest import store
 
     conn = conn or store.init_db()
+    # Order-book probe FIRST — before the match-window check, because its far-out buckets
+    # (T-48h, T-24h) fall on days with no matches at all. Most cycles nothing is due and it
+    # returns immediately; see ops/venue_liquidity for why this is measured rather than
+    # sampled ad hoc.
+    try:
+        from prediction_market_soccer.ops import venue_liquidity
+        _vl = venue_liquidity.probe(conn)
+        if _vl.get("rows"):
+            print(f"[live_refresh] book probe: {_vl['rows']} rows — {', '.join(_vl.get('buckets') or [])}")
+    except Exception as e:
+        print(f"[live_refresh] book probe skipped: {e}")
     if not _in_match_window(conn):
         return {"window": False, "n_live": 0}
 

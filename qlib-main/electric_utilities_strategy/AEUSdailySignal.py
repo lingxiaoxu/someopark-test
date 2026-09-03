@@ -1244,7 +1244,8 @@ def run_daily_signal(
         except Exception as _e:  # noqa: BLE001
             log.warning(f"[EVENT_DERISK] skipped (non-fatal): {_e}")
 
-    # ── 通路③ 敞口放大器(2026-09-02;config risk.exposure_amplifier,默认 off;与 engine 同一函数)──
+    # ── 通路③ 敞口放大器(2026-09-02 起 enabled:true;与 engine/strategy 同一个纯函数)──
+    #    日志行 `[EXPOSURE_AMP] z=… phi=… E=…` 是正常输出,不是告警。
     _amp_cfg = risk_cfg.get("exposure_amplifier", {}) or {}
     _amp_E, _amp_phi, _amp_z = 1.0, float("nan"), float("nan")
     if _amp_cfg.get("enabled", False):

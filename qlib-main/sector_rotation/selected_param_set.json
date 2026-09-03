@@ -2,72 +2,72 @@
   "param_set": "low_turnover",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-09-01",
-  "last_updated": "2026-09-01",
-  "mcps_oos_filtered": 1.6765,
-  "recent_sharpe_12m": 1.8094,
-  "full_period_sharpe": 0.8356,
-  "full_period_calmar": 0.4574,
+  "selected_at": "2026-09-02",
+  "last_updated": "2026-09-02",
+  "mcps_oos_filtered": 1.2873,
+  "recent_sharpe_12m": 1.9018,
+  "full_period_sharpe": 0.8386,
+  "full_period_calmar": 0.4591,
   "top_candidates": [
     {
       "name": "broad_6_softmax",
       "version": "v1",
-      "composite": 0.9761,
-      "mcps_score": 0.7016
-    },
-    {
-      "name": "skip_heavy",
-      "version": "v1",
-      "composite": 0.6208,
-      "mcps_score": 0.5946
-    },
-    {
-      "name": "value_proxy",
-      "version": "v1",
-      "composite": 0.4435,
-      "mcps_score": 0.5946
-    },
-    {
-      "name": "risk_parity_lw",
-      "version": "v1",
-      "composite": 0.1533,
-      "mcps_score": 0.5893
-    },
-    {
-      "name": "diversified_5_rp",
-      "version": "v1",
-      "composite": 0.1473,
-      "mcps_score": 0.5914
-    },
-    {
-      "name": "low_beta_bab",
-      "version": "v1",
-      "composite": 0.0481,
-      "mcps_score": 0.6694
+      "composite": 1.1635,
+      "mcps_score": 0.9601
     },
     {
       "name": "early_recovery",
       "version": "v1",
-      "composite": -0.0435,
-      "mcps_score": 0.603
+      "composite": 0.7594,
+      "mcps_score": 0.8955
     },
     {
-      "name": "equal_weight_optimizer",
+      "name": "skip_heavy",
       "version": "v1",
-      "composite": -0.5943,
-      "mcps_score": 0.4446
+      "composite": 0.5381,
+      "mcps_score": 0.7415
     },
     {
-      "name": "stagflation",
+      "name": "value_proxy",
       "version": "v1",
-      "composite": -0.6465,
-      "mcps_score": 0.5278
+      "composite": 0.5062,
+      "mcps_score": 0.7415
+    },
+    {
+      "name": "risk_parity_lw",
+      "version": "v1",
+      "composite": 0.1018,
+      "mcps_score": 0.7758
+    },
+    {
+      "name": "diversified_5_rp",
+      "version": "v1",
+      "composite": 0.0986,
+      "mcps_score": 0.768
+    },
+    {
+      "name": "low_beta_bab",
+      "version": "v1",
+      "composite": -0.1671,
+      "mcps_score": 0.7888
     },
     {
       "name": "momentum_heavy",
       "version": "v1",
-      "composite": -1.1048,
-      "mcps_score": 0.5881
+      "composite": -0.4625,
+      "mcps_score": 0.7654
+    },
+    {
+      "name": "gmv_lw",
+      "version": "v1",
+      "composite": -1.1489,
+      "mcps_score": 0.6875
+    },
+    {
+      "name": "tight_beta_tracker",
+      "version": "v1",
+      "composite": -1.389,
+      "mcps_score": 0.7044
     }
   ],
   "n_candidates": 37,
@@ -76,7 +76,7 @@
   "oos_mean_sharpe": null,
   "oos_n_selected": null,
   "wf_mean_wfe": 1.3244,
-  "macro_data_days": 2050,
+  "macro_data_days": 2051,
   "switch_history": [],
   "health": {
     "days_since_switch": 1,

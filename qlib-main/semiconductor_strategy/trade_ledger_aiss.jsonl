@@ -64,3 +64,4 @@
 {"date": "2026-09-01", "ticker": "LRCX", "side": "BUY", "shares": 181, "price": 289.87, "gross": -52466.47, "dedup_key": "2026-09-01-LRCX-BUY"}
 {"date": "2026-09-01", "ticker": "MCHP", "side": "BUY", "shares": 91, "price": 71.41, "gross": -6498.31, "dedup_key": "2026-09-01-MCHP-BUY"}
 {"date": "2026-09-01", "ticker": "TXN", "side": "BUY", "shares": 410, "price": 253.34, "gross": -103869.4, "dedup_key": "2026-09-01-TXN-BUY"}
+{"date": "2026-09-01", "ticker": "", "side": "FEE", "gross": -318.46, "dedup_key": "2026-09-01-FEE"}

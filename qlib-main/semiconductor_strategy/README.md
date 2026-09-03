@@ -501,6 +501,7 @@ wf_diagnostic_aiss_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | `portfolio.constraints` | beta_min / beta_max | `0.40` / `3.00` | 接受高 semis beta，不拉回 1.0 |
 | `risk.vol_scaling` | target_vol_annual | `0.30` | 贴近 semis 基准波动运行 |
 | `risk.drawdown` | cumulative_dd_halve | `−0.25` | semis 常规回撤 20%+，仅真崩盘减半 |
+| `risk.exposure_amplifier` | enabled | **`false`** | 通路③敞口放大器（AEUS 镜像，2026-09-02 接线）：`E = clip(1 + k·z·φ, 0.85, 1.15)` 乘 gross，z=`load_ai_demand_cycle()`，φ=`demand_sensitivity()` 从 `ai_capex_proxy` 多跳传导的组合暴露。**沙盒 batch/WF 没赢（WF sharpe 1.315→1.297，逐 fold 26/70）→ 保持关闭**；关闭时逐字节等价旧行为 |
 | `rebalance` | emergency_derisk_vix | `36.0` | 仅真危机（semis 震荡 ≠ 离场） |
 | `signals.regime` | vix_high / vix_extreme | `25` / `32` | regime 倾斜阈值 |
 | `backtest` | start_date | `"2019-01-01"` | 晚期 IPO 地板 |

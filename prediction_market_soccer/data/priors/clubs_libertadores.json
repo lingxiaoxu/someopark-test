@@ -1,7 +1,7 @@
 {
- "prior_id": "clubs_libertadores_2026-09-02",
+ "prior_id": "clubs_libertadores_2026-09-03",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-09-02",
+ "as_of": "2026-09-03",
  "is_stale": true,
  "league": "libertadores",
  "notes": [
@@ -22,7 +22,7 @@
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.4598,
+   "anchor_points": 1.4599,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -37,7 +37,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.2818,
+   "anchor_points": 1.2819,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -48,12 +48,12 @@
    "league": "libertadores",
    "api_team_id": 121,
    "elo": null,
-   "elo_rank": 145,
+   "elo_rank": 134,
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.1842,
-   "market_p_champion": 0.06897,
+   "anchor_points": 2.1726,
+   "market_p_champion": 0.18,
    "anchor_source": "domestic_league"
   },
   {
@@ -63,12 +63,12 @@
    "league": "libertadores",
    "api_team_id": 124,
    "elo": null,
-   "elo_rank": 133,
+   "elo_rank": 136,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5848,
-   "market_p_champion": 0.1954,
+   "anchor_points": 1.5849,
+   "market_p_champion": 0.16,
    "anchor_source": "domestic_league"
   },
   {
@@ -82,8 +82,8 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0579,
-   "market_p_champion": 0.31034,
+   "anchor_points": 2.0696,
+   "market_p_champion": 0.28,
    "anchor_source": "domestic_league"
   },
   {
@@ -93,12 +93,12 @@
    "league": "libertadores",
    "api_team_id": 131,
    "elo": null,
-   "elo_rank": 136,
+   "elo_rank": 138,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3035,
-   "market_p_champion": 0.14943,
+   "anchor_points": 1.3036,
+   "market_p_champion": 0.14,
    "anchor_source": "domestic_league"
   },
   {
@@ -112,8 +112,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5223,
-   "market_p_champion": 0.01149,
+   "anchor_points": 1.5224,
+   "market_p_champion": 0.01,
    "anchor_source": "domestic_league"
   },
   {
@@ -128,7 +128,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.9375,
-   "market_p_champion": 0.01149,
+   "market_p_champion": 0.01,
    "anchor_source": "domestic_league"
   },
   {
@@ -158,7 +158,7 @@
    "last_rank": 1,
    "promoted": false,
    "anchor_points": 1.3125,
-   "market_p_champion": 0.05747,
+   "market_p_champion": 0.05,
    "anchor_source": "domestic_league"
   },
   {
@@ -203,7 +203,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.0,
-   "market_p_champion": 0.01149,
+   "market_p_champion": 0.01,
    "anchor_source": "domestic_league"
   },
   {
@@ -218,7 +218,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 0.75,
-   "market_p_champion": 0.03448,
+   "market_p_champion": 0.03,
    "anchor_source": "domestic_league"
   },
   {
@@ -274,8 +274,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.884,
-   "market_p_champion": 0.01149
+   "anchor_points": 0.8836,
+   "market_p_champion": 0.01
   },
   {
    "club_id": "barcelona_sc",
@@ -302,8 +302,8 @@
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.002,
-   "market_p_champion": 0.05747
+   "anchor_points": 0.9942,
+   "market_p_champion": 0.05
   },
   {
    "club_id": "universidad_catolica",
@@ -316,8 +316,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.884,
-   "market_p_champion": 0.01149
+   "anchor_points": 0.8836,
+   "market_p_champion": 0.01
   },
   {
    "club_id": "ldu_de_quito",
@@ -326,12 +326,12 @@
    "league": "libertadores",
    "api_team_id": 1158,
    "elo": null,
-   "elo_rank": 149,
+   "elo_rank": 172,
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 0.9852,
-   "market_p_champion": 0.04598
+   "anchor_points": 0.9785,
+   "market_p_champion": 0.04
   },
   {
    "club_id": "club_guarani",
@@ -358,8 +358,8 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 0.884,
-   "market_p_champion": 0.01149
+   "anchor_points": 0.8836,
+   "market_p_champion": 0.01
   },
   {
    "club_id": "libertad_asuncion",
@@ -428,8 +428,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.884,
-   "market_p_champion": 0.01149
+   "anchor_points": 0.8836,
+   "market_p_champion": 0.01
   },
   {
    "club_id": "penarol",
@@ -666,7 +666,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0861,
+   "anchor_points": 1.0862,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },

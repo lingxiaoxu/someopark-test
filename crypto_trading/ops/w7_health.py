@@ -28,6 +28,8 @@ The checks, and what each one would have caught:
   mirror     — demo mirror outcomes: 409s and wrong-window maps must be zero
   recorders  — every live stream's freshness, plus today's 15M tape cadence:
                the tape IS the probe's eyes, and it is irreplaceable
+  backup     — how old the newest archive is: the tape had exactly one copy
+               for 15 days, and the 15M dataset was born inside that gap
   disk       — headroom, because the recorders never stop
 """
 from __future__ import annotations
@@ -57,7 +59,10 @@ PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
 
 # Cadences the runner is configured with; a stream quiet for much longer than
 # its own period is the signal, so each gets its own tolerance.
-TAPE_MAX_GAP_MIN = 15.0        # 90s recorder + 429 backoff; a 15M window is 15 min
+TAPE_MAX_GAP_MIN = 4.0         # 90s recorder: 2-3 missed cycles. A hole inside
+                               # the ~7-min maker span is a measurement outage,
+                               # and 429 storms cluster (2026-09-02 audit), so a
+                               # 15-min bar was too slack to see them.
 INDEX_MAX_GAP_S = 120.0        # 5s recorder
 CYCLE_MAX_AGE_S = 300.0        # 60s cadence
 
@@ -286,6 +291,36 @@ def check_recorders(now: float) -> dict:
             "streams": rows}
 
 
+BACKUP_DIR = Path.home() / "crypto_data_backup"
+BACKUP_MAX_AGE_H = 96.0        # the prior cadence was every 4-5 days
+
+
+def check_backup(now: float) -> dict:
+    """The recorded tape exists in exactly one place until this runs.
+
+    Kalshi serves ~10 days of settled 15M history and never L2 depth, so the
+    tape carrying W7's verdict cannot be re-fetched. The backup silently
+    stopped for 15 days (2026-08-18 -> 2026-09-02) because `pipeline.sh daily`
+    has no schedule, and the entire 15M dataset was born inside that gap —
+    zero copies. Staleness is therefore a FAIL, not a note.
+    """
+    try:
+        arcs = sorted(BACKUP_DIR.glob("crypto_recorded_*.tar.gz"),
+                      key=lambda p: p.stat().st_mtime)
+    except OSError as e:
+        return {"status": FAIL, "detail": f"backup dir unreadable: {e}"}
+    if not arcs:
+        return {"status": FAIL, "detail": f"no backup archive in {BACKUP_DIR}"}
+    newest = arcs[-1]
+    age_h = (now - newest.stat().st_mtime) / 3600.0
+    size_gb = newest.stat().st_size / 1e9
+    status = FAIL if age_h > BACKUP_MAX_AGE_H else (WARN if age_h > 48 else PASS)
+    return {"status": status,
+            "detail": f"newest {newest.name} {age_h:.0f}h old ({size_gb:.1f}G), "
+                      f"{len(arcs)} kept",
+            "age_h": round(age_h, 1)}
+
+
 def check_disk() -> dict:
     du = shutil.disk_usage(str(PRICE_DATA))
     free_gb = du.free / 1e9
@@ -314,6 +349,7 @@ def run(now: float | None = None, contracts: int = 25) -> dict:
         "criteria": state_err or check_criteria(st),
         "mirror": check_mirror(now),
         "recorders": check_recorders(now),
+        "backup": check_backup(now),
         "disk": check_disk(),
     }
     worst = FAIL if any(c["status"] == FAIL for c in checks.values()) else (

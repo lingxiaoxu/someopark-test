@@ -234,6 +234,25 @@ CREATE TABLE IF NOT EXISTS settled_bet (
     cal_method TEXT, cal_param REAL, cal_n INTEGER,   -- the PIT calibration used (audit)
     settled_at TEXT NOT NULL                          -- when first frozen
 );
+-- ── venue order-book probe (ops/venue_liquidity.py) ─────────────────────────
+-- One row per (fixture, side, venue, kickoff-relative bucket): what the book looked
+-- like that far before kickoff. Exists because a single sample taken hours early was
+-- used to conclude "this competition has no demo liquidity" — and the book filled up
+-- minutes before kickoff, so the conclusion was wrong in both directions (it also
+-- showed some competitions quoting 40 hours out). Now it is measured, per competition,
+-- per offset, and never guessed.
+CREATE TABLE IF NOT EXISTS venue_book_probe (
+    fixture_api_id INTEGER NOT NULL,
+    comp TEXT,
+    venue TEXT NOT NULL,              -- 'demo' | 'prod'
+    side TEXT NOT NULL,               -- home | draw | away
+    bucket TEXT NOT NULL,             -- T-48h, T-24h, … T-3m (see ops/venue_liquidity.BUCKETS)
+    minutes_to_kickoff REAL,
+    ticker TEXT,
+    bid REAL, ask REAL, bid_depth REAL, ask_depth REAL,
+    ts TEXT NOT NULL,
+    PRIMARY KEY (fixture_api_id, venue, side, bucket)
+);
 -- ── Kalshi DEMO mirror of the 择时(实现) strategy (exec/kalshi_mirror.py) ────────
 -- One row per (fixture, track): the demo order that mirrors the paper ledger's
 -- pre-match bet ('pre') or causal in-play entry ('inplay'), its fills, and its

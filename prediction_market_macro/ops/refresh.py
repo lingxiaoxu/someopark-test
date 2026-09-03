@@ -135,6 +135,7 @@ def _run(weekly: bool = False) -> dict:
     from prediction_market_macro.ingest import pjm
     step("pjm", lambda: pjm.refresh(conn))
     step("pjm_mirror", lambda: pjm.mirror_weekly_burn(conn))
+    step("pjm_mirror_demand", lambda: pjm.mirror_weekly_demand(conn))
     # Cleveland Fed daily inflation nowcasts (2026-08-15, shadow per §7-bis —
     # no model reads it until a preregistered gate clears). The fetched files
     # carry full history, so this one step is backfill + daily tail in one.

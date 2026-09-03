@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,7 +47,29 @@ def load_state(name: str) -> dict:
 
 
 def save_state(name: str, st: dict) -> None:
-    state_path(name).write_text(json.dumps(st, indent=1, default=str))
+    """Atomic: serialise, fsync, then rename over the old file.
+
+    The paper book IS the money truth (crypto-dev/15 §0 principle 4) but it
+    used to have weaker durability than the price tape it is derived from: a
+    plain write_text of a 380 KB state, interrupted by a kill or a crash,
+    leaves truncated JSON, after which load_state raises on every cycle and
+    the probe is silently dead for as long as nobody looks. Rename is atomic
+    on APFS, so a reader sees either the old book or the new one, never half.
+    """
+    p = state_path(name)
+    tmp = p.with_suffix(".json.tmp")
+    try:
+        payload = json.dumps(st, indent=1, default=str)
+        with open(tmp, "w") as fh:
+            fh.write(payload)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, p)
+    except BaseException:
+        # leave no half-written twin next to the book: a stray .tmp invites a
+        # later reader (or a human) to mistake it for the real state
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def log_line(name: str, payload: dict) -> None:

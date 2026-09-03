@@ -1,6 +1,6 @@
 {
  "schema": "v2",
- "updated": "2026-08-31T21:34:21+00:00",
+ "updated": "2026-09-03T00:48:12+00:00",
  "aliases": {
   "BK": {
    "current": "BNY",
@@ -23,7 +23,7 @@
    "successor_candidates": [],
    "verified": "polygon_reference",
    "asof": "2026-08-27",
-   "recycled_checked": "2026-08-27"
+   "recycled_checked": "2026-09-03"
   }
  }
 }

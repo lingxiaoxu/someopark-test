@@ -35,7 +35,11 @@ EOF
 }
 
 daemon_plist poller     poller.log        poll --interval 10 --book-tickers KXBTCPERP,KXETHPERP,KXSOLPERP,KXXRPPERP,KXDOGEPERP,KXKSHIBPERP,KXBCHPERP,KXLTCPERP,KXLINKPERP,KXNEARPERP,KXSUIPERP,KXHYPEPERP,KXZECPERP
-daemon_plist strips     strips.log        strips --interval 90
+# the two recorders MUST name their series explicitly: DEFAULT_SERIES
+# includes the 15M five, so a bare `strips` would double-write the 15M
+# tape and corrupt it at the UTC-midnight gzip rotation (2026-09-02)
+daemon_plist strips     strips.log        strips --interval 90 --series KXBTCD,KXBTC,KXETHD,KXETH,KXSOLD
+daemon_plist strips15m  strips15m.log     strips --interval 90 --series KXBTC15M,KXETH15M,KXSOL15M,KXDOGE15M,KXXRP15M
 daemon_plist recorddemo recorder_demo.log record --env demo
 daemon_plist idxrecord  idxrecord.log     idxrecord --interval 5
 daemon_plist liqrecord  liqrecord.log     liqrecord

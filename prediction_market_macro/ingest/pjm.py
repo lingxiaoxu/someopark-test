@@ -196,18 +196,18 @@ def backfill_eia930(conn, start: str = "2019-01-01", log=None) -> dict:
     return {"days": len(days), "rows": n}
 
 
-def mirror_weekly_burn(conn) -> int:
-    """Mirror weekly PJM gas burn into fred_obs as `PJM_GASBURN_W` — the panel entry.
+def _mirror(conn, metric: str, sid: str) -> int:
+    """Mirror a weekly mean of `metric` into fred_obs under a synthetic `sid`.
 
-    The established pattern (EIA feeds, ERCOT_GASBURN_W): synthetic sids in fred_obs are
-    how non-FRED series reach the DFM panels. W-SAT weekly mean of eia_gas_gen_mwh,
-    knowledge_time = week end + 2 days 00:00 UTC (the same D+2 conservatism the ERCOT
-    lane registered). INSERT OR IGNORE: vintages append, never rewrite.
+    The established path (EIA feeds, ERCOT_GASBURN_W): synthetic sids in fred_obs are how
+    non-FRED series reach the DFM panels. W-SAT weekly mean, knowledge_time = week end +
+    2 days 00:00 UTC (the D+2 conservatism the ERCOT lane registered). INSERT OR IGNORE:
+    vintages append, never rewrite.
     """
     import pandas as pd
     conn.executescript(_SCHEMA)
-    rows = conn.execute("SELECT date, value FROM pjm_daily WHERE"
-                        " metric='eia_gas_gen_mwh' ORDER BY date").fetchall()
+    rows = conn.execute("SELECT date, value FROM pjm_daily WHERE metric=? ORDER BY date",
+                        (metric,)).fetchall()
     if not rows:
         return 0
     s = pd.Series({pd.Timestamp(r[0]): float(r[1]) for r in rows})
@@ -221,7 +221,28 @@ def mirror_weekly_burn(conn) -> int:
         n += conn.execute(
             "INSERT OR IGNORE INTO fred_obs(sid, event_time, value, vintage_date,"
             " knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?)",
-            ("PJM_GASBURN_W", ts.date().isoformat(), float(v),
+            (sid, ts.date().isoformat(), float(v),
              ts.date().isoformat(), kt, now.isoformat())).rowcount
     conn.commit()
     return n
+
+
+def mirror_weekly_demand(conn) -> int:
+    """PJM total demand, weekly -> `PJM_DEMAND_W`.
+
+    Added 2026-09-02 for PR-34: the screening measured PJM DEMAND as a stronger grid
+    state variable than burn (storage-surprise r = -0.55 vs -0.19), so if the DFM panel
+    is to be conditioned on the PJM grid at all, demand is the better candidate column.
+    """
+    return _mirror(conn, "eia_demand_mwh", "PJM_DEMAND_W")
+
+
+def mirror_weekly_burn(conn) -> int:
+    """Mirror weekly PJM gas burn into fred_obs as `PJM_GASBURN_W` — the panel entry.
+
+    The established pattern (EIA feeds, ERCOT_GASBURN_W): synthetic sids in fred_obs are
+    how non-FRED series reach the DFM panels. W-SAT weekly mean of eia_gas_gen_mwh,
+    knowledge_time = week end + 2 days 00:00 UTC (the same D+2 conservatism the ERCOT
+    lane registered). INSERT OR IGNORE: vintages append, never rewrite.
+    """
+    return _mirror(conn, "eia_gas_gen_mwh", "PJM_GASBURN_W")

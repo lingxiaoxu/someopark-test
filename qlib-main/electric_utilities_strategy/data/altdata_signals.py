@@ -470,8 +470,14 @@ def update_capacity(start: str = CAPACITY_START, refreeze: bool = False) -> int:
         return 0
     for per, rec in agg.items():
         rec["total_mw"] = round(rec["total_mw"], 1)
+        # 2026-09-02: 原本是 `[:12]` —— 每月只留装机最大的 12 个来源码。电池 MWH 在
+        # 2021-10 之前排不进前 12(实测 2019-01 排第 24,898 MW),于是被静默丢掉;而
+        # load_renewables_adds_yoy 要 SUN+WND+MWH 求和 → 2021-10~2022-09 这 12 个月
+        # 分子含电池、分母不含,YoY 虚增 2.4~4.3pp。那不是装机增长,是"数据开始记录电池"。
+        # 现在全量保留(每月 34~35 个码,store 39KB→~110KB),排序只为可读性。
+        # 不变式:sum(by_source) == total_mw(无来源码的行除外),verify() 会盯住它。
         rec["by_source"] = {k: round(v, 1) for k, v in
-                            sorted(rec["by_source"].items(), key=lambda kv: -kv[1])[:12]}
+                            sorted(rec["by_source"].items(), key=lambda kv: -kv[1])}
         p = pd.Period(per, freq="M")
         rec["release_date"] = (p.end_time.date() + timedelta(days=CAPACITY_LAG_DAYS)).isoformat()
     records = pit.merge_frozen(existing, agg)
@@ -733,6 +739,23 @@ def verify() -> bool:
     _series_check("construction_hiring", load_construction_hiring(), "monthly")
     _series_check("power_demand_structural", load_power_demand_structural(), "monthly")
     _series_check("capacity_yoy", load_capacity_yoy(), "monthly")
+    # 2026-09-02: 之前只体检 capacity_yoy(用 total_mw),而 by_source 空了整整一辈子
+    # 也照样 OK —— renewables_adds_yoy 恒空、renewables_storage 第二条 tilt 从未生效,
+    # 没有任何一层报警。分来源派生序列必须自己进体检。
+    _series_check("renewables_adds_yoy", load_renewables_adds_yoy(), "monthly")
+    # 截断守卫(2026-09-02):by_source 曾被 top-12 截断,电池等小来源被静默丢掉 ——
+    # "非空"检查抓不到它,只有"分来源之和 ≈ 总量"这条不变式抓得到。
+    _cap = pit.load_json(CAPACITY_PATH, default={}).get("records", {})
+    if _cap:
+        _gaps = [(m, (r["total_mw"] - sum(r.get("by_source", {}).values())) / r["total_mw"])
+                 for m, r in _cap.items() if r.get("total_mw")]
+        _worst_m, _worst = max(_gaps, key=lambda kv: kv[1]) if _gaps else ("-", 0.0)
+        _n_codes = min(len(r.get("by_source", {})) for r in _cap.values()) if _cap else 0
+        _bad = _worst > 0.005 or _n_codes < 20
+        print(f"  capacity by_source     : {len(_cap):5} months, 最少 {_n_codes} 个来源码, "
+              f"缺口最大 {_worst:.3%} @{_worst_m}" + ("  ← TRUNCATED" if _bad else ""))
+        if _bad:
+            ok = False
     _series_check("dc_price_premium", load_dc_price_premium(), "monthly")
     sh = load_shortage_score()
     print(f"  shortage_score          : {len(sh):5} pts"

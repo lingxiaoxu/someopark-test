@@ -8,12 +8,20 @@
       "param_set": "default",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -21,18 +29,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -40,32 +36,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -74,12 +74,20 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -87,18 +95,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -106,32 +102,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -140,12 +140,20 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -153,18 +161,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -172,32 +168,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -206,12 +206,20 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -219,18 +227,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -238,32 +234,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -272,12 +272,20 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -285,18 +293,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -304,32 +300,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -338,12 +338,20 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -351,18 +359,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -370,32 +366,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -404,12 +404,20 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -417,18 +425,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -436,32 +432,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -470,12 +470,20 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -483,18 +491,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -502,32 +498,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -536,12 +536,20 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -549,18 +557,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -568,32 +564,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -602,12 +602,20 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -615,18 +623,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -634,32 +630,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -668,12 +668,20 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -681,18 +689,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -700,32 +696,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -734,12 +734,20 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -747,18 +755,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -766,32 +762,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -800,12 +800,20 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -813,18 +821,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -832,32 +828,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -866,12 +866,20 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -879,18 +887,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -898,32 +894,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -932,12 +932,20 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -945,18 +953,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -964,32 +960,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -998,12 +998,20 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1011,18 +1019,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1030,32 +1026,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1064,12 +1064,20 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1077,18 +1085,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1096,32 +1092,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1130,12 +1130,20 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1143,18 +1151,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1162,32 +1158,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1196,12 +1196,20 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1209,18 +1217,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1228,32 +1224,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1262,12 +1262,20 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1275,18 +1283,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1294,32 +1290,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1328,12 +1328,20 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1341,18 +1349,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1360,32 +1356,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1394,12 +1394,20 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1407,18 +1415,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1426,32 +1422,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1460,12 +1460,20 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1473,18 +1481,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1492,32 +1488,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1526,12 +1526,20 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1539,18 +1547,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1558,32 +1554,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1592,12 +1592,20 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1605,18 +1613,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1624,32 +1620,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1658,12 +1658,20 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1671,18 +1679,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1690,32 +1686,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1724,12 +1724,20 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1737,18 +1745,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1756,32 +1752,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1790,12 +1790,20 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1803,18 +1811,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1822,32 +1818,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1856,12 +1856,20 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1869,18 +1877,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1888,32 +1884,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1922,12 +1922,20 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -1935,18 +1943,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -1954,32 +1950,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -1988,12 +1988,20 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2001,18 +2009,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2020,32 +2016,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2054,12 +2054,20 @@
       "param_set": "monthly_aligned_windows_fc",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2067,18 +2075,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2086,32 +2082,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2120,12 +2120,20 @@
       "param_set": "short_term_beta_neutral_fc",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2133,18 +2141,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2152,32 +2148,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2186,12 +2186,20 @@
       "param_set": "fast_strict_fc",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2199,18 +2207,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2218,32 +2214,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2252,12 +2252,20 @@
       "param_set": "monthly_aligned_windows_fc_skip",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2265,18 +2273,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2284,32 +2280,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2318,12 +2318,20 @@
       "param_set": "crash_adaptive",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2331,18 +2339,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2350,32 +2346,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2384,12 +2384,20 @@
       "param_set": "crash_shortguard",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2397,18 +2405,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2416,32 +2412,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     },
@@ -2450,12 +2450,20 @@
       "param_set": "crash_fastwin",
       "pairs": [
         [
-          "MU",
+          "HUM",
           "BKNG"
+        ],
+        [
+          "HUM",
+          "EIX"
         ],
         [
           "MU",
           "PNR"
+        ],
+        [
+          "MU",
+          "PCG"
         ],
         [
           "CRM",
@@ -2463,18 +2471,6 @@
         ],
         [
           "CRM",
-          "NCLH"
-        ],
-        [
-          "VLO",
-          "EIX"
-        ],
-        [
-          "VLO",
-          "PCG"
-        ],
-        [
-          "PSX",
           "GNRC"
         ],
         [
@@ -2482,32 +2478,36 @@
           "DECK"
         ],
         [
-          "FTNT",
+          "PSX",
           "ENPH"
         ],
         [
-          "FTNT",
+          "VLO",
           "TPR"
         ],
         [
-          "FDS",
-          "MLM"
-        ],
-        [
-          "FDS",
-          "ALGN"
-        ],
-        [
-          "RVTY",
+          "VLO",
           "TXT"
         ],
         [
-          "RVTY",
-          "LOW"
+          "FDS",
+          "LUV"
         ],
         [
-          "COP",
+          "FDS",
           "MCD"
+        ],
+        [
+          "RVTY",
+          "CMS"
+        ],
+        [
+          "RVTY",
+          "XYL"
+        ],
+        [
+          "FTNT",
+          "HCA"
         ]
       ]
     }

@@ -1,7 +1,7 @@
 {
- "prior_id": "clubs_laliga_2026-09-02",
+ "prior_id": "clubs_laliga_2026-09-03",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-09-02",
+ "as_of": "2026-09-03",
  "is_stale": true,
  "league": "laliga",
  "notes": [
@@ -17,13 +17,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 529,
-   "elo": 1989.3565,
+   "elo": 1989.356536798588,
    "elo_rank": 3,
    "last_pts": 2.4737,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.4237,
-   "market_p_champion": 0.49368
+   "anchor_points": 2.425,
+   "market_p_champion": 0.49609
   },
   {
    "club_id": "atletico_madrid",
@@ -31,13 +31,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 530,
-   "elo": 1880.586,
+   "elo": 1880.5860079881998,
    "elo_rank": 9,
    "last_pts": 1.8158,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.8359,
-   "market_p_champion": 0.03082
+   "anchor_points": 1.8353,
+   "market_p_champion": 0.03141
   },
   {
    "club_id": "athletic_club",
@@ -51,7 +51,7 @@
    "last_rank": 12,
    "promoted": false,
    "anchor_points": 1.2893,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "valencia",
@@ -64,8 +64,8 @@
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3202,
-   "market_p_champion": 0.00466
+   "anchor_points": 1.3203,
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "villarreal",
@@ -73,13 +73,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 533,
-   "elo": 1785.3226,
+   "elo": 1785.3226367410425,
    "elo_rank": 31,
    "last_pts": 1.8947,
    "last_rank": 3,
    "promoted": false,
    "anchor_points": 1.6258,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "malaga",
@@ -93,7 +93,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.1331,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "sevilla",
@@ -101,13 +101,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 536,
-   "elo": 1694.5295,
-   "elo_rank": 57,
+   "elo": 1694.529471495077,
+   "elo_rank": 58,
    "last_pts": 1.1316,
    "last_rank": 13,
    "promoted": false,
    "anchor_points": 1.2107,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "celta_vigo",
@@ -121,7 +121,7 @@
    "last_rank": 6,
    "promoted": false,
    "anchor_points": 1.3682,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "levante",
@@ -129,13 +129,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 539,
-   "elo": 1692.1873,
-   "elo_rank": 60,
+   "elo": 1692.1872570533951,
+   "elo_rank": 61,
    "last_pts": 1.1053,
    "last_rank": 16,
    "promoted": false,
    "anchor_points": 1.1975,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "espanyol",
@@ -143,13 +143,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 540,
-   "elo": 1681.1356,
+   "elo": 1681.1355924589388,
    "elo_rank": 64,
    "last_pts": 1.2105,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2212,
-   "market_p_champion": 0.00466
+   "anchor_points": 1.2213,
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "real_madrid",
@@ -162,8 +162,8 @@
    "last_pts": 2.2632,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.2754,
-   "market_p_champion": 0.401
+   "anchor_points": 2.2743,
+   "market_p_champion": 0.39376
   },
   {
    "club_id": "alaves",
@@ -171,13 +171,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 542,
-   "elo": 1704.4186,
+   "elo": 1704.4186093601593,
    "elo_rank": 56,
    "last_pts": 1.1316,
    "last_rank": 14,
    "promoted": false,
    "anchor_points": 1.2247,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "real_betis",
@@ -185,13 +185,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 543,
-   "elo": 1776.4865,
+   "elo": 1776.4865282265691,
    "elo_rank": 36,
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
    "anchor_points": 1.4948,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "deportivo_la_coruna",
@@ -200,12 +200,12 @@
    "league": "laliga",
    "api_team_id": 544,
    "elo": null,
-   "elo_rank": 99,
+   "elo_rank": 100,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.1624,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "getafe",
@@ -213,7 +213,7 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 546,
-   "elo": 1681.0134,
+   "elo": 1681.0133685731835,
    "elo_rank": 65,
    "last_pts": 1.3421,
    "last_rank": 7,
@@ -227,13 +227,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 548,
-   "elo": 1750.9611,
+   "elo": 1750.9610900058638,
    "elo_rank": 44,
    "last_pts": 1.2105,
    "last_rank": 10,
    "promoted": false,
    "anchor_points": 1.3204,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "osasuna",
@@ -241,13 +241,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 727,
-   "elo": 1722.7935,
+   "elo": 1722.7935192018397,
    "elo_rank": 52,
    "last_pts": 1.1053,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2409,
-   "market_p_champion": 0.00466
+   "anchor_points": 1.241,
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "rayo_vallecano",
@@ -255,13 +255,13 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 728,
-   "elo": 1718.874,
+   "elo": 1718.8740090357871,
    "elo_rank": 54,
    "last_pts": 1.3158,
    "last_rank": 8,
    "promoted": false,
    "anchor_points": 1.3143,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "elche",
@@ -275,7 +275,7 @@
    "last_rank": 15,
    "promoted": false,
    "anchor_points": 1.1844,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   },
   {
    "club_id": "racing_santander",
@@ -284,12 +284,12 @@
    "league": "laliga",
    "api_team_id": 4665,
    "elo": null,
-   "elo_rank": 100,
+   "elo_rank": 101,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.1624,
-   "market_p_champion": 0.00466
+   "market_p_champion": 0.00492
   }
  ]
 }

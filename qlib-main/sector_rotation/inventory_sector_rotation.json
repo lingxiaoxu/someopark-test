@@ -1,67 +1,67 @@
 {
-  "as_of": "2026-09-01",
+  "as_of": "2026-09-02",
   "last_updated": "2026-09-01",
-  "last_daily_update": "2026-09-01",
-  "capital": 1036632.86,
+  "last_daily_update": "2026-09-02",
+  "capital": 1033965.29,
   "holdings": {
     "XLB": {
       "weight": 0.146978,
       "shares": 2926,
-      "last_price": 52.07,
+      "last_price": 52.95,
       "cost_basis": 51.9221,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 81,
+      "days_held": 82,
       "action_today": "HOLD"
     },
     "XLI": {
       "weight": 0.154771,
       "shares": 928,
-      "last_price": 172.73,
+      "last_price": 172.78,
       "cost_basis": 172.493,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 81,
+      "days_held": 82,
       "action_today": "HOLD"
     },
     "XLRE": {
       "weight": 0.17065,
       "shares": 4016,
-      "last_price": 44.04,
+      "last_price": 43.73,
       "cost_basis": 42.9605,
       "entry_date": "2026-06-01",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 62,
+      "days_held": 63,
       "action_today": "HOLD"
     },
     "XLV": {
       "weight": 0.198887,
       "shares": 1200,
-      "last_price": 171.67,
+      "last_price": 172.95,
       "cost_basis": 159.54,
       "entry_date": "2026-07-01",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 44,
+      "days_held": 45,
       "action_today": "HOLD"
     },
     "XLK": {
       "weight": 0.150786,
       "shares": 851,
-      "last_price": 183.64,
+      "last_price": 183.6,
       "cost_basis": 185.613,
       "entry_date": "2026-07-01",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 44,
+      "days_held": 45,
       "action_today": "HOLD"
     },
     "XLE": {
       "weight": 0.177927,
       "shares": 2847,
-      "last_price": 64.77,
+      "last_price": 65.1,
       "cost_basis": 58.79,
       "entry_date": "2026-08-03",
       "last_rebalance_date": "2026-09-01",
-      "days_held": 22,
+      "days_held": 23,
       "action_today": "HOLD"
     }
   },
@@ -266,5 +266,5 @@
   ],
   "emergency_mode_active": false,
   "vol_derisk_streak": 0,
-  "vol_derisk_streak_date": "2026-09-01"
+  "vol_derisk_streak_date": "2026-09-02"
 }

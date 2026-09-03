@@ -73,16 +73,22 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
   demo_mirror: true       # user 2026-08-31: mirror ALL band entries, favorite
                           # side as-is — unified band, no demo special-casing
   contracts: 25
-  # EVIDENCE kill (2026-08-29, user-approved): paper probes burn no money, so
-  # dollar stops only ever fire on noise (they did, twice). v3 judges the kill
-  # on the PRE-REGISTERED PRIMARY CELL [0.85,0.98]: window-clustered t <= -2
-  # with >= 30 primary windows. The dollar fields below are ignored by w7.
+  # EVIDENCE kill (2026-08-29, user-approved; v3.1 made it continuous-monitoring
+  # valid 2026-09-02): paper probes burn no money, so dollar stops only ever
+  # fire on noise (they did, twice). The kill judges the PRE-REGISTERED PRIMARY
+  # CELL on pooled per-contract P&L with a window-cluster-robust t, against a
+  # normal-mixture boundary (~-3.7 at n=300) instead of a fixed -2 — the gate is
+  # re-tested ~1,440x/day, which made a fixed bar a 6.2% false-stop rule.
+  # The dollar fields below are ignored by w7.
   max_cum_loss_usd: 999999
   min_trades_for_kill: 999999
-  # LIVE criteria (v3, pre-registered 2026-08-31): PRIMARY cell [0.85,0.98]
-  # both sides, taker book — >= 300 independent primary windows AND mean > 0
-  # AND window-clustered t >= 2.5 (~61 primary windows/day -> ~5 days). The
-  # wide band is a MAP (its +0.54c mean would need ~14,700 windows for t 2.5);
-  # judging any other bucket requires a NEW pre-registration in the plan doc.
-  # Maker parallel book is a measurement, never a trading mode (backtest:
-  # -10.6c t -5.3, adverse selection). Five coins = one macro bet.
+  # LIVE criteria (v3.1, re-registered 2026-09-02 after the audit): PRIMARY cell
+  # [0.85,0.98] both sides, taker book — evaluated ONCE at 300 independent
+  # primary windows (latched, no optional stopping): POOLED PER-CONTRACT mean
+  # > 0 AND window-cluster-robust t >= 2.5. Comparand re-derived under the same
+  # estimand AND the same entry clock (rem 8.00+-0.6): +2.19c, t 1.61. The old
+  # equal-weight-at-a-locked-tape-phase framing read +2.99c/t 2.36 and hid that
+  # it never cleared the bar in-sample. The wide band is a MAP; judging
+  # any other bucket requires a NEW pre-registration in the plan doc. Maker
+  # parallel book is a measurement, never a trading mode (backtest: -10.6c
+  # t -5.3, adverse selection). Five coins = one macro bet.

@@ -31,15 +31,27 @@ def _w7_v3_matrix(st: dict) -> None:
     """v3 scoreboard: the pre-registered PRIMARY verdict line, then the
     bucket x side x execution MAP (display only — judging any non-primary
     bucket requires a new pre-registration, docstring rule)."""
+    from .w7_noisefade import always_valid_bound, pooled_stats
     tr = st.get("trades") or []
     wp = [v["sum_c"] / v["n"] for v in (st.get("windows_primary") or {}).values()
           if v.get("n")]
-    n, mu, t = _wstat(wp)
-    wa = [v["sum_c"] / v["n"] for v in (st.get("windows") or {}).values()
-          if v.get("n")]
-    na, mua, _ = _wstat(wa)
-    print(f"      └ ★主格[0.85,0.98] 窗口 {n}/300  均值{mu:+.2f}c  t={t:+.2f}"
-          f"   | 宽带全窗 {na}  均值{mua:+.2f}c")
+    n, mu_eq, t_eq = _wstat(wp)
+    ntr, nw, mu, t = pooled_stats(st.get("windows_primary") or {})
+    na, mua, _ = _wstat([v["sum_c"] / v["n"] for v in (st.get("windows") or {}).values()
+                         if v.get("n")])
+    # The gate runs on the MONEY (pooled per-contract, window-cluster-robust);
+    # the equal-weight number is shown only because the v3 comparand was first
+    # registered on it and it reads several times better (2026-09-02 audit).
+    print(f"      └ ★主格[0.85,0.98] 窗口 {nw}/300  池化{mu:+.2f}c/张  t_CR={t:+.2f}"
+          f"  ← 判据 | 等权{mu_eq:+.2f}c t={t_eq:+.2f}(仅对照) | 宽带{na}窗{mua:+.2f}c")
+    v = st.get("verdict")
+    if v:
+        print(f"      └ ⚖️ 判决已闩锁: {'通过' if v['passed'] else '未通过'} "
+              f"@{v['decided_at_windows']}窗 池化{v['pooled_mean_c']:+.2f}c "
+              f"t={v['pooled_t_clustered']:+.2f}")
+    elif nw >= 2:
+        print(f"      └ kill 边界(连续监控有效): t ≤ -{always_valid_bound(nw):.2f}"
+              f"(n={nw});判决在 300 窗一次性闩锁")
     buckets = ((0.60, 0.70), (0.70, 0.80), (0.80, 0.90), (0.90, 0.981))
     for side in ("no", "yes"):
         cells = []
@@ -132,9 +144,10 @@ def main() -> int:
                   f"  ← 有效样本(五币=一次宏观下注)")
 
     print("-" * 88)
-    print("FOCUS W7 v3: verdict = PRIMARY cell [0.85,0.98] only, >=300 primary "
-          "windows & mean>0 & window t>=2.5; other buckets are a MAP "
-          "(judging one needs a NEW pre-registration); kill on primary t<=-2")
+    print("FOCUS W7 v3.1: verdict = PRIMARY [0.85,0.98] ONLY, latched ONCE at 300 "
+          "windows on POOLED per-contract P&L with a window-cluster-robust t>=2.5; "
+          "other buckets are a MAP (a new pre-registration to judge one); kill uses "
+          "a continuous-monitoring boundary, not a fixed t=-2")
     print("FOCUS W4: funding trail30 is the income leg — see the daily "
           "heartbeat; verdict needs the external spot account (user).")
     return 0

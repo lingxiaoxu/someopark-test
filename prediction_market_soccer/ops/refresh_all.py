@@ -285,6 +285,15 @@ def main() -> None:
         print("  ✓ frontend_overview.json")
     except Exception as e:
         print(f"  ✗ frontend_overview.json: {e}")
+    # Order-book liquidity picture (ops/venue_liquidity) — the summary over everything the
+    # live loop has probed. Cheap: reads the probe table, writes venue_liquidity.json.
+    try:
+        from prediction_market_soccer.ops import venue_liquidity
+        _vl = venue_liquidity.summary(conn)
+        print(f"  ✓ venue_liquidity.json ({_vl['n_rows']} probe rows, {len(_vl['table'])} comp×bucket cells)")
+    except Exception as e:
+        print(f"  ✗ venue_liquidity: {e}")
+
     # ClubElo website data-quality gate — LAST, on the day's stored fetch (ops/clubelo_quality).
     # A FAIL here means today's Elo anchor must not be trusted; the fetch-time gate already
     # kept such a parse out of the csv, this reports it where the operator will see it.

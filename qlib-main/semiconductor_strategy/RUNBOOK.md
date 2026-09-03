@@ -293,7 +293,7 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh test
 | Price gaps / stale | `aiss_fetch_prices --update` (or `--init --force` to refetch) |
 | TSMC has 1 month only | expected — TWSE forward-only; supply_chain uses foundry price proxy |
 | `validate` FAIL | re-run `select` to refresh `selected_param_set.json`, or inspect `batch` ranking |
-| `qlib backtest execution failed … falling back to native loop` | **Benign / expected** — native is the production engine (same as SSRS). Do NOT treat as failure or degraded. |
+| `qlib backtest execution failed … falling back to native loop` | **Benign** — the native loop carries the same risk/sizing hooks as the qlib path. Not a failure. (正常生产走的是 **qlib** 路径 —— 见上面 2026-07-21 的 engine path note；这一行旧写法说反了，2026-09-02 更正。) |
 | V2 win-criterion FAIL | Expected — semi-monthly V2 is weaker than V1; production runs V1 (PASS). Not an error. |
 | Regime always risk_on / macro stale | `price_data/macro/` is maintained by the someopark main pipeline; AISS falls back to live VIX |
 

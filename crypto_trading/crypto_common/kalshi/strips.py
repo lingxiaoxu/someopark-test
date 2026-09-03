@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import time
 from collections import defaultdict
 
@@ -74,6 +75,12 @@ class StripRecorder:
         self.root = PRICE_DATA / "kalshi" / "event_strips" / env
         self.writer = DailyJsonlWriter(self.root)
         self.counts = {"markets": 0, "orderbooks": 0, "errors": 0}
+        self._locks: list = []
+        # one heartbeat per instance: a shared file let the second recorder
+        # overwrite the first's series list, which is what made the overlap
+        # above invisible for six days
+        self.hb_suffix = "" if set(self.series) == set(DEFAULT_SERIES) else \
+            "_" + "-".join(sorted(self.series))[:40]
 
     def capture_series(self, series_ticker: str, perp_ticker: str) -> None:
         now = time.time()
@@ -104,12 +111,59 @@ class StripRecorder:
 
     def heartbeat(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        (self.root / "heartbeat.json").write_text(json.dumps(
+        (self.root / f"heartbeat{self.hb_suffix}.json").write_text(json.dumps(
             {"ts": time.time(), "env": self.env, "series": list(self.series),
-             "counts": self.counts}, indent=1))
+             "pid": os.getpid(), "counts": self.counts}, indent=1))
+
+    def claim_series(self) -> None:
+        """Refuse to start if another live process already records these series.
+
+        DEFAULT_SERIES grew to include the five 15M series on 2026-08-27, which
+        made the no-``--series`` invocation overlap the dedicated 15M instance.
+        Today they do not collide only because the older process was started
+        before that edit and holds the pre-15M dict in memory: ANY restart —
+        crash, reboot, or `make_launchd.sh install` — would put two writers on
+        one file, double every quote W7 reads, and at 00:00 UTC hand the gzip
+        rotation a file another process is still appending to. That would
+        destroy a day of tape that cannot be re-fetched (Kalshi serves ~10 days
+        of settled history and never L2 depth), so this fails loudly instead.
+        """
+        self.root.mkdir(parents=True, exist_ok=True)
+        held = []
+        for st in self.series:
+            lock = self.root / st / ".recorder.lock"
+            lock.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                try:
+                    other = int(lock.read_text().split()[0])
+                    os.kill(other, 0)              # signal 0 = liveness probe
+                except (ValueError, IndexError, ProcessLookupError, OSError):
+                    lock.unlink(missing_ok=True)   # stale lock from a dead pid
+                    fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                else:
+                    held.append(f"{st} (pid {other})")
+                    continue
+            with os.fdopen(fd, "w") as fh:
+                fh.write(f"{os.getpid()} {time.time():.0f}\n")
+            self._locks.append(lock)
+        if held:
+            self.release_series()
+            raise SystemExit(
+                "strips: these series are already being recorded by a live "
+                f"process: {', '.join(held)}. Two writers on one tape file "
+                "corrupt it at the UTC-midnight rotation. Pass --series to "
+                "split the work, or stop the other instance first.")
+
+    def release_series(self) -> None:
+        for lock in self._locks:
+            lock.unlink(missing_ok=True)
+        self._locks = []
 
     def run(self, cycles: int = 0) -> None:
         n = 0
+        self.claim_series()
         try:
             while True:
                 started = time.time()
@@ -125,6 +179,7 @@ class StripRecorder:
                     break
                 time.sleep(max(0.0, self.interval - (time.time() - started)))
         finally:
+            self.release_series()
             self.writer.close()
             logger.info("strip recorder stopped after %d cycles: %s", n, self.counts)
 

@@ -56,7 +56,8 @@ Failure handling rules
  bash qlib-main/electric_utilities_strategy/aeus_pipeline.sh daily --skip-holiday
 - If repeated failures suggest stale price cache, include:
  bash qlib-main/electric_utilities_strategy/aeus_pipeline.sh dry-run --skip-holiday
-- If a PIT alt-signal refresh (CapEx / EIA / backlog RPO / gas proxy / ERCOT) failed but the pipeline continued (these stores are append-only PIT-frozen and the signal falls back to the last frozen value), treat the run as success-degraded and say so.
+- If a PIT alt-signal refresh (CapEx / EIA / backlog RPO / gas proxy / ERCOT / PJM) failed but the pipeline continued (these stores are append-only PIT-frozen and the signal falls back to the last frozen value), treat the run as success-degraded and say so.
+- Log lines `[EXPOSURE_AMP] z=… phi=… E=…` and `EXPOSURE AMPLIFIER: E=… gross …% → …%` are **normal output** (pathway ③ exposure amplifier, `risk.exposure_amplifier.enabled: true` since 2026-09-02) — not warnings, not degradation. `[EXPOSURE_AMP] skipped (non-fatal: …)` means the amplifier stayed neutral (E=1) because the shortage series was unavailable: that IS a degradation → success-degraded.
 - If signal computation failed, or there is a Python traceback, include:
  tail -60 "$(ls -t qlib-main/electric_utilities_strategy/logs/aeus_daily_$(date +%Y%m%d)_*.log 2>/dev/null | head -1)"
  and the safe diagnostic command:

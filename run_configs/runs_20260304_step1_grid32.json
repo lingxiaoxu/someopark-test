@@ -8,12 +8,12 @@
       "param_set": "default",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -36,20 +36,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -60,12 +52,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -74,12 +74,12 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -102,20 +102,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -126,12 +118,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -140,12 +140,12 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -168,20 +168,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -192,12 +184,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -206,12 +206,12 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -234,20 +234,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -258,12 +250,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -272,12 +272,12 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -300,20 +300,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -324,12 +316,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -338,12 +338,12 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -366,20 +366,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -390,12 +382,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -404,12 +404,12 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -432,20 +432,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -456,12 +448,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -470,12 +470,12 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -498,20 +498,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -522,12 +514,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -536,12 +536,12 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -564,20 +564,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -588,12 +580,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -602,12 +602,12 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -630,20 +630,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -654,12 +646,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -668,12 +668,12 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -696,20 +696,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -720,12 +712,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -734,12 +734,12 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -762,20 +762,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -786,12 +778,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -800,12 +800,12 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -828,20 +828,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -852,12 +844,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -866,12 +866,12 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -894,20 +894,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -918,12 +910,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -932,12 +932,12 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -960,20 +960,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -984,12 +976,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -998,12 +998,12 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1026,20 +1026,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1050,12 +1042,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1064,12 +1064,12 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1092,20 +1092,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1116,12 +1108,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1130,12 +1130,12 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1158,20 +1158,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1182,12 +1174,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1196,12 +1196,12 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1224,20 +1224,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1248,12 +1240,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1262,12 +1262,12 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1290,20 +1290,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1314,12 +1306,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1328,12 +1328,12 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1356,20 +1356,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1380,12 +1372,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1394,12 +1394,12 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1422,20 +1422,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1446,12 +1438,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1460,12 +1460,12 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1488,20 +1488,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1512,12 +1504,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1526,12 +1526,12 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1554,20 +1554,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1578,12 +1570,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1592,12 +1592,12 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1620,20 +1620,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1644,12 +1636,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1658,12 +1658,12 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1686,20 +1686,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1710,12 +1702,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1724,12 +1724,12 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1752,20 +1752,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1776,12 +1768,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1790,12 +1790,12 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1818,20 +1818,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1842,12 +1834,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1856,12 +1856,12 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1884,20 +1884,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1908,12 +1900,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1922,12 +1922,12 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -1950,20 +1950,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -1974,12 +1966,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -1988,12 +1988,12 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -2016,20 +2016,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -2040,12 +2032,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -2054,12 +2054,12 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -2082,20 +2082,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -2106,12 +2098,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -2120,12 +2120,12 @@
       "param_set": "vol_release",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -2148,20 +2148,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -2172,12 +2164,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -2186,12 +2186,12 @@
       "param_set": "vol_release_deep",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -2214,20 +2214,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -2238,12 +2230,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     },
@@ -2252,12 +2252,12 @@
       "param_set": "aggressive_vol_release",
       "pairs": [
         [
-          "IDXX",
-          "STE"
-        ],
-        [
           "SBUX",
           "WYNN"
+        ],
+        [
+          "IDXX",
+          "STE"
         ],
         [
           "HWM",
@@ -2280,20 +2280,12 @@
           "JBL"
         ],
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
           "ALGN",
           "BMY"
         ],
         [
           "AIZ",
           "MS"
-        ],
-        [
-          "EMR",
-          "UPS"
         ],
         [
           "HWM",
@@ -2304,12 +2296,20 @@
           "MCO"
         ],
         [
+          "EMR",
+          "UPS"
+        ],
+        [
           "FTV",
           "JBHT"
         ],
         [
           "CRM",
           "PLTR"
+        ],
+        [
+          "PG",
+          "SYY"
         ]
       ]
     }

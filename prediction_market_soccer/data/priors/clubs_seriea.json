@@ -1,7 +1,7 @@
 {
- "prior_id": "clubs_seriea_2026-09-02",
+ "prior_id": "clubs_seriea_2026-09-03",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-09-02",
+ "as_of": "2026-09-03",
  "is_stale": true,
  "league": "seriea",
  "notes": [
@@ -17,13 +17,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 487,
-   "elo": 1746.0,
+   "elo": 1747.0,
    "elo_rank": 45,
    "last_pts": 1.4211,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.4184,
-   "market_p_champion": 0.00441
+   "anchor_points": 1.42,
+   "market_p_champion": 0.00504
   },
   {
    "club_id": "sassuolo",
@@ -31,12 +31,12 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 488,
-   "elo": 1673.7304,
-   "elo_rank": 69,
+   "elo": 1672.0,
+   "elo_rank": 70,
    "last_pts": 1.2895,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.3001,
+   "anchor_points": 1.2967,
    "market_p_champion": null
   },
   {
@@ -45,13 +45,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 489,
-   "elo": 1807.8883,
+   "elo": 1807.8882745926965,
    "elo_rank": 24,
    "last_pts": 1.8421,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.8266,
-   "market_p_champion": 0.11553
+   "anchor_points": 1.8268,
+   "market_p_champion": 0.11784
   },
   {
    "club_id": "cagliari",
@@ -60,11 +60,11 @@
    "league": "seriea",
    "api_team_id": 490,
    "elo": 1644.0,
-   "elo_rank": 88,
+   "elo_rank": 87,
    "last_pts": 1.1316,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.1619,
+   "anchor_points": 1.1621,
    "market_p_champion": null
   },
   {
@@ -78,8 +78,8 @@
    "last_pts": 2.0,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.8477,
-   "market_p_champion": 0.04008
+   "anchor_points": 1.8469,
+   "market_p_champion": 0.04169
   },
   {
    "club_id": "udinese",
@@ -87,12 +87,12 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 494,
-   "elo": 1687.5399,
-   "elo_rank": 63,
+   "elo": 1692.0,
+   "elo_rank": 62,
    "last_pts": 1.3158,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3407,
+   "anchor_points": 1.3496,
    "market_p_champion": null
   },
   {
@@ -101,12 +101,12 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 495,
-   "elo": 1650.0,
+   "elo": 1651.0,
    "elo_rank": 82,
    "last_pts": 1.0789,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.1475,
+   "anchor_points": 1.1496,
    "market_p_champion": null
   },
   {
@@ -115,13 +115,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 496,
-   "elo": 1820.9897,
+   "elo": 1820.9896549888715,
    "elo_rank": 21,
    "last_pts": 1.8158,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.8444,
-   "market_p_champion": 0.13446
+   "anchor_points": 1.8486,
+   "market_p_champion": 0.14647
   },
   {
    "club_id": "as_roma",
@@ -129,13 +129,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 497,
-   "elo": 1826.6627,
+   "elo": 1826.6627044866589,
    "elo_rank": 18,
    "last_pts": 1.9211,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.8996,
-   "market_p_champion": 0.15339
+   "anchor_points": 1.8927,
+   "market_p_champion": 0.13692
   },
   {
    "club_id": "atalanta",
@@ -143,13 +143,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 499,
-   "elo": 1805.2692,
+   "elo": 1805.269188226547,
    "elo_rank": 25,
    "last_pts": 1.5526,
    "last_rank": 7,
    "promoted": false,
    "anchor_points": 1.5562,
-   "market_p_champion": 0.00441
+   "market_p_champion": 0.00504
   },
   {
    "club_id": "bologna",
@@ -157,13 +157,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 500,
-   "elo": 1740.4732,
+   "elo": 1740.473202027874,
    "elo_rank": 46,
    "last_pts": 1.4737,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4299,
-   "market_p_champion": 0.00441
+   "anchor_points": 1.43,
+   "market_p_champion": 0.00504
   },
   {
    "club_id": "fiorentina",
@@ -171,13 +171,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 502,
-   "elo": 1694.1247,
-   "elo_rank": 58,
+   "elo": 1694.1247176382533,
+   "elo_rank": 59,
    "last_pts": 1.1053,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2225,
-   "market_p_champion": 0.00441
+   "anchor_points": 1.2227,
+   "market_p_champion": 0.00504
   },
   {
    "club_id": "torino",
@@ -190,7 +190,7 @@
    "last_pts": 1.1842,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.2141,
+   "anchor_points": 1.2142,
    "market_p_champion": null
   },
   {
@@ -204,8 +204,8 @@
    "last_pts": 2.2895,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.2582,
-   "market_p_champion": 0.47566
+   "anchor_points": 2.2594,
+   "market_p_champion": 0.47119
   },
   {
    "club_id": "frosinone",
@@ -213,12 +213,12 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 512,
-   "elo": 1652.0,
+   "elo": 1653.0,
    "elo_rank": 81,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1997,
+   "anchor_points": 1.2033,
    "market_p_champion": null
   },
   {
@@ -227,13 +227,13 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 517,
-   "elo": 1647.0,
-   "elo_rank": 84,
+   "elo": 1642.0,
+   "elo_rank": 89,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1732,
-   "market_p_champion": 0.00441
+   "anchor_points": 1.1609,
+   "market_p_champion": 0.00504
   },
   {
    "club_id": "parma",
@@ -242,11 +242,11 @@
    "league": "seriea",
    "api_team_id": 523,
    "elo": 1626.0,
-   "elo_rank": 97,
+   "elo_rank": 98,
    "last_pts": 1.1842,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.1524,
+   "anchor_points": 1.1526,
    "market_p_champion": null
   },
   {
@@ -255,12 +255,12 @@
    "zh": "",
    "league": "seriea",
    "api_team_id": 867,
-   "elo": 1597.2406,
+   "elo": 1597.2405806776267,
    "elo_rank": 122,
    "last_pts": 1.0,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.003,
+   "anchor_points": 1.0033,
    "market_p_champion": null
   },
   {
@@ -274,8 +274,8 @@
    "last_pts": 1.8684,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.759,
-   "market_p_champion": 0.05886
+   "anchor_points": 1.7584,
+   "market_p_champion": 0.06067
   },
   {
    "club_id": "monza",
@@ -284,11 +284,11 @@
    "league": "seriea",
    "api_team_id": 1579,
    "elo": 1621.0,
-   "elo_rank": 105,
+   "elo_rank": 107,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0948,
+   "anchor_points": 1.0951,
    "market_p_champion": null
   }
  ]

@@ -290,24 +290,36 @@ def _fixture(conn, fid: int):
 
 class _Tickers:
     """(comp, home, away) → {side: ticker} via the club discovery (prod public listing; the
-    demo exchange carries the identical event/market tickers — verified)."""
+    demo exchange carries the identical event/market tickers — verified).
+
+    ``failed`` records the competitions whose discovery call itself failed (rate limit,
+    outage). A caller must be able to tell "the venue does not list this pairing" from
+    "we could not ask" — recording the second as the first is how a transient 429 becomes
+    a permanent 'this competition has no market' in a measurement table."""
 
     def __init__(self):
         self._disc: dict = {}
+        self.failed: set[str] = set()
 
     def for_match(self, comp: str, hi: str, ai: str) -> dict | None:
         from prediction_market_soccer.venues.kalshi.discovery import KalshiDiscovery
         if comp not in self._disc:
             try:
                 self._disc[comp] = KalshiDiscovery(comp).match_index()
+                self.failed.discard(comp)
             except Exception as e:  # noqa: BLE001 — venue outage on one comp ≠ all comps
                 _log("discovery_failed", comp=comp, error=str(e)[:160])
                 self._disc[comp] = {}
+                self.failed.add(comp)
         e = self._disc[comp].get(frozenset({hi, ai}))
         if not e:
             return None
         t = {"home": e["teams"].get(hi), "away": e["teams"].get(ai), "draw": e.get("tie")}
         return t if all(t.values()) else None
+
+    def index_ok(self, comp: str) -> bool:
+        """True when this competition's listing was actually retrieved (and is non-empty)."""
+        return comp not in self.failed and bool(self._disc.get(comp))
 
 
 class _Strength:

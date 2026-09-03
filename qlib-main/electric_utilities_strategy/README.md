@@ -248,8 +248,8 @@ AEUS 的"另类数据"层全部隔离在 `price_data/elec_strategy/` 下（`pric
 | `aeus_pit` | PIT 工具：`merge_frozen` 仅追加 + 分频率 staleness（5td/45d/120d） | — | — | 可得日期 |
 | `company_signals` | capex_pulse（与 AISS 共享 4 hyperscaler）+ utility / water / hyperscaler 组 capex（XBRL **YTD 去累计引擎**） | yfinance + SEC XBRL | `--update-capex` / `--update-utility-capex` / `--update-water-capex` / `--update-hyperscaler-capex` | 同日 / filed |
 | `industry_signals` | EIA 售电 + 燃料结构（EPM 滞后 56d）、backlog RPO（成分匹配 YoY）、gas 价格 proxy（z252 + 库存 blend，库存**只读** `price_data/eia/` macro 镜像）、IPUTIL | EIA v2 + SEC XBRL + FRED | `--update-elec-gen` / `--update-fuel-mix` / `--update-backlog` / `--update-gas` / `--update-pmi` | EPM 发布 / filed / release |
-| `altdata_signals` | 日频需求（2015-07+，滞后 3d，STEO CDD/HDD **去天气**）、860M 装机（滞后 60d）、DC 州电价溢价、变压器 PPI/CPI/建筑用工、缺电度、ai_demand_cycle 敞口放大器、GPU（forward-only） | EIA v2 + FRED | `--update-demand` / `--update-dd` / `--update-capacity` / `--update-state-price` / `--update-fred` / `--snapshot-gpu` | 各系列发布日 |
-| `ercot_signals` | 凭证回填 **991 天** DAM SPP 枢纽电价 + AS（受 2023-12 档案下限约束）；macro 模块 dashboard 增量**只读** | ERCOT Public API | `--update` | 日 |
+| `altdata_signals` | 日频需求（2015-07+，滞后 3d，STEO CDD/HDD **去天气**）、860M 装机（滞后 60d）、DC 州电价溢价、变压器 PPI/CPI/建筑用工、缺电度（→ 通路③敞口放大器）、GPU（forward-only）。**装机按能源类型分解**（`energy_source_code`，2026-09-02 修好，此前 by_source 恒空 → `renewables_adds_yoy` 从未有值）；`--refreeze` 按月一个请求窗口（EIA offset 深度分页会退化到 23 s/页） | EIA v2 + FRED | `--update-demand` / `--update-dd` / `--update-capacity` / `--update-state-price` / `--update-fred` / `--snapshot-gpu` | 各系列发布日 |
+| `ercot_signals` | 凭证回填 **991 天** DAM SPP 枢纽电价 + AS（受 2023-12 档案下限约束）；macro 模块 dashboard 增量**只读**；**macro accrual 三条（2026-09-02 接线）**：`ercot_demand_yoy` → power_demand 节点 z 均值，`ercot_gas_share` / `ercot_rt_price` → `price_pulse`（rt_price 需 ≥126 点，累积中） | ERCOT Public API | `--update` / `--verify`（含三条 accrual 行） | 日 |
 | `pjm_signals` | **已接线（2026-09-01）+ 扩展（09-02）**：西枢纽 DA LMP（2016+）+ 五个扩展 feed —— DOM 区基差 / DOM+PEPCO+BGE+AEP 计量负荷 YoY / 日备用裕度 / 日 0 强迫停机 / DA 负荷预报误差 → `shortage_east`；全部 PIT 冻结 append-only；扩展 feed 受 ~731 天非会员存档墙限制，自 2024-09-15 起；数据 internal-use-only，**绝不 commit** | PJM API | `--init` 回填全部 / `--update` 增量全部 / `--verify` 7 序列时效 | `external_sources.pjm.extended=false` 可退回仅西枢纽（逐字节等价） |
 
 ### 首次初始化（一次）
@@ -520,6 +520,7 @@ wf_diagnostic_aeus_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | `risk.vol_scaling` | target_vol_annual | `0.30` | AISS 起点值，Group C 扫 0.18–0.40 |
 | `risk.drawdown` | cumulative_dd_halve | `−0.25` | 累计回撤减半线 |
 | `risk.event_derisk` | enabled | `false` | **phase-1 关闭**（C 级接线 TODO） |
+| `risk.exposure_amplifier` | enabled / k / lo / hi | **`true`** / 0.10 / 0.85 / 1.15 | 通路③：`E = clip(1 + k·z·φ, lo, hi)` 乘 gross（z=缺电度，φ=图谱加权组合暴露）。2026-09-02 沙盒 batch+WF 双赢后翻开（AEUS_PLAN §12.1）。`graph_weighted: false` → φ≡1 纯标量版；`allow_leverage: false`（默认）时 gross 恒 100% ⇒ **E>1 无效，实为单向减仓器**；任一防守档触发时 E>1 被钳到 1.0 |
 | `rebalance` | emergency_derisk_vix | `36.0` | 仅真危机 |
 | `signals.regime` | vix_high / vix_extreme | `25` / `32` | regime 倾斜阈值 |
 | `external_sources` | eia / ercot / pjm / sec | true / true / **true** / true | PJM 2026-09-01 接线；`pjm.extended: true` 打开五个扩展 feed |
