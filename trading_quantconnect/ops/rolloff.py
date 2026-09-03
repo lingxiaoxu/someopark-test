@@ -277,6 +277,7 @@ def official_q(session: str, qc: dict) -> dict:
     if not shares:
         raise SourceError("QC 快照里没有逐票股数 —— 定不出收盘 Q")
     closes = official_close.closes_for(session, [_canon(t) for t in shares])
+    official_close.assert_prices_sane(closes, qc.get("prices"), _canon)
     cash = float(qc["cash"])
     Q = cash + sum(int(s) * closes[_canon(t)] for t, s in shares.items())
     gross = float(qc.get("gross") or 0.0)
@@ -319,6 +320,14 @@ QC_SYMBOL_ALIAS = {
     "FPL": "NEE",
     "GEVW": "GEV",
     "WPH": "LNT",
+    # 2026-09-03 RVTY(Revvity)上车:QC 显示 EG&G 的历史首名 EGG
+    # (EG&G → PerkinElmer → Revvity)。**这一例和前八例性质不同,危险得多**:
+    # RCHI/COH/FPL 那些在 Polygon 上根本不存在,查不到会抛错;而 EGG 在 Polygon
+    # 上是**真实存在的另一家公司**(Enigmatig Limited,NYSE American,9/2 收 2.76,
+    # 而 Revvity 收 130.94)。不加别名 → closes_for 查得到价、不报错、静默用错价,
+    # 868 股会让 Q 少算 $111,260 = 129bp。故另加 assert_prices_sane 守卫(见
+    # reconcile/official_close.py):把这类"映射到别的证券"从静默错价变成指名报错。
+    "EGG": "RVTY",
 }
 
 

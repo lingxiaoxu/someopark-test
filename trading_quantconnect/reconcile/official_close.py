@@ -105,3 +105,46 @@ def closes_for(session: str, tickers, table: dict | None = None
             f"{session} 的官方收盘价缺 {len(miss)} 只: {miss} —— 少算这些票的"
             f"市值会被 D 全额吸收且不会报错,故不出裁决")
     return {t: tbl[t] for t in want}
+
+
+def assert_prices_sane(closes: dict[str, float], qc_prices: dict | None,
+                       canon, ratio: float = 3.0) -> None:
+    """守卫:官方收盘价与 QC 自己的逐票价偏离过大 = 多半映射到了**别的证券**。
+
+    2026-09-03 实测催生:QC 按 security ID 的历史首名记仓,Revvity 显示为 EGG
+    (EG&G → PerkinElmer → Revvity)。前八例历史首名(ORCC/NB/CMB/RCHI/COH/
+    FPL/GEVW/WPH)在 Polygon 上都**不存在**,漏配别名会当场抛"收盘价缺",人一看
+    就知道要补别名。EGG 不同 —— Polygon 上有一家真实且无关的 Enigmatig Limited
+    (9/2 收 2.76,而 Revvity 收 130.94),于是 closes_for **查得到、不报错、
+    静默给 868 股 Revvity 按 2.76 估值**,Q 少算 $111,260 = 129bp。那会表现成
+    "交叉校验失败",没有任何线索指向 EGG,排查极痛苦。
+
+    判据用**倍数**不用百分比:这道守卫要抓的是"映射到了别的公司"(EGG 2.76 vs
+    Revvity 130.94 = 47 倍),不是"价格陈旧"。payload 价停在 ~15:45(见本文件
+    顶部)有几十分钟陈旧度,百分之几十的偏离在测试夹具里都是常态,用百分比会
+    大面积误伤;而没有哪只股票会在几十分钟里涨跌 3 倍,所以 3 倍阈值既零误报
+    又能把错映射一抓一个准 —— 且报错直接点名是哪只票、两个价各是多少。
+
+    局限要说清:两家公司股价恰好同一量级时,这道守卫抓不到 —— 那种情况由 ①
+    holdings 平面兜底(QC 名与 target 名对不上,逐票 0 差会立刻红)。两道防线
+    针对的是同一个坑的不同侧面。
+
+    qc_prices 为空(旧版快照没存逐票价)时跳过:守卫是加分项,不能让老档案
+    无法补算。
+    """
+    if not qc_prices:
+        return
+    bad = []
+    for t, p in qc_prices.items():
+        c = closes.get(canon(t))
+        if c is None or not p or p <= 0:
+            continue
+        r = c / float(p)
+        if r > ratio or r < 1.0 / ratio:
+            bad.append(f"{t}→{canon(t)}: 官方收盘 {c:,.2f} vs QC 自己的价 "
+                       f"{float(p):,.2f}(相差 {max(r, 1/r):.1f} 倍)")
+    if bad:
+        raise SourceError(
+            "官方收盘价与 QC 逐票价严重不符,多半是 QC 历史首名映射到了**别的"
+            "证券**(如 EGG=EG&G/Revvity,而 Polygon 的 EGG 是 Enigmatig):"
+            + "; ".join(bad) + " —— 补 rolloff.QC_SYMBOL_ALIAS 后重跑")

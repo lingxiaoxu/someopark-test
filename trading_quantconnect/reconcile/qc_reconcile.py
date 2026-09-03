@@ -802,6 +802,11 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     try:
         closes = official_close.closes_for(
             session, [rolloff._canon(t) for t in shares])
+        # 错映射守卫:官方价与 QC 自己的价差一个数量级 = 映射到别的证券了
+        # (EGG=Revvity 而 Polygon 的 EGG 是 Enigmatig)。不拦的话 Q 静默错 129bp,
+        # 表现成"交叉校验失败",查不到根因。
+        official_close.assert_prices_sane(closes, qc.get("prices"),
+                                          rolloff._canon)
     except SourceError as e:
         return {"status": "pending", "session": session,
                 "note": f"官方收盘价不可用: {e}"}

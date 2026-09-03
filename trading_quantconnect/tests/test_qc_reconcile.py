@@ -1208,3 +1208,31 @@ def test_k_effective_rolls_onboarding_deposit_as_step(monkeypatch, tmp_path,
     assert row["unattributed_usd"] == 0.0
     assert row["D_minus_K_effective_usd"] == 0.0
     assert row["status"] == "ok"        # ← 旧版缺这行,bug 就是从这里溜过去的
+
+
+def test_wrong_security_mapping_is_named_not_silently_priced(monkeypatch,
+                                                             eq_env):
+    """QC 历史首名撞上 Polygon 上另一家真公司 → 必须指名报错,不能静默用错价。
+
+    2026-09-03 真实案例:Revvity 在 QC 显示为 EGG(EG&G→PerkinElmer→Revvity),
+    而 Polygon 的 EGG 是 Enigmatig Limited(9/2 收 2.76 vs Revvity 130.94)。
+    前八例历史首名在 Polygon 上不存在、会当场抛"收盘价缺";这一例查得到,
+    868 股会让 Q 少算 $111,260 = 129bp,且只表现为"交叉校验失败",无线索。
+    """
+    # X 的官方收盘 10.0,但 QC 自己给它标 0.5 —— 20 倍差,只可能是换了证券
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    qc = _qc(388.0)
+    qc["prices"] = dict(qc["prices"], X=0.5)
+    row = qr.equity_plane("2026-08-27", qc, [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert "别的" in row["note"] and "X" in row["note"]
+    assert "D_usd" not in row              # 不出裁决,不拿错价算 Q
+
+
+def test_price_sanity_guard_tolerates_ordinary_staleness(monkeypatch, eq_env):
+    """守卫不能误伤:payload 价停在 ~15:45,几十分钟的陈旧度必须放行。"""
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    qc = _qc(388.0)
+    qc["prices"] = dict(qc["prices"], X=9.0)     # 官方 10.0,差 10% —— 正常
+    row = qr.equity_plane("2026-08-27", qc, [], {}, {}, {})
+    assert row["status"] == "baseline" and row["D_usd"] == 100_000.0
