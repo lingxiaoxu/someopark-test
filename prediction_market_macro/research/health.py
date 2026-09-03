@@ -514,9 +514,13 @@ def daily_health(conn, settings) -> str:
     # raise is stale and is released here. Placed after every detector and before the
     # rolling-20 breaker, which is deliberately not self-healing (ops/risk.py explains).
     from prediction_market_macro.ops import risk as _risk0
+    # INDIVIDUAL notes and flags, never joined: the breaker stores a comma-joined note
+    # list and release_resolved splits it back, so the two sides must be comparable at
+    # the level of one condition. Joining here let a live condition be released whenever
+    # a resolved one happened to sort ahead of it.
     live_reasons = {str(f) for f in report["flags"]}
-    live_reasons |= {"health_red:" + ",".join(v.get("notes") or [])
-                     for v in report["series"].values() if v.get("notes")}
+    for v in report["series"].values():
+        live_reasons |= {str(n) for n in (v.get("notes") or [])}
     freed = _risk0.release_resolved(conn, live_reasons, now)
     report["breakers_released"] = freed
 

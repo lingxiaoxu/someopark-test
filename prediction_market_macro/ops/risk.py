@@ -163,8 +163,29 @@ def breaker_tripped(conn, series: str, within_hours: float = 24.0) -> str | None
 SELF_HEALING_PREFIXES = ("health_red:", "settle_label_mismatch:", "ledger_selfcheck:")
 
 
-def release_resolved(conn, live_reasons: set[str], now: datetime | None = None) -> list[str]:
-    """Ack breakers whose condition the CURRENT health run no longer reports.
+def _breaker_notes(msg: str) -> list[str]:
+    """The individual conditions a breaker message asserts.
+
+    `health_red:` carries a COMMA-JOINED note list, so it must be split back into notes
+    before anything is compared: comparing the joined string against the live one is what
+    made the first version of this function release a live breaker whenever the resolved
+    note happened to sort first. Other reasons are single flags carried verbatim.
+    """
+    body = msg.split(":", 1)[1].lstrip() if ":" in msg else msg
+    if body.startswith("health_red:"):
+        return [n for n in body[len("health_red:"):].split(",") if n]
+    return [body] if body else []
+
+
+def _still_live(note: str, live: set[str]) -> bool:
+    """Conservative: a note counts as still live if it matches any live flag OR is a
+    prefix of one (breaker messages are truncated at 180 chars, live flags are not), or
+    vice versa. Ambiguity keeps the breaker CLOSED — a risk control must fail safe."""
+    return any(l == note or l.startswith(note) or note.startswith(l) for l in live)
+
+
+def release_resolved(conn, live: set[str], now: datetime | None = None) -> list[str]:
+    """Ack breakers whose conditions the CURRENT health run no longer reports.
 
     2026-09-02, after the KXAAAGASW tie incident: the settle-label rule was corrected the
     same day, `_settle_label_check` went clean immediately — and the desk still sat blocked,
@@ -174,26 +195,35 @@ def release_resolved(conn, live_reasons: set[str], now: datetime | None = None) 
     the system; when the state is verifiably good again, holding the block is itself a
     defect.
 
-    Only self-healing reasons are released, and only when the live health run did not
-    re-raise them. The ack is the existing manual-release mechanism (铁律 10) — the alert
-    row survives as an audit record, and an `info` row names what was released and why, so
-    a reader can always tell an auto-release from an operator one.
+    `live` is the set of INDIVIDUAL flags/notes this run raised. A breaker is released only
+    when EVERY condition it asserts is absent from that set — one live condition holds the
+    whole row. Only self-healing reasons are eligible; the rolling-20 PnL breaker never is.
+
+    The ack is the existing manual-release mechanism (铁律 10) — the alert row survives as
+    an audit record, and an `info` row names what was released and why, so a reader can
+    always tell an auto-release from an operator one.
+
+    No time window: an unacked breaker whose condition is gone should be acked whatever its
+    age (rows older than `breaker_tripped`'s 24h are already inert for blocking, but leaving
+    them unacked leaves a permanently red row for a resolved condition).
     """
     now = now or datetime.now(timezone.utc)
-    cut = (now - timedelta(hours=24.0)).isoformat()
+    # `id` is this table's INTEGER PRIMARY KEY, i.e. the rowid alias — selecting `rowid`
+    # returns a column NAMED "id", so r["rowid"] raises. Ask for the real column.
+    # level='error' keeps the scan off the info audit rows this function writes itself.
     rows = conn.execute(
-        "SELECT rowid, message FROM alerts WHERE source='circuit_breaker' AND acked=0"
-        " AND ts>=?", (cut,)).fetchall()
+        "SELECT id, message FROM alerts WHERE source='circuit_breaker'"
+        " AND level='error' AND acked=0").fetchall()
     released = []
     for r in rows:
-        msg = r["message"] if not isinstance(r, tuple) else r[1]
-        rid = r["rowid"] if not isinstance(r, tuple) else r[0]
+        rid, msg = r["id"], r["message"]
         body = msg.split(":", 1)[1].lstrip() if ":" in msg else msg
         if not body.startswith(SELF_HEALING_PREFIXES):
             continue
-        if any(body in lr or lr in body for lr in live_reasons):
-            continue                       # the condition is still being reported
-        conn.execute("UPDATE alerts SET acked=1 WHERE rowid=?", (rid,))
+        notes = _breaker_notes(msg)
+        if not notes or any(_still_live(n, live) for n in notes):
+            continue
+        conn.execute("UPDATE alerts SET acked=1 WHERE id=?", (rid,))
         conn.execute(
             "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
             (now.isoformat(), "info", "circuit_breaker",

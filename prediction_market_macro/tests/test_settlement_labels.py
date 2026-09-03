@@ -422,8 +422,14 @@ def test_a_breaker_whose_condition_is_gone_is_released_but_a_pnl_one_is_not():
     from prediction_market_macro.ops import risk
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    conn.execute("CREATE TABLE alerts(ts TEXT, level TEXT, source TEXT, message TEXT,"
-                 " acked INTEGER DEFAULT 0)")
+    # THE PRODUCTION DDL, verbatim from ingest/store.py. The first version of this test
+    # built a table with no INTEGER PRIMARY KEY, so `SELECT rowid` returned a column
+    # actually named "rowid" and the test passed while production — where `id` is the
+    # rowid alias and the column comes back named "id" — raised IndexError on the very
+    # first call. A fixture that does not carry the real key definition tests nothing.
+    conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                 " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
+                 " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
     now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
     earlier = (now - timedelta(hours=4)).isoformat()
     for msg in ("*: settle_label_mismatch:KXAAAGASW-26AUG31-4.080:label=4.08",
@@ -431,8 +437,8 @@ def test_a_breaker_whose_condition_is_gone_is_released_but_a_pnl_one_is_not():
                 "*: rolling20 realized -12.3% over 20 closures"):
         conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                      (earlier, "error", "circuit_breaker", msg))
-    # this run still reports the stale-prediction condition, but not the label one
-    freed = risk.release_resolved(conn, {"health_red:pred_stale:40h"}, now)
+    # live reasons are INDIVIDUAL notes, the way health.report now builds them
+    freed = risk.release_resolved(conn, {"pred_stale:40h"}, now)
     assert len(freed) == 1 and "settle_label_mismatch" in freed[0]
     assert risk.breaker_tripped(conn, "KXNATGASW") is not None      # pred_stale holds
     freed2 = risk.release_resolved(conn, set(), now)
@@ -443,3 +449,49 @@ def test_a_breaker_whose_condition_is_gone_is_released_but_a_pnl_one_is_not():
     n_audit = conn.execute("SELECT COUNT(*) FROM alerts WHERE source='circuit_breaker'"
                            " AND level='info'").fetchone()[0]
     assert n_audit == 2, "each auto-release must leave its own audit row"
+
+
+def test_a_breaker_is_held_when_any_one_of_its_conditions_is_still_live():
+    """The fail-open hole the 2026-09-02 audit found: the breaker stores a COMMA-JOINED
+    note list while the health run reports notes individually, so comparing joined
+    strings released a live breaker whenever the resolved note sorted first. A breaker
+    asserting two conditions must be held while EITHER is still reported."""
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_macro.ops import risk
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                 " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
+                 " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
+    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 ((now - timedelta(hours=4)).isoformat(), "error", "circuit_breaker",
+                  "KXNATGASW: health_red:pred_stale:39h,chronos_nan"))
+    # chronos_nan is STILL live; pred_stale is resolved. The row must be held.
+    assert risk.release_resolved(conn, {"brier_behind_market_2win", "chronos_nan"},
+                                 now) == []
+    assert risk.breaker_tripped(conn, "KXNATGASW") is not None
+    # both resolved -> released
+    assert len(risk.release_resolved(conn, {"brier_behind_market_2win"}, now)) == 1
+    assert risk.breaker_tripped(conn, "KXNATGASW") is None
+
+
+def test_release_sweeps_a_resolved_breaker_older_than_the_blocking_window():
+    """Two 2026-08-30 pred_stale rows sat permanently unacked because the first version
+    only looked back 24h — inert for blocking but a permanently red row for a condition
+    that was fixed. Age must not exempt a resolved breaker from being acked."""
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_macro.ops import risk
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                 " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
+                 " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
+    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 ((now - timedelta(days=3)).isoformat(), "error", "circuit_breaker",
+                  "KXNATGASW: health_red:pred_stale:39h"))
+    assert len(risk.release_resolved(conn, set(), now)) == 1
+    assert conn.execute("SELECT acked FROM alerts WHERE level='error'").fetchone()[0] == 1
