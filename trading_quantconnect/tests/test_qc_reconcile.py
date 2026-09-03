@@ -366,26 +366,30 @@ def test_equity_pending_when_official_eod_lacks_that_session(eq_env):
 def test_equity_pending_when_two_paths_disagree(monkeypatch, eq_env):
     """收盘价复算的 Q 与 QC 自报净值对不上 → 不挑一个信,直接不出裁决。
 
-    gross = 1,000,000,CROSS_TOL_BP = 3 → 容差 $300。差 $400 必须拦下。
+    gross = 1,000,000,CROSS_TOL_BP = 5 → 容差 $500。差 $600 必须拦下。
     """
     monkeypatch.setattr(qr, "prev_report", lambda s: _prev(100_000.0, 388.0))
     row = qr.equity_plane("2026-08-27",
-                          _qc(388.0, equity_reported=5_900_400.0),
+                          _qc(388.0, equity_reported=5_900_600.0),
                           [], {}, {}, {})
     assert row["status"] == "pending"
-    assert row["cross_check_usd"] == -400.0
-    assert row["cross_check_bp"] == 4.0
+    assert row["cross_check_usd"] == -600.0
+    assert row["cross_check_bp"] == 6.0
     assert "两条独立" in row["note"] and "D_usd" not in row
 
 
 def test_equity_cross_check_passes_just_inside_tolerance(monkeypatch, eq_env):
-    """容差内照常出裁决 —— 闸门不能宽到形同虚设,也不能严到永远拦着。"""
+    """容差内照常出裁决 —— 闸门不能宽到形同虚设,也不能严到永远拦着。
+
+    紧贴新边界(4.99bp < 5.0):阈值若被误调回 3bp,这个用例立刻变红,
+    不会出现"改了常数但没人发现测试其实没在守边界"的情况。
+    """
     monkeypatch.setattr(qr, "prev_report", lambda s: None)
     row = qr.equity_plane("2026-08-27",
-                          _qc(388.0, equity_reported=5_900_299.0),
+                          _qc(388.0, equity_reported=5_900_499.0),
                           [], {}, {}, {})
     assert row["status"] == "baseline"
-    assert row["cross_check_bp"] == 2.99 and row["D_usd"] == 100_000.0
+    assert row["cross_check_bp"] == 4.99 and row["D_usd"] == 100_000.0
 
 
 def test_equity_pending_when_snapshot_has_no_shares(monkeypatch, eq_env):

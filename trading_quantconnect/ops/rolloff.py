@@ -67,7 +67,9 @@ TOL_SHARES = 0
 #
 # 现在 Q 改用"现金 + Σ 逐票股数 × 官方收盘价",与 P 同价源族;QC 自报净值降级为
 # 独立交叉校验。自算净值仍留着,只作审计留痕(price_staleness_usd),不参与 K。
-CROSS_TOL_BP = 3.0
+# 2026-09-03 由 3.0 放宽到 5.0,与 qc_reconcile.CROSS_TOL_BP 同步(理由见那边注释:
+# Q 是 16:00 收盘价口径、自报净值是 16:20 的实时读数,基差随规模放大)。
+CROSS_TOL_BP = 5.0
 
 
 def _load(p: Path, default=None):
