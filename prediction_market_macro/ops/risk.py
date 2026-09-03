@@ -156,6 +156,54 @@ def breaker_tripped(conn, series: str, within_hours: float = 24.0) -> str | None
     return r["message"] if r else None
 
 
+# Trip reasons whose CONDITION is re-evaluated from scratch on every health run, so a
+# breaker holding one of them can be released the moment the condition is gone. The
+# rolling-20 PnL breaker is deliberately NOT here: a drawdown does not stop being real
+# because the next run recomputes it, and releasing it needs a human.
+SELF_HEALING_PREFIXES = ("health_red:", "settle_label_mismatch:", "ledger_selfcheck:")
+
+
+def release_resolved(conn, live_reasons: set[str], now: datetime | None = None) -> list[str]:
+    """Ack breakers whose condition the CURRENT health run no longer reports.
+
+    2026-09-02, after the KXAAAGASW tie incident: the settle-label rule was corrected the
+    same day, `_settle_label_check` went clean immediately — and the desk still sat blocked,
+    because a tripped breaker holds for 24h on the alerts row alone and nothing re-read the
+    condition. Two mornings of blocked opens and three force-exited positions were bought by
+    a bug that had already been fixed. A breaker is a statement about the CURRENT state of
+    the system; when the state is verifiably good again, holding the block is itself a
+    defect.
+
+    Only self-healing reasons are released, and only when the live health run did not
+    re-raise them. The ack is the existing manual-release mechanism (铁律 10) — the alert
+    row survives as an audit record, and an `info` row names what was released and why, so
+    a reader can always tell an auto-release from an operator one.
+    """
+    now = now or datetime.now(timezone.utc)
+    cut = (now - timedelta(hours=24.0)).isoformat()
+    rows = conn.execute(
+        "SELECT rowid, message FROM alerts WHERE source='circuit_breaker' AND acked=0"
+        " AND ts>=?", (cut,)).fetchall()
+    released = []
+    for r in rows:
+        msg = r["message"] if not isinstance(r, tuple) else r[1]
+        rid = r["rowid"] if not isinstance(r, tuple) else r[0]
+        body = msg.split(":", 1)[1].lstrip() if ":" in msg else msg
+        if not body.startswith(SELF_HEALING_PREFIXES):
+            continue
+        if any(body in lr or lr in body for lr in live_reasons):
+            continue                       # the condition is still being reported
+        conn.execute("UPDATE alerts SET acked=1 WHERE rowid=?", (rid,))
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (now.isoformat(), "info", "circuit_breaker",
+             f"auto-release: condition no longer reported by the health run — {msg[:150]}"))
+        released.append(msg)
+    if released:
+        conn.commit()
+    return released
+
+
 def check_rolling20(conn) -> str | None:
     """PLAN §12: rolling-20-closure drawdown breaker — settlements AND early exits
     both count (a string of exit losses must be able to trip it).

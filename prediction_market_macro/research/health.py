@@ -509,6 +509,17 @@ def daily_health(conn, settings) -> str:
         from prediction_market_macro.ops import risk
         risk.circuit_breaker(conn, "*", b[:180])
 
+    # Self-healing release: every breaker reason raised ABOVE this line was re-evaluated
+    # from scratch in this run, so any older breaker holding a reason this run did NOT
+    # raise is stale and is released here. Placed after every detector and before the
+    # rolling-20 breaker, which is deliberately not self-healing (ops/risk.py explains).
+    from prediction_market_macro.ops import risk as _risk0
+    live_reasons = {str(f) for f in report["flags"]}
+    live_reasons |= {"health_red:" + ",".join(v.get("notes") or [])
+                     for v in report["series"].values() if v.get("notes")}
+    freed = _risk0.release_resolved(conn, live_reasons, now)
+    report["breakers_released"] = freed
+
     # rolling-20 realized-PnL breaker (PLAN §12)
     from prediction_market_macro.ops import risk as _risk
     r20 = _risk.check_rolling20(conn)

@@ -409,3 +409,37 @@ def test_kxaaagasw_exact_tie_settles_yes_as_kalshi_did_on_26aug31():
     assert _leg_expected(4.08, "greater", 4.08, None, spec.strict_gt) == "yes"
     # a series still registered strict keeps calling the same tie NO
     assert _leg_expected(4.08, "greater", 4.08, None, True) == "no"
+
+
+def test_a_breaker_whose_condition_is_gone_is_released_but_a_pnl_one_is_not():
+    """2026-09-02: the tie bug was fixed at 12:57 and the desk stayed blocked anyway,
+    because a tripped breaker holds 24h on the alerts row alone and nothing re-read the
+    condition. Two mornings of blocked opens and three force-exits were bought by an
+    already-fixed bug. This pins the release AND its limit: a PnL drawdown does not
+    self-heal just because the next run recomputes it."""
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_macro.ops import risk
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE alerts(ts TEXT, level TEXT, source TEXT, message TEXT,"
+                 " acked INTEGER DEFAULT 0)")
+    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    earlier = (now - timedelta(hours=4)).isoformat()
+    for msg in ("*: settle_label_mismatch:KXAAAGASW-26AUG31-4.080:label=4.08",
+                "*: health_red:pred_stale:40h",
+                "*: rolling20 realized -12.3% over 20 closures"):
+        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                     (earlier, "error", "circuit_breaker", msg))
+    # this run still reports the stale-prediction condition, but not the label one
+    freed = risk.release_resolved(conn, {"health_red:pred_stale:40h"}, now)
+    assert len(freed) == 1 and "settle_label_mismatch" in freed[0]
+    assert risk.breaker_tripped(conn, "KXNATGASW") is not None      # pred_stale holds
+    freed2 = risk.release_resolved(conn, set(), now)
+    assert len(freed2) == 1 and "pred_stale" in freed2[0]
+    left = risk.breaker_tripped(conn, "KXNATGASW")
+    assert left is not None and "rolling20" in left, \
+        "the PnL breaker must NEVER be auto-released"
+    n_audit = conn.execute("SELECT COUNT(*) FROM alerts WHERE source='circuit_breaker'"
+                           " AND level='info'").fetchone()[0]
+    assert n_audit == 2, "each auto-release must leave its own audit row"
