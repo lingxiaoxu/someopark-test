@@ -781,6 +781,23 @@
    }
   ]
  },
+ "US1258961002": {
+  "asset_class": "equity",
+  "cik": "0000201533",
+  "cusip": "125896100",
+  "figi": "BBG000BFVXX0",
+  "name": "CMS Energy Corporation",
+  "polygon_ticker": "CMS",
+  "registered_at": "2026-09-03T12:36:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-03",
+    "ticker": "CMS",
+    "to": null
+   }
+  ]
+ },
  "US1264081035": {
   "asset_class": "equity",
   "cik": "0000277948",
@@ -3263,6 +3280,23 @@
    }
   ]
  },
+ "US7140461093": {
+  "asset_class": "equity",
+  "cik": "0000031791",
+  "cusip": "714046109",
+  "figi": "BBG000FXW512",
+  "name": "Revvity, Inc.",
+  "polygon_ticker": "RVTY",
+  "registered_at": "2026-09-03T12:36:20+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-03",
+    "ticker": "RVTY",
+    "to": null
+   }
+  ]
+ },
  "US7170811035": {
   "asset_class": "equity",
   "cik": "0000078003",
@@ -3586,6 +3620,23 @@
    }
   ]
  },
+ "US79466L3024": {
+  "asset_class": "equity",
+  "cik": "0001108524",
+  "cusip": "79466L302",
+  "figi": "BBG000BN2DC2",
+  "name": "Salesforce, Inc.",
+  "polygon_ticker": "CRM",
+  "registered_at": "2026-09-03T12:36:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-03",
+    "ticker": "CRM",
+    "to": null
+   }
+  ]
+ },
  "US8068571087": {
   "asset_class": "equity",
   "cik": "0000087347",
@@ -3905,6 +3956,23 @@
    {
     "from": "2026-08-12",
     "ticker": "SYK",
+    "to": null
+   }
+  ]
+ },
+ "US8718291078": {
+  "asset_class": "equity",
+  "cik": "0000096021",
+  "cusip": "871829107",
+  "figi": "BBG000BTVJ25",
+  "name": "Sysco Corporation",
+  "polygon_ticker": "SYY",
+  "registered_at": "2026-09-03T12:36:21+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-03",
+    "ticker": "SYY",
     "to": null
    }
   ]

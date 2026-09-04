@@ -22,7 +22,7 @@
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.4599,
+   "anchor_points": 1.4598,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -37,7 +37,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.2819,
+   "anchor_points": 1.2818,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -48,12 +48,12 @@
    "league": "libertadores",
    "api_team_id": 121,
    "elo": null,
-   "elo_rank": 134,
+   "elo_rank": 135,
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.1726,
-   "market_p_champion": 0.18,
+   "anchor_points": 2.1698,
+   "market_p_champion": 0.17529,
    "anchor_source": "domestic_league"
   },
   {
@@ -67,8 +67,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5849,
-   "market_p_champion": 0.16,
+   "anchor_points": 1.5848,
+   "market_p_champion": 0.16547,
    "anchor_source": "domestic_league"
   },
   {
@@ -82,8 +82,8 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0696,
-   "market_p_champion": 0.28,
+   "anchor_points": 2.0717,
+   "market_p_champion": 0.27349,
    "anchor_source": "domestic_league"
   },
   {
@@ -98,7 +98,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.3036,
-   "market_p_champion": 0.14,
+   "market_p_champion": 0.13601,
    "anchor_source": "domestic_league"
   },
   {
@@ -112,8 +112,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5224,
-   "market_p_champion": 0.01,
+   "anchor_points": 1.5223,
+   "market_p_champion": 0.00845,
    "anchor_source": "domestic_league"
   },
   {
@@ -128,7 +128,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.9375,
-   "market_p_champion": 0.01,
+   "market_p_champion": 0.00845,
    "anchor_source": "domestic_league"
   },
   {
@@ -158,7 +158,7 @@
    "last_rank": 1,
    "promoted": false,
    "anchor_points": 1.3125,
-   "market_p_champion": 0.05,
+   "market_p_champion": 0.0771,
    "anchor_source": "domestic_league"
   },
   {
@@ -203,7 +203,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.0,
-   "market_p_champion": 0.01,
+   "market_p_champion": 0.00845,
    "anchor_source": "domestic_league"
   },
   {
@@ -218,7 +218,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 0.75,
-   "market_p_champion": 0.03,
+   "market_p_champion": 0.02802,
    "anchor_source": "domestic_league"
   },
   {
@@ -274,8 +274,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8836,
-   "market_p_champion": 0.01
+   "anchor_points": 0.8818,
+   "market_p_champion": 0.00845
   },
   {
    "club_id": "barcelona_sc",
@@ -302,8 +302,8 @@
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 0.9942,
-   "market_p_champion": 0.05
+   "anchor_points": 0.9933,
+   "market_p_champion": 0.04764
   },
   {
    "club_id": "universidad_catolica",
@@ -316,8 +316,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8836,
-   "market_p_champion": 0.01
+   "anchor_points": 0.8818,
+   "market_p_champion": 0.00845
   },
   {
    "club_id": "ldu_de_quito",
@@ -330,8 +330,8 @@
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 0.9785,
-   "market_p_champion": 0.04
+   "anchor_points": 0.9781,
+   "market_p_champion": 0.03783
   },
   {
    "club_id": "club_guarani",
@@ -358,8 +358,8 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 0.8836,
-   "market_p_champion": 0.01
+   "anchor_points": 0.8818,
+   "market_p_champion": 0.00845
   },
   {
    "club_id": "libertad_asuncion",
@@ -428,8 +428,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8836,
-   "market_p_champion": 0.01
+   "anchor_points": 0.8818,
+   "market_p_champion": 0.00845
   },
   {
    "club_id": "penarol",

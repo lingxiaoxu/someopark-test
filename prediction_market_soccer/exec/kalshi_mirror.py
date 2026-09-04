@@ -562,6 +562,14 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
             "entry_min": entry_min, "ledger_entry_c": ledger_c, "ledger_venue": ledger_venue,
             "ledger_stake_usd": stake, "ledger_edge": ledger_edge, "attempts": attempts}
     if not tk:
+        if comp and not tickers.index_ok(comp):
+            # the LISTING call failed (rate limit, or a "database is locked" while another
+            # process held the write lock). Writing "no market" here is a TERMINAL verdict
+            # on the bet — on 2026-09-03 that lost a real La Liga pre-match entry to a
+            # transient lock. Record nothing so the next cycle asks again.
+            _log("entry_deferred_listing_unreachable", fixture=fid, track=track, comp=comp,
+                 side=side, attempt=attempts)
+            return {"terminal": False}
         _insert(conn, {**base, "ticker": "", "count": 0, "status": "skipped",
                        "note": "no Kalshi market for this pairing", "raw_json": json.dumps(extra or {})})
         _log("entry_skipped_no_market", fixture=fid, track=track, side=side)

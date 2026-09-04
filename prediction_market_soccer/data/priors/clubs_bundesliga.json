@@ -22,8 +22,8 @@
    "last_pts": 2.6176,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.6094,
-   "market_p_champion": 0.8343
+   "anchor_points": 2.609,
+   "market_p_champion": 0.83993
   },
   {
    "club_id": "sc_freiburg",
@@ -36,8 +36,8 @@
    "last_pts": 1.3824,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4105,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.4104,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "werder_bremen",
@@ -64,8 +64,8 @@
    "last_pts": 1.1176,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.1679,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.1678,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "fsv_mainz_05",
@@ -87,13 +87,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 165,
-   "elo": 1866.9533029499385,
+   "elo": 1866.9533,
    "elo_rank": 12,
    "last_pts": 2.1471,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0093,
-   "market_p_champion": 0.07074
+   "anchor_points": 2.0097,
+   "market_p_champion": 0.06977
   },
   {
    "club_id": "1899_hoffenheim",
@@ -101,13 +101,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 167,
-   "elo": 1731.8175127156105,
+   "elo": 1731.8175,
    "elo_rank": 49,
    "last_pts": 1.7941,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5128,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.5127,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "bayer_leverkusen",
@@ -115,13 +115,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 168,
-   "elo": 1842.6184244046076,
+   "elo": 1842.6184,
    "elo_rank": 16,
    "last_pts": 1.7353,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.7341,
-   "market_p_champion": 0.01411
+   "anchor_points": 1.7345,
+   "market_p_champion": 0.01353
   },
   {
    "club_id": "eintracht_frankfurt",
@@ -157,13 +157,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 172,
-   "elo": 1802.695008935098,
+   "elo": 1802.695,
    "elo_rank": 27,
    "last_pts": 1.8235,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.6505,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.6504,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "rb_leipzig",
@@ -171,13 +171,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 173,
-   "elo": 1818.008116731967,
+   "elo": 1818.0081,
    "elo_rank": 22,
    "last_pts": 1.9118,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7961,
-   "market_p_champion": 0.03277
+   "anchor_points": 1.7967,
+   "market_p_champion": 0.03201
   },
   {
    "club_id": "fc_schalke_04",
@@ -190,8 +190,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0797,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.0796,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "hamburger_sv",
@@ -204,8 +204,8 @@
    "last_pts": 1.1176,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.1679,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.1678,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "union_berlin",
@@ -213,13 +213,13 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 182,
-   "elo": 1676.8573677845436,
+   "elo": 1676.8574,
    "elo_rank": 66,
    "last_pts": 1.1471,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.1719,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.1718,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "sc_paderborn_07",
@@ -232,8 +232,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0797,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.0796,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "1_fc_kln",
@@ -246,8 +246,8 @@
    "last_pts": 0.9412,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0356,
-   "market_p_champion": 0.00534
+   "anchor_points": 1.0355,
+   "market_p_champion": 0.00497
   },
   {
    "club_id": "sv_elversberg",
@@ -255,7 +255,7 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 1660,
-   "elo": 1648.3136074773126,
+   "elo": 1648.3136,
    "elo_rank": 83,
    "last_pts": null,
    "last_rank": null,

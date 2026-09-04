@@ -141,3 +141,63 @@ def test_pre_and_inplay_reuse_the_ledgers_own_functions():
     for needle in ("quotes_from_milestone_row(pre_row)", "price_match_calibrated(sm, hi, ai, knockout=False",
                    "host_neutral=knockout", "motivation_multipliers(conn, _fifa_ranks()", "_pit_cal(records"):
         assert needle in src, needle
+
+
+def test_a_listing_we_could_not_reach_is_never_a_terminal_no_market(monkeypatch, tmp_path):
+    """On 2026-09-03 a transient 'database is locked' broke the Kalshi listing call and the
+    mirror wrote 'no Kalshi market for this pairing' — a TERMINAL verdict — losing a real
+    La Liga pre-match bet. A listing we could not retrieve must defer, not decide."""
+    import sqlite3
+    from prediction_market_soccer.ingest import store
+    c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row
+    c.executescript(store._SCHEMA)
+    c.execute("INSERT INTO fixture (api_id, league_id, season, home_api_id, away_api_id, kickoff_ts, status_short) "
+              "VALUES (9,140,2026,1,2,'2026-09-03T19:00:00+00:00','NS')")
+    c.commit()
+    fx = c.execute("SELECT * FROM fixture WHERE api_id=9").fetchone()
+
+    class _Unreachable:
+        failed = {"laliga"}
+        def for_match(self, comp, hi, ai): return None
+        def index_ok(self, comp): return comp not in self.failed
+
+    class _Retrieved(_Unreachable):
+        failed = set()
+
+    monkeypatch.setattr(km, "_log", lambda *a, **k: None)
+    out = km._place_entry(c, None, _Unreachable(), fx, "a", "b", track="pre", side="away", stake=1.0,
+                          bet_kind="value", entry_min=0, ledger_c=21.0, ledger_venue="kalshi",
+                          ledger_edge=0.05, comp="laliga")
+    assert out == {"terminal": False}
+    assert c.execute("SELECT COUNT(*) FROM kalshi_mirror").fetchone()[0] == 0, "nothing may be written"
+    # a listing that WAS retrieved and lacks the pairing is a real answer
+    out = km._place_entry(c, None, _Retrieved(), fx, "a", "b", track="pre", side="away", stake=1.0,
+                          bet_kind="value", entry_min=0, ledger_c=21.0, ledger_venue="kalshi",
+                          ledger_edge=0.05, comp="laliga")
+    assert out["terminal"] is True
+    r = c.execute("SELECT status, note FROM kalshi_mirror").fetchone()
+    assert r["status"] == "skipped" and "no Kalshi market" in r["note"]
+
+
+def test_init_db_does_not_take_the_write_lock_when_the_schema_is_current():
+    """KalshiDiscovery builds one connection per competition per cycle purely to READ the
+    club registry; init_db used to run the DDL and venue seed every time."""
+    import sqlite3
+    from prediction_market_soccer.ingest import store
+    c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row
+    store.init_db(c)
+    assert c.execute("PRAGMA user_version").fetchone()[0] == store._schema_fingerprint()
+    calls = {"n": 0}
+
+    class _Spy:
+        def __init__(self, inner): self._i = inner
+        def __getattr__(self, k): return getattr(self._i, k)
+        def executescript(self, *a, **k):
+            calls["n"] += 1
+            return self._i.executescript(*a, **k)
+    spy = _Spy(c)
+    store.init_db(spy)
+    assert calls["n"] == 0, "a current schema must not re-run the DDL"
+    c.execute("PRAGMA user_version=0")           # a schema change forces the rebuild
+    store.init_db(spy)
+    assert calls["n"] == 1

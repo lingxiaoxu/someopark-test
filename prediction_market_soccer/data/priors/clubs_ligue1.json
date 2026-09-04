@@ -17,7 +17,7 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 77,
-   "elo": 1595.6236031119254,
+   "elo": 1595.6236,
    "elo_rank": 126,
    "last_pts": 1.0588,
    "last_rank": 13,
@@ -31,13 +31,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 79,
-   "elo": 1765.528454287923,
+   "elo": 1765.5285,
    "elo_rank": 41,
    "last_pts": 1.7941,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6664,
-   "market_p_champion": 0.01129
+   "anchor_points": 1.6635,
+   "market_p_champion": 0.00903
   },
   {
    "club_id": "lyon",
@@ -45,13 +45,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 80,
-   "elo": 1764.4731708388997,
+   "elo": 1764.4732,
    "elo_rank": 42,
    "last_pts": 1.7647,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.6539,
-   "market_p_champion": 0.01129
+   "anchor_points": 1.6964,
+   "market_p_champion": 0.0252
   },
   {
    "club_id": "marseille",
@@ -64,8 +64,8 @@
    "last_pts": 1.7353,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.7051,
-   "market_p_champion": 0.0379
+   "anchor_points": 1.6723,
+   "market_p_champion": 0.01681
   },
   {
    "club_id": "nice",
@@ -78,8 +78,8 @@
    "last_pts": 0.9412,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.1274,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.1234,
+   "market_p_champion": 0.00272
   },
   {
    "club_id": "paris_saint_germain",
@@ -87,13 +87,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 85,
-   "elo": 1938.1965017479124,
+   "elo": 1938.1965,
    "elo_rank": 5,
    "last_pts": 2.2353,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.3332,
-   "market_p_champion": 0.75575
+   "anchor_points": 2.3299,
+   "market_p_champion": 0.77552
   },
   {
    "club_id": "monaco",
@@ -106,8 +106,8 @@
    "last_pts": 1.5882,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.7066,
-   "market_p_champion": 0.12126
+   "anchor_points": 1.7043,
+   "market_p_champion": 0.11515
   },
   {
    "club_id": "rennes",
@@ -120,8 +120,8 @@
    "last_pts": 1.7353,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.6457,
-   "market_p_champion": 0.02881
+   "anchor_points": 1.6441,
+   "market_p_champion": 0.0252
   },
   {
    "club_id": "strasbourg",
@@ -129,13 +129,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 95,
-   "elo": 1720.195086982142,
+   "elo": 1720.1951,
    "elo_rank": 53,
    "last_pts": 1.5588,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4631,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.459,
+   "market_p_champion": 0.00272
   },
   {
    "club_id": "toulouse",
@@ -143,13 +143,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 96,
-   "elo": 1667.3593366175053,
+   "elo": 1667.3593,
    "elo_rank": 75,
    "last_pts": 1.3333,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3044,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.3004,
+   "market_p_champion": 0.00272
   },
   {
    "club_id": "lorient",
@@ -157,7 +157,7 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 97,
-   "elo": 1665.8028706766297,
+   "elo": 1665.8029,
    "elo_rank": 76,
    "last_pts": 1.3235,
    "last_rank": 9,
@@ -185,7 +185,7 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 108,
-   "elo": 1622.454105463928,
+   "elo": 1622.4541,
    "elo_rank": 104,
    "last_pts": 1.0,
    "last_rank": 15,
@@ -213,13 +213,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 111,
-   "elo": 1595.6280530398406,
+   "elo": 1595.6281,
    "elo_rank": 125,
    "last_pts": 1.0294,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0899,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.0859,
+   "market_p_champion": 0.00272
   },
   {
    "club_id": "paris_fc",
@@ -232,8 +232,8 @@
    "last_pts": 1.2941,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2906,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.2866,
+   "market_p_champion": 0.00272
   },
   {
    "club_id": "lens",
@@ -241,13 +241,13 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 116,
-   "elo": 1804.1849703882658,
+   "elo": 1804.185,
    "elo_rank": 26,
    "last_pts": 2.0588,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.8198,
-   "market_p_champion": 0.01129
+   "anchor_points": 1.8444,
+   "market_p_champion": 0.01681
   },
   {
    "club_id": "le_mans",
@@ -260,8 +260,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0076,
-   "market_p_champion": 0.00374
+   "anchor_points": 1.0036,
+   "market_p_champion": 0.00272
   }
  ]
 }

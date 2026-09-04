@@ -228,12 +228,30 @@ def check_mirror(now: float, hours: float = 6.0) -> dict:
                     wrong_window += 1
     if not counts:
         return {"status": WARN, "detail": f"no mirror attempts in {hours:.0f}h"}
-    bad = [f"{v}x HTTP {k}" for k, v in codes.items() if k not in (200, 201)]
+    # Two different things wear the same red light unless we separate them:
+    # a 409/400/404 or a mapped_close that is not ours means WE aimed at the
+    # wrong market (the defect fixed 2026-09-01, must stay at zero), while a
+    # 5xx/429 is the venue having a moment and says nothing about our code.
+    # Calling a single transient FAIL trains the reader to ignore the check.
+    ours = {k: v for k, v in codes.items() if k in (400, 403, 404, 409)}
+    transient = {k: v for k, v in codes.items()
+                 if k not in (200, 201) and k not in ours}
+    sent = sum(codes.values()) or 1
+    bad, warn = [], []
+    if ours:
+        bad += [f"{v}x HTTP {k} (our request)" for k, v in ours.items()]
     if wrong_window:
         bad.append(f"{wrong_window} mapped to a different close")
-    status = FAIL if bad else PASS
+    if transient:
+        share = sum(transient.values()) / sent
+        line = (f"{sum(transient.values())}x venue transient "
+                f"{sorted(transient)} = {share:.0%} of sends")
+        # a steady drip is no longer "a moment" — it is an outage we are
+        # papering over, so escalate on share rather than on presence
+        (bad if share > 0.20 else warn).append(line)
+    status = FAIL if bad else (WARN if warn else PASS)
     return {"status": status,
-            "detail": (("; ".join(bad) + " | ") if bad else "")
+            "detail": ("; ".join(bad + warn) + " | " if (bad or warn) else "")
                       + f"{hours:.0f}h: {counts}, codes {codes}"}
 
 

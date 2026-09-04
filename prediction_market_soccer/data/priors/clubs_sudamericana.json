@@ -22,7 +22,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2819,
+   "anchor_points": 1.2818,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -82,7 +82,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.021,
+   "anchor_points": 1.0209,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -217,7 +217,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.3797,
+   "anchor_points": 1.3796,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },

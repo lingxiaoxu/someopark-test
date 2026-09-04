@@ -3192,3 +3192,14 @@
 {"ts": "2026-09-02T01:34:26+00:00", "event": "register_node", "spid": "SPSSTIG455J", "kind": "subsector", "key": "aeus|SS:regulated_mega", "display": "regulated_mega"}
 {"ts": "2026-09-02T01:45:59+00:00", "event": "rename_display", "spid": "SPSTJQV96C7", "kind": "strategy", "key": "strategy:aeus", "from": "strategy:aeus", "to": "AEUS", "note": "2026-09-01 首次装配时 _assemble_aeus 未传 display_name(seed_nodes 未跑),前端 OFFICIAL_KEY 失配致面板退回账本口径;人工纠正,用户批准"}
 {"ts": "2026-09-02T12:58:44+00:00", "event": "build_master", "total": 277, "cusip_hit": 277, "placeholder": 0}
+{"ts": "2026-09-03T12:36:13+00:00", "event": "register_security", "isin": "US1258961002", "ticker": "CMS", "cusip": "125896100"}
+{"ts": "2026-09-03T12:36:14+00:00", "event": "register_security", "isin": "US79466L3024", "ticker": "CRM", "cusip": "79466L302"}
+{"ts": "2026-09-03T12:36:20+00:00", "event": "register_security", "isin": "US7140461093", "ticker": "RVTY", "cusip": "714046109"}
+{"ts": "2026-09-03T12:36:21+00:00", "event": "register_security", "isin": "US8718291078", "ticker": "SYY", "cusip": "871829107"}
+{"ts": "2026-09-03T12:36:23+00:00", "event": "build_master", "total": 281, "cusip_hit": 281, "placeholder": 0}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPR6MR0ZVP", "kind": "pair", "key": "mrpt|L:US8718291078|S:US7427181091", "display": "PG/SYY"}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPR6M6VQO6", "kind": "pair", "key": "mtfs|L:US5951121038|S:USG7S00T1042", "display": "MU/PNR"}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPRZYOQ9PW", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US8832031012", "display": "VLO/TXT"}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPRZDF8Z5S", "kind": "pair", "key": "mtfs|L:US79466L3024|S:US3687361044", "display": "CRM/GNRC"}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPR4IUZ1WT", "kind": "pair", "key": "mtfs|L:US3030751057|S:US5801351017", "display": "FDS/MCD"}
+{"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPRO3IOZHZ", "kind": "pair", "key": "mtfs|L:US7140461093|S:US1258961002", "display": "RVTY/CMS"}

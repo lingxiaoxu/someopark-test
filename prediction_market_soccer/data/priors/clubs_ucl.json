@@ -17,7 +17,7 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 80,
-   "elo": 1764.4731708388997,
+   "elo": 1764.4732,
    "elo_rank": 42,
    "last_pts": null,
    "last_rank": null,
@@ -78,8 +78,8 @@
    "last_pts": null,
    "last_rank": 23,
    "promoted": false,
-   "anchor_points": 1.5957,
-   "market_p_champion": 0.00538
+   "anchor_points": 1.5962,
+   "market_p_champion": 0.00556
   },
   {
    "club_id": "gornik_zabrze",
@@ -143,7 +143,7 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 413,
-   "elo": 1593.2231746113096,
+   "elo": 1593.2232,
    "elo_rank": 130,
    "last_pts": null,
    "last_rank": null,
@@ -204,8 +204,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8951,
-   "market_p_champion": 0.00538
+   "anchor_points": 0.8956,
+   "market_p_champion": 0.00556
   },
   {
    "club_id": "fk_crvena_zvezda",
@@ -213,7 +213,7 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 598,
-   "elo": 1640.8343029052944,
+   "elo": 1640.8343,
    "elo_rank": 90,
    "last_pts": null,
    "last_rank": null,
@@ -232,8 +232,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5957,
-   "market_p_champion": 0.00538
+   "anchor_points": 1.5962,
+   "market_p_champion": 0.00556
   },
   {
    "club_id": "dinamo_zagreb",
@@ -241,7 +241,7 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 620,
-   "elo": 1657.1544281520928,
+   "elo": 1657.1544,
    "elo_rank": 77,
    "last_pts": null,
    "last_rank": null,
@@ -330,8 +330,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2918,
-   "market_p_champion": 0.00538
+   "anchor_points": 1.2923,
+   "market_p_champion": 0.00556
   },
   {
    "club_id": "kairat_almaty",

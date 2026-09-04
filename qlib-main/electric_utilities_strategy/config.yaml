@@ -258,8 +258,11 @@ risk:
   # 默认 off;沙盒 batch/WF 对比 on/off 赢了再翻。allow_leverage=false → 满仓时 E>1 无效。
   exposure_amplifier:
     # 2026-09-02 翻开:沙盒 batch(mlflow stub,/tmp)+ WF(anchored/rolling,生产参数集)双赢——
-    # WF synthetic sharpe 1.578→1.614、calmar 1.470→1.554、maxdd -26.4%→-24.6%,
-    # 逐 fold OOS sharpe 45/70 胜(wilcoxon p=0.0005);batch sharpe 1.698→1.719、maxdd -26.3%→-24.6%。
+    # WF synthetic sharpe 1.5781→1.6175、calmar 1.4702→1.5540、maxdd -26.38%→-24.62%,
+    # 逐 fold OOS sharpe 48/70 胜(mean +0.0414,wilcoxon p=4.65e-05);
+    # batch sharpe 1.6979→1.7207、calmar 1.2749→1.3534、maxdd -26.31%→-24.55%。
+    # (2026-09-02 校正:此处原记的是**加防守钳制之前**那一轮的数字 45/70 / p=0.0005 /
+    #  batch 1.719,与 AEUS_PLAN §12.1 对不上;已按仅存沙盒工件逐 fold 复算归一。)
     # 代价是总收益略降(放大器在缺电度低时留现金)。
     enabled: true
     k: 0.10

@@ -100,6 +100,18 @@ def test_mirror_fails_on_wrong_window_and_on_409(tmp_path, monkeypatch):
     assert r["status"] == H.FAIL
     assert "409" in r["detail"] and "different close" in r["detail"]
 
+    # A venue 5xx on the RIGHT window is the venue's problem, not ours: it must
+    # not turn the light red, or the red light stops meaning anything. Measured
+    # 2026-09-02, when one 503 out of 23 sends failed the whole check.
+    ok = {**base, "status": "sent", "status_code": 201,
+          "prod_close": "2026-09-01T21:15:00Z", "mapped_close": "2026-09-01T21:15:00Z"}
+    write([ok] * 22 + [{**ok, "status_code": 503}])
+    r = H.check_mirror(now)
+    assert r["status"] == H.WARN and "transient" in r["detail"]
+    # ...but a steady drip is an outage we would otherwise paper over
+    write([ok] * 5 + [{**ok, "status_code": 503}] * 5)
+    assert H.check_mirror(now)["status"] == H.FAIL
+
 
 def test_run_aggregates_worst_status(tmp_path, monkeypatch):
     """Overall status is the worst of the parts — a green summary must be

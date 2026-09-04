@@ -57,6 +57,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR4IUZ1WT": {
+  "aliases": [
+   "FDS/MCD"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US3030751057|S:US5801351017",
+  "display_name": "FDS/MCD",
+  "first_seen": "2026-09-03T12:36:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR4RIX80D": {
   "aliases": [
    "PLTR/LUV"
@@ -157,6 +172,36 @@
   "canonical_key": "mtfs|L:US1598641074|S:US5732841060",
   "display_name": "CRL/MLM",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR6M6VQO6": {
+  "aliases": [
+   "MU/PNR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US5951121038|S:USG7S00T1042",
+  "display_name": "MU/PNR",
+  "first_seen": "2026-09-03T12:36:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR6MR0ZVP": {
+  "aliases": [
+   "PG/SYY"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US8718291078|S:US7427181091",
+  "display_name": "PG/SYY",
+  "first_seen": "2026-09-03T12:36:27+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -462,6 +507,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRO3IOZHZ": {
+  "aliases": [
+   "RVTY/CMS"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US7140461093|S:US1258961002",
+  "display_name": "RVTY/CMS",
+  "first_seen": "2026-09-03T12:36:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPROKF3TEM": {
   "aliases": [
    "VLO/BLDR"
@@ -597,6 +657,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRZDF8Z5S": {
+  "aliases": [
+   "CRM/GNRC"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US79466L3024|S:US3687361044",
+  "display_name": "CRM/GNRC",
+  "first_seen": "2026-09-03T12:36:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRZR7GRWG": {
   "aliases": [
    "BAC/JPM"
@@ -622,6 +697,21 @@
   "canonical_key": "mtfs|L:US6974351057|S:US2435371073",
   "display_name": "PANW/DECK",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRZYOQ9PW": {
+  "aliases": [
+   "VLO/TXT"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:US8832031012",
+  "display_name": "VLO/TXT",
+  "first_seen": "2026-09-03T12:36:27+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

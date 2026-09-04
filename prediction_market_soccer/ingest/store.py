@@ -363,13 +363,37 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE kalshi_mirror ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")
 
 
+def _schema_fingerprint() -> int:
+    """A stable 31-bit id for the current schema + migrations, kept in PRAGMA user_version."""
+    import hashlib
+    h = hashlib.sha1((_SCHEMA + "|" + "|".join(_MILESTONE_ADDED_COLS)).encode("utf-8")).hexdigest()
+    return int(h[:8], 16) & 0x7FFFFFFF
+
+
 def init_db(conn: sqlite3.Connection | None = None) -> sqlite3.Connection:
+    """Open (or adopt) a connection with the schema in place.
+
+    The DDL + venue seed only run when the stored fingerprint differs. Before this, EVERY
+    call — and read-only consumers like KalshiDiscovery construct one per competition, per
+    live cycle — ran executescript() and the seed upserts, i.e. took the WRITE lock just to
+    read a table. Under a live cycle that holds a write transaction across venue API calls,
+    those constructions failed with "database is locked", and the mirror recorded the
+    failure as "this fixture has no Kalshi market" — one real pre-match bet was lost that
+    way on 2026-09-03 (La Liga, fixture 1570392). Now the common path is pure read."""
     conn = conn or connect()
+    want = _schema_fingerprint()
+    try:
+        have = conn.execute("PRAGMA user_version").fetchone()[0]
+    except sqlite3.Error:
+        have = None
+    if have == want:
+        return conn
     conn.executescript(_SCHEMA)
     _migrate(conn)
     for vid, name, url, flag in _VENUE_SEED:
         upsert(conn, "venue", {"venue_id": vid, "name": name, "base_url": url,
                                "exec_legal_flag": flag}, pk=["venue_id"])
+    conn.execute(f"PRAGMA user_version={want}")
     conn.commit()
     return conn
 
