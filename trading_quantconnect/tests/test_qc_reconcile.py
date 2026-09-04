@@ -1236,3 +1236,63 @@ def test_price_sanity_guard_tolerates_ordinary_staleness(monkeypatch, eq_env):
     qc["prices"] = dict(qc["prices"], X=9.0)     # 官方 10.0,差 10% —— 正常
     row = qr.equity_plane("2026-08-27", qc, [], {}, {}, {})
     assert row["status"] == "baseline" and row["D_usd"] == 100_000.0
+
+
+# ── 收盘存档不许被后趟污染(2026-09-04)──────────────────────────────────────
+# 16:20 存的存档会被 23:15/23:50 各覆盖一次(2026-09-03 实测 taken_at 从
+# 16:20:06 变成 23:15:07)。平日无害 —— 收盘后 QC 冻住,读到的是同一本书。
+# 但窗口内若发生**重部署**,paper 账户会被重置,那趟读到的空账户会覆盖掉真正的
+# 收盘存档;而 D 日逐票收盘股数只在 [16:00 D, 09:30 D+1) 可观测,覆盖掉就永久
+# 补不回来,且外表完全正常。
+
+def _cs(taken_at, deploy_id="L-cur", shares=None):
+    return {"taken_at": taken_at,
+            "qc": {"deploy_id": deploy_id,
+                   "shares": shares if shares is not None else {"X": 1000, "Y": 400}}}
+
+
+def test_snapshot_overwrite_allowed_when_same_book():
+    """同一部署、同一股数 —— 后趟覆盖是无害的,不能拦(否则每天都报冲突)。"""
+    assert qr._snapshot_conflict(_cs("16:20"), _cs("23:15")) is None
+    assert qr._snapshot_conflict(None, _cs("16:20")) is None      # 首份
+
+
+def test_snapshot_overwrite_blocked_on_redeploy():
+    """重部署会重置 paper 账户 —— 空账户绝不许覆盖真正的收盘存档。"""
+    why = qr._snapshot_conflict(_cs("16:20", "L-old"),
+                                _cs("23:15", "L-new", shares={}))
+    assert why and "deploy_id" in why and "L-old" in why and "L-new" in why
+
+
+def test_snapshot_overwrite_blocked_when_shares_moved_after_close():
+    """收盘后股数不该变。变了就说明后趟读到的不是 D 日收盘那本账。"""
+    why = qr._snapshot_conflict(_cs("16:20"),
+                                _cs("23:15", shares={"X": 1000, "Y": 999}))
+    assert why and "股数" in why and "Y" in why
+
+
+def test_conflicting_pass_keeps_prior_and_refuses_verdict(monkeypatch, eq_env):
+    """端到端:冲突时保留先到的存档,并且**不出裁决** —— 此刻手上的 qc 属于
+    另一本账,拿它算 D 只会得到一个看着正常的假数。"""
+    kept = _cs("2026-08-27T16:20:00-04:00", "L-old")
+    prior = {"session": "2026-08-27", "close_snapshot": kept}
+    monkeypatch.setattr(qr, "in_close_window", lambda s, et: (True, None))
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    monkeypatch.setattr(qr, "report_path", lambda s: Path("/tmp/__prior__.json"))
+    real_load = qr._load
+    monkeypatch.setattr(qr, "_load", lambda p, d=None: (
+        prior if str(p) == "/tmp/__prior__.json" else real_load(p, d)))
+    monkeypatch.setattr(rolloff, "_et_now",
+                        lambda: datetime(2026, 8, 27, 23, 15, tzinfo=_ET))
+    monkeypatch.setattr(rolloff, "qc_client_project", lambda: (None, 1))
+    monkeypatch.setattr(rolloff, "qc_snapshot",
+                        lambda client=None, pid=None: _qc(388.0, deploy_id="L-new", price_staleness_usd=0.0))
+    monkeypatch.setattr(qr, "qc_applied_version", lambda *a, **k: None)
+    monkeypatch.setattr(qr, "qc_orders", lambda *a, **k: [])
+    import inventory_source as _isrc
+    monkeypatch.setattr(_isrc, "read_snapshot", lambda *a, **k: {})
+    rep = qr.reconcile("2026-08-27", dry=True)
+    assert rep["close_snapshot"] is kept                     # 原样保留
+    assert "deploy_id" in rep["close_snapshot_conflict"]["why"]
+    assert rep["equity_check"]["status"] == "pending"
+    assert "重部署" in rep["equity_check"]["note"]

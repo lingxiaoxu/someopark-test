@@ -1119,6 +1119,33 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
 
 # ── 主流程 ──────────────────────────────────────────────────────────────────
 
+def _snapshot_conflict(prior_cs: dict | None, fresh_cs: dict) -> str | None:
+    """后一趟的收盘快照能不能覆盖先一趟的?不能则返回原因。
+
+    收盘后 QC 就冻住了,同一 session 内几趟读到的必须是同一本账。不是的话,
+    先到的那份最权威(离收盘最近),后到的一律不许覆盖 —— 被覆盖掉的东西
+    补不回来(D 日逐票收盘股数只在 [16:00 D, 09:30 D+1) 可观测)。
+    """
+    if not prior_cs:
+        return None
+    pq = (prior_cs.get("qc") or {})
+    fq = (fresh_cs.get("qc") or {})
+    pd_, fd = pq.get("deploy_id"), fq.get("deploy_id")
+    if pd_ and fd and pd_ != fd:
+        # 重部署:paper 账户被重置,这是最危险的一种 —— 新账户可能是空的
+        return f"deploy_id 变了 {pd_} -> {fd}(重部署会重置 paper 账户)"
+    ps, fs = pq.get("shares") or {}, fq.get("shares") or {}
+    if ps and ps != fs:
+        only_p = sorted(set(ps) - set(fs))[:4]
+        only_f = sorted(set(fs) - set(ps))[:4]
+        chg = sorted(t for t in set(ps) & set(fs) if ps[t] != fs[t])[:4]
+        return (f"收盘后股数变了(先 {len(ps)} 票 / 后 {len(fs)} 票"
+                + (f";只在先: {only_p}" if only_p else "")
+                + (f";只在后: {only_f}" if only_f else "")
+                + (f";股数变动: {chg}" if chg else "") + ")")
+    return None
+
+
 def reconcile(session: str | None = None, dry: bool = False) -> dict:
     et = rolloff._et_now()
     session = session or last_session(et)
@@ -1200,7 +1227,7 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
     in_win, win_why = in_close_window(session, et)
     rep["close_window"] = {"ok": in_win, "why": win_why or "在收盘窗口内"}
     if in_win:
-        rep["close_snapshot"] = {
+        fresh_cs = {
             "taken_at": et.isoformat(timespec="seconds"),
             # shares/deploy_id 必须一起存档:次日 --settle 时 QC 那边已经是新一
             # 天的账户,拿不回 D 日收盘的逐票股数;没有股数就没法用官方收盘价独立
@@ -1211,7 +1238,33 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
             "fills": fills,
             "scalars": scalars,
             "residual": _load(RESIDUAL_PATH) or {}}
-        eq_fresh = equity_plane(session, qc, fills, built, snap, scalars)
+        # 窗口**内**也会被后趟覆盖(16:20 存的,23:15/23:50 各再存一次;实测
+        # 2026-09-03 的 taken_at 就从 16:20:06 变成了 23:15:07)。平日无害 ——
+        # 收盘后 QC 冻住,三趟读到的是同一本书。但有一种情况会把这份存档毁掉:
+        # **窗口内发生重部署**。重部署会重置 paper 账户(见 plan 附录 A-3),
+        # 之后那趟读到的是一个被清空的新账户,却会覆盖掉真正的收盘存档 ——
+        # 而 D 日的逐票收盘股数只在 [16:00 D, 09:30 D+1) 可观测,覆盖掉就
+        # **永久没了**,那个 session 再也无法对账,且外表完全正常。
+        # 判据用 deploy_id(重部署必换)+ 收盘后股数不该变。冲突时保留**先到的**
+        # 那份(它离收盘最近、最权威),并让 equity 段 fail-loud:此刻手上的
+        # qc 读数属于另一本账,拿它出裁决只会得到一个看着正常的假 D。
+        prior_cs = prior.get("close_snapshot")
+        conflict = _snapshot_conflict(prior_cs, fresh_cs)
+        if conflict:
+            rep["close_snapshot"] = prior_cs
+            rep["close_snapshot_conflict"] = {
+                "kept": prior_cs.get("taken_at"),
+                "rejected": fresh_cs.get("taken_at"),
+                "why": conflict}
+            eq_fresh = {"status": "pending", "session": session,
+                        "note": f"收盘存档冲突,已保留先到的那份({conflict})—— "
+                                f"此刻的 QC 读数不属于 {session} 收盘那本账,"
+                                f"不出裁决。多半是窗口内重部署重置了 paper 账户:"
+                                f"查 QC 部署历史,确认后用 export_once("
+                                f"push=True, force=True) 强推重建镜像"}
+        else:
+            rep["close_snapshot"] = fresh_cs
+            eq_fresh = equity_plane(session, qc, fills, built, snap, scalars)
     else:
         # 窗口外读到的 Q 是别的交易日的盘中值。既不能拿它出裁决,更不能让它
         # 覆盖已存档的收盘快照 —— 存档一旦被污染,次日 settle 会用它算出一个
