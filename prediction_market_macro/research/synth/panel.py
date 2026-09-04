@@ -276,9 +276,17 @@ ENERGY_WEEKLY = PanelSpec(
          "judged arm beat BOTH the same-window control (crps 0.9559->0.9508, cover gap "
          "0.0358->0.0243) and the full-window production panel (0.9539), so the "
          "conditioning gain pays for the nine years of rows the burn series cannot reach. "
-         "claims_weekly judged NOT ADOPTED in the same run and keeps its 2010 window",
+         "claims_weekly judged NOT ADOPTED in the same run and keeps its 2010 window. "
+         "PR-34 (2026-09-03) then added PJM DEMAND on top — never instead: the four-arm "
+         "run kept ercot_burn in every arm, and PJM's own gas burn (B1) bought nothing "
+         "(crps -0.0000) while PJM demand (B2) bought crps 0.9508->0.9493 with the cover "
+         "gap 0.0243->0.0145, and adding BOTH PJM columns (B3) diluted the gain back to "
+         "+0.0001 at cond_dim 41. Demand beating burn matches the screening physics: PJM "
+         "demand tracks the national storage surprise at r=-0.55 against burn's -0.19",
     columns=_scope(_WEEKLY_COLS, ("wti", "natgas", "rbob", "gas_retail"))
     + (Column("ercot_burn", "fred", "ERCOT_GASBURN_W", "latest", "last", "dlog", "mwh",
+              generate=False),
+       Column("pjm_demand", "fred", "PJM_DEMAND_W", "latest", "last", "dlog", "mwh",
               generate=False),),
     freq=_WEEKLY["freq"], horizon=_WEEKLY["horizon"], start="2019-01-05",
     drop_spans=_WEEKLY["drop_spans"], level_lag=_WEEKLY["level_lag"],

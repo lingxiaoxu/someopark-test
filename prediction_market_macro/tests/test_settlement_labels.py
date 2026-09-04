@@ -430,7 +430,11 @@ def test_a_breaker_whose_condition_is_gone_is_released_but_a_pnl_one_is_not():
     conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
                  " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
-    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    # REAL now, not a fixed date: breaker_tripped windows on datetime.now(), so a
+    # hard-coded fixture silently ages out of the 24h window and the test starts failing
+    # days after it was written (it did, on 2026-09-04). The audit's own challenge lens
+    # named this shape — "a freshness check against the wrong clock".
+    now = datetime.now(timezone.utc)
     earlier = (now - timedelta(hours=4)).isoformat()
     for msg in ("*: settle_label_mismatch:KXAAAGASW-26AUG31-4.080:label=4.08",
                 "*: health_red:pred_stale:40h",
@@ -464,7 +468,7 @@ def test_a_breaker_is_held_when_any_one_of_its_conditions_is_still_live():
     conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
                  " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
-    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)          # real clock — see the note above
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                  ((now - timedelta(hours=4)).isoformat(), "error", "circuit_breaker",
                   "KXNATGASW: health_red:pred_stale:39h,chronos_nan"))
@@ -489,7 +493,7 @@ def test_release_sweeps_a_resolved_breaker_older_than_the_blocking_window():
     conn.execute("CREATE TABLE alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  " ts TEXT NOT NULL, level TEXT NOT NULL, source TEXT NOT NULL,"
                  " message TEXT NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
-    now = datetime(2026, 9, 2, 13, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)          # real clock — see the note above
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                  ((now - timedelta(days=3)).isoformat(), "error", "circuit_breaker",
                   "KXNATGASW: health_red:pred_stale:39h"))
