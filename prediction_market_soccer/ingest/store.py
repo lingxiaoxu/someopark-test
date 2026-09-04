@@ -250,6 +250,8 @@ CREATE TABLE IF NOT EXISTS venue_book_probe (
     minutes_to_kickoff REAL,
     ticker TEXT,
     bid REAL, ask REAL, bid_depth REAL, ask_depth REAL,
+    fetch_ok INTEGER NOT NULL DEFAULT 1,   -- 0 = the request failed; NULL prices here mean
+                                           -- "we could not look", never "the book was empty"
     ts TEXT NOT NULL,
     PRIMARY KEY (fixture_api_id, venue, side, bucket)
 );
@@ -361,6 +363,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     km = {r["name"] for r in conn.execute("PRAGMA table_info(kalshi_mirror)")}
     if km and "attempts" not in km:
         conn.execute("ALTER TABLE kalshi_mirror ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")
+    vb = {r["name"] for r in conn.execute("PRAGMA table_info(venue_book_probe)")}
+    if vb and "fetch_ok" not in vb:
+        conn.execute("ALTER TABLE venue_book_probe ADD COLUMN fetch_ok INTEGER NOT NULL DEFAULT 1")
 
 
 def _schema_fingerprint() -> int:

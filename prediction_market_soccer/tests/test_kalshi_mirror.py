@@ -201,3 +201,72 @@ def test_init_db_does_not_take_the_write_lock_when_the_schema_is_current():
     c.execute("PRAGMA user_version=0")           # a schema change forces the rebuild
     store.init_db(spy)
     assert calls["n"] == 1
+
+
+def test_a_lost_send_response_stays_pending_and_is_never_re_sent_blind(monkeypatch):
+    """An IOC either fills at the matching engine or dies there; a lost response says which
+    happened, not that nothing happened. Marking it 'error' would make the row retryable and
+    a second order could land on top of a live one, leaving a contract our books never exit."""
+    import sqlite3
+    from prediction_market_soccer.ingest import store
+    c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row
+    store.init_db(c)
+    c.execute("INSERT INTO fixture (api_id, league_id, season, home_api_id, away_api_id, kickoff_ts, status_short) "
+              "VALUES (11,61,2026,1,2,'2026-09-04T17:00:00+00:00','NS')")
+    c.commit()
+    fx = c.execute("SELECT * FROM fixture WHERE api_id=11").fetchone()
+
+    class _Tk:
+        def for_match(self, comp, hi, ai): return {"home": "TK-H", "draw": "TK-D", "away": "TK-A"}
+        def index_ok(self, comp): return True
+
+    class _Book:
+        yes_ask, yes_bid, yes_depth, no_depth = 0.30, 0.29, 100, 100
+
+    class _Broker:
+        def book(self, t): return _Book()
+        def buy_yes(self, *a, **k): raise TimeoutError("read timeout")
+
+    monkeypatch.setattr(km, "_log", lambda *a, **k: None)
+    out = km._place_entry(c, _Broker(), _Tk(), fx, "a", "b", track="pre", side="home", stake=1.0,
+                          bet_kind="value", entry_min=0, ledger_c=30.0, ledger_venue="kalshi",
+                          ledger_edge=0.05, comp="ligue1")
+    assert out == {"terminal": False}
+    r = c.execute("SELECT status, note, client_order_id FROM kalshi_mirror").fetchone()
+    assert r["status"] == "pending", "a lost response must stay pending for reconciliation"
+    assert "unknown" in r["note"]
+    coid = r["client_order_id"]
+    # a second attempt must NOT replace the row while it is pending
+    out2 = km._place_entry(c, _Broker(), _Tk(), fx, "a", "b", track="pre", side="home", stake=1.0,
+                           bet_kind="value", entry_min=0, ledger_c=30.0, ledger_venue="kalshi",
+                           ledger_edge=0.05, comp="ligue1")
+    assert out2 == {"terminal": True}
+    rows = c.execute("SELECT client_order_id FROM kalshi_mirror").fetchall()
+    assert len(rows) == 1 and rows[0]["client_order_id"] == coid, "no blind re-send"
+
+
+def test_reconcile_releases_a_pending_row_only_when_the_venue_has_no_such_order(monkeypatch):
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_soccer.ingest import store
+    c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row
+    store.init_db(c)
+    old = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(timespec="seconds")
+    c.execute("INSERT INTO kalshi_mirror (fixture_api_id, track, side, ticker, count, client_order_id, "
+              "status, submitted_at) VALUES (12,'pre','home','TK-H',1,'coid-1','pending',?)", (old,))
+    c.commit()
+    monkeypatch.setattr(km, "_log", lambda *a, **k: None)
+
+    class _B:
+        def __init__(self, orders): self._o = orders
+        def orders_for(self, t): return self._o
+    # venue knows nothing about it → released to the retry path
+    km._reconcile_pending(c, _B([]))
+    assert c.execute("SELECT status FROM kalshi_mirror").fetchone()["status"] == "error"
+    # a filled order is adopted, not retried
+    c.execute("UPDATE kalshi_mirror SET status='pending'")
+    c.commit()
+    km._reconcile_pending(c, _B([{"client_order_id": "coid-1", "order_id": "o1",
+                                  "fill_count_fp": "1.00", "yes_price_dollars": "0.31"}]))
+    r = c.execute("SELECT status, fill_count, avg_fill_c FROM kalshi_mirror").fetchone()
+    assert r["status"] == "open" and r["fill_count"] == 1.0 and r["avg_fill_c"] == 31.0

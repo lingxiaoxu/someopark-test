@@ -25,6 +25,8 @@ The checks, and what each one would have caught:
                leg's band (this is the one that catches a drift-gate regression)
   criteria   — progress toward the pre-registered verdict, and whether the
                evidence kill has fired
+  obs_leg    — the FLB tripwire, as a TEST rather than a sign check: it read
+               "positive means the structure changed" and duly fired on noise
   mirror     — demo mirror outcomes: 409s and wrong-window maps must be zero
   recorders  — every live stream's freshness, plus today's 15M tape cadence:
                the tape IS the probe's eyes, and it is irreplaceable
@@ -38,6 +40,7 @@ import argparse
 import glob
 import gzip
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -189,6 +192,39 @@ def check_books(st: dict, contracts: int = 25) -> dict:
     return {"status": PASS,
             "detail": f"{len(tr)} booked + {len(obs)} observation trades, "
                       f"{len(pos)} open — all identities hold"}
+
+
+def check_obs_leg(st: dict, min_windows: int = 30) -> dict:
+    """The observation leg [0.50,0.60) is the FLB's negative print: the rule
+    says a POSITIVE leg means the structure changed and everything re-opens.
+
+    As first written that tripwire was "turns positive", which at this leg's
+    dispersion (SE ~5.8c) is a coin flip — it fired on 2026-09-03 at +2.27c
+    with t +0.39, first half -4.81c and second half +9.36c, i.e. on nothing.
+    A tripwire that fires on noise gets ignored, so it is a TEST now:
+    significantly positive (t >= 2) over enough independent windows.
+    """
+    obs = st.get("obs_trades") or []
+    if not obs:
+        return {"status": PASS, "detail": "no observation-leg trades yet"}
+    g = {}
+    for t in obs:
+        w = g.setdefault(t["ticker"].split("-")[1], [0, 0.0])
+        w[0] += 1
+        w[1] += t["pnl_c"]
+    N = sum(n for n, _ in g.values())
+    G = len(g)
+    mu = sum(x for _, x in g.values()) / N
+    tstat = 0.0
+    if G >= 2:
+        meat = sum((x - n * mu) ** 2 for n, x in g.values()) * G / (G - 1)
+        tstat = mu / (math.sqrt(meat) / N) if meat > 0 else 0.0
+    flipped = G >= min_windows and tstat >= 2.0
+    return {"status": WARN if flipped else PASS,
+            "detail": (("STRUCTURE CHANGED — " if flipped else "")
+                       + f"{N} trades / {G} windows {mu:+.2f}c t {tstat:+.2f} "
+                       + f"(backtest -7.21c; fires at t>=2 with {min_windows}+ windows)"),
+            "mean_c": round(mu, 2), "t": round(tstat, 2), "windows": G}
 
 
 def check_criteria(st: dict) -> dict:
@@ -365,6 +401,7 @@ def run(now: float | None = None, contracts: int = 25) -> dict:
         "errors": check_errors(),
         "books": state_err or check_books(st, contracts),
         "criteria": state_err or check_criteria(st),
+        "obs_leg": state_err or check_obs_leg(st),
         "mirror": check_mirror(now),
         "recorders": check_recorders(now),
         "backup": check_backup(now),

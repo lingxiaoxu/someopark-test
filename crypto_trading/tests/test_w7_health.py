@@ -133,3 +133,28 @@ def test_run_aggregates_worst_status(tmp_path, monkeypatch):
     # an unreadable state file must be FAIL, never a silently green summary
     state.write_text("{ not json")
     assert H.run(now=1_788_000_000.0)["checks"]["books"]["status"] == H.FAIL
+
+
+def test_obs_leg_tripwire_needs_significance_not_just_a_sign():
+    """The FLB tripwire read "positive means the structure changed" and fired
+    on 2026-09-03 at +2.27c / t +0.39 — first half -4.81c, second half +9.36c.
+    A wire that trips on noise is a wire nobody reads."""
+    def leg(vals):
+        return {"obs_trades": [{"ticker": f"KXBTC15M-W{i}-00", "cost": 0.55,
+                                "pnl_c": v, "win": v > 0}
+                               for i, v in enumerate(vals)]}
+
+    # the real 2026-09-03 shape: positive mean, wide dispersion → no alarm
+    noisy = [+40, -35] * 25 + [+5] * 10
+    r = H.check_obs_leg(leg(noisy))
+    assert r["status"] == H.PASS and r["mean_c"] > 0 and abs(r["t"]) < 2
+
+    # consistently positive across many windows → the structure really moved
+    solid = [+8 + (i % 3) for i in range(60)]
+    r = H.check_obs_leg(leg(solid))
+    assert r["status"] == H.WARN and "STRUCTURE CHANGED" in r["detail"]
+
+    # a strong signal on too few windows must still wait for evidence
+    assert H.check_obs_leg(leg([+8 + (i % 3) for i in range(12)]))["status"] == H.PASS
+    # and the leg staying negative is the expected, quiet case
+    assert H.check_obs_leg(leg([-7 - (i % 4) for i in range(60)]))["status"] == H.PASS

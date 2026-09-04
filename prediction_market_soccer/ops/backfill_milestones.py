@@ -243,13 +243,39 @@ def backfill(conn=None, *, limit: int | None = None, verbose: bool = False, forc
                 conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], max(mn, 0))
 
             conn.execute(
-                # REPLACE: candlestick history is the authoritative per-minute
-                # reconstruction, so it heals any stale/garbled live row it overwrites.
-                "INSERT OR REPLACE INTO milestone_snapshot "
+                # UPSERT that FILLS, never replaces. The statement only carries the poly_*
+                # columns, so INSERT OR REPLACE nulled everything it does not name — the
+                # live-captured Kalshi book and the model probabilities recorded at that
+                # minute (measured: 1,414 candlestick rows, 0 with a Kalshi price, against
+                # 206 of 353 live rows that have one). The exit rule prefers the Kalshi bid,
+                # so that loss silently moved backfilled matches onto Poly prices.
+                # A live row was written AT that minute from the real book; candlestick is
+                # a later reconstruction. Keep whichever value already exists and fill only
+                # the gaps.
+                "INSERT INTO milestone_snapshot "
                 "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
                 " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
                 " devig_home, devig_draw, devig_away, poly_token_home, poly_token_draw, poly_token_away, "
-                " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?, ?,?,?, ?)",
+                " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?, ?,?,?, ?) "
+                "ON CONFLICT(fixture_api_id, milestone) DO UPDATE SET "
+                " status_short=COALESCE(milestone_snapshot.status_short, excluded.status_short), "
+                " home_goals=COALESCE(milestone_snapshot.home_goals, excluded.home_goals), "
+                " away_goals=COALESCE(milestone_snapshot.away_goals, excluded.away_goals), "
+                " poly_home_ask=COALESCE(milestone_snapshot.poly_home_ask, excluded.poly_home_ask), "
+                " poly_home_bid=COALESCE(milestone_snapshot.poly_home_bid, excluded.poly_home_bid), "
+                " poly_draw_ask=COALESCE(milestone_snapshot.poly_draw_ask, excluded.poly_draw_ask), "
+                " poly_draw_bid=COALESCE(milestone_snapshot.poly_draw_bid, excluded.poly_draw_bid), "
+                " poly_away_ask=COALESCE(milestone_snapshot.poly_away_ask, excluded.poly_away_ask), "
+                " poly_away_bid=COALESCE(milestone_snapshot.poly_away_bid, excluded.poly_away_bid), "
+                " devig_home=COALESCE(milestone_snapshot.devig_home, excluded.devig_home), "
+                " devig_draw=COALESCE(milestone_snapshot.devig_draw, excluded.devig_draw), "
+                " devig_away=COALESCE(milestone_snapshot.devig_away, excluded.devig_away), "
+                " poly_token_home=COALESCE(milestone_snapshot.poly_token_home, excluded.poly_token_home), "
+                " poly_token_draw=COALESCE(milestone_snapshot.poly_token_draw, excluded.poly_token_draw), "
+                " poly_token_away=COALESCE(milestone_snapshot.poly_token_away, excluded.poly_token_away), "
+                " price_source=CASE WHEN milestone_snapshot.kalshi_home_ask IS NOT NULL "
+                "                    OR milestone_snapshot.p_model_home IS NOT NULL "
+                "                   THEN milestone_snapshot.price_source ELSE excluded.price_source END",
                 (fx["api_id"], code, datetime.fromtimestamp(when, timezone.utc).isoformat(),
                  max(mn, 0), "FT" if ft else None, gh, ga,
                  px["home"], px["home"], px["draw"], px["draw"], px["away"], px["away"],

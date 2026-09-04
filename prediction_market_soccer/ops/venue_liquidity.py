@@ -82,13 +82,18 @@ def _due_buckets(conn, *, horizon_h: float = 50.0) -> list[dict]:
     return out[:MAX_FIXTURES_PER_RUN]
 
 
-def _prod_book(ticker: str):
-    import requests
+_PROD_MD = None
 
-    from prediction_market_soccer.venues.kalshi.market_data import best_prices
-    r = requests.get(f"{PROD_PUBLIC}/markets/{ticker}/orderbook", timeout=15)
-    r.raise_for_status()
-    return best_prices(r.json(), market_key=ticker)
+
+def _prod_book(ticker: str):
+    """Through KalshiMarketData, not a bare requests.get: that client paces at 0.18s and
+    backs off on 429, and this probe fires up to 12 fixtures x 3 legs of public calls in a
+    burst — exactly the load its own comment says trips the public rate limit."""
+    global _PROD_MD
+    if _PROD_MD is None:
+        from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData
+        _PROD_MD = KalshiMarketData(PROD_PUBLIC)
+    return _PROD_MD.get_orderbook(ticker)
 
 
 def probe(conn=None, *, include_prod: bool = True, verbose: bool = False) -> dict:
@@ -109,6 +114,7 @@ def probe(conn=None, *, include_prod: bool = True, verbose: bool = False) -> dic
             print(f"[venue_liquidity] demo broker unavailable: {str(e)[:120]}")
     n = 0
     skipped_unreachable: list[str] = []
+    fetch_failures: list[str] = []
     ts = _now().isoformat(timespec="seconds")
     for d in due:
         hi, ai = cmap.get(d["home"]), cmap.get(d["away"])
@@ -134,19 +140,25 @@ def probe(conn=None, *, include_prod: bool = True, verbose: bool = False) -> dic
             if getter is None:
                 continue
             for side in _SIDES:
+                # A REQUEST that failed and a book that is genuinely empty both leave every
+                # price NULL — and this is the table whose whole point is telling those two
+                # apart. fetch_ok=0 marks the first; summary() counts only fetch_ok=1, so a
+                # timeout can never be published as "this competition had no ask here".
+                ok = 1
                 try:
                     ob = getter(tk[side])
-                except Exception:  # noqa: BLE001 — a venue hiccup is data too, recorded as NULL
-                    ob = None
+                except Exception:  # noqa: BLE001
+                    ob, ok = None, 0
+                    fetch_failures.append(f"{venue}:{d['comp']}")
                 conn.execute(
                     "INSERT OR IGNORE INTO venue_book_probe (fixture_api_id, comp, venue, side, bucket, "
-                    "minutes_to_kickoff, ticker, bid, ask, bid_depth, ask_depth, ts) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "minutes_to_kickoff, ticker, bid, ask, bid_depth, ask_depth, fetch_ok, ts) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (d["fixture"], d["comp"], venue, side, d["bucket"], d["minutes"], tk[side],
                      (float(ob.yes_bid) if (ob and ob.yes_bid is not None) else None),
                      (float(ob.yes_ask) if (ob and ob.yes_ask is not None) else None),
                      (float(ob.yes_depth) if (ob and ob.yes_depth is not None) else None),
-                     (float(ob.no_depth) if (ob and ob.no_depth is not None) else None), ts))
+                     (float(ob.no_depth) if (ob and ob.no_depth is not None) else None), ok, ts))
                 n += 1
     conn.commit()
     if verbose and n:
@@ -156,6 +168,8 @@ def probe(conn=None, *, include_prod: bool = True, verbose: bool = False) -> dic
            "buckets": [f"{d['comp']}@{d['bucket']}" for d in due]}
     if skipped_unreachable:
         out["unreachable"] = sorted(set(skipped_unreachable))     # retried next cycle
+    if fetch_failures:
+        out["fetch_failed"] = sorted(set(fetch_failures))         # recorded as fetch_ok=0
     return out
 
 
@@ -167,7 +181,8 @@ def summary(conn=None) -> dict:
     from prediction_market_soccer.ingest import store
     conn = conn or store.init_db()
     rows = conn.execute(
-        "SELECT comp, venue, bucket, side, bid, ask FROM venue_book_probe WHERE ticker IS NOT NULL").fetchall()
+        "SELECT comp, venue, bucket, side, bid, ask FROM venue_book_probe "
+        "WHERE ticker IS NOT NULL AND fetch_ok=1").fetchall()
     order = {b[0]: i for i, b in enumerate(BUCKETS)}
     agg: dict = {}
     for r in rows:

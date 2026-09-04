@@ -69,8 +69,9 @@ def _w7_v3_matrix(st: dict) -> None:
     obs = st.get("obs_trades") or []
     if obs:
         mo = sum(x["pnl_c"] for x in obs) / len(obs)
-        print(f"      └ 观察腿[0.50,0.60) {len(obs)}笔 均值{mo:+.2f}c"
-              f"  ← FLB 负面印证,转正=结构变了(不入账本)")
+        _, _, mo_t = _wstat([x["pnl_c"] for x in obs])
+        print(f"      └ 观察腿[0.50,0.60) {len(obs)}笔 均值{mo:+.2f}c t={mo_t:+.2f}"
+              f"  ← FLB 负面印证;**显著**转正(t≥2)才算结构变了,不是符号翻面")
     mk_all = [x for x in tr if x.get("maker_fill") is not None]
     if mk_all:
         fr = sum(1 for x in mk_all if x["maker_fill"]) / len(mk_all)

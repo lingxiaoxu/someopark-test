@@ -118,3 +118,36 @@ def test_the_live_loop_probes_before_the_match_window_check():
     from prediction_market_soccer.ops import live_refresh
     src = inspect.getsource(live_refresh.refresh_once)
     assert src.index("venue_liquidity.probe(conn)") < src.index("if not _in_match_window(conn):")
+
+
+def test_a_failed_orderbook_request_is_marked_and_excluded_from_the_summary(monkeypatch):
+    """A request that failed and a book that is genuinely empty both leave every price NULL
+    — and this is the table whose whole purpose is telling those two apart."""
+    c = _conn()
+    _fixture(c, api_id=20, minutes_ahead=180)
+    monkeypatch.setattr(VL, "_due_buckets", lambda conn, **k: [
+        {"fixture": 20, "comp": "ligue1", "home": 1020, "away": 2020, "kickoff": "x",
+         "bucket": "T-3h", "minutes": 180.0}])
+
+    class _Tk:
+        def for_match(self, comp, hi, ai): return {"home": "H", "draw": "D", "away": "A"}
+        def index_ok(self, comp): return True
+
+    class _Book:
+        def __init__(self, bid, ask): self.yes_bid, self.yes_ask, self.yes_depth, self.no_depth = bid, ask, 10, 10
+
+    class _Broker:
+        def book(self, t):
+            if t == "D":
+                raise TimeoutError("read timeout")      # one leg's REQUEST fails
+            return _Book(0.30, 0.31)
+
+    import prediction_market_soccer.exec.kalshi_mirror as KM
+    monkeypatch.setattr(KM, "_Tickers", _Tk)
+    monkeypatch.setattr(KM, "DemoBroker", _Broker)
+    out = VL.probe(c, include_prod=False)
+    assert out["fetch_failed"] == ["demo:ligue1"]
+    rows = {r["side"]: (r["fetch_ok"], r["ask"]) for r in c.execute("SELECT side, fetch_ok, ask FROM venue_book_probe")}
+    assert rows["draw"] == (0, None) and rows["home"][0] == 1
+    cell = {(r["comp"], r["venue"], r["bucket"]): r for r in VL.summary(c)["table"]}[("ligue1", "demo", "T-3h")]
+    assert cell["n"] == 2 and cell["ask_pct"] == 100, "the failed leg must not read as a missing ask"

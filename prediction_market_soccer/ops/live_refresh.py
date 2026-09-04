@@ -257,7 +257,7 @@ def _append_review_log_advance(inplay_adv: dict, synced: int) -> None:
 _MILESTONE_MIN = [("T15", 15), ("T30", 30), ("HT", 45), ("T60", 60), ("T75", 75)]
 
 
-def _capture_milestones(conn, inplay: dict) -> int:
+def _capture_milestones(conn, inplay: dict) -> int:  # noqa: C901
     """Record a milestone_snapshot row the first time a live match crosses each
     minute threshold (plan 18 §2.3) — captures the live model + Kalshi/Poly book at
     that instant. Idempotent (INSERT OR IGNORE on (fixture, milestone)). PRE/FT are
@@ -274,6 +274,7 @@ def _capture_milestones(conn, inplay: dict) -> int:
         model = m.get("model") or {}
         prices = m.get("prices") or {}
         kq, pq = prices.get("kalshi") or {}, prices.get("poly_us") or {}
+        blind = inplay.get("venue_blind") or {}
 
         def ab(q, side):  # (ask, bid) from a {side:{ask,bid}} venue block
             s = (q or {}).get(side) or {}
@@ -290,6 +291,17 @@ def _capture_milestones(conn, inplay: dict) -> int:
                 continue
             if conn.execute("SELECT 1 FROM milestone_snapshot WHERE fixture_api_id=? AND milestone=?",
                             (fid, code)).fetchone():
+                continue
+            # A milestone row is INSERT OR IGNORE — the first write wins forever, and the
+            # exit rule reads its prices as "what the book showed at that minute". When the
+            # venue layer is RATE-LIMITED this cycle (inplay_export publishes venue_blind
+            # from KalshiMarketData.unavailable) and this match carries no venue block at
+            # all, writing now would freeze a 429 as "there was no price at minute N".
+            # The threshold has an 8-minute grace, i.e. ~5 more cycles to get a real book,
+            # and backfill_milestones can still reconstruct it from venue history.
+            if blind and not (kq or pq):
+                _log_skip = f"{fid}@{code}"
+                print(f"[live_refresh] milestone {_log_skip} deferred — venues blind ({blind})")
                 continue
             kh, khb = ab(kq, "home"); kd, kdb = ab(kq, "draw"); ka, kab = ab(kq, "away")
             ph, phb = ab(pq, "home"); pd_, pdb = ab(pq, "draw"); pa, pab = ab(pq, "away")

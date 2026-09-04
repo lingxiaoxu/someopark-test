@@ -170,6 +170,7 @@ class PolymarketUSDiscovery:
         series = self._series_ids()
         events: dict[frozenset, list[dict]] = {}
         codes: dict[str, str] = {}
+        partial = False
         for c in active():
             ids = series.get(c.key)
             if not ids:
@@ -180,7 +181,14 @@ class PolymarketUSDiscovery:
                 try:
                     out = self.c.events.list({"seriesId": ids, "limit": 100, "offset": offset,
                                               "startTimeMin": lo, "startTimeMax": hi})
-                except Exception:
+                except Exception as e:  # noqa: BLE001
+                    # A page that FAILED is not "the end of the listing". Breaking here used
+                    # to hand _CACHE a half-read index that then served for the whole TTL and
+                    # replaced a previously complete one — every fixture past the failure
+                    # reads as "Polymarket does not list this match".
+                    partial = True
+                    print(f"[pmus] {c.key}: listing page at offset {offset} failed ({str(e)[:80]}) — "
+                          "index kept PARTIAL, previous cache retained")
                     break
                 page = (out.get("events") if isinstance(out, dict) else out) or []
                 if not page:
@@ -193,6 +201,10 @@ class PolymarketUSDiscovery:
                             codes[cid] = code
                 if len(page) < 100:
                     break
+        if partial and _CACHE.get("events"):
+            # keep serving the last complete index rather than a truncated one; leaving
+            # _CACHE["at"] untouched means the next call retries instead of waiting out the TTL
+            return
         _CACHE.update({"at": now, "events": events, "codes": codes})
 
     def _parse_event(self, pfx: str, e: dict) -> dict | None:

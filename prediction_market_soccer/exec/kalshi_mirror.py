@@ -546,6 +546,16 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
         # A row that never got a contract (venue 5xx, or an IOC that missed a moving ask) is
         # RETRIED — the paper ledger holds this bet regardless, so a transient venue fault
         # must not silently drop the mirror. Bounded by MAX_ATTEMPTS.
+        #
+        # 'pending' is NOT retryable here: it means the POST was sent and we never learned
+        # the outcome. The order may be live at the exchange. Re-sending under a new
+        # client_order_id would double the position while our books recorded one contract,
+        # so the position could never be fully exited. _reconcile_pending owns those rows —
+        # it looks the client_order_id up on the venue and adopts whatever really happened.
+        # Both retryable states mean NOTHING IS LIVE at the venue: 'unfilled' came from a
+        # clean response with fill_count 0 (an IOC that missed), and 'error' is only set by
+        # _reconcile_pending after it confirmed the venue holds no order under our
+        # client_order_id. Only then is replacing the row with a fresh attempt safe.
         retryable = prev["status"] in ("error", "unfilled") and float(prev["fill_count"] or 0) < 1
         if not retryable or int(prev["attempts"] or 1) >= MAX_ATTEMPTS:
             return {"terminal": True}
@@ -602,9 +612,15 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
     try:
         res = broker.buy_yes(ticker, n, ask, coid)
     except Exception as e:  # noqa: BLE001
-        conn.execute("UPDATE kalshi_mirror SET status='error', note=? WHERE id=?", (f"send failed: {str(e)[:150]}", row_id))
+        # UNKNOWN, not "no order". An IOC either fills at the matching engine or dies there;
+        # a lost response (read timeout, reset, proxy 5xx) tells us nothing about which. The
+        # row STAYS 'pending' so _reconcile_pending resolves it against the venue by
+        # client_order_id on a later cycle; marking it 'error' would make it look retryable
+        # and a second order could be placed on top of a live one.
+        conn.execute("UPDATE kalshi_mirror SET note=? WHERE id=?",
+                     (f"send outcome unknown: {str(e)[:130]}", row_id))
         conn.commit()
-        _log("entry_send_error", fixture=fid, track=track, ticker=ticker, error=str(e)[:160])
+        _log("entry_send_unknown", fixture=fid, track=track, ticker=ticker, coid=coid, error=str(e)[:160])
         return {"terminal": False}
     filled = res["fill_count"]
     status = "open" if filled > 0 else ("unfilled" if res["ok"] else "error")
@@ -794,13 +810,24 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
 # ── reconcile rows whose send outcome is unknown ─────────────────────────────
 def _reconcile_pending(conn, broker: DemoBroker) -> int:
     n = 0
-    for r in conn.execute("SELECT id, ticker, client_order_id, ask_c FROM kalshi_mirror WHERE status='pending'").fetchall():
+    for r in conn.execute("SELECT id, ticker, client_order_id, ask_c, submitted_at FROM kalshi_mirror WHERE status='pending'").fetchall():
         try:
             orders = broker.orders_for(r["ticker"])
         except Exception:  # noqa: BLE001
             continue
         o = next((x for x in orders if x.get("client_order_id") == r["client_order_id"]), None)
         if o is None:
+            # the venue has no record of this client_order_id, so the POST never landed and
+            # nothing is live. Release the row to the retry path (bounded by MAX_ATTEMPTS).
+            age = 0.0
+            try:
+                age = (_now() - datetime.fromisoformat(r["submitted_at"])).total_seconds()
+            except (TypeError, ValueError):
+                pass
+            if age > 120:      # give the exchange time to make a just-sent order listable
+                conn.execute("UPDATE kalshi_mirror SET status='error', note=? WHERE id=?",
+                             ("send outcome unknown; venue has no such client_order_id — safe to retry", r["id"]))
+                n += 1
             continue
         filled = float(o.get("fill_count_fp") or 0.0)
         px = o.get("yes_price_dollars")

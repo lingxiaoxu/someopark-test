@@ -533,15 +533,25 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
                       if bd else None)
 
         kalshi_q = poly_q = None
+        # Track FAILURES separately from "this venue has no quote". The PRE row written
+        # below is the price the frozen ledger AND the demo mirror both settle the
+        # pre-match bet from, and it is INSERT OR IGNORE — written once, never corrected.
+        # A row stamped while every venue call was erroring would freeze "there was no
+        # market price at kickoff" as a permanent fact about the match.
+        q_tried = q_failed = 0
         if kd is not None:
+            q_tried += 1
             try:
                 kalshi_q = kd.match_quotes(hi, ai)
             except Exception as e:
+                q_failed += 1
                 print(f"[warn] Kalshi quote {hi} vs {ai}: {e}")
         if pd_ is not None and et_date:
+            q_tried += 1
             try:
                 poly_q = pd_.match_quotes(hi, ai, et_date)
             except Exception as e:
+                q_failed += 1
                 print(f"[warn] PolyUS quote {hi} vs {ai}: {e}")
 
         k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
@@ -563,7 +573,14 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
         # so an in-progress match has a real pre-match entry ¢ before it settles (the
         # backfill later refines PRE from venue history). INSERT OR IGNORE → first
         # near-kickoff write wins; harmless no-op for far-out fixtures.
-        _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q, kalshi_a, poly_a)
+        if q_tried and q_failed == q_tried:
+            # every venue we asked errored: we know nothing about this match's book right
+            # now. Leave PRE unwritten — the next cycle (they run ~every 90s inside the
+            # 20-minute pre-kickoff window) tries again, and backfill_milestones can still
+            # reconstruct PRE from venue history afterwards.
+            print(f"[warn] PRE stash deferred for {f['api_id']}: all {q_tried} venue quote call(s) failed")
+        else:
+            _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q, kalshi_a, poly_a)
 
         def _edge_vs(devig_probs):
             if not devig_probs:

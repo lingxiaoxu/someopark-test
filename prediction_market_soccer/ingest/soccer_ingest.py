@@ -220,6 +220,29 @@ def sync_results(api: ApiFootball, conn, *, force: bool = False) -> int:
             ",".join("?" * len(_FINISHED)), ",".join("?" * len(lids))),
         tuple(_FINISHED) + tuple(lids) + (cutoff,)).fetchall()
     ids = [r["api_id"] for r in rows]
+    # "has at least one fixture_event row" is the completeness marker above, but the detail
+    # pull below is FOUR calls (events, stats, lineups, player stats) and the first one
+    # writing an event row already flips the marker. A budget cut-off, a 429 or a dropped
+    # connection between them leaves the fixture looking done forever. Heal the gap: fixtures
+    # that carry events but are missing stats or lineups, newest first and bounded so this
+    # can never turn into a sweep (measured 2026-09-04: 9 of 233 settled fixtures had events
+    # but no stats, 5 had no lineup).
+    heal = [r["api_id"] for r in conn.execute(
+        "SELECT f.api_id FROM fixture f WHERE f.status_short IN ({}) AND f.league_id IN ({}) "
+        "AND f.kickoff_ts >= ? "
+        "AND EXISTS (SELECT 1 FROM fixture_event e WHERE e.fixture_api_id=f.api_id) "
+        "AND (NOT EXISTS (SELECT 1 FROM fixture_stats s WHERE s.fixture_api_id=f.api_id) "
+        "  OR NOT EXISTS (SELECT 1 FROM lineup l WHERE l.fixture_api_id=f.api_id)) "
+        "ORDER BY f.kickoff_ts DESC LIMIT 20".format(
+            ",".join("?" * len(_FINISHED)), ",".join("?" * len(lids))),
+        tuple(_FINISHED) + tuple(lids) + (cutoff,)).fetchall() if r["api_id"] not in ids]
+    if heal:
+        print(f"[results] healing {len(heal)} fixture(s) with events but missing stats/lineups")
+        try:
+            sync_fixture_stats(api, conn, heal)
+            sync_lineups(api, conn, heal)
+        except BudgetExceededError as e:
+            print(f"[results] healing stopped early: {e}")
     if not ids:
         print("[results] no newly-finished fixtures (0 requests)")
         sync_ties(conn)
