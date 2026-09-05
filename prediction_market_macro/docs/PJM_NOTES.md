@@ -133,3 +133,35 @@ channel is closed.
 What stays in production: the ingest (accruing daily), the mirror, and the inert gate.
 What is banked: PJM thermal load → EIA storage surprise, r = −0.518 — waiting for a market
 that settles on that number.
+
+
+## Addendum 2 — where PJM data actually earns its place (PR-34, 2026-09-04)
+
+Every channel that competes with the market is closed for PJM: level (598 screening
+tests), width, supply-demand balance, transforms x lags (1815 cells, zero BH survivors),
+labour (judged twice in the production replay), and Chronos covariates — where the
+decisive measurement was that even an ORACLE weather covariate makes the NG density
+worse, bounding the whole family from above.
+
+What works is the channel that does not compete with the market at all: **conditioning
+the DFM world generator**. PR-32 adopted ERCOT gas burn as a context column; PR-34 adds
+**PJM demand** on top of it — crps 0.9508 -> 0.9493, cover gap 0.0243 -> 0.0145, with
+PJM's own gas burn buying nothing (-0.0000) and adding both columns diluting the gain
+back to +0.0001. Demand beats burn for the same reason the screening found: PJM demand
+tracks the national storage surprise at r = -0.55 while PJM burn manages -0.19.
+
+Three properties of the landing worth stating because they are the reasons to trust it:
+
+* **Additive, never substitutive.** All four arms kept `ercot_burn`; the landed spec is
+  asserted to be a superset of the previous one (same eleven columns in the same order,
+  same generated set, exactly one context column added). No ERCOT feed, mirror or adopted
+  result was touched.
+* **No collateral damage to the frozen constants.** Under the new panel with PR-20's rho
+  and PR-23's phi unchanged, the three bridges read mean error 0.0294 against a 0.06 bar
+  — inside, so nothing needed recalibrating and the whole PR-20/23/24/26/28 chain stands.
+* **The gain is small and is stated as such.** +0.0015 crps is three tenths of what ERCOT
+  bought in PR-32. It is a real, judged improvement to the world generator's calibration,
+  not a trading edge, and nobody should read it as one.
+
+Post-adoption full recompute: 10/10 series (`*_20260904T021329`), the first worlds
+conditioned on both grids at once.
