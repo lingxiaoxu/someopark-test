@@ -688,3 +688,59 @@ settle 幂等语义;不重部署 lean/main.py(会重置 paper 账户 —— 且 
 onboard 后 ① 出现 aeus 票不收敛 → 先查 QC 历史首名(已五例:ORCC/NB/CMB/RCHI/COH)。
 
 **周日(8/30)已验支撑事实**:QC 周末零成交(自报净值/cash 与 8/28 收盘快照逐位同);QC↔v17 差 = 恰好 20 腿周末决策(AISS 12 + MTFS 4:PLTR/ALGN 平·FDS/BSX 开 + MRPT 4:CDW/ROP 平 −1,156·ACGL/HIG 开 1248/−890),无一笔无法解释;BDC 五持仓+BIL 与 QC+残差账逐票闭合(闭合差 0;ORCC=OBDC 历史首名);面板 K 备忘行"未镜像 $0 / legacy 0 对"与 legacy 出清一致。
+
+### 现金对齐配方(2026-09-06 记;用户决定**暂不动**,留作将来执行的唯一真值)
+
+**背景**:AEUS 9/2 用保证金建仓(QC 无活的入金通道),QC 现金转负(9/4 收 −801,519.69)、
+Q 比 P 少 ≈1.16M,由 K_eff 台阶精确吸收(9/1–9/4 D−K_eff 在 ±1,600 内)。对账不受影响。
+若要让 QC 的现金项与面板对齐(换真券商前必做——真券商的负现金是真融资成本;或为消掉
+K_eff 里的台阶),需要一次**受控的重部署 + 重置现金**。模拟盘融资免费(9/2 现金恒等式
+`qc_nonfill_cash = 0.00`,无利息),所以不急。
+
+**机制事实(9/6 核自 lean/main.py / exporter.py / qc_api.py,勿凭记忆)**:
+- `_init_cash(doc)`:`CashBook["USD"].AddAmount(initial_cash − 当前现金)`,把现金**补到**
+  `initial_cash`。只在 `_apply` 开头、`cash_initialized == False` 时跑一次。
+- `cash_initialized = applied_version > 0`;`applied_version` 由 `_load_applied()` 从 ObjectStore
+  `mirror/last_applied.json` 读回,**跨部署存活**。⇒ **单纯重部署 + 强推,`_init_cash` 不会跑**:
+  账户重置到清算净值(≈Q)后原样重建,现金一分不加。
+- `initial_cash` 流向:`state/exporter_state.json.initial_cash` → `export_once` 写进 target_doc →
+  ObjectStore `mirror/target.json` → 算法读。现值 **6,000,322.19(go-live C0,陈)**;无更新
+  入口,手改 exporter_state.json 后必须再 `export_once(force=True)` 才会进 doc。
+- 重部署重置 paper 账户:现金 = 上一部署清算 equity,持仓清零(A-3 平台事实 #2)。
+- `_init_cash` 只在**持仓为零**时语义正确 —— 它设的是现金不是净值。若在有持仓时误触发
+  (applied 标记被清但账户没重置),会注入 initial_cash − 负现金 ≈ +6.85M 幻影(上文红线所指)。
+- `qc_api.object_set(org_id, key, data: bytes)` 可写 ObjectStore;无删除端点,"清零"= 写
+  `{"version": 0}`。
+
+**步骤**(收盘后、非交易时段;L/S 队列为空;当天无欠账 settle):
+1. 选定日 D。记下 P(D)(六策略官方 EOD 之和,`rolloff.official_eod`)与 Q(D)。
+2. 手改 `state/exporter_state.json.initial_cash ← P(D)`;`export_once(push=True, force=True)`
+   推出 v(n+1);**核对** ObjectStore 里 `mirror/target.json.initial_cash == P(D)`。
+   理由:重置后现金 = Q,`_init_cash` 补 P − Q = deposit_K + 累计滞后/滑点 − |K|,一步把
+   账户总额抬到面板口径。
+3. 归档 `state/rolloff.json`(`cmd_freeze_anchored` 的"K 只冻一次"门要求人工归档)。
+4. `object_set("mirror/last_applied.json", {"version": 0})`。运行中的算法不受影响
+   (`self.applied_version` 在内存里仍是 n,不会重入)。
+5. 重部署 lean/main.py。Initialize 读 applied=0 → `cash_initialized=False`;账户重置
+   (现金 ≈ Q,持仓 0)。首次 Poll 见 v(n+1) > 0 → `_apply` → `_init_cash`:AddAmount(P−Q)
+   → 现金 = P → 全书按市价重建 → 收敛后 `_save_applied(n+1)`。
+6. 当日 16:20 trot:① 必须逐票配平(别名表已覆盖九例历史首名)。
+7. 次日 settle 后 `ops/rolloff.py --freeze --session <重建日>` 重锚 K。新 K ≈ 重建滑差,应在
+   几千美元内;若超 1 万,先查 ① 与 fills 再冻。
+
+**验收**:Q_new ≈ P(差 = 重建滑差);QC 现金 ≈ P − 持仓市值 ≈ 面板 Σ scalar×ledger_cash
+(差 = 重建滑差 + 小数残差);之后 D − K_eff 仍在零附近。9/2 的 onboard 台阶因 `at` 早于
+新锚,`k_effective` 自动不再计入;`_mirrored_by` 仍让 aeus 留在 P 里(两个函数判据相同,
+但作用不同,勿混)。
+
+**风险 / 回滚**:
+- 空账户卡死(8/18 10:01 实发):若部署后算法不动,查 ObjectStore applied 是否仍 > 0
+  (步骤 4 写入失败、或部署早于写入)→ 重写 0 并重启算法。
+- 步骤 4 与 5 之间若算法因故重启(非重部署),会以 applied=0 + 有持仓 + 负现金触发
+  `_init_cash` → +6.85M 幻影。所以 4→5 要连着做,中间不留窗口。
+- 重建滑差分钟级、几千美元量级,进新 K,不进任何一天的 unattributed。
+- 一旦执行,旧 K(−12,004.77)、9/2 台阶、累计滞后/滑点全部作废进账户;历史报告不改。
+- 别在交易时段做:一边重建一边有策略换仓,① 会乱。
+
+**不做时的替代**:面板"QC 现金"行显示 `QC cash + deposit_K`(纯展示层,M5 未开,用户已
+说不显示)。现状 = 什么都不做,K_eff 吸收,对账已连续四天闭合。
