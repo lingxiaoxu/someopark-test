@@ -306,6 +306,29 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
     return bad[:10]
 
 
+def _late_data_after(conn, asof: str, created_ts: str) -> list[str]:
+    """Rows knowable at `asof` (knowledge_time <= asof) that we only RECEIVED after the
+    pred was written (first_seen_ts > created_ts). Such rows are visible to a PIT
+    re-prediction and were invisible to the original — the honest explanation for a
+    replay diff that has nothing to do with the code. Returns 'ROOT:date' / 'SID:date'
+    tags, newest first, empty when nothing arrived late."""
+    out: list[str] = []
+    try:
+        for r in conn.execute(
+                "SELECT root, event_time FROM fut_daily WHERE knowledge_time <= ?"
+                " AND first_seen_ts > ? ORDER BY event_time DESC LIMIT 5",
+                (asof, created_ts)):
+            out.append(f"{r[0]}:{r[1]}")
+        for r in conn.execute(
+                "SELECT sid, event_time FROM fred_obs WHERE knowledge_time <= ?"
+                " AND first_seen_ts > ? ORDER BY event_time DESC LIMIT 5",
+                (asof, created_ts)):
+            out.append(f"{r[0]}:{r[1]}")
+    except Exception:                                            # noqa: BLE001
+        return []                     # a broken lookup must not decide a breaker
+    return out
+
+
 def _ledger_selfcheck(conn, now: datetime, k: int = 3) -> list[str]:
     """(4) k date-seeded random open decisions: recompute fair from the row's own
     inputs_json dist + structure legs — mismatch means code silently changed."""
@@ -431,8 +454,23 @@ def daily_health(conn, settings) -> str:
                             f"replay_skip_version:{pr['model_version']}"
                             f"->{re_pred.model_version}")
                     elif json.dumps(re_pred.dist.to_json()) != pr["dist_json"]:
-                        s_rep["status"] = "red"
-                        s_rep["notes"].append("replay_mismatch")
+                        # 2026-09-05: NG's 09-03 bar reached us on 09-05 (yfinance served
+                        # a broken row on 09-04 and the completed-bar rule rightly dropped
+                        # it). Every pred written on 09-04 was computed without it; the
+                        # re-prediction here, filtering on knowledge_time <= asof, SAW it —
+                        # and called the difference model drift. It is not: it is data
+                        # that arrived after the pred was written. Third such episode
+                        # since 08-01 (08-03, 08-28, 09-03 — all four roots, always +2d),
+                        # so the provider does this ~12% of days. Late data is a vintage
+                        # event and gets its own note; only a diff that late data cannot
+                        # explain is drift.
+                        late = _late_data_after(conn, pr["asof"], pr["created_ts"])
+                        if late:
+                            s_rep["notes"].append(
+                                "replay_skip_late_data:" + ",".join(late[:3]))
+                        else:
+                            s_rep["status"] = "red"
+                            s_rep["notes"].append("replay_mismatch")
                 except Exception as e:                            # noqa: BLE001
                     s_rep["status"] = "red"
                     s_rep["notes"].append(f"replay_error:{e}")
