@@ -173,7 +173,12 @@ def _breaker_notes(msg: str) -> list[str]:
     """
     body = msg.split(":", 1)[1].lstrip() if ":" in msg else msg
     if body.startswith("health_red:"):
-        return [n for n in body[len("health_red:"):].split(",") if n]
+        notes = [n for n in body[len("health_red:"):].split(",") if n]
+        # informational notes (replay_skip_*, between_listings, ...) can appear inside a
+        # breaker string written before health learned to keep them out; they assert
+        # nothing, so they must not hold the breaker either.
+        from prediction_market_macro.research.health import INFORMATIONAL_PREFIXES
+        return [n for n in notes if not n.startswith(INFORMATIONAL_PREFIXES)]
     return [body] if body else []
 
 

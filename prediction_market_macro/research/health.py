@@ -306,6 +306,48 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
     return bad[:10]
 
 
+# Notes that describe the system's STATE without asserting anything is broken. They are
+# reported so a reader can see them, and they must never (a) trip a breaker or (b) hold one:
+# 2026-09-06 `replay_skip_late_data` rode into KXNATGASW's breaker string alongside a
+# pred_stale note, and because the self-healing release compares notes one by one it would
+# have held the breaker on an informational note forever after pred_stale cleared.
+INFORMATIONAL_PREFIXES = ("replay_skip_", "between_listings", "no_preds_yet")
+_QUALITY = {"brier_behind_market_2win"}
+
+
+def _integrity_notes(notes: list[str]) -> list[str]:
+    """铁律 10 nuance: QUALITY reds (model losing to the market) demote to paper — which is
+    already where we are; paper must keep trading or the OOS sample that could ever pass
+    the gate stops accruing. Only INTEGRITY reds (data/code/pipeline broken — even paper
+    output is garbage) trip the breaker that halts paper decisions too. Informational
+    notes are neither."""
+    return [n for n in notes
+            if n.split(":")[0] not in _QUALITY
+            and not n.startswith("crps_spike")
+            and not n.startswith("entropy_rise")
+            and not n.startswith(INFORMATIONAL_PREFIXES)]
+
+
+def _has_open_listing(conn, ticker: str, now: datetime) -> bool:
+    """Is there a listed, not-yet-closed period for `ticker`? Between one period's close
+    and the next listing there is nothing to predict, so a pred older than 26h is the
+    expected state, not a stale one. KXNATGASW tripped its breaker on exactly this gap on
+    08-30 and again on 09-06 (Sunday: 09-04 closed, 09-11 not yet listed)."""
+    try:
+        rows = conn.execute("SELECT close_time FROM contracts WHERE series=?"
+                            " AND close_time IS NOT NULL", (ticker,)).fetchall()
+    except Exception:                                            # noqa: BLE001
+        return True                     # unknown -> keep the conservative stale check
+    for r in rows:
+        ct = str(r[0]).replace("Z", "+00:00")
+        try:
+            if datetime.fromisoformat(ct) > now:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def _late_data_after(conn, asof: str, created_ts: str) -> list[str]:
     """Rows knowable at `asof` (knowledge_time <= asof) that we only RECEIVED after the
     pred was written (first_seen_ts > created_ts). Such rows are visible to a PIT
@@ -421,8 +463,11 @@ def daily_health(conn, settings) -> str:
         else:
             age_h = (now - datetime.fromisoformat(pr["asof"])).total_seconds() / 3600
             if age_h > 26:
-                s_rep["status"] = "red"
-                s_rep["notes"].append(f"pred_stale:{age_h:.0f}h")
+                if _has_open_listing(conn, spec.ticker, now):
+                    s_rep["status"] = "red"
+                    s_rep["notes"].append(f"pred_stale:{age_h:.0f}h")
+                else:
+                    s_rep["notes"].append(f"between_listings:{age_h:.0f}h")
             if pr["ladder_json"]:
                 mass = sum(json.loads(pr["ladder_json"]).values())
                 if abs(mass - 1.0) > 0.01:
@@ -489,11 +534,7 @@ def daily_health(conn, settings) -> str:
             # OOS sample that could ever pass the gate stops accruing. Only
             # INTEGRITY reds (data/code/pipeline broken — even paper output is
             # garbage) trip the breaker that halts paper decisions too.
-            quality = {"brier_behind_market_2win"}
-            integrity_notes = [n for n in s_rep["notes"]
-                               if n.split(":")[0] not in quality
-                               and not n.startswith("crps_spike")
-                               and not n.startswith("entropy_rise")]
+            integrity_notes = _integrity_notes(s_rep["notes"])
             # quality-only red = expected steady state pre-gate → warn (dashboard
             # amber), not a screaming error; integrity red = error + breaker.
             level = "error" if integrity_notes else "warn"

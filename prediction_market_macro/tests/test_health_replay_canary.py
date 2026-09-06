@@ -50,3 +50,34 @@ def test_a_broken_lookup_never_decides_a_breaker():
     conn = sqlite3.connect(":memory:")            # no tables at all
     assert _late_data_after(conn, "2026-09-04T09:16:00+00:00",
                             "2026-09-04T09:16:30+00:00") == []
+
+
+def test_informational_notes_neither_trip_nor_hold_a_breaker():
+    """2026-09-06: replay_skip_late_data rode into KXNATGASW's breaker string next to a
+    pred_stale note; once pred_stale cleared, the note-by-note release would have held
+    the breaker on the informational note. Both halves pinned."""
+    from prediction_market_macro.research.health import _integrity_notes
+    from prediction_market_macro.ops.risk import _breaker_notes
+    notes = ["pred_stale:40h", "replay_skip_late_data:CL:2026-09-03,NG:2026-09-03",
+             "brier_behind_market_2win", "replay_skip_version:a->b", "between_listings:40h"]
+    assert _integrity_notes(notes) == ["pred_stale:40h"]
+    held = _breaker_notes("KXNATGASW: health_red:pred_stale:40h,replay_skip_late_data:CL:2026-09-03")
+    assert held == ["pred_stale:40h"]
+
+
+def test_a_stale_pred_between_listings_is_expected_not_red():
+    """Sunday: 09-04 closed, 09-11 not listed — nothing to predict, so a 40h-old pred is
+    the correct state. Trip only when a period is actually open."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from prediction_market_macro.research.health import _has_open_listing
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE contracts(ticker TEXT, series TEXT, close_time TEXT)")
+    conn.execute("INSERT INTO contracts VALUES('KXNATGASW-26SEP0417-T2.9','KXNATGASW',"
+                 "'2026-09-04T21:00:00Z')")
+    now = datetime(2026, 9, 6, 12, 0, tzinfo=timezone.utc)
+    assert _has_open_listing(conn, "KXNATGASW", now) is False
+    conn.execute("INSERT INTO contracts VALUES('KXNATGASW-26SEP1117-T2.9','KXNATGASW',"
+                 "'2026-09-11T21:00:00Z')")
+    assert _has_open_listing(conn, "KXNATGASW", now) is True
+    assert _has_open_listing(sqlite3.connect(":memory:"), "KXNATGASW", now) is True  # unknown -> conservative
