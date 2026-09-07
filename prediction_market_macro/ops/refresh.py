@@ -111,6 +111,10 @@ def _run(weekly: bool = False) -> dict:
     from prediction_market_macro.venues.kalshi import account
     step("bankroll", lambda: account.refresh_bankroll(conn))
     step("fred_core", lambda: sum(fred.pull_core().values()))
+    # same-day Treasury par curve (2026-09-06): the source FRED's DGS* copy from, a
+    # business day earlier. Daily backfill here; the tick lands the day's row intraday.
+    from prediction_market_macro.ingest import treasury
+    step("treasury", lambda: treasury.pull(conn))
     # AFTER fred_core (2026-08-13): the reconciler used to run before the day's
     # pull, so a print that lands in the same morning's fetch (GASREGW arrives on
     # FRED ~2 days after each Monday, at exactly this refresh's fred_core minute)

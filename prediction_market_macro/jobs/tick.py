@@ -185,6 +185,7 @@ def linger(conn, s, md, max_sec: float = 840.0, poll_sec: float = 20.0) -> int:
     next launchd fire so tick processes never pile up."""
     t_end = _time.monotonic() + max_sec
     last_snap: dict[str, float] = {}
+    pulled: set = set()
     snaps = 0
     while _time.monotonic() < t_end:
         now = datetime.now(timezone.utc)
@@ -202,9 +203,44 @@ def linger(conn, s, md, max_sec: float = 840.0, poll_sec: float = 20.0) -> int:
                     last_snap[series] = _time.monotonic()
                 except Exception as e:                           # noqa: BLE001
                     print(f"  ! densified snapshot {series}: {e}")
+        _post_release_fred_pulls(conn, s, wins, now, pulled)
         _drain_due(conn, s, md)          # T+3m reassess executes the minute it's due
         _time.sleep(poll_sec)
     return snaps
+
+
+# (B) 2026-09-06: a print landed in fred_obs ~20h after release (PAYEMS/UNRATE 09-04
+# 12:30Z, first_seen 09-05 09:00) because nothing re-pulled FRED between the morning
+# refresh and the next one — the tick densified QUOTES around the release but not the
+# fundamentals. The Fed model's du12 reads UNRATE, so on the day of the biggest macro
+# print it repriced a day late. Pull at +2 min (before the T+3m reassess, which runs
+# predict_all) and again at +15 min (FRED occasionally posts late). pull_core is INSERT
+# OR IGNORE, so a repeat across tick processes is harmless.
+FRED_PULL_THRESHOLDS_S = (120, 900)
+
+
+def due_fred_pulls(dt_since_release_sec: float, done: set, key: tuple) -> list[int]:
+    """Thresholds (seconds after release) that should fire now and have not yet fired
+    for `key` in this process. Pure, so it is unit-testable."""
+    out = []
+    for thr in FRED_PULL_THRESHOLDS_S:
+        if dt_since_release_sec >= thr and (key, thr) not in done:
+            out.append(thr)
+    return out
+
+
+def _post_release_fred_pulls(conn, s, wins, now, pulled: set) -> None:
+    for series, sch in wins:
+        dt = (now - sch).total_seconds()
+        for thr in due_fred_pulls(dt, pulled, (series, sch.isoformat())):
+            pulled.add(((series, sch.isoformat()), thr))
+            try:
+                from prediction_market_macro.ingest.fred import FredPIT
+                got = FredPIT(s.fred_api_key, conn).pull_core()
+                print(f"  fred post-release pull +{thr}s ({series}): "
+                      f"{sum(got.values()) if isinstance(got, dict) else got} rows")
+            except Exception as e:                               # noqa: BLE001
+                print(f"  ! fred post-release pull +{thr}s ({series}): {e}")
 
 
 def main():
@@ -220,9 +256,86 @@ def main():
         pnl.mark_all(conn)
     except Exception as e:                                       # noqa: BLE001
         print(f"  ! mark_all: {e}")
+    # (A) same-day Treasury curve — lands the day's DGS2/5/10/30 within ~15 min of
+    # Treasury posting instead of FRED's next-business-day copy (ingest/treasury.py).
+    try:
+        from prediction_market_macro.ingest import treasury
+        got = treasury.pull_if_due(conn, now)
+        if got:
+            print(f"  treasury same-day pull: {got}")
+    except Exception as e:                                       # noqa: BLE001
+        print(f"  ! treasury pull: {e}")
+    # (C) late futures bars — yfinance drops the last completed session roughly one day
+    # in eight (08-03, 08-28, 09-03 since August, all four roots, always caught up a day
+    # later). The morning refresh cannot retry; the tick can.
+    try:
+        _repull_late_futures(conn, s, now)
+    except Exception as e:                                       # noqa: BLE001
+        print(f"  ! futures re-pull: {e}")
     if _active_windows(conn, now):
         n = linger(conn, s, md)
         print(f"[tick] event-window linger done, densified snapshots={n}")
+
+
+_FUT_ROOTS_WATCHED = ("CL", "NG", "RB", "GC")
+FUT_REPULL_MAX_ATTEMPTS = 3          # per session date; a holiday must not spin forever
+FUT_REPULL_MIN_GAP_S = 2 * 3600
+
+
+def last_completed_session(now: datetime):
+    """The most recent weekday strictly before today's UTC date (the bar that a morning
+    pull should already hold). Weekends roll back to Friday; exchange holidays are not
+    modelled — the attempt cap absorbs them."""
+    from datetime import timedelta
+    d = now.date() - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
+def late_futures_roots(conn, now: datetime) -> list[str]:
+    """Roots whose newest stored bar is older than the last completed session."""
+    if now.weekday() >= 5 or now.hour < 9:
+        return []                       # weekend / before the morning refresh has run
+    want = last_completed_session(now).isoformat()
+    out = []
+    for root in _FUT_ROOTS_WATCHED:
+        r = conn.execute("SELECT MAX(event_time) FROM fut_daily WHERE root=?",
+                         (root,)).fetchone()
+        if r is None or r[0] is None or r[0] < want:
+            out.append(root)
+    return out
+
+
+def _repull_late_futures(conn, s, now: datetime) -> None:
+    import json
+    roots = late_futures_roots(conn, now)
+    if not roots:
+        return
+    marker = s.output_dir / "futures_repull.json"
+    want = last_completed_session(now).isoformat()
+    st = {}
+    try:
+        st = json.loads(marker.read_text())
+    except Exception:                                            # noqa: BLE001
+        st = {}
+    if st.get("date") != want:
+        st = {"date": want, "attempts": 0, "last_ts": None}
+    if st["attempts"] >= FUT_REPULL_MAX_ATTEMPTS:
+        return
+    if st.get("last_ts"):
+        try:
+            if (now - datetime.fromisoformat(st["last_ts"])).total_seconds() < FUT_REPULL_MIN_GAP_S:
+                return
+        except ValueError:
+            pass
+    from prediction_market_macro.ingest import market_data
+    n = market_data.pull_futures(conn, roots=roots, lookback_days=10)
+    st["attempts"] += 1
+    st["last_ts"] = now.isoformat()
+    marker.write_text(json.dumps(st))
+    still = late_futures_roots(conn, now)
+    print(f"  futures re-pull for {roots} (missing {want}): {n} rows; still missing: {still or 'none'}")
 
 
 if __name__ == "__main__":
