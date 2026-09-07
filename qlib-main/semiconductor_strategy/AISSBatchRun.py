@@ -83,11 +83,22 @@ for _noisy in [
     "semiconductor_strategy.portfolio.optimizer",
     "semiconductor_strategy.portfolio.rebalance",
     "semiconductor_strategy.portfolio.risk",
-    "semiconductor_strategy.backtest.engine",
     "semiconductor_strategy.backtest.costs",
     "semiconductor_strategy.backtest.metrics",
 ]:
     logging.getLogger(_noisy).setLevel(logging.ERROR)
+
+# backtest.engine 明确 pin 在 WARNING —— **不要**再塞回上面的 ERROR 列表。
+# 2026-06-25 起 SSRS 的 qlib 路径每次都抛异常静默降级到 native loop,而
+# engine.py 的 "falling back to native loop" 正是 WARNING 级,被这里压掉了,
+# 于是这个降级在**日跑日志**里隐身了四个月(周跑走 walk_forward 的 basicConfig
+# 没压它,sr_weekly_20260906.log 里 40 条证据一直在)。三家 BatchRun 都有这条,
+# 所以这不是 SSRS 独有的洞:AISS/AEUS 的 qlib 适配器哪天被 qlib 升级弄坏,
+# 它们会同样隐身。
+# 显式 pin 而不是直接删条目:删掉只是继承 root level(当前恰好 WARNING);
+# 将来谁把 basicConfig 调成 INFO,engine 的十几条 info 会一起涌出。
+# --verbose(在 main() 里,晚于此处执行)仍可把它提到 INFO。
+logging.getLogger("semiconductor_strategy.backtest.engine").setLevel(logging.WARNING)
 
 
 # ---------------------------------------------------------------------------
