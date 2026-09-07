@@ -206,8 +206,22 @@ class USTradeCalendarManager(TradeCalendarManager):
         level_infra: Optional[LevelInfrastructure] = None,
     ) -> None:
         # Sorted Timestamp array — must be set BEFORE super().__init__() calls reset()
-        self._custom_calendar: np.ndarray = np.array(
-            sorted([pd.Timestamp(d) for d in trading_dates])
+        _real = np.array(sorted([pd.Timestamp(d) for d in trading_dates]))
+        if len(_real) < 2:
+            raise ValueError("USTradeCalendarManager needs at least 2 trading dates")
+        # 2026-09-07: qlib 自己的 TradeCalendarManager 取的是**未来日历**
+        #     Cal.calendar(freq=freq, future=True)        (qlib/backtest/utils.py)
+        # 好让 get_step_time() 在最后一根 bar 上仍能访问 _calendar[i+1]。我们绕过了
+        # Cal,就必须自己补这个"未来"哨兵日。原先改用把 end_index 夹到 n-2 来腾位置,
+        # 等于**每次回测都吞掉最后一个交易日** —— 而 bt_end 默认就是 prices.index[-1]
+        # (三家 config 的 end_date 均为 null),且按月调仓取的是每月第一个交易日,
+        # 所以只要跑批当天是月初(如 AEUS 上线日 2026-09-01),整月的调仓会被丢弃。
+        # 哨兵取 last_real + 1 **日历日**(不是真实的下一个交易日):两者之间不含任何
+        # 行情,已实测等价。哨兵只出现在最后一步的 trade_end_time 上,而 Account 的
+        # portfolio_metrics / hist_positions 都以 trade_start_time 为索引,不会污染输出。
+        self._n_trading: int = len(_real)
+        self._custom_calendar: np.ndarray = np.append(
+            _real, _real[-1] + pd.Timedelta(days=1)
         )
         super().__init__(
             freq=freq,
@@ -230,33 +244,29 @@ class USTradeCalendarManager(TradeCalendarManager):
         self.start_time = pd.Timestamp(start_time) if start_time else None
         self.end_time = pd.Timestamp(end_time) if end_time else None
 
-        # Use our pre-built calendar
+        # 末元素是未来哨兵,不是交易日 —— 二分查找只在真实交易日区间内做
         self._calendar = self._custom_calendar
-        n = len(self._calendar)
-
-        if n < 2:
-            raise ValueError("USTradeCalendarManager needs at least 2 trading dates")
+        n = self._n_trading
+        _real = self._calendar[:n]
 
         # Find start/end indices via binary search
         if start_time is not None:
             _st = pd.Timestamp(start_time)
             # start_index: first calendar date >= start_time
-            self.start_index = int(np.searchsorted(self._calendar, _st, side="left"))
+            self.start_index = int(np.searchsorted(_real, _st, side="left"))
         else:
             self.start_index = 0
 
         if end_time is not None:
             _et = pd.Timestamp(end_time)
             # end_index: last calendar date <= end_time
-            # searchsorted "right" gives insert point for end_time, -1 for the last date <= end_time
-            self.end_index = int(np.searchsorted(self._calendar, _et, side="right")) - 1
+            self.end_index = int(np.searchsorted(_real, _et, side="right")) - 1
         else:
-            # Leave room for get_step_time() which accesses _calendar[end_index + 1]
-            self.end_index = n - 2
+            self.end_index = n - 1
 
-        # Clip to valid range (must leave room for +1 access in get_step_time)
-        self.start_index = max(0, min(self.start_index, n - 2))
-        self.end_index = max(self.start_index, min(self.end_index, n - 2))
+        # 夹到真实交易日;哨兵保证 end_index = n-1 时 _calendar[n] 仍存在
+        self.start_index = max(0, min(self.start_index, n - 1))
+        self.end_index = max(self.start_index, min(self.end_index, n - 1))
 
         self.trade_len = self.end_index - self.start_index + 1
         self.trade_step = 0
