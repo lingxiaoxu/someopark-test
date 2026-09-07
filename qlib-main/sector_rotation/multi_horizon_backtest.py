@@ -101,6 +101,8 @@ def run_multi_horizon(
     signal_date = pd.Timestamp(prices.index[-1])
 
     results: Dict[str, Dict[str, dict]] = {}
+    # 窗口过短而未跑的视野 —— 显式留痕,不让它消失在合成分的重归一化里
+    skipped: Dict[str, dict] = {}
     t0 = time.time()
 
     print(f"\n{'═'*60}")
@@ -117,14 +119,28 @@ def run_multi_horizon(
         else:
             start = pd.Timestamp(base_cfg.get("backtest", {}).get("start_date", "2018-07-01"))
 
-        prices_h = prices[prices.index >= start]
-        macro_h = macro[macro.index >= start] if not macro.empty else macro
-
-        if len(prices_h) < 60:
-            print(f"  [{h['name']}] Skipped (only {len(prices_h)} days)")
+        # 窗口只用来判定"这个视野够不够交易"与打印 —— **不切喂给引擎的历史**。
+        # 2026-09-07 修正:原先把 prices/macro 也切到 start 再交给 bt.run,等于对信号
+        # 做了第二次截断。合成信号需要 ~30 个月末预热(12-1 动量 + 36 月滚动 z,
+        # min_periods 18),6 个月/1 年的窗口切完只剩 7/13 个月末 → cs_mom 全 NaN →
+        # composite 0 个有效月 → 引擎的 avail_scores 恒空,一笔不交易(实测:自
+        # 2026-05-10 第一份 weekly 起,recent_6m/recent_1y 从未交易过,净值恒为
+        # $1,000,000、Sharpe NaN,却被当作数据参与合成评分)。
+        # 这一刀恰好抵消了 config.yaml 写明的预热余量:
+        #     price_start: "2017-01-01"  # Earlier than backtest start for lookback warmup
+        # 引擎本来就在传入的全帧上算信号(engine.py "Computing composite signals for
+        # full history"),并用 cfg backtest.start_date(下方第 138 行,早已设好)把净值
+        # 曲线限制在窗口内 —— 窗口化是引擎的职责,这里再切一次是冗余且有害的。
+        window_days = int((prices.index >= start).sum())
+        if window_days < 60:
+            # 视野本身太短 → 显式记状态,不能静默 continue:下游合成分会按
+            # total_weight 重归一化,消失的视野会变成"没有这个视野"而非"这个视野无效"。
+            print(f"  [{h['name']}] Skipped (window only {window_days} days)")
+            skipped[h["name"]] = {"status": "insufficient_window",
+                                  "window_days": window_days, "min_days": 60}
             continue
 
-        print(f"  [{h['name']}] {len(prices_h)} days, {len(candidates)} params...", end="", flush=True)
+        print(f"  [{h['name']}] {window_days} days, {len(candidates)} params...", end="", flush=True)
         h_t0 = time.time()
 
         for name in candidates:
@@ -138,7 +154,8 @@ def run_multi_horizon(
                 cfg.setdefault("backtest", {})["start_date"] = start.strftime("%Y-%m-%d")
 
                 bt = SectorRotationBacktest(cfg)
-                result = bt.run(prices=prices_h, macro=macro_h)
+                # 全历史喂进去(信号预热),交易窗口由上面的 start_date 界定。
+                result = bt.run(prices=prices, macro=macro)
 
                 entry = {
                     "sharpe": round(result.metrics.get("sharpe", float("nan")), 4),
@@ -194,6 +211,7 @@ def run_multi_horizon(
         "signal_version": signal_version or "v1",
         "n_candidates": len(candidates),
         "horizons": {h["name"]: h for h in HORIZONS},
+        "skipped_horizons": skipped,   # 窗口过短未跑的视野(空 dict = 四个视野全跑了)
         "results": results,
         "composite_scores": composite,
         "ranking": sorted(
