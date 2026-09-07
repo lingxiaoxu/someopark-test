@@ -2542,5 +2542,29 @@
     "mrpt_dd": -2.21,
     "mtfs_dd": -46.57,
     "combined_dd": -23.01
+  },
+  {
+    "date": "2026-09-03",
+    "mrpt_equity": 611806.72,
+    "mtfs_equity": 333589.0,
+    "combined_equity": 945395.72,
+    "mrpt_pnl": -836.5,
+    "mtfs_pnl": 19034.51,
+    "combined_pnl": 18198.01,
+    "mrpt_dd": -2.34,
+    "mtfs_dd": -43.34,
+    "combined_dd": -21.5
+  },
+  {
+    "date": "2026-09-04",
+    "mrpt_equity": 611098.38,
+    "mtfs_equity": 328592.72,
+    "combined_equity": 939691.1,
+    "mrpt_pnl": -708.34,
+    "mtfs_pnl": -4996.28,
+    "combined_pnl": -5704.62,
+    "mrpt_dd": -2.45,
+    "mtfs_dd": -44.19,
+    "combined_dd": -21.97
   }
 ]

@@ -28,6 +28,8 @@ The checks, and what each one would have caught:
   obs_leg    — the FLB tripwire, as a TEST rather than a sign check: it read
                "positive means the structure changed" and duly fired on noise
   mirror     — demo mirror outcomes: 409s and wrong-window maps must be zero
+  demo_pos   — the demo account must hold only 15M legs we mirrored; a stray
+               market is the wrong-window bug leaving evidence
   recorders  — every live stream's freshness, plus today's 15M tape cadence:
                the tape IS the probe's eyes, and it is irreplaceable
   backup     — how old the newest archive is: the tape had exactly one copy
@@ -49,7 +51,7 @@ from pathlib import Path
 
 from crypto_trading.crypto_common.config import PRICE_DATA, SIGNALS_DIR
 from crypto_trading.crypto_strategies.event_binary.research_favorite_no import (
-    COST_HI, COST_LO, MARKETS, OBS_LO, PRIMARY_HI, PRIMARY_LO)
+    COST_HI, COST_LO, MAIN_HI, MAIN_LO, MARKETS, OBS_LO, PRIMARY_HI, PRIMARY_LO)
 from crypto_trading.crypto_strategies.live_watch.w7_noisefade import window_stats
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -159,6 +161,15 @@ def check_books(st: dict, contracts: int = 25) -> dict:
     prim_t = sum(1 for t in tr if PRIMARY_LO <= t["cost"] <= PRIMARY_HI)
     if prim_n != prim_t:
         bad.append(f"primary window count {prim_n} != trades in cell {prim_t}")
+    # MAIN counts only entries opened after its registration stamp — the
+    # discovery period must never leak into the evidence it suggested
+    reg = st.get("main_registered_at")
+    if reg:
+        main_n = sum(v["n"] for v in (st.get("windows_main") or {}).values())
+        main_t = sum(1 for t in tr if MAIN_LO <= t["cost"] <= MAIN_HI
+                     and str(t.get("opened", "")) >= reg)
+        if main_n != main_t:
+            bad.append(f"main window count {main_n} != post-registration trades in cell {main_t}")
 
     out_of_band = [t["ticker"] for t in tr
                    if not (COST_LO <= t["cost"] <= COST_HI)]
@@ -228,14 +239,18 @@ def check_obs_leg(st: dict, min_windows: int = 30) -> dict:
 
 
 def check_criteria(st: dict) -> dict:
-    n, mu, t = window_stats(st.get("windows_primary") or {})
+    from crypto_trading.crypto_strategies.live_watch.w7_noisefade import pooled_stats
+    _, n, mu, t = pooled_stats(st.get("windows_primary") or {})
+    _, nm, mum, tm = pooled_stats(st.get("windows_main") or {})
     nw, muw, _ = window_stats(st.get("windows") or {})
     if st.get("killed"):
         return {"status": WARN, "detail": f"KILLED — {st.get('killed_reason', '?')}",
                 "primary_windows": n, "primary_mean_c": round(mu, 2), "primary_t": round(t, 2)}
     return {"status": PASS,
-            "detail": f"primary {n}/300 windows, mean {mu:+.2f}c, t {t:+.2f} "
+            "detail": f"MAIN {nm}/300 windows {mum:+.2f}c t {tm:+.2f} | "
+                      f"primary {n}/300 {mu:+.2f}c t {t:+.2f} "
                       f"| wide band {nw} windows {muw:+.2f}c",
+            "main_windows": nm, "main_mean_c": round(mum, 2), "main_t": round(tm, 2),
             "primary_windows": n, "primary_mean_c": round(mu, 2),
             "primary_t": round(t, 2), "wide_windows": nw}
 
@@ -375,6 +390,47 @@ def check_backup(now: float) -> dict:
             "age_h": round(age_h, 1)}
 
 
+def check_demo_positions() -> dict:
+    """Everything the demo account holds should be a 15M window we mirrored.
+
+    Before the 2026-09-01 fix the mirror mapped 15-minute windows onto whatever
+    demo happened to quote, and one of those maps left 309.58 contracts of a
+    KXBTC market expiring 2027-05-24 sitting in the account. It cannot even be
+    sold — that market has no bid on either side — so the only defence is
+    noticing the next one on the day it appears rather than months later.
+
+    Needs demo credentials; without them this degrades to a note rather than
+    failing the whole check (the probe itself does not depend on it).
+    """
+    try:
+        from crypto_trading.crypto_common.kalshi.rest_event import (
+            KalshiEventOrderClient)
+        r = KalshiEventOrderClient(env="demo")._authed(
+            "GET", "/portfolio/positions?limit=200")
+        rows = (r.json() or {}).get("market_positions", [])
+    except Exception as e:                                   # noqa: BLE001
+        return {"status": PASS, "detail": f"skipped (no demo access: {type(e).__name__})"}
+    held = [x for x in rows if float(x.get("position_fp") or 0) != 0]
+    # The mirror only ever touches crypto series, so a crypto market that is
+    # not a 15M window is the wrong-window bug's fingerprint; anything else
+    # (sports, politics) is the user's own manual demo trading and none of
+    # this check's business (2026-09-06: an EPL bet tripped it).
+    crypto = ("KXBTC", "KXETH", "KXSOL", "KXDOGE", "KXXRP")
+    stray = [x for x in held
+             if x["ticker"].split("-")[0].startswith(crypto)
+             and not x["ticker"].split("-")[0].endswith("15M")]
+    ours = sum(1 for x in held if x["ticker"].split("-")[0].endswith("15M"))
+    if stray:
+        worst = sorted(stray, key=lambda x: -abs(float(x.get("market_exposure_dollars") or 0)))
+        return {"status": WARN,
+                "detail": (f"{len(stray)} non-15M position(s) the mirror should "
+                           f"never hold: "
+                           + ", ".join(f"{x['ticker']} {x['position_fp']}"
+                                       for x in worst[:3])
+                           + f" | {ours} live 15M leg(s)")}
+    return {"status": PASS, "detail": f"{ours} 15M leg(s), no stray positions"}
+
+
 def check_disk() -> dict:
     du = shutil.disk_usage(str(PRICE_DATA))
     free_gb = du.free / 1e9
@@ -403,6 +459,7 @@ def run(now: float | None = None, contracts: int = 25) -> dict:
         "criteria": state_err or check_criteria(st),
         "obs_leg": state_err or check_obs_leg(st),
         "mirror": check_mirror(now),
+        "demo_pos": check_demo_positions(),
         "recorders": check_recorders(now),
         "backup": check_backup(now),
         "disk": check_disk(),

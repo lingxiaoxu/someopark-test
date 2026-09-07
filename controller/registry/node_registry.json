@@ -42,6 +42,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR4EPBATH": {
+  "aliases": [
+   "PSX/LUV"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US7185461040|S:US8447411088",
+  "display_name": "PSX/LUV",
+  "first_seen": "2026-09-05T12:29:54+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR4HNZRSL": {
   "aliases": [
    "LEN/ROST"
@@ -267,6 +282,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRAGTQPDQ": {
+  "aliases": [
+   "INTC/MLM"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US4581401001|S:US5732841060",
+  "display_name": "INTC/MLM",
+  "first_seen": "2026-09-05T12:29:54+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRBK5I17K": {
   "aliases": [
    "CRL/PNR"
@@ -277,6 +307,21 @@
   "canonical_key": "mtfs|L:US1598641074|S:USG7S00T1042",
   "display_name": "CRL/PNR",
   "first_seen": "2026-08-26T14:09:01+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRBRNEPHP": {
+  "aliases": [
+   "MU/BLDR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US5951121038|S:US12008R1077",
+  "display_name": "MU/BLDR",
+  "first_seen": "2026-09-05T12:29:54+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -622,6 +667,21 @@
   "canonical_key": "mtfs|L:US42824C1099|S:US5018892084",
   "display_name": "HPE/LKQ",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRY2PDC2O": {
+  "aliases": [
+   "DELL/PNR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US24703L2025|S:USG7S00T1042",
+  "display_name": "DELL/PNR",
+  "first_seen": "2026-09-05T12:29:54+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

@@ -862,3 +862,56 @@ def test_walk_book_both_reads_one_payload_for_two_sides(monkeypatch):
     assert w7.walk_book_both("KXBTC15M-X", 25) is None
     monkeypatch.setattr(w7, "fetch_orderbook", lambda t: None)
     assert w7.walk_book_both("KXBTC15M-X", 25) is None
+
+
+def test_w7_main_cell_books_only_post_registration_entries(sandbox, monkeypatch):
+    """v3.2: MAIN [0.78,0.98] keeps its own book, and that book starts at the
+    registration stamp — the 9/2-9/6 trades that suggested 0.78 are its
+    discovery period and must not become its evidence. PRIMARY is untouched."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now - pd.Timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    reg = str(now - pd.Timedelta(hours=1))
+    before = str(now - pd.Timedelta(hours=2))          # opened before registration
+    after = str(now - pd.Timedelta(minutes=18))        # opened after
+    common.save_state("w7_noisefade", {
+        "main_registered_at": reg, "positions": {
+            "T-OLD": {"cost": 0.80, "close": close, "series": "KXBTC15M", "side": "yes",
+                      "leg": "band", "maker_posted": 0.79, "entry_rts": 1, "opened": before},
+            "T-NEW": {"cost": 0.80, "close": close, "series": "KXETH15M", "side": "yes",
+                      "leg": "band", "maker_posted": 0.79, "entry_rts": 1, "opened": after},
+            "T-PRIM": {"cost": 0.90, "close": close, "series": "KXSOL15M", "side": "yes",
+                       "leg": "band", "maker_posted": 0.89, "entry_rts": 1, "opened": after},
+        }, "trades": [], "cum_net_usd": 0.0})
+    monkeypatch.setattr(w7, "official_result", lambda t: "yes")
+    monkeypatch.setattr(w7, "latest_snapshot", lambda s: None)
+    monkeypatch.setattr(w7, "tape_quotes", lambda *a: [])
+    rep = w7.run({"w7_noisefade": {"enabled": False, "contracts": 25}})
+    st = common.load_state("w7_noisefade")
+    assert len(st["trades"]) == 3
+    assert sum(v["n"] for v in st["windows_main"].values()) == 2      # NEW + PRIM
+    assert sum(v["n"] for v in st["windows_primary"].values()) == 1  # PRIM only
+    assert rep["main_windows"] == 1 and rep["primary_windows"] == 1
+
+
+def test_w7_main_cell_latches_and_kills_independently():
+    """Each registered cell decides alone: MAIN can latch while PRIMARY has
+    not, and a refuting MAIN book kills even with a healthy PRIMARY book."""
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    def W(vals):
+        return {str(i): {"n": 1, "wins": int(v > 0), "sum_c": v} for i, v in enumerate(vals)}
+    st = {"windows_main": W([6 + (i % 7) for i in range(300)]),
+          "windows_primary": W([6 + (i % 7) for i in range(120)])}
+    assert w7.latch_verdict(st) is None                       # PRIMARY: 120 < 300
+    vm = w7.latch_cell(st, w7.CELLS["main"])
+    assert vm["passed"] is True and vm["cell"].startswith("MAIN")
+    assert st["verdict_main"] == vm and "verdict" not in st
+    # kill on MAIN alone
+    spread = (-1.5, -0.5, 0.5, 1.5)
+    st2 = {"windows_primary": W([+5 + spread[i % 4] for i in range(60)]),
+           "windows_main": W([-20 + 15 * spread[i % 4] for i in range(60)])}
+    assert w7.evidence_kill(st2) is True and "MAIN" in st2["killed_reason"]

@@ -33,6 +33,18 @@ def _w7_v3_matrix(st: dict) -> None:
     bucket requires a new pre-registration, docstring rule)."""
     from .w7_noisefade import always_valid_bound, pooled_stats
     tr = st.get("trades") or []
+    # v3.2 MAIN cell — the window the user intends to trade live (2026-09-06)
+    # and the thing to watch first. Its clock started at registration; the
+    # trades that suggested it are its discovery period, not its evidence.
+    mtr, mw, mm, mt = pooled_stats(st.get("windows_main") or {})
+    reg = (st.get("main_registered_at") or "")[:16].replace("T", " ")
+    print(f"      └ ★★MAIN[0.78,0.98] 窗口 {mw}/300  池化{mm:+.2f}c/张  t_CR={mt:+.2f}"
+          f"  ← 实盘目标窗口,对照 +1.66c(自 {reg}Z 起计)")
+    vm = st.get("verdict_main")
+    if vm:
+        print(f"      └ ⚖️ MAIN 判决已闩锁: {'通过' if vm['passed'] else '未通过'} "
+              f"@{vm['decided_at_windows']}窗 池化{vm['pooled_mean_c']:+.2f}c "
+              f"t={vm['pooled_t_clustered']:+.2f}")
     wp = [v["sum_c"] / v["n"] for v in (st.get("windows_primary") or {}).values()
           if v.get("n")]
     n, mu_eq, t_eq = _wstat(wp)
@@ -145,7 +157,10 @@ def main() -> int:
                   f"  ← 有效样本(五币=一次宏观下注)")
 
     print("-" * 88)
-    print("FOCUS W7 v3.1: verdict = PRIMARY [0.85,0.98] ONLY, latched ONCE at 300 "
+    print("FOCUS W7 v3.2: MAIN [0.78,0.98] is the live-target cell (own 300-window "
+          "latch, comparand +1.66c); PRIMARY [0.85,0.98] finishes its v3.1 latch. "
+          "Both: POOLED per-contract, window-cluster-robust t>=2.5")
+    print("           v3.1: verdict = PRIMARY [0.85,0.98] ONLY, latched ONCE at 300 "
           "windows on POOLED per-contract P&L with a window-cluster-robust t>=2.5; "
           "other buckets are a MAP (a new pre-registration to judge one); kill uses "
           "a continuous-monitoring boundary, not a fixed t=-2")

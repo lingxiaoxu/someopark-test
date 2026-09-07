@@ -73,8 +73,9 @@ import pandas as pd
 
 from crypto_trading.crypto_common.config import PRICE_DATA
 from crypto_trading.crypto_strategies.event_binary.research_favorite_no import (
-    COST_HI, COST_LO, MAKER_IMPROVE, MARKETS, OBS_LO, PRIMARY_HI, PRIMARY_LO,
-    REM_MIN_TARGET, REM_TOLERANCE, favorite_side, fee, no_cost, yes_cost)
+    COST_HI, COST_LO, MAIN_HI, MAIN_LO, MAKER_IMPROVE, MARKETS, OBS_LO,
+    PRIMARY_HI, PRIMARY_LO, REM_MIN_TARGET, REM_TOLERANCE, favorite_side, fee,
+    no_cost, yes_cost)
 
 from . import common
 
@@ -334,31 +335,44 @@ def always_valid_bound(n_windows: int, rho: float = 300.0,
                      * (2 * math.log(1 / alpha) + math.log((n_windows + rho) / rho)))
 
 
+# The two registered cells. PRIMARY is the v3.1 verdict in flight; MAIN is
+# the v3.2 window the user intends to trade live (2026-09-06) and, from that
+# date, the thing to watch. Each keeps its own book, its own 300-window latch
+# and its own kill test; nothing is re-based mid-flight.
+CELLS = {
+    "primary": {"lo": PRIMARY_LO, "hi": PRIMARY_HI, "book": "windows_primary",
+                "verdict": "verdict", "label": "PRIMARY [0.85,0.98]"},
+    "main": {"lo": MAIN_LO, "hi": MAIN_HI, "book": "windows_main",
+             "verdict": "verdict_main", "label": "MAIN [0.78,0.98]"},
+}
+
+
 def evidence_kill(st: dict, min_windows: int = 30) -> bool:
-    """Stop only when the data actively REFUTES the edge, judged on the
-    PRE-REGISTERED PRIMARY CELL with the money statistic (pooled per-contract,
+    """Stop only when the data actively REFUTES the edge — judged on EITHER
+    registered cell with the money statistic (pooled per-contract,
     window-cluster-robust) against a continuous-monitoring boundary.
     Sticky — a human clears it. Paper probes burn no money, so a dollar stop
     only ever fires on noise; it did, twice, before this replaced it."""
     if st.get("killed"):
         return True
-    n_tr, n_w, mu, t = pooled_stats(st.get("windows_primary") or {})
-    if n_w >= min_windows and t <= -always_valid_bound(n_w):
-        st["killed"] = True
-        st["killed_reason"] = (
-            f"evidence: PRIMARY pooled t={t:.2f} <= -{always_valid_bound(n_w):.2f} "
-            f"(mean {mu:+.2f}c/contract, {n_tr} trades in {n_w} windows) "
-            f"— data refutes the edge")
-        return True
+    for cell in CELLS.values():
+        n_tr, n_w, mu, t = pooled_stats(st.get(cell["book"]) or {})
+        if n_w >= min_windows and t <= -always_valid_bound(n_w):
+            st["killed"] = True
+            st["killed_reason"] = (
+                f"evidence: {cell['label']} pooled t={t:.2f} <= "
+                f"-{always_valid_bound(n_w):.2f} (mean {mu:+.2f}c/contract, "
+                f"{n_tr} trades in {n_w} windows) — data refutes the edge")
+            return True
     return False
 
 
 VERDICT_WINDOWS = 300           # pre-registered sample size
 
 
-def latch_verdict(st: dict) -> dict | None:
-    """Evaluate the pre-registered gate ONCE, at n = VERDICT_WINDOWS, and
-    freeze the answer into the state.
+def latch_cell(st: dict, cell: dict) -> dict | None:
+    """Evaluate one cell's pre-registered gate ONCE, at n = VERDICT_WINDOWS,
+    and freeze the answer into the state.
 
     A fixed-n rule read continuously is not a fixed-n rule: the gate was
     being recomputed every 60s cycle and shown on demand, which turns
@@ -367,14 +381,17 @@ def latch_verdict(st: dict) -> dict | None:
     restores the guarantee — after the latch the numbers keep updating for
     the record, but THE decision never re-opens.
     """
-    if st.get("verdict"):
-        return st["verdict"]
-    n_tr, n_w, mu, t = pooled_stats(st.get("windows_primary") or {})
+    key = cell["verdict"]
+    if st.get(key):
+        return st[key]
+    book = st.get(cell["book"]) or {}
+    n_tr, n_w, mu, t = pooled_stats(book)
     if n_w < VERDICT_WINDOWS:
         return None
     passed = mu > 0 and t >= 2.5
-    n_eq, mu_eq, t_eq = window_stats(st.get("windows_primary") or {})
-    st["verdict"] = {
+    n_eq, mu_eq, t_eq = window_stats(book)
+    st[key] = {
+        "cell": cell["label"],
         "passed": passed,
         "decided_at_windows": n_w,
         "trades": n_tr,
@@ -383,9 +400,14 @@ def latch_verdict(st: dict) -> dict | None:
         "equalweight_mean_c": round(mu_eq, 3),
         "equalweight_t": round(t_eq, 3),
         "rule": (f"pooled per-contract mean > 0 AND window-clustered "
-                 f"t >= 2.5 at {VERDICT_WINDOWS} primary windows"),
+                 f"t >= 2.5 at {VERDICT_WINDOWS} {cell['label']} windows"),
     }
-    return st["verdict"]
+    return st[key]
+
+
+def latch_verdict(st: dict) -> dict | None:
+    """The v3.1 PRIMARY latch (kept under its original name)."""
+    return latch_cell(st, CELLS["primary"])
 
 
 def _book_window(windows: dict, close: str, pnl_c: float) -> None:
@@ -413,6 +435,10 @@ def run(cfg: dict | None = None, **_) -> dict:
               "touch_fallbacks", "book_unavailable"):
         probe.setdefault(k, 0)
     st.setdefault("version", "v3_2026-08-31")
+    # v3.2 (2026-09-06): the MAIN cell's clock starts the first time this
+    # code runs, never earlier — a pre-registration that could reach back
+    # into the data that proposed it would not be one.
+    st.setdefault("main_registered_at", str(now))
     contracts = int(cfg.get("contracts", 25))
     rep: dict = {"strategy": NAME}
 
@@ -477,6 +503,14 @@ def run(cfg: dict | None = None, **_) -> dict:
             _book_window(st.setdefault("windows", {}), p["close"], pnl_c)
             if PRIMARY_LO <= p["cost"] <= PRIMARY_HI:
                 _book_window(st.setdefault("windows_primary", {}),
+                             p["close"], pnl_c)
+            # MAIN book counts only entries made AFTER its registration: the
+            # 9/2-9/6 trades that suggested 0.78 are its discovery period, not
+            # its evidence (they stay in `trades`, just not in this book).
+            reg = st.get("main_registered_at")
+            if (MAIN_LO <= p["cost"] <= MAIN_HI and reg
+                    and str(p.get("opened", "")) >= reg):
+                _book_window(st.setdefault("windows_main", {}),
                              p["close"], pnl_c)
             sk = st.setdefault("by_series", {})
             b = sk.setdefault(p.get("series", "?"), {"n": 0, "wins": 0, "sum_c": 0.0})
@@ -581,9 +615,11 @@ def run(cfg: dict | None = None, **_) -> dict:
     if len(seen) > 3000:
         st["seen_tickers"] = seen[-1500:]
     verdict = latch_verdict(st)
+    verdict_main = latch_cell(st, CELLS["main"])
     common.save_state(NAME, st)
     npr, mpr, tpr = window_stats(st.get("windows_primary") or {})
     ntr, nw, mp, tp = pooled_stats(st.get("windows_primary") or {})
+    mtr, mw, mm, mt = pooled_stats(st.get("windows_main") or {})
     return {**rep, "entries": entries, "settled": settled,
             "markets": per_series, "open_virtual": len(vpos), "probe": probe,
             "by_series": st.get("by_series", {}),
@@ -593,5 +629,7 @@ def run(cfg: dict | None = None, **_) -> dict:
             "primary_equalweight_mean_c": round(mpr, 2),
             "primary_equalweight_t": round(tpr, 2),
             "verdict": verdict,
+            "main_windows": mw, "main_mean_c": round(mm, 2),
+            "main_t": round(mt, 2), "verdict_main": verdict_main,
             "paper_cum_usd": round(st.get("cum_net_usd", 0.0), 3),
             "status": "OK"}

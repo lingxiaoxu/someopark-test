@@ -3203,3 +3203,17 @@
 {"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPRZDF8Z5S", "kind": "pair", "key": "mtfs|L:US79466L3024|S:US3687361044", "display": "CRM/GNRC"}
 {"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPR4IUZ1WT", "kind": "pair", "key": "mtfs|L:US3030751057|S:US5801351017", "display": "FDS/MCD"}
 {"ts": "2026-09-03T12:36:27+00:00", "event": "register_node", "spid": "SPPRO3IOZHZ", "kind": "pair", "key": "mtfs|L:US7140461093|S:US1258961002", "display": "RVTY/CMS"}
+{"ts": "2026-09-04T12:37:32+00:00", "event": "build_master", "total": 281, "cusip_hit": 281, "placeholder": 0}
+{"ts": "2026-09-05T12:29:02+00:00", "event": "register_node", "spid": "SPPRBRNEPHP", "kind": "pair", "key": "mtfs|L:US5951121038|S:US12008R1077", "display": "MU/BLDR"}
+{"ts": "2026-09-05T12:29:02+00:00", "event": "register_node", "spid": "SPPRY2PDC2O", "kind": "pair", "key": "mtfs|L:US24703L2025|S:USG7S00T1042", "display": "DELL/PNR"}
+{"ts": "2026-09-05T12:29:02+00:00", "event": "register_node", "spid": "SPPRAGTQPDQ", "kind": "pair", "key": "mtfs|L:US4581401001|S:US5732841060", "display": "INTC/MLM"}
+{"ts": "2026-09-05T12:29:02+00:00", "event": "register_node", "spid": "SPPR4EPBATH", "kind": "pair", "key": "mtfs|L:US7185461040|S:US8447411088", "display": "PSX/LUV"}
+{"ts": "2026-09-05T12:29:18+00:00", "event": "register_node", "spid": "SPPRBRNEPHP", "kind": "pair", "key": "mtfs|L:US5951121038|S:US12008R1077", "display": "MU/BLDR"}
+{"ts": "2026-09-05T12:29:18+00:00", "event": "register_node", "spid": "SPPRY2PDC2O", "kind": "pair", "key": "mtfs|L:US24703L2025|S:USG7S00T1042", "display": "DELL/PNR"}
+{"ts": "2026-09-05T12:29:18+00:00", "event": "register_node", "spid": "SPPRAGTQPDQ", "kind": "pair", "key": "mtfs|L:US4581401001|S:US5732841060", "display": "INTC/MLM"}
+{"ts": "2026-09-05T12:29:18+00:00", "event": "register_node", "spid": "SPPR4EPBATH", "kind": "pair", "key": "mtfs|L:US7185461040|S:US8447411088", "display": "PSX/LUV"}
+{"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPRBRNEPHP", "kind": "pair", "key": "mtfs|L:US5951121038|S:US12008R1077", "display": "MU/BLDR"}
+{"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPRY2PDC2O", "kind": "pair", "key": "mtfs|L:US24703L2025|S:USG7S00T1042", "display": "DELL/PNR"}
+{"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPRAGTQPDQ", "kind": "pair", "key": "mtfs|L:US4581401001|S:US5732841060", "display": "INTC/MLM"}
+{"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPR4EPBATH", "kind": "pair", "key": "mtfs|L:US7185461040|S:US8447411088", "display": "PSX/LUV"}
+{"ts": "2026-09-05T12:36:27+00:00", "event": "build_master", "total": 281, "cusip_hit": 281, "placeholder": 0}

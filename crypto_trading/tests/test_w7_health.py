@@ -57,6 +57,11 @@ def test_books_pass_on_a_consistent_state():
     # settled and still open at once = a settlement that failed to close out
     (lambda s: s["positions"].update({"KXBTC15M-A": {"cost": 0.9}}),
      "both settled and open"),
+    # MAIN's book reaching back before its registration stamp would let the
+    # discovery period masquerade as evidence
+    (lambda s: (s.update(main_registered_at="2026-09-06T00:00:00"),
+                s.update(windows_main={"Z": {"n": 1, "wins": 1, "sum_c": 10.0}})),
+     "main window count"),
 ])
 def test_books_fail_on_each_broken_invariant(mutate, expect):
     st = _healthy_state()
@@ -158,3 +163,40 @@ def test_obs_leg_tripwire_needs_significance_not_just_a_sign():
     assert H.check_obs_leg(leg([+8 + (i % 3) for i in range(12)]))["status"] == H.PASS
     # and the leg staying negative is the expected, quiet case
     assert H.check_obs_leg(leg([-7 - (i % 4) for i in range(60)]))["status"] == H.PASS
+
+
+def test_demo_positions_flags_only_strays_and_degrades_without_access(monkeypatch):
+    """A market the mirror should never have touched must be surfaced; our own
+    15M legs must not. Without demo credentials the check steps aside rather
+    than reddening a report about the probe, which does not depend on it."""
+    class Client:
+        def __init__(self, env=None): pass
+        def _authed(self, method, path):
+            class R:
+                @staticmethod
+                def json():
+                    return {"market_positions": [
+                        {"ticker": "KXBTC15M-26SEP060030-30", "position_fp": "-25.00",
+                         "market_exposure_dollars": "23.75"},
+                        {"ticker": "KXETH15M-26SEP060030-30", "position_fp": "0.00",
+                         "market_exposure_dollars": "0"},          # closed out
+                        {"ticker": "KXBTC-27MAY2410-T65200", "position_fp": "309.58",
+                         "market_exposure_dollars": "154.79"},     # the real stray
+                        {"ticker": "KXEPLGAME-26SEP06ARSCFC-ARS", "position_fp": "2.00",
+                         "market_exposure_dollars": "1.10"},       # user's own football bet
+                    ]}
+            return R()
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Client)
+    r = H.check_demo_positions()
+    assert r["status"] == H.WARN
+    assert "KXBTC-27MAY2410-T65200" in r["detail"] and "1 live 15M leg" in r["detail"]
+    assert "KXEPLGAME" not in r["detail"]            # not the mirror's business
+
+    class Boom:
+        def __init__(self, env=None): raise RuntimeError("no creds")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Boom)
+    r = H.check_demo_positions()
+    assert r["status"] == H.PASS and "skipped" in r["detail"]

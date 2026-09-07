@@ -82,6 +82,12 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
   # The dollar fields below are ignored by w7.
   max_cum_loss_usd: 999999
   min_trades_for_kill: 999999
+  # v3.2 MAIN cell [0.78,0.98] (user 2026-09-06) = the intended LIVE window and
+  # the thing to watch: positive in all three independent tape periods, sign
+  # boundary at 0.78; comparand from the two periods BEFORE the choice +1.66c
+  # t 1.41 (so 300 windows likely reads positive-but-not-significant; clearing
+  # 2.5 needs ~1,300 windows). Own book from registration, own 300-window
+  # latch, own kill. PRIMARY below finishes its own v3.1 latch untouched.
   # LIVE criteria (v3.1, re-registered 2026-09-02 after the audit): PRIMARY cell
   # [0.85,0.98] both sides, taker book — evaluated ONCE at 300 independent
   # primary windows (latched, no optional stopping): POOLED PER-CONTRACT mean
