@@ -77,13 +77,38 @@ CAPEX_HISTORY_START = "2015-01-01"             # gives z-scores from ~2017
 
 # --- Utility / water CapEx groups (AEUS analogs; CIKs verified live against
 # --- SEC company_tickers.json on 2026-08-30) -------------------------------
+# --- 共同注册人 CIK(2026-09-07)---------------------------------------------
+# SEC 的 companyfacts 把一份**合并多注册人**的 10-Q/10-K 派给其中**一个** CIK。
+# 自 Q2-2026 起三家公用事业的合并申报都落到了子公司名下(母公司口径的数值,
+# 带**母公司自己的** accession):DUK 2026H1 8,240mn 在 CIK 17797、
+# SO 2026H1 6,639mn 在 CIK 1004155。只查母公司 CIK 就什么都看不到 ——
+# utility_capex 因此冻在 CY2026Q1(filed 2026-05-05),125 天后触发 STALE 红灯。
+# 历史并集是有意的:Gulf Power(44545)2019 年已卖给 NEE,但仍托管它在册那些年的事实。
+COREGISTRANT_CIKS = {
+    753308:  [37634],                                              # NEE → FPL
+    1326160: [17797, 20290, 30371, 37637, 78460, 81020, 1094093],  # DUK 各子公司
+    92122:   [3153, 41091, 44545, 66904, 1004155, 1160661],        # SO 各子公司
+}
+_COREG_CACHE: dict = {}
+
 UTILITY_CAPEX_PATH = pit.COMPANY_DIR / "utility_capex_actual.json"
 UTILITY_CAPEX = {
+    # NEE 结构上不可达(2026-09-07 双 CIK 复验):CIK 753308 的 taxonomies 恰为
+    # ['dei','us-gaap','ffd'],无任何 PaymentsToAcquirePropertyPlantAndEquipment /
+    # ProductiveAssets / ...AndIntangibleAssets;唯一的共同注册人 FPL 37634 零条
+    # PaymentsToAcquire*。真实元素是**公司扩展标签**(nee:CapitalExpendituresOfFPL 等),
+    # 而 companyfacts 结构上不暴露扩展 taxonomy。元素名还不稳定(2021 前叫
+    # ...OfPublicUtility、2022 拆成 ...OfFPLSegment + ...OfGulfPowerSegment)。
+    # **严禁**用 CapitalExpendituresIncurredButNotYetPaid 或 AFUDC 概念替代 ——
+    # 那是权责发生/资本化津贴,不是现金 capex。
+    # 保留此条目仅为记录设计意图;它今天贡献 0 个季度,组聚合实际是 DUK+SO。
+    # 注意:group engine 当前**不做组成匹配**,NEE 一旦可达,仅它入组就会注入
+    # 约 +130% 的假 YoY 台阶(NEE H1-2026 19,389mn vs 现 DUK+SO 组 14,879mn)。
     "NEE": (753308,  "PaymentsToAcquirePropertyPlantAndEquipment"),
     "DUK": (1326160, "PaymentsToAcquirePropertyPlantAndEquipment"),
     "SO":  (92122,   "PaymentsToAcquirePropertyPlantAndEquipment"),
 }
-UTILITY_MIN_COMPANIES = 2                       # need >=2 of 3 for the aggregate
+UTILITY_MIN_COMPANIES = 2   # 实际含义:DUK 与 SO 两家都必需(NEE 结构上不可达,见上)
 
 WATER_CAPEX_PATH = pit.COMPANY_DIR / "water_capex_actual.json"
 WATER_CAPEX = {
@@ -317,7 +342,63 @@ def _standalone_quarters(facts: dict, concept: str,
 # — the AISS hyperscaler aggregation logic, parameterised (AEUS_PLAN §4).
 # ===========================================================================
 
-def _compute_group_capex(companies: dict, min_companies: int, label: str) -> dict:
+def _coregistrants_for(parent_cik: int, parent_accns: set, label: str) -> list:
+    """该母公司已 pin 的共同注册人 CIK 列表(带漂移告警,但**不自动合并**)。"""
+    return list(COREGISTRANT_CIKS.get(int(parent_cik), []))
+
+
+def _merge_registrant_facts(parent_cik: int, label: str, tk: str,
+                            provenance: "Optional[dict]" = None) -> dict:
+    """母公司 companyfacts + 共同注册人托管的**母公司口径**事实。
+
+    准入守卫是**强制的**:只放行 accession 出现在母公司 submissions 列表里的事实。
+    不能用 accession 前缀判断 —— 前 10 位是**报送代理**而非注册人(例:MSFT 的
+    10-Q accession 以 Donnelley 的 CIK 开头)。2026-09-07 实测:放行 4 条
+    (17797×2、1004155×2),拒绝 190 条子公司自有事实。
+
+    list_accession_numbers 在分页失败时会抛错,异常会一路冒到调用方的
+    per-company try/except —— 这是有意的:宁可这一家缺席,也不要拿一个不完整的
+    白名单去做准入判断(那会拒绝全部共同注册人事实,静默重现正在修的 staleness)。
+    """
+    facts = sec.fetch_company_facts(int(parent_cik))
+    coregs = COREGISTRANT_CIKS.get(int(parent_cik), [])
+    if not coregs:
+        return facts
+    parent_accns = _COREG_CACHE.get(int(parent_cik))
+    if parent_accns is None:
+        parent_accns = sec.list_accession_numbers(int(parent_cik), include_history=True)
+        _COREG_CACHE[int(parent_cik)] = parent_accns
+    merged = 0
+    rejected = 0
+    hosts: dict = {}
+    for co in coregs:
+        cf = sec.fetch_company_facts_optional(int(co))
+        if not cf:
+            continue
+        for taxo, concepts in (cf.get("facts") or {}).items():
+            for cname, cbody in (concepts or {}).items():
+                for unit, items in ((cbody or {}).get("units") or {}).items():
+                    for it in items or []:
+                        if it.get("accn") in parent_accns:
+                            dst = (facts.setdefault("facts", {}).setdefault(taxo, {})
+                                        .setdefault(cname, {"units": {}})
+                                        .setdefault("units", {}).setdefault(unit, []))
+                            if not any(x.get("accn") == it.get("accn")
+                                       and x.get("start") == it.get("start")
+                                       and x.get("end") == it.get("end") for x in dst):
+                                dst.append(dict(it)); merged += 1
+                                hosts[it.get("accn")] = int(co)
+                        else:
+                            rejected += 1
+    log.info("%s %s: co-registrant merge — %d facts merged, %d rejected (own filings)",
+             label, tk, merged, rejected)
+    if provenance is not None and merged:
+        provenance.setdefault("coregistrant_hosted", {})[tk] = hosts
+    return facts
+
+
+def _compute_group_capex(companies: dict, min_companies: int, label: str,
+                         provenance: "Optional[dict]" = None) -> dict:
     """Aggregate a company group's real quarterly CapEx by calendar quarter.
 
     For each calendar quarter we sum the companies that reported a clean single
@@ -328,7 +409,7 @@ def _compute_group_capex(companies: dict, min_companies: int, label: str) -> dic
     per_frame: dict = {}      # frame -> {ticker: {"val","filed","end"}}
     for tk, (cik, concept) in companies.items():
         try:
-            facts = sec.fetch_company_facts(int(cik))
+            facts = _merge_registrant_facts(int(cik), label, tk, provenance)
         except Exception as e:  # noqa: BLE001
             log.warning("%s CapEx: %s (CIK %s) fetch failed: %s", label, tk, cik, e)
             continue

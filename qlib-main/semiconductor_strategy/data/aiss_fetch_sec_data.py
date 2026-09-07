@@ -75,6 +75,12 @@ def sec_get(url: str, timeout: int = 45, retries: int = 3):
             resp.raise_for_status()
             return resp
         except Exception as e:  # noqa: BLE001
+            # 404 是确定性的"这份文档不存在",重试三次只是每次白烧约 7 秒的退避。
+            # 2026-09-07:共同注册人里 20290(Duke Energy Ohio)与 44545(Gulf Power)
+            # 确实没有 companyfacts 文档,天天在跑批里白等。
+            _sc = getattr(getattr(e, "response", None), "status_code", None)
+            if _sc == 404:
+                raise RuntimeError(f"SEC GET 404 (not retried): {url}") from e
             last_err = e
             wait = 2 ** attempt
             log.warning("SEC GET failed (%d/%d) %s: %s (retry %ds)",

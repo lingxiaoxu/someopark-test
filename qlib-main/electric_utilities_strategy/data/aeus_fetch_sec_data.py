@@ -75,6 +75,12 @@ def sec_get(url: str, timeout: int = 45, retries: int = 3):
             resp.raise_for_status()
             return resp
         except Exception as e:  # noqa: BLE001
+            # 404 是确定性的"这份文档不存在",重试三次只是每次白烧约 7 秒的退避。
+            # 2026-09-07:共同注册人里 20290(Duke Energy Ohio)与 44545(Gulf Power)
+            # 确实没有 companyfacts 文档,天天在跑批里白等。
+            _sc = getattr(getattr(e, "response", None), "status_code", None)
+            if _sc == 404:
+                raise RuntimeError(f"SEC GET 404 (not retried): {url}") from e
             last_err = e
             wait = 2 ** attempt
             log.warning("SEC GET failed (%d/%d) %s: %s (retry %ds)",
@@ -212,6 +218,56 @@ def list_filing_documents(cik: int, accession: str) -> List[str]:
 def fetch_company_facts(cik: int) -> dict:
     """Full XBRL companyfacts JSON for a CIK."""
     return sec_get_json(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10(cik)}.json")
+
+
+def fetch_company_facts_optional(cik: int):
+    """companyfacts,取不到返回 None(**只给共同注册人用**)。
+
+    母公司抓取失败必须大声失败(否则会静默产出一个缺成员的组聚合);而共同注册人
+    没有 companyfacts 文档是常态 —— 2026-09-07 实测 20290(Duke Energy Ohio)与
+    44545(Gulf Power)都是 404。
+    """
+    try:
+        return fetch_company_facts(cik)
+    except Exception as e:  # noqa: BLE001
+        log.info("co-registrant CIK %s has no companyfacts (%s)", cik, str(e)[:80])
+        return None
+
+
+def list_accession_numbers(cik: int, include_history: bool = True) -> set:
+    """该 CIK 自己报送过的全部 accession 号(集合)。
+
+    **与 list_filings 的关键差别:分页失败时抛错而不是返回截断列表。**
+    这个集合是共同注册人事实合并的**准入守卫** —— 列表若被静默截断,合法事实会被
+    误拒,静默重现正在修的 staleness。宁可整轮失败,也不要拿一个不完整的白名单去
+    做准入判断。
+    """
+    base = sec_get_json(f"https://data.sec.gov/submissions/CIK{cik10(cik)}.json")
+    accns = set(base.get("filings", {}).get("recent", {}).get("accessionNumber", []) or [])
+    if include_history:
+        for extra in base.get("filings", {}).get("files", []):
+            name = extra.get("name")
+            page = sec_get_json(f"https://data.sec.gov/submissions/{name}")
+            accns.update(page.get("accessionNumber", []) or [])
+    return accns
+
+
+def filing_registrant_ciks(cik: int, accn: str) -> set:
+    """一份申报的全部注册人 CIK(读 index-headers.html,几 KB,不是 3MB 的 instance)。
+
+    用于共同注册人漂移检测:若某份合并申报出现了未 pin 进常量的注册人,只告警并
+    跳过,**不自动合并** —— 静默自愈进实盘信号是本仓库已记录的失败模式。
+    """
+    import re
+    a = accn.replace("-", "")
+    url = (f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{a}/"
+           f"{accn}-index-headers.html")
+    try:
+        txt = sec_get(url).text
+    except Exception as e:  # noqa: BLE001
+        log.info("index-headers unavailable for %s: %s", accn, str(e)[:80])
+        return set()
+    return {int(m) for m in re.findall(r"CENTRAL INDEX KEY:\s*(\d+)", txt)}
 
 
 def concept_series(
