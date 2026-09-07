@@ -164,6 +164,19 @@ run_update_data() {
     return "$rc"
 }
 
+# ── 2026-09-07 mutual exclusion(pipeline_lock.sh,移植自 AEUS 2026-09-01):
+#    daily/monthly/select/batch/wf 与 daily_backtest.sh 都会读写 selected_param_set.json
+#    + P0 缓存;openclaw 独立点火,任何时间重叠都可能让 daily 读到 V2 当生产
+#    —— 2026-08-12 已真实发生。谁后到谁等;等不到就明确 FAILED 退出,不带病跑。
+case "$MODE" in
+    daily|monthly|daily_backtest|daily-backtest|select|batch|walk-forward|wf)
+        . "$SCRIPT_DIR/pipeline_lock.sh"
+        if ! aiss_lock_acquire "aiss_pipeline:$MODE" "${AISS_LOCK_WAIT:-1500}"; then
+            echo "══ AISS ${MODE} FAILED — pipeline lock busy (another AISS job is writing selected_param_set / P0 caches); nothing was run. Re-run later: bash $SELF $MODE ══"
+            exit 3
+        fi ;;
+esac
+
 case "$MODE" in
     update_data|update-data)
         run_update_data "$@" 2>&1 | tee "$LOG_DIR/aiss_update_data_$TS.log"

@@ -35,7 +35,13 @@ cd "$REPO_ROOT"
 CONDA_QLIB="conda run -n qlib_run --no-capture-output"
 
 # ── NYSE Holiday Check (skip on non-trading days) ────────────────────
-NYSE_STATUS=$($CONDA_QLIB python3 -c "
+# 2026-09-07 修:此处原为 `$CONDA_QLIB python3`。在 conda 环境里 `python3` **不解析到
+# 环境自身的解释器** —— 实测 `conda run -n qlib_run python3` 落到
+# /opt/homebrew/opt/python@3.14/bin/python3.14(系统 Homebrew Python),那里没有 pytz,
+# 于是 import 必抛、检查恒走 except 兜底,而兜底**只判周末、完全不认假日**。
+# 结果:daily_backtest 在每个休市日都会跑满 60 分钟的全套件(2026-09-07 Labor Day 实测
+# 触发)。AISS/AEUS 用 `PY() { conda run -n qlib_run ... python "$@"; }` 因而不受影响。
+NYSE_STATUS=$($CONDA_QLIB python -c "
 import sys
 from datetime import datetime
 try:
@@ -57,8 +63,11 @@ fi
 
 SR_DIR="qlib-main/sector_rotation"
 SEL_JSON="$SR_DIR/selected_param_set.json"
-BACKUP_V1="/tmp/ssrs_selected_v1_backup.json"
-BACKUP_V2="/tmp/ssrs_selected_v2_backup.json"
+# 2026-09-07: 固定路径改 mktemp(对齐 AISS/AEUS)。两个并发实例(openclaw 超时遗弃
+# 子进程后重试就会发生)用同一个固定路径时会**互相覆盖对方的 V1 备份** —— 先跑完的
+# 那个把 V2 写进备份,后跑完的据此"恢复",生产就永久停在 V2。
+BACKUP_V1="$(mktemp -t ssrs_sel_v1)"
+BACKUP_V2="$(mktemp -t ssrs_sel_v2)"
 DATE=$(date +%Y%m%d)
 LOG_DIR="$SR_DIR/logs"
 LOG="$LOG_DIR/daily_backtest_${DATE}.log"
@@ -90,6 +99,39 @@ log "  SSRS DAILY BACKTEST — $DATE"
 log "═══════════════════════════════════════════════════════════════"
 log ""
 
+# ── 2026-09-07 mutual exclusion(pipeline_lock.sh,移植自 AEUS 2026-09-01)────
+#    放在幂等门与 NYSE 检查之后、套件之前:拿不到锁 = 什么都没写,重试无需 --force。
+#    SSRS 的重叠是三家里最严重的:16:40 起跑、实测 39.5-117.2 分钟,daily 信号槽
+#    17:40 必落在窗内,两个 V2 窗口(Step 2 与 Step 6)正好骑在上面。至今没出事
+#    只因 openclaw 的 cron tick 阻塞把 daily 推后 —— 那是副作用不是保证。
+. "$SR_DIR/pipeline_lock.sh"
+if ! ssrs_lock_acquire "daily_backtest" "${SSRS_LOCK_WAIT:-1200}"; then
+    echo "[$(date +%H:%M:%S)] ══ SSRS DAILY BACKTEST FAILED — pipeline lock busy (daily/monthly still running); nothing was run, retry later ══"
+    exit 3
+fi
+
+# ── 运行前预备份(2026-09-07,对齐 AISS/AEUS)────────────────────────
+# 必须在 Step 1 之前:mktemp 出来的 BACKUP_V1 初始是空文件,若 Step 1 失败且
+# selected_param_set.json 缺失,下面那句 `cp "$SEL_JSON" "$BACKUP_V1"` 也会失败,
+# 备份就一直是空的 —— 最后的恢复会把**空文件**盖到生产上(AEUS 2026-09-01 实际
+# 发生过的事故形态)。先把当前生产选择存下来兜底。
+[ -s "$SEL_JSON" ] && cp "$SEL_JSON" "$BACKUP_V1"
+
+# ── 崩溃安全的 V1 恢复(2026-09-07;AEUS 的锁未覆盖此项)──────────────
+#    在**第一次写 V2 之前**装 EXIT trap:SIGKILL / openclaw 超时遗弃子进程时,
+#    正常路径的"Final restore"不会执行,生产就会永久停在 V2。trap 与显式恢复
+#    幂等(同一份 BACKUP_V1 覆盖同一个文件),正常路径下不会重复动作。
+_ssrs_restore_v1_on_exit() {
+    if [ -s "$BACKUP_V1" ] && [ -f "$SEL_JSON" ] && ! cmp -s "$BACKUP_V1" "$SEL_JSON"; then
+        cp "$BACKUP_V1" "$SEL_JSON" 2>/dev/null \
+            && echo "[$(date +%H:%M:%S)] [trap] 异常退出 — 已把 selected_param_set.json 恢复为 V1" | tee -a "$LOG"
+    fi
+    rm -f "$BACKUP_V1" "$BACKUP_V2" 2>/dev/null
+}
+_prev_trap=$(trap -p EXIT | sed -E "s/^trap -- '(.*)' EXIT$/\1/")
+# shellcheck disable=SC2064
+trap "_ssrs_restore_v1_on_exit${_prev_trap:+; $_prev_trap}" EXIT
+
 # ── Step 1: V1 Select ────────────────────────────────────────────────
 log "Step 1/6: V1 Select (WF OOS + MCPS → best V1 param)"
 if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --select --save-equity --signal-version v1 >> "$LOG" 2>&1; then
@@ -100,8 +142,8 @@ else
     log "  ⚠️ V1 select failed (RC=$?)"
 fi
 
-# Backup V1
-cp "$SEL_JSON" "$BACKUP_V1"
+# Backup V1(仅在非空时覆盖预备份 —— Step 1 失败留下的坏文件不该顶掉好备份)
+[ -s "$SEL_JSON" ] && cp "$SEL_JSON" "$BACKUP_V1"
 
 # ── Step 2: V2 Select ────────────────────────────────────────────────
 log ""
@@ -115,9 +157,12 @@ else
 fi
 
 # Backup V2, restore V1
-cp "$SEL_JSON" "$BACKUP_V2"
-cp "$BACKUP_V1" "$SEL_JSON"
-log "  Restored V1: $(get_param)"
+[ -s "$SEL_JSON" ] && cp "$SEL_JSON" "$BACKUP_V2"
+if [ -s "$BACKUP_V1" ]; then
+    cp "$BACKUP_V1" "$SEL_JSON"; log "  Restored V1: $(get_param)"
+else
+    log "  ⚠️ V1 备份为空 — selected_param_set.json 保持原样(绝不用空文件覆盖生产)"
+fi
 
 # ── Step 3: V1 Batch (all-set IS-only Excel) ──────────────────────────────
 log ""
@@ -157,9 +202,12 @@ fi
 # ── Step 6: V2 Tearsheet (all-set IS-OOS Excel + PDF) ────────────────────
 log ""
 log "Step 6/6: V2 Tearsheet (param=$V2_PARAM, all-set IS-OOS Excel + PDF)"
-# Temporarily switch to V2
-cp "$BACKUP_V2" "$SEL_JSON"
-log "  Switched to V2: $(get_param) ($(get_ver))"
+# Temporarily switch to V2(备份为空则跳过整段,不拿空文件覆盖生产)
+if [ -s "$BACKUP_V2" ]; then
+    cp "$BACKUP_V2" "$SEL_JSON"; log "  Switched to V2: $(get_param) ($(get_ver))"
+else
+    log "  ⚠️ V2 备份为空 — 跳过 V2 tearsheet 的切换"
+fi
 
 if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
     V2_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
@@ -171,9 +219,14 @@ else
 fi
 
 # ── Restore V1 production param ──────────────────────────────────────
-cp "$BACKUP_V1" "$SEL_JSON"
-log ""
-log "  Final restore: $(get_param) ($(get_ver))"
+if [ -s "$BACKUP_V1" ]; then
+    cp "$BACKUP_V1" "$SEL_JSON"
+    log ""
+    log "  Final restore: $(get_param) ($(get_ver))"
+else
+    log ""
+    log "  ⚠️ V1 备份为空 — 未做最终恢复,selected_param_set.json 保持原样"
+fi
 
 # ── Summary ──────────────────────────────────────────────────────────
 log ""

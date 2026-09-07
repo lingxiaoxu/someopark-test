@@ -322,6 +322,23 @@ build_signal_args() {
 log_section "SR PIPELINE  mode=$MODE  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "RUNNING:$MODE:$(date '+%Y-%m-%d %H:%M:%S')" > "$STATE_DIR/sr_status_${MODE}"
 
+# ── 2026-09-07 mutual exclusion(pipeline_lock.sh,移植自 AEUS 2026-09-01):
+#    daily/monthly/select/batch/wf 与 daily_backtest.sh 都会读写
+#    selected_param_set.json + P0 缓存;openclaw 独立点火,任何时间重叠都可能让
+#    daily 读到 V2 当生产。SSRS 的窗口每天 100% 重叠(16:40 起跑最长 117 分钟,
+#    daily 槽 17:40),至今靠调度器的阻塞副作用侥幸,不是保证。
+#    谁后到谁等;等不到就明确 FAILED 退出,不带病跑。
+#    tearsheet 不入锁:daily_backtest.sh 会在持锁状态下调用它(可重入由
+#    SSRS_PIPELINE_LOCK_HELD 处理),单独跑 tearsheet 也只读选择文件。
+case "$MODE" in
+    daily|monthly|select|batch|wf|walk-forward)
+        . "$SR_DIR/pipeline_lock.sh"
+        if ! ssrs_lock_acquire "sr_pipeline:$MODE" "${SSRS_LOCK_WAIT:-1500}"; then
+            log "══ SSRS ${MODE} FAILED — pipeline lock busy (another SSRS job is writing selected_param_set / P0 caches); nothing was run. Re-run later: bash $SR_DIR/sector_rotation_pipeline.sh $MODE ══"
+            exit 3
+        fi ;;
+esac
+
 case "$MODE" in
 
 # ─────────────────────────────────────────────────────────────────────────────

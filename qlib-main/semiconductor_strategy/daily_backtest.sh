@@ -100,6 +100,32 @@ fi
 
 log "══ AISS DAILY BACKTEST — V1 + V2 full suite ══"
 
+# ── 2026-09-07 mutual exclusion with semiconductor_pipeline.sh daily/monthly(pipeline_lock.sh)。
+#    放在幂等门与 NYSE 检查之后、套件之前:拿不到锁 = 什么都没写,重试无需 --force。
+#    移植自 AEUS(2026-09-01)。AISS 是三家里唯一真正被咬过的:2026-08-12 生产 daily
+#    在 V2 窗口内读到 pure_capex/v2 当production;同夜 openclaw 超时遗弃子进程后重试,
+#    两个 daily_backtest 并发 10.5 分钟。详见 pipeline_lock.sh 头部。
+. "$SCRIPT_DIR/pipeline_lock.sh"
+if ! aiss_lock_acquire "daily_backtest" "${AISS_LOCK_WAIT:-1200}"; then
+    log "══ AISS DAILY BACKTEST FAILED — pipeline lock busy (daily/monthly still running); nothing was run, retry later ══"
+    exit 3
+fi
+
+# ── 崩溃安全的 V1 恢复(AEUS 的锁未覆盖此项):在**第一次写 V2 之前**装 EXIT trap,
+#    这样 SIGKILL / openclaw 遗弃子进程也不会把生产留在 V2。正常路径下 Step 2 之后的
+#    显式恢复先执行,trap 再跑一次是幂等的(同一份 BK_V1 覆盖同一个文件)。
+_aiss_restore_v1_on_exit() {
+    if [ -s "$BK_V1" ] && [ -f "$SEL" ]; then
+        if ! cmp -s "$BK_V1" "$SEL"; then
+            cp "$BK_V1" "$SEL" 2>/dev/null \
+                && echo "[$(date +%H:%M:%S)] [trap] 异常退出 — 已把 selected_param_set.json 恢复为 V1" | tee -a "$LOG"
+        fi
+    fi
+}
+_prev_trap=$(trap -p EXIT | sed -E "s/^trap -- '(.*)' EXIT$/\1/")
+# shellcheck disable=SC2064
+trap "_aiss_restore_v1_on_exit${_prev_trap:+; $_prev_trap}" EXIT
+
 # Each --select --save-equity --tearsheet run produces, for that version:
 #   • per-set IS portfolio Excel        (one per param set)
 #   • per-set IS-OOS portfolio Excel     (one per param set)
