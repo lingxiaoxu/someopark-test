@@ -103,10 +103,14 @@ def test_availability_is_the_later_filing_of_the_pair():
 # ── prefer_tagged 开关的契约 ────────────────────────────────────────────────
 
 def test_prefer_tagged_defaults_off_to_keep_hyperscaler_frozen():
-    """默认必须是纯差分。
+    """默认必须是纯差分(断言保留;前提已于 2026-09-11 过时,记录如下)。
 
-    打开 tagged 优先会改动 hyperscaler CapEx 的历史(补回 AMZN 缺失季,
-    CY2018Q3 的 n_companies 3→4)—— 那是另一条在产信号,不能被这次改动顺手改写。
+    原前提:打开 tagged 优先会补回 AMZN 缺失季,让 hyperscaler CY2018Q3 的
+    n_companies 3→4,改写一条在产信号的历史。2026-09-11 起链条按财年起点锚定,
+    默认路径已能靠纯 decumulation 找回 CY2018Q3(AMZN 2018-09-30 = 3352mn/92d),
+    hyperscaler 冻结已在操作者批准下解除 —— 实测差异表见该次 commit。
+    本用例继续守住的是:默认输出全部标 "decumulated",tagged 路径只在被显式
+    要求时才介入。
     """
     q = cs._standalone_quarters(_facts(MU_FY2026), CONCEPT)
     assert all(v["source"] == "decumulated" for v in q.values())
@@ -119,19 +123,24 @@ def test_prefer_tagged_uses_the_filers_own_fact():
     assert q["2026-02-26"]["days"] == 90                   # 但用的是真实 90 天
 
 
-def test_prefer_tagged_recovers_a_quarter_the_fy_grouping_drops():
-    """FY 分组会把某些季度漏掉,tagged 路径要能补回来。
+def test_a_filers_own_ytd_is_not_hijacked_by_a_comparative_quarter():
+    """上一年的比较期 Q1 不得再劫持本期的 fy_start。
 
     MU end=2009-12-03 的真实情形: 该 fy 组里还有上一年的比较期 Q1(start 更早),
-    fy_start 因此解析到上一年,这条自己的 YTD 链就把自己排除了。
+    旧实现按 ``fy`` 分组后 fy_start 解析到上一年,这条自己的 YTD 链就把自己排除了,
+    只能靠 prefer_tagged 补回。2026-09-11 起链条按**财年起点**锚定,两个 Q1 各自
+    成锚,本期自己就还原得出来 —— tagged 路径退回为纯粹的旁证。
     """
     rows = [
         ("2008-09-05", "2008-12-04", 1200, 2010, "Q1", "2009-01-12"),  # 比较期
         ("2009-09-04", "2009-12-03", 1297, 2010, "Q1", "2010-01-12"),  # 本期
     ]
-    assert "2009-12-03" not in cs._standalone_quarters(_facts(rows), CONCEPT)
+    q = cs._standalone_quarters(_facts(rows), CONCEPT)
+    assert round(q["2009-12-03"]["val"] / 1e6) == 1297
+    assert q["2009-12-03"]["days"] == 90
+    assert q["2009-12-03"]["filed"] == "2010-01-12"
     tagged = cs._standalone_quarters(_facts(rows), CONCEPT, prefer_tagged=True)
-    assert round(tagged["2009-12-03"]["val"] / 1e6) == 1297
+    assert round(tagged["2009-12-03"]["val"] / 1e6) == 1297   # 两条路同值
 
 
 # ── PIT 去重 ────────────────────────────────────────────────────────────────

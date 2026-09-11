@@ -260,6 +260,65 @@ def _duration_facts(facts: dict, concept: str,
     return out
 
 
+_ANCHOR_TOL_DAYS = 7   # 52/53 周申报人会把同一财年起点标偏几天(SO 2013: 12-29 / 12-30)
+
+
+def _fiscal_year_starts(recs: list) -> set:
+    """真实财年起点集合。两个独立证人,任一即可:
+    ``fp == "FY"`` 且 355 <= days <= 380,或 ``fp == "Q1"`` 且 80 <= days <= 100。
+
+    **刻意不用 min(start)、也不用"任何 ~365 天事实"**:AMZN 同时打 YTD 阶梯、显式独立
+    季度和 TTM 事实(2017-07-01 → 2018-06-30,364 天,fp=Q2);把 TTM 起点当锚会得出
+    13035 − 3074 = 9961 / 273 天的伪季度。
+    """
+    out = set()
+    for r in recs:
+        fp, d = r.get("fp"), r["days"]
+        if (fp == "FY" and 355 <= d <= 380) or (fp == "Q1" and 80 <= d <= 100):
+            out.add(r["start"])
+    return out
+
+
+def _ytd_chain(recs: list, anchor: str) -> list:
+    """以 anchor 为财年起点的 YTD 链:``|start − anchor| <= _ANCHOR_TOL_DAYS`` 入链
+    (严格相等会漏掉 SO 2013 那种 2012-12-29/12-30 的偏移标注,留下 275 天的 Q4),
+    同一 ``end`` 上精确起点优先,其次最早 filed。按 end 升序返回。"""
+    a = date.fromisoformat(anchor)
+    best: dict = {}
+    for r in recs:
+        if r["days"] > 370:
+            continue
+        try:
+            off = abs((date.fromisoformat(r["start"]) - a).days)
+        except Exception:
+            continue
+        if off > _ANCHOR_TOL_DAYS:
+            continue
+        cur = best.get(r["end"])
+        if cur is None:
+            best[r["end"]] = r
+            continue
+        cur_off = abs((date.fromisoformat(cur["start"]) - a).days)
+        if off < cur_off or (off == cur_off
+                             and (r["filed"] or "9999") < (cur["filed"] or "9999")):
+            best[r["end"]] = r
+    return sorted(best.values(), key=lambda r: r["end"])
+
+
+def _prefer_quarter(cand: dict, cur) -> bool:
+    """cand 是否应取代 cur:隐含时长落在 60–110 的压过不落在的(183 天的数不是关于
+    这个季度的"另一种看法",它根本就不是这个季度);再比最早 filed;再比距 91 天的远近。"""
+    if cur is None:
+        return True
+    ci, ui = 60 <= cand["days"] <= 110, 60 <= cur["days"] <= 110
+    if ci != ui:
+        return ci
+    cf, uf = cand["filed"] or "9999", cur["filed"] or "9999"
+    if cf != uf:
+        return cf < uf
+    return abs(cand["days"] - 91) < abs(cur["days"] - 91)
+
+
 def _standalone_quarters(facts: dict, concept: str,
                          forms: tuple = ("10-Q", "10-K"),
                          prefer_tagged: bool = False) -> dict:
@@ -278,9 +337,10 @@ def _standalone_quarters(facts: dict, concept: str,
     override the decumulated value for the same ``end``.  It is **off by default**
     on purpose: for MU the two agree exactly (2026Q2 tagged 6,105mn vs decumulated
     12,102-5,997 = 6,105mn; 2026Q3 6,400 vs 18,502-12,102 = 6,400), but for the
-    hyperscalers it is not neutral — it recovers AMZN quarters whose YTD chain is
-    incomplete (e.g. CY2018Q3 goes 3→4 companies), which would silently rewrite a
-    live signal's history.  Flipping it is a deliberate, separately-reviewed change.
+    hyperscalers it was historically not neutral.  2026-09-11 起链条按财年起点锚定
+    (见下),默认路径已能靠纯 decumulation 找回 AMZN 那些季度(CY2018Q3 = 3352mn/92d,
+    n=4),``prefer_tagged`` 退回为纯粹的旁证;hyperscaler 冻结已于同日在操作者批准下
+    解除。Flipping it is a deliberate, separately-reviewed change.
 
     2026-08-27: added when MU's "quarterly" DIO turned out to be annual.  MU tags
     BOTH a 181-day YTD and a 90-day standalone fact on ``end=2026-02-26``, both
@@ -291,43 +351,44 @@ def _standalone_quarters(facts: dict, concept: str,
     by_se = _duration_facts(facts, concept, forms=forms)
     if not by_se:
         return {}
+    recs = sorted(by_se.values(),
+                  key=lambda r: (r["start"], r["end"], r["filed"] or "9999"))
 
-    from collections import defaultdict
-    by_fy: dict = defaultdict(list)
-    for rec in by_se.values():
-        by_fy[rec["fy"]].append(rec)
-
+    # 2026-09-11 财年锚定(取代按 SEC ``fy`` 分桶)。``fy`` 是**申报的**财年:10-K 给
+    # 自己年度事实打的 fy 与同年三份 10-Q 不同(SO 2015:Q1/Q2/Q3 的 YTD 都是
+    # fy=2016,364 天的 FY 事实是 fy=2015,四条全都 start=2015-01-01)。按 fy 分桶
+    # 会把年度数字与它自己的前驱分开,Q4 = FY − 0 = 整年。这就是为什么幻影**全是**
+    # Q4:Q4 是唯一必须"用 10-K 年度数减 10-Q YTD"才能导出的季度,而这两类文档的 fy
+    # 标注互相矛盾。链按真实财年起点(_fiscal_year_starts)锚定,跨 fy 桶收集。
     out: dict = {}
-    for fy, recs in by_fy.items():
-        # fy_start = start of the true first fiscal quarter (fp=Q1, ~90d) — NOT
-        # min(start), which would catch trailing-12-month facts (e.g. AMZN's TTM
-        # start a year earlier).  Fall back to the shortest-duration fact's start.
-        q1 = [r for r in recs if r.get("fp") == "Q1" and 80 <= r["days"] <= 100]
-        if q1:
-            fy_start = min(r["start"] for r in q1)
-        else:
-            shortq = [r for r in recs if 80 <= r["days"] <= 100]
-            fy_start = min(r["start"] for r in (shortq or recs))
-        # YTD chain = facts sharing fy_start, durations increasing (~3/6/9/12mo)
-        ytd = sorted([r for r in recs if r["start"] == fy_start and r["days"] <= 370],
-                     key=lambda r: r["end"])
-        prev_val, prev_end, prev_days = 0.0, fy_start, 0
-        for r in ytd:
+    for anchor in sorted(_fiscal_year_starts(recs)):
+        prev_val, prev_end = 0.0, anchor
+        prev_end_d = date.fromisoformat(anchor)
+        for r in _ytd_chain(recs, anchor):
+            end_d = date.fromisoformat(r["end"])
+            # days 用**端到端**计算(end − prev_end),即使某一级标偏几天也精确 ——
+            # 这正是让下游守卫看得见残渣的关键。
             cand = {"val": r["val"] - prev_val, "filed": r["filed"], "start": prev_end,
-                    "days": r["days"] - prev_days, "fy": fy, "fp": r.get("fp"),
-                    "source": "decumulated"}
-            prev_val, prev_end, prev_days = r["val"], r["end"], r["days"]
-            # The same ``end`` can surface under two ``fy`` values (a 10-K restates
-            # the prior year's quarters in its own fiscal context).  Keep the
-            # EARLIEST filing — that is when the number first became knowable.
-            prev = out.get(r["end"])
-            if prev is None or (cand["filed"] and cand["filed"] < (prev["filed"] or "9999")):
+                    "days": (end_d - prev_end_d).days, "fy": r.get("fy"),
+                    "fp": r.get("fp"), "source": "decumulated"}
+            prev_val, prev_end, prev_end_d = r["val"], r["end"], end_d
+            if _prefer_quarter(cand, out.get(r["end"])):
                 out[r["end"]] = cand
+
+    # 只填不覆盖的 tagged 补位:只触及 decumulation 留空或留下不可用值的 end。
+    # 没有它,AMZN CY2017Q3(链缺 Q1/Q2 级)会从 3074/91d 退化成一个 272 天的伪值
+    # 再被守卫丢掉。
+    for r in recs:
+        if not (80 <= r["days"] <= 100):
+            continue
+        cur = out.get(r["end"])
+        if cur is None or not (60 <= cur["days"] <= 110):
+            out[r["end"]] = {**r, "source": "tagged"}
 
     if prefer_tagged:
         # Explicitly-tagged standalone quarters win over anything decumulated above;
         # among two tagged facts for the same end, earliest filed wins (as above).
-        for r in by_se.values():
+        for r in recs:
             if not (80 <= r["days"] <= 100):
                 continue
             cur = out.get(r["end"])
@@ -557,6 +618,25 @@ def _raw_quarterly_capex(facts: dict, concept: str) -> dict:
     """
     out: dict = {}
     for end, r in _standalone_quarters(facts, concept).items():
+        days = r.get("days") or 91
+        if not (60 <= days <= 110):
+            # 一条 decumulation 残渣:YTD 链缺级,这个差跨了好几个季度。
+            # 与 compute_mu_dio 里作者自己那条守卫同因同法;capex 路径只是一直没用上。
+            # 财年锚定修好之后,幸存者只剩"链头"——它更早的那些级 SEC companyfacts
+            # 根本不收(当前 9 家全在 2017 年前)——不可约,丢弃是对的:这个数不是季度,
+            # 也没有任何东西可以把它缩放过去。守卫放在这里而不是 _standalone_quarters:
+            # 那个原语被 compute_mu_dio 与 test_xbrl_decumulation 直接依赖,而"这是不是
+            # 一个日历季度"本来就该在装桶的地方问。
+            # 分级:远古残渣永久存在走 INFO;近两年内的丢弃是活数据事件(2026-11-06
+            # 那种"Q2 缺失 → Q3 合并两季"的签名)走 WARNING。带 entityName 是因为
+            # 9 家组员共用同一个 concept 字符串,不带名字这条告警对谁都一样。
+            recent = int(end[:4]) >= date.today().year - 2
+            (log.warning if recent else log.info)(
+                "CapEx %s (%s): dropping %s — decumulated span %d days ($%.0fmn); the "
+                "YTD chain is missing a rung%s", concept,
+                facts.get("entityName", "?"), end, days, r["val"] / 1e6,
+                " (RECENT — check for a co-registrant filing)" if recent else "")
+            continue
         try:
             edt = date.fromisoformat(end)
         except Exception:

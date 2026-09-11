@@ -119,7 +119,7 @@ run_test "batch (33 param sets)"        $PIPE batch
 run_test "walk-forward (IS/OOS)"        $PIPE walk-forward
 run_test "weekly (PIT health + review)" $PIPE weekly
 run_test "update_data (incremental)"    $PIPE update_data
-run_test "test (pytest, 107 synthetic)" $PIPE test
+run_test "test (pytest, 202 synthetic)" $PIPE test
 
 # ── Phase 2: 33×V1/V2 matrix ───────────────────────────────────────────────
 echo ""; echo "── Phase 2: 33×V1/V2 matrix (backtest + validate) ───────────────"
