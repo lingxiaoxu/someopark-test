@@ -426,7 +426,6 @@ def compute_hyperscaler_capex() -> dict:
         for fr, rec in _raw_quarterly_capex(facts, concept).items():
             per_frame.setdefault(fr, {})[tk] = rec
 
-    sums: dict = {}
     records: dict = {}
     for fr in sorted(per_frame):
         comp = per_frame[fr]
@@ -435,7 +434,6 @@ def compute_hyperscaler_capex() -> dict:
         total = sum(c["val"] for c in comp.values())
         filed = max((c["filed"] or "") for c in comp.values())
         end = max((c["end"] or "") for c in comp.values())
-        sums[fr] = total
         records[fr] = {
             "period_end": end,
             "filed_date": filed,            # PIT availability = last of the 4 filings
@@ -444,14 +442,26 @@ def compute_hyperscaler_capex() -> dict:
             "companies_mn": {t: round(c["val"] / 1e6, 1) for t, c in comp.items()},
         }
 
-    # YoY% vs same calendar quarter a year earlier
+    # YoY% vs same calendar quarter a year earlier —— **成分匹配**(2026-09-11)
+    # 原写法是 sum(本季全体) / sum(去年同季全体):成员进出时打印的是**组成变化**
+    # 而非增长。实测 water CY2016Q1 +407.9%(真值 +3.8%)—— 那是 WTRG 独家的
+    # CY2015Q1 对 AWK+WTRG 的 CY2016Q1;hyperscaler CY2018Q1 +194.9% 是 AMZN 入组。
+    # 两侧只对**交集**求和;门是 len(common) >= min_companies —— 与
+    # industry_signals.update_backlog_rpo 同一模式、同一字段名 yoy_members,
+    # 两个聚合器要读成同一个模式。
     for fr in records:
         yr, q = int(fr[2:6]), int(fr[7])
-        prev = f"CY{yr - 1}Q{q}"
-        if prev in sums and sums[prev] > 0:
-            records[fr]["capex_yoy_pct"] = round((sums[fr] / sums[prev] - 1.0) * 100.0, 1)
-        else:
-            records[fr]["capex_yoy_pct"] = None
+        prev_fr = f"CY{yr - 1}Q{q}"
+        cur, prev = per_frame.get(fr, {}), per_frame.get(prev_fr, {})
+        common = sorted(set(cur) & set(prev))
+        yoy = None
+        if len(common) >= HYPERSCALER_MIN_COMPANIES:
+            cur_sum = sum(cur[t]["val"] for t in common)
+            prev_sum = sum(prev[t]["val"] for t in common)
+            if prev_sum > 0:
+                yoy = round((cur_sum / prev_sum - 1.0) * 100.0, 1)
+        records[fr]["capex_yoy_pct"] = yoy
+        records[fr]["yoy_members"] = common
     return records
 
 
