@@ -175,9 +175,14 @@ class DemoBroker:
         if not validate_binding(binding, environment='demo') or binding['market_id'] != ticker or binding['provider'] != 'kalshi':
             raise ValueError('Demo orderbook requires its exact reviewed contract binding')
         book, raw, started, received = self._book_capture(ticker)
+        # venues/ keeps Decimal for money (plan 01 §4.3); the receipt body is canonical
+        # JSON, so sizes cross the boundary as strings — the same convention as
+        # venues/kalshi/discovery.py. Raw Decimal here made receipt_hash raise TypeError
+        # and blocked every demo entry on a book with real depth (2026-09-11).
         return quote_from_receipt(make_receipt(binding, ask=book.yes_ask, bid=book.yes_bid,
             raw=raw, request_started_at=started, received_at=received,
-            ask_size=book.no_depth, bid_size=book.yes_depth,
+            ask_size=str(book.no_depth) if book.no_depth is not None else None,
+            bid_size=str(book.yes_depth) if book.yes_depth is not None else None,
             derivation={'rule':'binary_complement','ask_from':'no_bid'}))
 
     def balance(self) -> dict:

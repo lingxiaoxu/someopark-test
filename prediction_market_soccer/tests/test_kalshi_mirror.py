@@ -270,3 +270,37 @@ def test_reconcile_releases_a_pending_row_only_when_the_venue_has_no_such_order(
                                   "fill_count_fp": "1.00", "yes_price_dollars": "0.31"}]))
     r = c.execute("SELECT status, fill_count, avg_fill_c FROM kalshi_mirror").fetchone()
     assert r["status"] == "open" and r["fill_count"] == 1.0 and r["avg_fill_c"] == 31.0
+
+
+def test_book_observation_decimal_depth_serializes(monkeypatch):
+    """A demo book with real depth (Decimal per venues/ money convention) must yield a
+    receipt that canonicalizes: raw Decimal sizes made receipt_hash raise TypeError and
+    blocked every demo entry on a liquid book (observed 2026-09-11, fixture 1493125)."""
+    from decimal import Decimal
+    from prediction_market_soccer.exec import kalshi_mirror as km
+    from prediction_market_soccer.util.source_history import canonical
+    from prediction_market_soccer.util.quote_evidence import validate_receipt
+    from prediction_market_soccer.venues.kalshi.market_data import OrderBook
+
+    book = OrderBook(venue="kalshi", market_key="KXTEST-YES",
+                     yes_bid=Decimal("0.40"), yes_ask=Decimal("0.49"),
+                     no_bid=Decimal("0.51"), no_ask=Decimal("0.60"),
+                     yes_depth=Decimal("40"), no_depth=Decimal("12"))
+    raw = {"orderbook": {"yes": [[40, 40]], "no": [[51, 12]]}}
+    broker = km.DemoBroker.__new__(km.DemoBroker)  # no venue auth; only book_observation
+    monkeypatch.setattr(km.DemoBroker, "_book_capture",
+                        lambda self, ticker: (book, raw, "2026-09-12T04:00:00+00:00",
+                                              "2026-09-12T04:00:01+00:00"))
+    from prediction_market_soccer.util.market_identity import make_binding
+    binding = make_binding(
+        fixture={"api_id": 1493125, "comp": "brasileirao", "home_id": "flamengo",
+                 "away_id": "mirassol", "home_api_id": 127, "away_api_id": 7848,
+                 "kickoff_ts": "2026-09-12T00:30:00+00:00", "season": 2026},
+        provider="kalshi", environment="demo", event_id="KXTEST", market_id="KXTEST-YES",
+        side="home")
+    quote = broker.book_observation("KXTEST-YES", binding)
+    receipt = quote["receipt"]
+    canonical(receipt)                     # raised TypeError before the fix
+    assert validate_receipt(receipt)
+    assert receipt["ask_size"] == "12" and receipt["bid_size"] == "40"
+    assert quote["ask"] == receipt["ask"] == 0.49
