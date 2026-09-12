@@ -899,6 +899,28 @@ def _bet_log(conn):
     return records, _record_totals(records)
 
 
+def _evidence_tiers(records):
+    """Per-evidence-level leg counts and gross cents-basis P&L in USD.
+
+    Semantics reproduce the frozen v7-era array bit-for-bit on the 2026-09-10 book:
+    n_pre/pre_gross_usd cover rows with a pre bet (realized_pnl_cents), n_inplay/
+    inplay_gross_usd cover rows with an in-play leg (inplay_pnl_cents).
+    """
+    tiers = {}
+    for r in records:
+        t = tiers.setdefault(r.get('evidence_level') or 'unknown',
+                             {'n_pre': 0, 'n_inplay': 0, 'pre_gross_usd': 0.0, 'inplay_gross_usd': 0.0})
+        if r.get('bet'):
+            t['n_pre'] += 1
+            t['pre_gross_usd'] += float(r.get('realized_pnl_cents') or 0) / 100.0
+        if r.get('inplay_side'):
+            t['n_inplay'] += 1
+            t['inplay_gross_usd'] += float(r.get('inplay_pnl_cents') or 0) / 100.0
+    return [{'level': level, 'n_pre': t['n_pre'], 'n_inplay': t['n_inplay'],
+             'pre_gross_usd': round(t['pre_gross_usd'], 3), 'inplay_gross_usd': round(t['inplay_gross_usd'], 3)}
+            for level, t in sorted(tiers.items())]
+
+
 def report_from_book(book, *, demo_execution=None, observed_at=None) -> PerformanceReport:
     """Pure projection of a validated frozen book, including an inactive candidate.
 
@@ -925,7 +947,11 @@ def report_from_book(book, *, demo_execution=None, observed_at=None) -> Performa
     data['evidence_summary'] = {**(data.get('evidence_summary') or {}),
         'book_version': ledger['book_version'], 'baseline_source_as_of': version['base_as_of'],
         'diagnostics_source_as_of': version['base_as_of'], 'historical_records_immutable': True,
-        'forward_rows_appended': len(records)-version['baseline_count']}
+        'forward_rows_appended': len(records)-version['baseline_count'],
+        # tiers are derived data: recomputed from the records at read time like the
+        # totals above. The frozen metadata copy goes stale the moment records are
+        # appended or a correction re-freezes the book (both observed 2026-09-12).
+        'tiers': _evidence_tiers(records)}
     if observed_at is not None:
         data['evidence_summary']['refresh_observed_at'] = observed_at
     # Candidate/model returns never inherit unrelated demo P&L from old metadata.

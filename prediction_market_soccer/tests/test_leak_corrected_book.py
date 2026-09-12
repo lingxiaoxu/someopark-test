@@ -216,3 +216,27 @@ def test_realized_cum_follows_pre_cum_on_non_bet_rows():
     # the held/usd cumulatives stay bet-only: the non-bet row keeps its stored values
     assert rows[1]["cum_pnl_cents"] == 999.9 and rows[1]["cum_pnl"] == 9.999
     assert rows[2]["cum_pnl_cents"] == 125.0
+
+
+def test_evidence_tiers_recomputed_from_records():
+    """The frozen metadata's tier array goes stale (old book: forward tier frozen at
+    zeros despite 12 forward rows; corrected book inherited posthoc 208/170 rows that
+    no longer exist). Tiers are derived data — recomputed per read from the records,
+    with the semantics that reproduce the v7-era frozen array bit-for-bit."""
+    from prediction_market_soccer.ops.performance_report import _evidence_tiers
+    records = [
+        {"evidence_level": "legacy_live_marked_paper", "bet": True,
+         "realized_pnl_cents": -586.4, "inplay_side": "home", "inplay_pnl_cents": 558.3},
+        {"evidence_level": "leak_corrected_approx_pit_paper", "bet": True,
+         "realized_pnl_cents": 100.0},
+        {"evidence_level": "forward_observed_paper", "bet": False,
+         "inplay_side": "away", "inplay_pnl_cents": -50.0},
+    ]
+    tiers = {t["level"]: t for t in _evidence_tiers(records)}
+    assert tiers["legacy_live_marked_paper"] == {"level": "legacy_live_marked_paper",
+        "n_pre": 1, "n_inplay": 1, "pre_gross_usd": -5.864, "inplay_gross_usd": 5.583}
+    assert tiers["leak_corrected_approx_pit_paper"]["n_pre"] == 1
+    assert tiers["leak_corrected_approx_pit_paper"]["pre_gross_usd"] == 1.0
+    # a bet=False row contributes no pre leg but keeps its in-play leg
+    fwd = tiers["forward_observed_paper"]
+    assert fwd["n_pre"] == 0 and fwd["n_inplay"] == 1 and fwd["inplay_gross_usd"] == -0.5

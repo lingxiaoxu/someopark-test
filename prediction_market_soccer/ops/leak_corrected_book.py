@@ -566,6 +566,9 @@ def assemble_report(prev_book: dict, records: list[dict], *, run_id: str, summar
     basis = meta.get("pnl_basis") or prev_book["ledger"].get("pnl_basis")
     ledger = build_strategy_ledger({"bet_log": records, "as_of": as_of, "pnl_basis": basis})
     ev = dict(meta.get("evidence_summary") or {})
+    # Never carry the previous book's derived tier breakdown into a corrected book's
+    # frozen metadata; report_from_book recomputes it from the records at read time.
+    ev.pop("tiers", None)
     ev["leak_correction"] = {"run_id": run_id, "rule_version": RULE_VERSION, "pit_status": PIT_STATUS,
                              "strict_pit_certified": False, "owner_authorized": True,
                              "previous_version_id": prev_book["version"]["version_id"],
