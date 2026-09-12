@@ -5,7 +5,7 @@ Lessons baked in (measured, this repo):
   * orderbook payload is {"orderbook_fp": {"yes_dollars": [[price, $depth]...],
     "no_dollars": [[...]]}} — yes_ask is derived from the best NO bid (1 - no_bid)
   * rate limit: ~10 req/s public → 0.18s spacing + retry. _pace() is PER-INSTANCE and
-    therefore per-process: macrotick (every 900s) overlapping the refresh is what has
+    therefore per-process: macrotick overlapping the refresh is what has
     produced every 429 in the alert log (2026-08-03 shows two series failing in the SAME
     second — impossible inside one serial loop). Retry rides that out; it does not
     prevent it. A cross-process pacer is the real cure if 429s ever stop being rare.
@@ -30,17 +30,19 @@ class OB:
     ask_depth: float          # $ resting at best no bid (what a YES taker lifts)
 
 
-def _get(path: str, params: dict | None = None, tries: int = 9) -> dict:
+def _get(path: str, params: dict | None = None, tries: int = 9, timeout: float = 30) -> dict:
     q = "&".join(f"{k}={v}" for k, v in (params or {}).items())
     url = f"{BASE}{path}" + (f"?{q}" if q else "")
     last = None
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "someopark-macro"})
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
             last = e
+            if i == tries - 1:
+                raise
             if e.code == 429:                     # rate limited: honor Retry-After, long backoff
                 ra = e.headers.get("Retry-After")
                 if ra:
@@ -51,7 +53,7 @@ def _get(path: str, params: dict | None = None, tries: int = 9) -> dict:
                         pass
                 # 6 tries of 3+2i rode out only ~35s, which was short of the window that
                 # actually bites here: the limit is breached when a second PROCESS
-                # (macrotick, every 900s) overlaps the refresh, and _pace() is per-instance
+                # (macrotick) overlaps the refresh, and _pace() is per-instance
                 # so it cannot see that. Every 429 in the log burned all 6 tries. Capped
                 # exponential + jitter rides out ~2.5min instead; jitter matters precisely
                 # BECAUSE two processes collide — identical backoff makes them retry in
@@ -63,6 +65,8 @@ def _get(path: str, params: dict | None = None, tries: int = 9) -> dict:
             _time.sleep(1.2 * (i + 1))
         except Exception as e:                                    # noqa: BLE001
             last = e
+            if i == tries - 1:
+                raise
             _time.sleep(1.2 * (i + 1))
     raise RuntimeError(f"kalshi GET failed {url}: {last}")
 
@@ -72,8 +76,11 @@ class KalshiMD:
         self._conn = conn
         self._spacing = spacing
         self._t_last = 0.0
+        self.on_progress = None  # executor may service cheap clock-only tasks
 
     def _pace(self):
+        if self.on_progress is not None:
+            self.on_progress()
         dt = _time.monotonic() - self._t_last
         if dt < self._spacing:
             _time.sleep(self._spacing - dt)
@@ -129,9 +136,18 @@ class KalshiMD:
         return out[:limit]
 
     # ── prices ────────────────────────────────────────────────────────────
-    def orderbook(self, ticker: str, depth: int = 8) -> OB:
+    def market(self, ticker: str, *, tries: int = 9, timeout: float = 30) -> dict:
         self._pace()
-        d = _get(f"/markets/{ticker}/orderbook", {"depth": depth})
+        market = _get(f"/markets/{ticker}", tries=tries, timeout=timeout).get("market")
+        if not isinstance(market, dict) or market.get("ticker") != ticker:
+            raise ValueError(f"invalid market metadata for {ticker}")
+        return market
+
+    def orderbook(self, ticker: str, depth: int = 8, *, tries: int = 9,
+                  timeout: float = 30) -> OB:
+        self._pace()
+        d = _get(f"/markets/{ticker}/orderbook", {"depth": depth},
+                 tries=tries, timeout=timeout)
         fp = d.get("orderbook_fp") or {}
         yes = [(float(p), float(s)) for p, s in (fp.get("yes_dollars") or [])]
         no = [(float(p), float(s)) for p, s in (fp.get("no_dollars") or [])]
@@ -143,6 +159,42 @@ class KalshiMD:
             bid_depth=yes_bid[1] if yes_bid else 0.0,
             ask_depth=no_bid[1] if no_bid else 0.0,
         )
+
+    def snapshot_tickers(self, tickers, *, before_each=None) -> dict:
+        """Refresh held market status and quotes, with per-leg failure isolation.
+
+        Unlike discovery this runs throughout the day. Never stamp an unsuccessful
+        request as fresh; marks/exits will reject the retained old quote on age.
+        """
+        assert self._conn is not None, "snapshot requires a db connection"
+        saved, failed = [], {}
+        for ticker in sorted(set(tickers)):
+            if before_each is not None:
+                before_each()
+            try:
+                market = self.market(ticker, tries=1, timeout=5)
+                # An exchange can close early. Persist its latest state before
+                # asking for an orderbook, including when that request then fails.
+                self._conn.execute(
+                    "UPDATE contracts SET status=?,close_time=? WHERE ticker=?",
+                    (market.get("status"), market.get("close_time"), ticker))
+                self._conn.commit()
+                close = datetime.fromisoformat(market["close_time"].replace("Z", "+00:00"))
+                if market.get("status") != "active" or close <= datetime.now(timezone.utc):
+                    raise ValueError("held market is not active or has closed")
+                if before_each is not None:
+                    before_each()
+                ob = self.orderbook(ticker, tries=1, timeout=5)
+                ts = datetime.now(timezone.utc).isoformat()
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO quotes(ts,ticker,yes_bid,yes_ask,bid_depth,ask_depth)"
+                    " VALUES(?,?,?,?,?,?)",
+                    (ts, ticker, ob.yes_bid, ob.yes_ask, ob.bid_depth, ob.ask_depth))
+                self._conn.commit()
+                saved.append(ticker)
+            except Exception as exc:
+                failed[ticker] = str(exc)[:200]
+        return {"refreshed": saved, "failed": failed}
 
     # ── snapshot into db (contracts + quotes) ─────────────────────────────
     def snapshot_series(self, series: str) -> int:

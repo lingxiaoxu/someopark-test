@@ -7,11 +7,15 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from prediction_market_macro.config.registry import REGISTRY
 from prediction_market_macro.ingest import calendars as cal
 from prediction_market_macro.util.periods import kalshi_period_to_key
+from prediction_market_macro.util.quotes import MAX_QUOTE_AGE_SECONDS
 
 
 def _sanitize(o):
@@ -27,8 +31,115 @@ def _sanitize(o):
 
 
 def _write(path, obj) -> None:
-    path.write_text(json.dumps(_sanitize(obj), ensure_ascii=False, indent=1,
-                               allow_nan=False))
+    """A reader sees the previous complete document or the next complete document."""
+    payload = json.dumps(_sanitize(obj), ensure_ascii=False, indent=1, allow_nan=False)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=f".{path.name}.", delete=False) as f:
+            tmp = f.name
+            f.write(payload)
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None and os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+@contextmanager
+def _export_lock(settings):
+    """Serialize the short read/build/publish phase across tick, refresh and replay.
+
+    Atomic replacement alone cannot stop a slower exporter publishing an older DB
+    snapshot after a newer one. Neither the simulation nor trading holds this lock.
+    """
+    import fcntl
+    with (settings.output_dir / "frontend_export.lock").open("a") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+def _present_mark(row, now: datetime, fee_usd: float = 0.0) -> dict:
+    """Expose quote provenance; a fresh export cannot make an old mark current."""
+    out = dict(row)
+    status = out.get("mark_status") or "unverified"
+    quote_ts = out.get("quote_ts")
+    age = None
+    if quote_ts:
+        try:
+            age = (now - datetime.fromisoformat(quote_ts.replace("Z", "+00:00"))).total_seconds()
+        except (ValueError, TypeError):
+            pass
+    if status == "marked" and (age is None or age < 0 or age > MAX_QUOTE_AGE_SECONDS):
+        status = "stale" if age is not None else "unverified"
+    out.update(mark_status=status, quote_age_seconds=round(age, 1) if age is not None else None,
+               quote_max_age_seconds=MAX_QUOTE_AGE_SECONDS)
+    if status != "marked":
+        # Preserve what was recorded for audit, without displaying it as a live value.
+        out["recorded_pnl_usd"] = out.get("pnl_usd")
+        out["mid"] = None
+        out["pnl_usd"] = round(-fee_usd, 4)
+    return out
+
+
+def current_mark_rows(conn, now: datetime | None = None) -> list[dict]:
+    """One row per currently open filled leg, including legs with no mark yet."""
+    from prediction_market_macro.ops.ledger import open_positions
+    now = now or datetime.now(timezone.utc)
+    rows = []
+    for pos in open_positions(conn):
+        for fill in pos["fills"]:
+            stored = conn.execute(
+                "SELECT * FROM marks WHERE decision_id=? AND ticker=? ORDER BY ts DESC LIMIT 1",
+                (pos["id"], fill["ticker"])).fetchone()
+            row = dict(stored) if stored else {
+                "ts": None, "decision_id": pos["id"], "ticker": fill["ticker"],
+                "mid": None, "pnl_usd": None, "quote_ts": None, "mark_status": "missing"}
+            row.update(series=pos["series"], period=pos["period"], entry_ts=pos["ts_utc"])
+            rows.append(_present_mark(row, now, fill["fee_usd"] or 0.0))
+    return rows
+
+
+def valuation_summary(marks: list[dict]) -> dict:
+    """A conservative carrying total is distinct from a complete market valuation."""
+    unmarked = sum(m.get("mark_status") != "marked" for m in marks)
+    statuses = {m.get("mark_status") for m in marks}
+    status = next((s for s in ("missing", "stale", "unverified", "illiquid")
+                   if s in statuses), "marked" if marks else "missing")
+    qts = [m["quote_ts"] for m in marks if m.get("quote_ts")]
+    mts = [m["ts"] for m in marks if m.get("ts")]
+    ages = [m["quote_age_seconds"] for m in marks if m.get("quote_age_seconds") is not None]
+    return {"mark_status": status, "mark_ts": max(mts) if mts else None,
+            "quote_ts": min(qts) if qts else None,
+            "quote_age_seconds": max(ages) if ages else None,
+            "quote_max_age_seconds": MAX_QUOTE_AGE_SECONDS,
+            "n_legs": len(marks), "n_unmarked": unmarked,
+            "n_stale": sum(m.get("mark_status") == "stale" for m in marks),
+            "carrying_pnl_usd": round(sum(m["pnl_usd"] or 0 for m in marks), 4)}
+
+
+def _demo_order_view(order) -> dict:
+    """Do not narrate the old YES ask as a NO/sell execution benchmark."""
+    out = dict(order)
+    basis = out.get("prod_price_basis") or "legacy_yes_ask"
+    trusted = basis == "side_action_v1" or (
+        basis == "legacy_yes_ask" and out["side"] == "yes" and out["action"] == "buy")
+    invalid = not trusted and (out.get("prod_ask_at_send") is not None or (
+        out["status"] == "dryrun" and (out.get("avg_price") is not None
+                                       or out.get("fee_usd") is not None)))
+    out.update(prod_price_basis=basis, reference_valid=trusted and
+               out.get("prod_ask_at_send") is not None, invalid_legacy_reference=invalid,
+               price_is_estimate=out["status"] == "dryrun",
+               fee_is_estimate=out["status"] == "dryrun")
+    if invalid:
+        out["prod_ask_at_send"] = None
+        if out["status"] == "dryrun":
+            out["avg_price"] = None
+            out["fee_usd"] = None
+        out["comparison_note"] = "Historical YES-ask baseline is invalid for this side/action; excluded."
+    return out
 
 
 # #153. Two panels on this page ask "what is the latest decision on this (series, period)?"
@@ -85,6 +196,11 @@ def _latest_decision(conn, series: str, period: str, cols: str, *, include_close
 
 
 def run(conn, settings) -> str:
+    with _export_lock(settings):
+        return _run(conn, settings)
+
+
+def _run(conn, settings) -> str:
     now = datetime.now(timezone.utc)
     out_dir = settings.frontend_data
     written = []
@@ -130,10 +246,10 @@ def run(conn, settings) -> str:
     # ── macro_decisions.json: full ledger tail + open positions + marks ──
     dec = [dict(r) for r in conn.execute(
         "SELECT * FROM decisions ORDER BY id DESC LIMIT 200").fetchall()]
-    marks = [dict(r) for r in conn.execute(
-        "SELECT * FROM marks WHERE ts=(SELECT MAX(ts) FROM marks)").fetchall()]
+    marks = current_mark_rows(conn, now)
     _write(out_dir / "macro_decisions.json",
-           {"generated_at": now.isoformat(), "decisions": dec, "latest_marks": marks})
+           {"generated_at": now.isoformat(), "decisions": dec, "latest_marks": marks,
+            "valuation": valuation_summary(marks)})
     written.append("macro_decisions.json")
 
     # ── macro_coverage.json: lifecycle matrix + MISSED + alerts tail ──
@@ -154,7 +270,7 @@ def run(conn, settings) -> str:
         _write(out_dir / "macro_health.json", json.loads(hp.read_text()))
         written.append("macro_health.json")
 
-    written.append(run_extended(conn, settings))
+    written.append(_run_extended(conn, settings))
     return ",".join(written)
 
 
@@ -185,6 +301,11 @@ TRACK_CUTOVER = "2026-08-11T00:00:00+00:00"
 
 def run_extended(conn, settings) -> str:
     """Additional exports: divergence / performance / oos / risk / fed detail."""
+    with _export_lock(settings):
+        return _run_extended(conn, settings)
+
+
+def _run_extended(conn, settings) -> str:
     now = datetime.now(timezone.utc)
     out_dir = settings.frontend_data
     written = []
@@ -194,20 +315,22 @@ def run_extended(conn, settings) -> str:
     # event inside the 7d entry window (bet placed or PASS + gate reason)
     # ③ releases in the next 14 days — the "what's next" runway
     from prediction_market_macro.ops.ledger import open_positions as _open_pos
+    current_marks = [m for m in current_mark_rows(conn, now) if m["entry_ts"] >= TRACK_CUTOVER]
+    marks_by_position = {}
+    for mark in current_marks:
+        marks_by_position.setdefault(mark["decision_id"], []).append(mark)
+    valuation = valuation_summary(current_marks)
     open_bets = []
     for pos in _open_pos(conn):
         if (pos.get("ts_utc") or "") < TRACK_CUTOVER:
             continue                    # pre-cutover legacy stays internal
         st = json.loads(pos.get("structure_json") or "{}")
-        mk = conn.execute(
-            "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
-            " ts=(SELECT MAX(ts) FROM marks WHERE decision_id=?)",
-            (pos["id"], pos["id"])).fetchone()
+        mv = valuation_summary(marks_by_position.get(pos["id"], []))
         open_bets.append({
             "ts": pos["ts_utc"], "series": pos["series"], "period": pos["period"],
             "kind": pos["kind"], "desc": st.get("desc"), "fair": pos["fair"],
             "entry": pos["ask"], "size_usd": pos["size_usd"],
-            "unrealized": mk["s"] if mk else None})
+            "unrealized": mv["carrying_pnl_usd"], "valuation": mv})
     open_bets.sort(key=lambda x: x["ts"] or "", reverse=True)
     stances = []
     for spec in REGISTRY.values():
@@ -250,7 +373,7 @@ def run_extended(conn, settings) -> str:
     upcoming.sort(key=lambda x: x["scheduled_ts"])
     _write(out_dir / "macro_bets.json",
            {"generated_at": now.isoformat(), "open_bets": open_bets,
-            "stances": stances, "upcoming": upcoming})
+            "stances": stances, "upcoming": upcoming, "valuation": valuation})
     written.append("macro_bets.json")
 
     # ── macro_divergence.json: model vs market gap ranking per (series, period) ──
@@ -346,11 +469,8 @@ def run_extended(conn, settings) -> str:
                                  "closed_by": close["kind"],
                                  "settle": close["ts_utc"][:10]})
         else:
-            mk = conn.execute(
-                "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
-                " ts=(SELECT MAX(ts) FROM marks WHERE decision_id=?)",
-                (r["id"], r["id"])).fetchone()
-            live_open.append({**row, "unrealized": mk["s"] if mk else None})
+            mv = valuation_summary(marks_by_position.get(r["id"], []))
+            live_open.append({**row, "unrealized": mv["carrying_pnl_usd"], "valuation": mv})
     # #150. ROI is computed on the closures that actually recorded a realized figure, and
     # BOTH sides of the ratio use that same subset. Summing `realized or 0` over every
     # closure while `staked` counted all of them put unmeasured trades in the denominator
@@ -371,7 +491,8 @@ def run_extended(conn, settings) -> str:
                      "staked": round(sum(t["staked"] or 0 for t in live_open), 4),
                      "unrealized": round(sum(t["unrealized"] or 0
                                              for t in live_open), 4),
-                     "positions": live_open[-60:]}}
+                     "positions": live_open[-60:], "valuation": valuation,
+                     "n_unmarked": valuation["n_unmarked"]}}
     comb_n = (history["n_trades"] if history else 0) + len(live_settled)
     comb_w = (history["won"] if history else 0) + live["settled"]["won"]
     comb_stk = (history["staked"] if history else 0) + ls_stk
@@ -385,6 +506,7 @@ def run_extended(conn, settings) -> str:
                                    "roi": round(comb_rl / comb_stk, 5)
                                    if comb_stk else None}},
             "unrealized_usd": live["open"]["unrealized"],
+            "valuation": valuation,
             "bankroll_usd": current_bankroll(conn),
             "bankroll_source": "kalshi_demo", "mode": "paper"}
     _write(out_dir / "macro_performance.json", perf)
@@ -478,18 +600,25 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_pricetrack.json: intraday mark history (mother price-track port) ──
     track = [dict(r) for r in conn.execute(
-        "SELECT m.ts, ROUND(SUM(m.pnl_usd),4) pnl_usd, COUNT(*) n_legs FROM marks m"
+        "SELECT m.ts, ROUND(SUM(m.pnl_usd),4) carrying_pnl_usd, COUNT(*) n_legs,"
+        " SUM(CASE WHEN m.mark_status='marked' AND m.quote_ts IS NOT NULL"
+        "  AND (julianday(m.ts)-julianday(m.quote_ts))*86400 BETWEEN 0 AND ?"
+        "  THEN 0 ELSE 1 END) n_unmarked, MIN(m.quote_ts) quote_ts FROM marks m"
         " JOIN decisions d ON d.id=m.decision_id AND d.ts_utc>=?"
-        " GROUP BY m.ts ORDER BY m.ts DESC LIMIT 500", (TRACK_CUTOVER,)).fetchall()]
+        " GROUP BY m.ts ORDER BY m.ts DESC LIMIT 500",
+        (MAX_QUOTE_AGE_SECONDS, TRACK_CUTOVER)).fetchall()]
     track.reverse()
-    per_series = [dict(r) for r in conn.execute(
-        "SELECT d.series, ROUND(SUM(m.pnl_usd),4) pnl_usd FROM marks m"
-        " JOIN decisions d ON d.id=m.decision_id AND d.ts_utc>=?"
-        " WHERE m.ts=(SELECT MAX(ts) FROM marks) GROUP BY d.series",
-        (TRACK_CUTOVER,)).fetchall()]
+    for point in track:
+        point["pnl_usd"] = None if point["n_unmarked"] else point["carrying_pnl_usd"]
+    per_series = []
+    for series in sorted({m["series"] for m in current_marks}):
+        mv = valuation_summary([m for m in current_marks if m["series"] == series])
+        per_series.append({"series": series, "pnl_usd": (
+            None if mv["n_unmarked"] else mv["carrying_pnl_usd"]), "valuation": mv})
     _write(out_dir / "macro_pricetrack.json",
            {"generated_at": now.isoformat(), "track": track,
-            "latest_by_series": per_series})
+            "latest_by_series": per_series, "valuation": valuation,
+            "note": "Unmarked legs are carried at cost with entry fees; chart gaps are not zero PnL."})
     written.append("macro_pricetrack.json")
 
     # ── PDF reports → public/data/macro_reports/ + index (0-bis whitelist (a):
@@ -542,35 +671,7 @@ def run_extended(conn, settings) -> str:
     _write(out_dir / "macro_walkforward.json", wf_doc)
     written.append("macro_walkforward.json")
 
-    # ── macro_livereplay.json: the rolling replay-vs-live divergence accounting ──
-    # `research/live_replay` runs daily and writes one experiments row per window end.
-    # Latest carries the whole payload; the trail is the part worth watching, because a
-    # verdict that has read ALIGNED for a week and flips is the signal, not the snapshot.
-    lr_doc = {"generated_at": now.isoformat(), "history": []}
-    for r in conn.execute(
-            "SELECT metrics_json, created_ts FROM experiments WHERE name='live_replay'"
-            " ORDER BY created_ts DESC LIMIT 60").fetchall():
-        try:
-            p = json.loads(r["metrics_json"])
-        except json.JSONDecodeError:
-            continue
-        if "latest" not in lr_doc:
-            lr_doc["latest"] = p
-            lr_doc["latest_ts"] = r["created_ts"]
-        rec, opp = p.get("reconciliation") or {}, p.get("opportunity") or {}
-        lr_doc["history"].append({
-            "window_end": p.get("window_end"), "days": p.get("days"),
-            "replay_realized": (p.get("replay") or {}).get("realized"),
-            "live_realized": (p.get("live") or {}).get("realized"),
-            "n_matched": rec.get("n_matched"),
-            "n_replay_only": rec.get("n_replay_only"),
-            "n_live_only": rec.get("n_live_only"),
-            "n_unexplained": rec.get("n_unexplained"),
-            "infra_share": opp.get("infra_share"),
-        })
-    lr_doc["history"].reverse()          # oldest first, so the chart reads left to right
-    _write(out_dir / "macro_livereplay.json", lr_doc)
-    written.append("macro_livereplay.json")
+    written.append(_export_live_replay(conn, settings))
 
     # ── macro_fed.json: meeting-level detail with evidence chain ──
     # decided meetings leave the probability board (a settled decision has no
@@ -598,7 +699,7 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_demo_exec.json: §30 mirror state, diff decomposition, balance sheet ──
     from prediction_market_macro.ops import trading_kalshi as _tk
-    orders = [dict(r) for r in conn.execute(
+    orders = [_demo_order_view(r) for r in conn.execute(
         "SELECT * FROM demo_orders ORDER BY fill_id DESC LIMIT 200").fetchall()]
     # per-contract diff decomposition (¢/张, §30.3): latency = prod_ask_at_send −
     # paper_ask; venue = avg_price − prod_ask_at_send. Buys only — sells invert.
@@ -606,12 +707,13 @@ def run_extended(conn, settings) -> str:
     for o in orders:
         if o["action"] != "buy":
             continue
-        if o["prod_ask_at_send"] is not None:
+        if o["reference_valid"]:
             lat.append((o["prod_ask_at_send"] - o["paper_ask"]) * 100)
             if o["avg_price"] is not None:
                 ven.append((o["avg_price"] - o["prod_ask_at_send"]) * 100)
     snaps = [dict(r) for r in conn.execute(
         "SELECT * FROM demo_balance_sheet ORDER BY ts DESC LIMIT 500").fetchall()]
+    demo_positions = _tk.demo_positions(conn, now=now)
     _write(out_dir / "macro_demo_exec.json", {
         "generated_at": now.isoformat(),
         "armed": _tk.armed(conn), "halted": _tk.halted(conn),
@@ -621,8 +723,15 @@ def run_extended(conn, settings) -> str:
         # streak: pnl = equity − start_cash − transfers_net (§30.4 transfers ledger)
         "transfers_net": _tk._transfers_net(conn),
         "orders": orders,
-        "positions": _tk.demo_positions(conn),
+        "positions": demo_positions,
+        "positions_valuation": {
+            "n_positions": len(demo_positions),
+            "n_unmarked": sum(p["mark_status"] != "marked" for p in demo_positions),
+            "quote_max_age_seconds": MAX_QUOTE_AGE_SECONDS,
+            "note": "Unavailable demo marks carry entry cost; mtm is not a complete market valuation."},
         "diff_cents": {
+            "n_invalid_legacy": sum(o["invalid_legacy_reference"] for o in orders),
+            "note": "Buy orders only; positive is worse execution. Invalid historical side benchmarks are excluded.",
             "latency": {"n": len(lat),
                         "mean": round(sum(lat) / len(lat), 3) if lat else None},
             "venue": {"n": len(ven),
@@ -632,3 +741,37 @@ def run_extended(conn, settings) -> str:
                  if not _tk.armed(conn) else "LIVE demo mirroring")})
     written.append("macro_demo_exec.json")
     return ",".join(written)
+
+
+def export_live_replay(conn, settings) -> str:
+    """Publish committed replay results without refreshing unrelated dashboard data."""
+    with _export_lock(settings):
+        return _export_live_replay(conn, settings)
+
+
+def _export_live_replay(conn, settings) -> str:
+    lr_doc = {"generated_at": datetime.now(timezone.utc).isoformat(), "history": []}
+    for r in conn.execute(
+            "SELECT metrics_json, created_ts FROM experiments WHERE name='live_replay'"
+            " ORDER BY created_ts DESC LIMIT 60").fetchall():
+        try:
+            p = json.loads(r["metrics_json"])
+        except json.JSONDecodeError:
+            continue
+        if "latest" not in lr_doc:
+            lr_doc["latest"] = p
+            lr_doc["latest_ts"] = r["created_ts"]
+        rec, opp = p.get("reconciliation") or {}, p.get("opportunity") or {}
+        lr_doc["history"].append({
+            "window_end": p.get("window_end"), "days": p.get("days"),
+            "replay_realized": (p.get("replay") or {}).get("realized"),
+            "live_realized": (p.get("live") or {}).get("realized"),
+            "n_matched": rec.get("n_matched"),
+            "n_replay_only": rec.get("n_replay_only"),
+            "n_live_only": rec.get("n_live_only"),
+            "n_unexplained": rec.get("n_unexplained"),
+            "infra_share": opp.get("infra_share"),
+        })
+    lr_doc["history"].reverse()          # oldest first, so the chart reads left to right
+    _write(settings.frontend_data / "macro_livereplay.json", lr_doc)
+    return "macro_livereplay.json"

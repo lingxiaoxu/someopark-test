@@ -130,7 +130,8 @@ def _shadow_argmax(conn, spec, key: str, st, count: int, size: float,
          f"{'deferred (fair>cost)' if deferred else 'placed (fair<=cost)'}"))
 
 
-def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> bool:
+def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "",
+                  *, before_write=None) -> bool:
     """WC-hybrid favourite leg: no edge cleared ⇒ buy the MODEL's most likely
     structure flat $1 (kind='argmax'). Price window [0.10, 0.90] keeps payoff
     room net of fees; one per (series, period); risk limits still apply.
@@ -161,32 +162,45 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
     if _exits.opens_into_exit(st, _exits.struct_mid_cost(conn, st)):
         return False
     deferred = defers_to_market(st)
-    _shadow_argmax(conn, spec, key, st, count, size, deferred, now)
     if deferred:
+        if before_write is None:
+            _shadow_argmax(conn, spec, key, st, count, size, deferred, now)
+        else:
+            # Both PR-2 arms have the same live admission window. A delayed
+            # deferred shadow is no more fillable than a delayed placed arm.
+            with ledger.atomic_structure(conn, before_write=before_write):
+                _shadow_argmax(conn, spec, key, st, count, size, deferred,
+                               datetime.now(timezone.utc))
         return False
-    now_iso = now.isoformat()
     from prediction_market_macro.strategy.edge import taker_fee
-    cur = conn.execute(
-        "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
-        " ask, net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (now_iso, spec.ticker, key,
-         json.dumps({"kind": "argmax", "desc": st.desc,
-                     "legs": [{"ticker": l.ticker, "side": l.side,
-                               "price": l.price} for l in st.legs]}),
-         "argmax", st.fair, st.cost, st.net_edge(), size,
-         json.dumps({"stream": "argmax"}), "argmax/1.0", "{}",
-         f"ARGMAX fav fair={st.fair:.3f} {note_extra}".strip()))
-    from prediction_market_macro.ops import trading_kalshi
-    did_argmax = cur.lastrowid
-    for leg, px in zip(st.legs, st.fill_prices(count)):
-        curf = conn.execute(
-            "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count,"
-            " fee_usd, mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-            (did_argmax, now_iso, leg.ticker, leg.side, px, count,
-             taker_fee(px, count)))
-        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
+    fill_ids = []
+    with ledger.atomic_structure(conn, before_write=before_write):
+        write_time = datetime.now(timezone.utc) if before_write else now
+        now_iso = write_time.isoformat()
+        _shadow_argmax(conn, spec, key, st, count, size, deferred, write_time)
+        cur = conn.execute(
+            "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
+            " ask, net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (now_iso, spec.ticker, key,
+             json.dumps({"kind": "argmax", "desc": st.desc,
+                         "legs": [{"ticker": l.ticker, "side": l.side,
+                                   "price": l.price} for l in st.legs]}),
+             "argmax", st.fair, st.cost, st.net_edge(), size,
+             json.dumps({"stream": "argmax"}), "argmax/1.0", "{}",
+             f"ARGMAX fav fair={st.fair:.3f} {note_extra}".strip()))
+        did_argmax = cur.lastrowid
+        for leg, px in zip(st.legs, st.fill_prices(count)):
+            curf = conn.execute(
+                "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count,"
+                " fee_usd, mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+                (did_argmax, now_iso, leg.ticker, leg.side, px, count,
+                 taker_fee(px, count)))
+            fill_ids.append(curf.lastrowid)
     conn.commit()
+    from prediction_market_macro.ops import trading_kalshi
+    for fill_id in fill_ids:
+        trading_kalshi.on_fill(conn, fill_id)
     return True
 
 
@@ -276,6 +290,10 @@ def _warn_unevaluated_series_gate(conn) -> None:
     conn.commit()
 
 
+from prediction_market_macro.util.execution import serialized_execution
+
+
+@serialized_execution
 def run(conn, settings) -> int:
     now = datetime.now(timezone.utc)
     n = 0
@@ -287,6 +305,30 @@ def run(conn, settings) -> int:
             tok = r["period"]
             key = kalshi_period_to_key(tok)
             if not key:
+                continue
+            # Freeze is shared by every entry stream, including the model-free arb
+            # and the argmax fallback. Putting it only in decision.decide left both
+            # paths able to open during the release freeze. Read the clock per book:
+            # an earlier series may have taken time to price.
+            now = datetime.now(timezone.utc)
+            rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
+                               (spec.calendar, key)).fetchone()
+            release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None
+            from prediction_market_macro.strategy.decision import Decision, GATES
+            if (release_ts is not None
+                    and 0 <= (release_ts - now).total_seconds() / 60
+                    <= GATES["freeze_minutes_before_release"]):
+                pr = conn.execute(
+                    "SELECT model_version FROM preds WHERE series=? AND period=?"
+                    " AND model_version LIKE ? ORDER BY asof DESC LIMIT 1",
+                    (spec.ticker, key, spec.model + "/%")).fetchone()
+                if pr is not None:
+                    ledger.record(conn, series=spec.ticker, period=key,
+                                  decision=Decision("pass", None, 0.0, 0,
+                                                    ("freeze_window",), dict(GATES)),
+                                  pred_inputs={}, model_version=pr["model_version"])
+                    n += 1
+                set_coverage(conn, spec.ticker, key, "frozen")
                 continue
             # ── model-free legs first (2026-08-20 gate-ordering fix) ─────────────
             # The devig consistency scan and §24-A's arb execution need NO prediction,
@@ -367,7 +409,10 @@ def run(conn, settings) -> int:
                     from prediction_market_macro.strategy import arb
                     if quote_age_h is not None and quote_age_h <= QUOTE_STALE_H:
                         n += arb.execute(conn, spec.ticker, key, legs,
-                                         impl["violations"])
+                                         impl["violations"], before_write=lambda:
+                                         ledger.ensure_live_entry_window(
+                                             conn, spec.ticker, key,
+                                             [leg["ticker"] for leg in legs]))
                     else:
                         # the one gate an arb DOES answer to, and it gets a line rather
                         # than a silent drop: "the book is too old to trust" and "there
@@ -463,9 +508,6 @@ def run(conn, settings) -> int:
                         "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                         (now.isoformat(), "info", "capture_gate",
                          f"{spec.ticker}/{key}: {cd}"))
-            rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
-                               (spec.calendar, key)).fetchone()
-            release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None
             closes = [l["close_time"] for l in legs if l.get("close_time")]
             close_ts = min((datetime.fromisoformat(c.replace("Z", "+00:00")) for c in closes),
                            default=None)
@@ -562,13 +604,21 @@ def run(conn, settings) -> int:
                     d = Decision("pass", None, 0.0, 0, (veto.reason,), d.gate_snapshot)
             ledger.record(conn, series=spec.ticker, period=key, decision=d,
                           pred_inputs=json.loads(pr["dist_json"]),
-                          model_version=pr["model_version"])
+                          model_version=pr["model_version"], before_write=(lambda:
+                          ledger.ensure_live_entry_window(
+                              conn, spec.ticker, key, [leg.ticker for leg in d.struct.legs],
+                              min_minutes_to_close=gates_eff["min_minutes_to_close"]))
+                          if d.action == "open" else None)
             # WC-hybrid second leg: edge stream passed ⇒ favourite (argmax) flat
             # bet inside the entry window (freeze/close gates already vetted)
             if d.action == "pass" and close_ts is not None:
                 dtc = (close_ts - now).total_seconds() / 86400.0
                 if 0.03 <= dtc <= gates_eff.get("max_days_to_close", 7.0):
-                    _place_argmax(conn, spec, key, structs, now)
+                    _place_argmax(conn, spec, key, structs, now, before_write=lambda:
+                                  ledger.ensure_live_entry_window(
+                                      conn, spec.ticker, key,
+                                      [leg["ticker"] for leg in legs],
+                                      min_minutes_to_close=0.03 * 24 * 60))
             set_coverage(conn, spec.ticker, key,
                          "decided" if d.action == "open" else "passed")
             n += 1

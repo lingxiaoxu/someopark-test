@@ -32,11 +32,14 @@ def build(conn=None, *, as_of: str = "") -> dict:
     up = _read_json("upcoming.json") or {}
     leagues = []
     for lg in model.get("leagues", []):
-        top = (lg.get("season_odds") or [{}])[0]
+        priced = [row for row in lg.get("season_odds", []) if row.get("p_champion") is not None]
+        champion_state = (lg.get("odds_family_states") or {}).get("champion", lg.get("odds_state", "ok"))
+        top = max(priced, key=lambda row: row["p_champion"]) if priced and champion_state == "ok" else {}
         leagues.append({
             "league": lg["league"], "name": lg["name"], "zh": lg["zh"], "kind": lg["kind"],
             "n_teams": lg.get("n_teams"), "n_remaining": lg.get("n_remaining"),
             "leader": top.get("name"), "leader_p": top.get("p_champion"),
+            **{k: lg.get(k) for k in ("odds_state", "odds_family_states", "availability_reason", "coverage")},
         })
     comps = {c.key: {"kalshi_game": c.kalshi.get("game"),
                      "kalshi_champion": c.kalshi.get("champion")} for c in active()}
@@ -56,7 +59,28 @@ def build(conn=None, *, as_of: str = "") -> dict:
     from prediction_market_soccer.ops.system_overview import headline_i18n as _hl
     headline_i18n = _hl(gate_open, cal.get("calibrated_brier"),
                         cal.get("uniform_brier") or 2 / 3, cal.get("n", 0))
+    from prediction_market_soccer.ops.run_status import safe_summary
+    sources = {}
+    documents = {"model": model, "upcoming": up,
+                 "inplay": _read_json("inplay_live.json"),
+                 "performance": _read_json("performance_report.json"),
+                 "risk": _read_json("risk_report.json")}
+    issues = []
+    for key, document in documents.items():
+        doc = document or {}
+        # Empty live polls legitimately run less often. Daily exports get a six-hour margin.
+        max_age = (900 if not doc.get("n_live") else 300) if key == "inplay" else 30 * 3600
+        generated_at = doc.get("as_of") or doc.get("ts") or (doc.get("meta") or {}).get("run_ts")
+        source_at = doc.get("source_as_of") or generated_at
+        sources[key] = {"as_of": source_at, "generated_at": generated_at, "max_age_seconds": max_age}
+        if not document:
+            issues.append({"code": "source_unavailable", "source": key})
+        if (doc.get("data_status") or {}).get("state") in ("degraded", "unavailable"):
+            issues.extend((doc.get("data_status") or {}).get("issues", []))
     return {
+        "source_as_of": model.get("source_as_of") or (model.get("meta") or {}).get("run_ts"),
+        "sources": sources, "operations": safe_summary(),
+        "data_status": {"state": "degraded" if issues else "ok", "issues": issues},
         "schema_version": SCHEMA_VERSION,
         "as_of": as_of or datetime.now(timezone.utc).isoformat(),
         "headline": headline,
@@ -77,8 +101,8 @@ def build(conn=None, *, as_of: str = "") -> dict:
 def main() -> None:
     doc = build()
     CONFIG.paths.ensure()
-    (CONFIG.paths.output / "frontend_overview.json").write_text(
-        json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    from prediction_market_soccer.ops.run_status import atomic_json
+    atomic_json(CONFIG.paths.output / "frontend_overview.json", doc)
     print(f"frontend_overview.json: {len(doc['leagues'])} leagues, gate_open={doc['gate_open']}")
 
 

@@ -1,0 +1,14 @@
+# macro_similarity/similarity_store.json 是 2.83 MB 的**单行** JSON(0 个换行)。
+# git 把整份内容当作一行改动输出,产生的 diff 比原文件还大一倍(5.65 MB);
+# 而它长期处于 working-tree 脏状态,qlib 的 mlflow 又给**每个 trial** 存一份
+# 完整工作区 git diff(code_diff.txt),1,584 trial/天 ×
+# 7.33 MB ≈ 11.6 GB/天,其中 8.5 GB/天纯粹是这一个文件的 diff。
+#
+# `-diff` 只改变 git **显示** diff 的方式(显示 "Binary files differ"),
+# 不影响跟踪、暂存、提交、检出、合并,也不改变文件内容本身。
+# 实测(2026-09-11):全工作区 diff 7,689,727 → 2,036,112 字节(降 73.5%);
+# 文件 MD5 不变、JSON 正常解析、git status/add 行为不变。
+#
+# 有意**不**走 "untrack + .gitignore":那会把这个生产关键文件(MCPS similarity
+# store v2)推进「无异地备份」类别,而 `-diff` 收益相同、零损失。
+macro_similarity/similarity_store.json -diff

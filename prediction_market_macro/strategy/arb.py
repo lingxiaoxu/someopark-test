@@ -55,37 +55,42 @@ def _has_open_arb(conn, series: str, period: str) -> bool:
 
 
 def _record(conn, series: str, period: str, legs: list[dict], gross: float,
-            net: float, count: int, note: str) -> int:
+            net: float, count: int, note: str, *, before_write=None) -> int:
     """legs: [{ticker, side, price, depth}]. Paper fills at price (arb prices are the
     quoted ask/1-bid — no extra slippage model; the fee is the realism)."""
-    now = datetime.now(timezone.utc).isoformat()
     cost = sum(l["price"] for l in legs)
-    cur = conn.execute(
-        "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
-        " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (now, series, period,
-         json.dumps({"kind": "arb", "desc": note,
-                     "legs": [{"ticker": l["ticker"], "side": l["side"],
-                               "price": l["price"]} for l in legs]}),
-         "arb", None, round(cost, 4), round(net, 4), round(cost * count, 4),
-         json.dumps({"gross": gross, "net": net, "count": count}),
-         "arb/1.0", "{}", note))
-    did = cur.lastrowid
-    from prediction_market_macro.ops import trading_kalshi
-    for l in legs:
-        curf = conn.execute(
-            "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
-            " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-            (did, now, l["ticker"], l["side"], l["price"], count,
-             taker_fee(l["price"], count)))
-        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
+    from prediction_market_macro.ops.ledger import atomic_structure
+    fill_ids = []
+    with atomic_structure(conn, before_write=before_write):
+        now = datetime.now(timezone.utc).isoformat()
+        cur = conn.execute(
+            "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
+            " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (now, series, period,
+             json.dumps({"kind": "arb", "desc": note,
+                         "legs": [{"ticker": l["ticker"], "side": l["side"],
+                                   "price": l["price"]} for l in legs]}),
+             "arb", None, round(cost, 4), round(net, 4), round(cost * count, 4),
+             json.dumps({"gross": gross, "net": net, "count": count}),
+             "arb/1.0", "{}", note))
+        did = cur.lastrowid
+        for l in legs:
+            curf = conn.execute(
+                "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
+                " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+                (did, now, l["ticker"], l["side"], l["price"], count,
+                 taker_fee(l["price"], count)))
+            fill_ids.append(curf.lastrowid)
     conn.commit()
+    from prediction_market_macro.ops import trading_kalshi
+    for fill_id in fill_ids:
+        trading_kalshi.on_fill(conn, fill_id)
     return did
 
 
 def execute(conn, series: str, period_key: str, legs_meta: list[dict],
-            violations: list[dict]) -> int:
+            violations: list[dict], *, before_write=None) -> int:
     """Called by decide_all with the same legs + violations it already computed.
     Returns arbs opened (0 or 1 — one per (series, period) at a time)."""
     if not violations or _has_open_arb(conn, series, period_key):
@@ -183,7 +188,8 @@ def execute(conn, series: str, period_key: str, legs_meta: list[dict],
                     f" (net {net:+.3f}/contract) but 铁律 5 sizes it to 0 — thinnest"
                     f" leg {min_depth:.0f} contracts, cost {cost1:.3f}/contract")
         return 0
-    _record(conn, series, period_key, legs, gross, net, count, note)
+    _record(conn, series, period_key, legs, gross, net, count, note,
+            before_write=before_write)
     conn.execute(
         "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
         (datetime.now(timezone.utc).isoformat(), "info", "arb",

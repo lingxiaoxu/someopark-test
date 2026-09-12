@@ -32,6 +32,18 @@ META = {"T0.1": {"strike": 0.1, "cap_strike": None, "strike_type": "greater"},
         "T0.2": {"strike": 0.2, "cap_strike": None, "strike_type": "greater"}}
 
 
+@pytest.fixture(autouse=True)
+def live_clock(monkeypatch):
+    # Live freshness guards must evaluate the historical fixture at its own instant.
+    from datetime import datetime
+    from prediction_market_macro.ops import exits
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.fromisoformat(TS)
+    monkeypatch.setattr(exits, "datetime", Clock)
+
+
 @pytest.fixture()
 def conn(tmp_path):
     return init_db(str(tmp_path / "t.db"))
@@ -106,7 +118,7 @@ def test_hold_edge_matches_what_exits_run_would_compute(conn):
             (cur.lastrowid, TS, ticker, side, px, 1, 0.01))
         conn.execute(
             "INSERT INTO contracts(ticker, event_ticker, series, period, floor_strike,"
-            " strike_type, close_time, first_seen_ts) VALUES(?,?,?,?,?,?,?,?)",
+            " strike_type, close_time, status, first_seen_ts) VALUES(?,?,?,?,?,?,?,'active',?)",
             (ticker, "KXPCECORE-26SEP", "KXPCECORE", "2026-09", META[ticker]["strike"],
              "greater", "2026-09-30T00:00:00+00:00", TS))
     for ticker, bid, ask in (("T0.1", 0.78, 0.80), ("T0.2", 0.20, 0.22)):

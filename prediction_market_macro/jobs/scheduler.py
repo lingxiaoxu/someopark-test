@@ -27,6 +27,7 @@ from prediction_market_macro.config.registry import REGISTRY
 from prediction_market_macro.ingest import calendars as cal
 
 DECISION_TASKS = {"decide", "reassess"}
+DEFAULT_GRACE_MIN = 30
 _OFFSETS = [("arm", timedelta(hours=-24)), ("snapshot", timedelta(hours=-2)),
             ("decide", timedelta(hours=-1)), ("freeze", timedelta(minutes=-10)),
             ("reassess", timedelta(minutes=3)), ("reconcile", timedelta(days=1))]
@@ -37,7 +38,7 @@ _OFFSETS = [("arm", timedelta(hours=-24)), ("snapshot", timedelta(hours=-2)),
 # close is ~19h old, and decide_all's staleness gate (quotes >6h ⇒ forced PASS) kills
 # every entry. Anchoring a second snapshot/decide pair on close_time restores a live
 # book at decision time. -90m leaves margin over BOTH min_minutes_to_close (30) and
-# the argmax entry window (dtc >= 0.03d = 43min) even if the 15-min tick fires late.
+# the argmax entry window (dtc >= 0.03d = 43min), with margin for scheduling/network delay.
 _CLOSE_OFFSETS = [("snapshot", timedelta(hours=-3)), ("decide", timedelta(minutes=-90))]
 # release within this of the close ⇒ the release ladder already covers it, skip
 _CLOSE_ANCHOR_MIN_GAP = timedelta(hours=3)
@@ -117,12 +118,59 @@ def materialize(conn, now: datetime | None = None, horizon_days: int = 30) -> in
     return n
 
 
-def claim_due(conn, now: datetime | None = None) -> list[dict]:
+def _mark_missed(conn, run, now: datetime) -> bool:
+    """Transition once, so the executor and independent watchdog cannot double-alert."""
+    changed = conn.execute(
+        "UPDATE runs SET status='MISSED' WHERE id=? AND status IN ('due','late')",
+        (run["id"],)).rowcount
+    if not changed:
+        return False
+    msg = (f"MISSED {run['lane']}/{run['series']}/{run['period']}/{run['task']}"
+           f" due {run['due_ts']}")
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (now.isoformat(), "error", "watchdog", msg))
+    return True
+
+
+def expire_if_overdue(conn, run, now: datetime | None = None,
+                      grace_min: int = DEFAULT_GRACE_MIN) -> bool:
+    """Refuse a decision beyond its existing grace, even before watchdog wakes up.
+
+    Call again immediately before execution: an earlier task's HTTP request can
+    carry a row returned by claim_due across its deadline. Snapshot, freeze and
+    reconciliation tasks retain their existing catch-up behaviour.
+    """
     now = now or datetime.now(timezone.utc)
+    if (run["task"] not in DECISION_TASKS
+            or datetime.fromisoformat(run["due_ts"]) >= now - timedelta(minutes=grace_min)):
+        return False
+    _mark_missed(conn, run, now)
+    conn.commit()
+    return True
+
+
+def claim_due(conn, now: datetime | None = None, *, tasks=None,
+              grace_min: int = DEFAULT_GRACE_MIN) -> list[dict]:
+    """Read eligible work under the executor's single-instance lock.
+
+    Due freeze markers precede HTTP-heavy work. `tasks=("freeze",)` lets the
+    executor drain only these cheap markers around a slow snapshot, without
+    recursively executing another complete decision scan.
+    """
+    now = now or datetime.now(timezone.utc)
+    task_filter = ""
+    params = [now.isoformat()]
+    if tasks is not None:
+        tasks = tuple(tasks)
+        if not tasks:
+            return []
+        task_filter = f" AND task IN ({','.join('?' for _ in tasks)})"
+        params.extend(tasks)
     rows = conn.execute(
-        "SELECT * FROM runs WHERE status IN ('due','late') AND due_ts<=? ORDER BY due_ts",
-        (now.isoformat(),)).fetchall()
-    return [dict(r) for r in rows]
+        "SELECT * FROM runs WHERE status IN ('due','late') AND due_ts<=?" + task_filter
+        + " ORDER BY CASE WHEN task='freeze' THEN 0 ELSE 1 END, due_ts, id",
+        params).fetchall()
+    return [dict(r) for r in rows if not expire_if_overdue(conn, r, now, grace_min)]
 
 
 def mark_done(conn, run_id: int, note: str = "") -> None:
@@ -145,7 +193,8 @@ def set_coverage(conn, series: str, period: str, state: str) -> None:
     conn.commit()
 
 
-def watchdog(conn, now: datetime | None = None, grace_min: int = 30) -> list[dict]:
+def watchdog(conn, now: datetime | None = None,
+             grace_min: int = DEFAULT_GRACE_MIN) -> list[dict]:
     """Overdue due|late beyond grace → MISSED + alert. Decision tasks are NEVER re-queued.
     Also enforces the 24h pred-freshness SLA (PLAN §8.0)."""
     now = now or datetime.now(timezone.utc)
@@ -153,11 +202,8 @@ def watchdog(conn, now: datetime | None = None, grace_min: int = 30) -> list[dic
     missed = []
     for r in conn.execute(
             "SELECT * FROM runs WHERE status IN ('due','late') AND due_ts<?", (cutoff,)):
-        conn.execute("UPDATE runs SET status='MISSED' WHERE id=?", (r["id"],))
-        msg = f"MISSED {r['lane']}/{r['series']}/{r['period']}/{r['task']} due {r['due_ts']}"
-        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                     (now.isoformat(), "error", "watchdog", msg))
-        missed.append(dict(r))
+        if _mark_missed(conn, r, now):
+            missed.append(dict(r))
     # pred-freshness SLA: every open (series, period) must have a pred younger than 24h.
     # contracts store the Kalshi token ('26SEP'); preds store the ISO key ('2026-09').
     from prediction_market_macro.util.periods import kalshi_period_to_key

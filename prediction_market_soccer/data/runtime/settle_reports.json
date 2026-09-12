@@ -1,0 +1,53 @@
+{
+  "name": "settle_reports",
+  "state": "ok",
+  "last_attempt_at": "2026-09-12T00:28:49.852043+00:00",
+  "last_success_at": "2026-09-12T00:29:19.566955+00:00",
+  "finished_at": "2026-09-12T00:29:19.566955+00:00",
+  "steps": [
+    {
+      "name": "settled_bet",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:28:50.038764+00:00",
+      "finished_at": "2026-09-12T00:28:50.502860+00:00"
+    },
+    {
+      "name": "strategy_book_append",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:28:50.503261+00:00",
+      "finished_at": "2026-09-12T00:28:50.529924+00:00"
+    },
+    {
+      "name": "performance_report.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:28:50.530370+00:00",
+      "finished_at": "2026-09-12T00:28:50.903415+00:00"
+    },
+    {
+      "name": "milestone_marks.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:28:50.903727+00:00",
+      "finished_at": "2026-09-12T00:29:18.750263+00:00"
+    },
+    {
+      "name": "performance_report.pdf",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:29:18.750644+00:00",
+      "finished_at": "2026-09-12T00:29:19.310928+00:00"
+    },
+    {
+      "name": "frontend_overview.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T00:29:19.311250+00:00",
+      "finished_at": "2026-09-12T00:29:19.346454+00:00"
+    }
+  ],
+  "last_success_input": 5439,
+  "last_activity_at": "2026-09-12T00:29:19.566965+00:00"
+}

@@ -1,51 +1,28 @@
-"""ops/backfill_milestones.py — reconstruct milestone price tracks for already-played
-matches (plan 18 §2.4c).
+"""Bounded historical reference collection into an explicit candidate target.
 
-The live `milestone_snapshot` capture only sees matches going forward. To give the
-PriceTrack view history from the first stored match, we backfill the 6 milestones
-(PRE / T15 / T30 / HT / T60 / T75 / FT) for every finished fixture using Polymarket
-Global's PERSISTENT single-match events (`<comp-prefix>-{h}-{a}-{date}`, e.g.
-`epl-cry-mac-2026-08-28`; closed/archived events stay queryable) + the public CLOB
-prices-history series.
-
-For each finished fixture:
-  * locate its Poly Global event by competition + CLUB IDENTITY (both sides resolved
-    to the same canonical club_id the rest of the module uses), scanning ET date ±1d;
-  * pull each 3-way outcome token's per-minute price series once;
-  * sample the price at each milestone's wall-clock (kickoff + minute);
-  * compute the score at that minute from goal events; FT uses the real result
-    (winner outcome settles 100¢ / 0¢);
-  * de-vig the three outcome prices into a market probability;
-  * INSERT OR REPLACE into milestone_snapshot (price_source='candlestick').
-
-Idempotent + re-runnable; missing data is left as NULL (honest), never fabricated.
-
-ENTITY RESOLUTION (club edition, TRANSFORM_PLAN §3.6). The WC version compared team
-NAMES with difflib at a 0.72 cutoff plus a substring rule. Club names break both:
-"Manchester City" vs "Manchester United" scores 0.80, and "Inter" / "Barcelona" /
-"Nacional" / "Independiente" are substrings of Inter Miami / Barcelona SC / Nacional
-Potosí / Independiente Medellín — a false match would staple one match's whole price
-track onto another. So identity now goes through the frozen per-competition alias
-tables (data/priors/aliases_<comp>.json) and the exact club_id normalisation, and an
-unresolved venue label is COUNTED and reported rather than guessed at.
-
-    python -m prediction_market_soccer.ops.backfill_milestones [--limit N] [--verbose]
+Never rewrites milestone_snapshot/price_tick/financial records. FT is a separately
+observed result, not a synthetic kickoff+95 quote. Existing FT rows do not suppress
+missing-side collection; fixed scopes and collection task state control retries.
 """
 from __future__ import annotations
 
-import argparse
 import json
-from datetime import datetime, timezone
+import inspect
+import re
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.match_timeline import milestone_target, score_at_clock, APPROXIMATE_HALFTIME_MIN as _HALFTIME_WALL_MIN
+from prediction_market_soccer.util.price_history import series_receipt, sample_price
+from prediction_market_soccer.util.research_inputs import epoch, digest
 
 ET = ZoneInfo("America/New_York")
 _FINISHED = ("FT", "AET", "PEN")
-
-# Milestone → minute offset from kickoff used to SAMPLE the market series.
-_MILESTONES = [("PRE", -5), ("T15", 15), ("T30", 30), ("HT", 47), ("T60", 60), ("T75", 75)]
-
+_MILESTONES = [("PRE", -5, -5), ("T15", 15, 15), ("T30", 30, 30),
+               ("HT", 45, 47), ("T60", 60, 75), ("T75", 75, 90)]
+_MAX_BAR_GAP_S = 180
+_SERIES_PRE_S, _SERIES_POST_S = 1800, 10200
 
 def _load_aliases(comp_key: str) -> dict[str, str]:
     """{venue spelling -> club_id} for one competition (bootstrap + curated, §3.6)."""
@@ -58,40 +35,35 @@ def _load_aliases(comp_key: str) -> dict[str, str]:
 
 
 class _ClubResolver:
-    """Polymarket outcome title → canonical club_id, EXACT only.
+    """Outcome title → reviewed immutable identity; collisions remain unmapped.
 
-    Same resolution order the two venue adapters use (alias table → exact
-    normalisation), so backfill, discovery and the live path all agree on who a
-    label refers to. Comp-scoped first, then the merged table: Gamma occasionally
-    tags a UEFA tie under the domestic prefix, and a club's alias was curated under
-    whichever competition Kalshi listed it in.
+    Competition membership can disambiguate a registered name. Gamma sometimes
+    tags UEFA ties under a domestic prefix, so an absent in-comp name may use a
+    globally unique identity. No substring, token deletion or fuzzy fallback.
     """
 
     def __init__(self, conn):
-        self._by_comp: dict[str, dict[str, str]] = {}
-        self._merged: dict[str, str] = {}
-        from prediction_market_soccer.config.leagues import active
-        for c in active(include_disabled=True):
-            al = _load_aliases(c.key)
-            self._by_comp[c.key] = al
-            for k, v in al.items():
-                self._merged.setdefault(k, v)
-        self._club_ids = {r["club_id"] for r in conn.execute(
-            "SELECT DISTINCT club_id FROM club_registry")}
+        from prediction_market_soccer.util.club_identity import venue_identity_index
+        from prediction_market_soccer.venues.polymarket_us.discovery import _load_alias_pairs
+        records = [dict(r) for r in conn.execute(
+            "SELECT club_id,comp,api_team_id,name FROM club_registry")]
+        self._club_ids = {r['club_id'] for r in records}
+        aliases = _load_alias_pairs()
+        self._global = venue_identity_index(allowed_ids=self._club_ids, records=records, aliases=aliases)
+        self._scoped = {comp: venue_identity_index(
+            allowed_ids={r['club_id'] for r in records if r['comp'] == comp},
+            records=records, aliases=aliases) for comp in {r['comp'] for r in records}}
         self.unmapped: list[str] = []   # deduped; surfaced in the run summary
 
     def resolve(self, label: str, comp_key: str | None) -> str | None:
-        from prediction_market_soccer.venues.polymarket_global.reader import poly_club_candidates
         s = (label or "").strip()
         if not s:
             return None
-        for table in (self._by_comp.get(comp_key or "", {}), self._merged):
-            cid = table.get(s)
-            if cid and cid in self._club_ids:
-                return cid
-        for cid in poly_club_candidates(s):
-            if cid in self._club_ids:
-                return cid
+        scoped = self._scoped.get(comp_key)
+        index = scoped if scoped and scoped.candidates(s) else self._global
+        cid = index.resolve(s)
+        if cid:
+            return cid
         if s not in self.unmapped:
             self.unmapped.append(s)
         return None
@@ -102,219 +74,18 @@ def _shift_day(iso_date: str, days: int) -> str:
     return (date.fromisoformat(iso_date) + timedelta(days=days)).isoformat()
 
 
-def _score_at(conn, fixture_id: int, hi_api: int, ai_api: int, minute: int) -> tuple[int, int]:
-    """Home/away goals scored by `minute` (from goal events; own goals credited to
-    the OTHER team's tally, matching the scoreboard)."""
-    gh = ga = 0
-    for r in conn.execute(
-        "SELECT team_api_id, minute, detail FROM fixture_event "
-        "WHERE fixture_api_id=? AND type='Goal'", (fixture_id,)):
-        if (r["minute"] or 0) > minute:
-            continue
-        own = (r["detail"] or "") == "Own Goal"
-        scoring_home = (r["team_api_id"] == hi_api) != own  # own goal flips side
-        if scoring_home:
-            gh += 1
-        else:
-            ga += 1
-    return gh, ga
+def _score_at(conn, fixture_id, hi_api, ai_api, minute, *, extra=0, period=None,
+              event_revision=None):
+    """Explicit reference adapter. Never silently read the final event projection."""
+    if event_revision is None:
+        raise ValueError("an explicit complete event revision is required")
+    if not event_revision.get("complete"):
+        raise ValueError("partial event revision")
+    state = score_at_clock(event_revision["events"], hi_api, ai_api,
+                           elapsed=minute, extra=extra, period=period)
+    return state["home_goals"], state["away_goals"]
 
 
-def backfill(conn=None, *, limit: int | None = None, verbose: bool = False, force: bool = False) -> dict:
-    from prediction_market_soccer.ingest import store
-    from prediction_market_soccer.util.price_history import price_at
-    from prediction_market_soccer.venues.polymarket_global.reader import PolymarketGlobalReader
-
-    conn = conn or store.init_db()
-    tname = {r["api_id"]: r["name"] for r in conn.execute("SELECT api_id, name FROM team")}
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    resolver = _ClubResolver(conn)
-
-    # CLUB SCOPE GUARD (same rationale as backfill_price_ticks): recent + our comps only.
-    from prediction_market_soccer.config.leagues import active as _active, by_api_id as _comp_of
-    _lids = tuple(c.api_football_id for c in _active())
-    _lph = ",".join("?" * len(_lids))
-    fixtures_all = conn.execute(
-        "SELECT MIN(kickoff_ts) lo, MAX(kickoff_ts) hi FROM fixture "
-        "WHERE status_short IN ({}) AND home_goals IS NOT NULL "
-        "AND league_id IN ({}) AND kickoff_ts >= datetime('now', '-14 days')".format(
-            ",".join("?" * len(_FINISHED)), _lph),
-        (*_FINISHED, *_lids)).fetchone()
-    # Window the Gamma query to the finished-match date range (±2d slack) so all
-    # single-match events are returned reliably instead of paging through noise.
-    from datetime import timedelta
-    lo = (datetime.fromisoformat(fixtures_all["lo"]) - timedelta(days=2)).date().isoformat() if fixtures_all["lo"] else None
-    hi = (datetime.fromisoformat(fixtures_all["hi"]) + timedelta(days=2)).date().isoformat() if fixtures_all["hi"] else None
-
-    rd = PolymarketGlobalReader()
-    events = rd.list_match_events(end_date_min=lo, end_date_max=hi)
-    # Index events by (competition, date). The reader already tags each event with our
-    # comp key (it parses the registry's Poly slug prefix), so keying on it means a
-    # fixture is only ever compared against events from its OWN competition — the
-    # first line of defence against a same-day, same-name club collision.
-    by_comp_date: dict[tuple[str | None, str], list] = {}
-    for e in events:
-        sides = {}                      # club_id -> YES token, draw leg excluded
-        for title, tok in (e["teams"] or {}).items():
-            if "draw" in title.lower():
-                continue
-            cid = resolver.resolve(title, e.get("comp"))
-            if cid:
-                sides[cid] = tok
-        e["_sides"] = sides
-        e["_draw_token"] = next((t for n, t in (e["teams"] or {}).items()
-                                 if "draw" in n.lower()), None)
-        by_comp_date.setdefault((e.get("comp"), e["date"]), []).append(e)
-
-    fixtures = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, league_id "
-        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
-        "AND league_id IN ({}) AND kickoff_ts >= datetime('now', '-14 days') "
-        "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED)), _lph),
-        (*_FINISHED, *_lids)).fetchall()
-    # Incremental by default: only (re)process matches that don't yet have a complete
-    # FT milestone row, so a steady-state run is cheap (the cycle guard calls us until
-    # a just-ended match's venue history is finally available). force=True redoes all.
-    if not force:
-        done = {r["fixture_api_id"] for r in conn.execute(
-            "SELECT fixture_api_id FROM milestone_snapshot WHERE milestone='FT'")}
-        fixtures = [f for f in fixtures if f["api_id"] not in done]
-    if limit:
-        fixtures = fixtures[:limit]
-
-    n_matched = n_rows = 0
-    misses = []
-    for fx in fixtures:
-        hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
-        hn, an = tname.get(fx["home_api_id"], ""), tname.get(fx["away_api_id"], "")
-        comp = _comp_of(fx["league_id"])
-        ko = datetime.fromisoformat(fx["kickoff_ts"])
-        etd = ko.astimezone(ET).date().isoformat()
-        ko_ts = int(ko.timestamp())
-        if not (hi and ai and comp):
-            misses.append(f"{hn} v {an} ({etd}) — fixture side unmapped")
-            continue
-
-        # Locate the Poly event by CLUB IDENTITY within this competition: both of our
-        # club_ids must appear among the event's resolved outcomes. An id match is
-        # exact, so there is no "best score" to pick between — either the event is this
-        # match or it is not, and an ambiguous name can no longer promote a wrong event.
-        # Because the match is now decided by identity, the date can be scanned ±1 day
-        # instead of pinned to the ET date: Poly dates its slug by the LOCAL kickoff, so
-        # a CONMEBOL match at 00:30 UTC sits on the previous day in ET and used to be
-        # recorded as a miss. Two clubs cannot meet twice in a competition inside 3 days,
-        # so the wider window cannot introduce an ambiguity.
-        cand = [ev for d in (etd, _shift_day(etd, -1), _shift_day(etd, 1))
-                for ev in by_comp_date.get((comp.key, d), [])]
-        e = next((ev for ev in cand if hi in ev["_sides"] and ai in ev["_sides"]), None)
-        if e is None:
-            misses.append(f"{hn} v {an} ({comp.key} {etd})")
-            continue
-        n_matched += 1
-
-        tok_home, tok_away = e["_sides"][hi], e["_sides"][ai]
-        tok_draw = e["_draw_token"]
-        ser = {}
-        for side, tok in (("home", tok_home), ("draw", tok_draw), ("away", tok_away)):
-            ser[side] = rd.prices_history(tok, fidelity=1) if tok else []
-
-        result = "home" if fx["home_goals"] > fx["away_goals"] else (
-            "draw" if fx["home_goals"] == fx["away_goals"] else "away")
-
-        rows = list(_MILESTONES) + [("FT", 95)]
-        for code, mn in rows:
-            when = ko_ts + mn * 60
-            ft = code == "FT"
-            px = {}
-            for side in ("home", "draw", "away"):
-                if ft:
-                    px[side] = 100.0 / 100 if side == result else 0.0  # settlement (0–1)
-                else:
-                    v, _ = price_at(ser[side], when, key="price")
-                    px[side] = v
-            # de-vig the 3 outcome prices (if all present) into a market prob.
-            devig = None
-            present = [px[s] for s in ("home", "draw", "away") if px[s] is not None]
-            if len(present) == 3 and sum(present) > 0:
-                tot = sum(px[s] for s in ("home", "draw", "away"))
-                devig = {s: round(px[s] / tot, 4) for s in ("home", "draw", "away")}
-            gh, ga = (fx["home_goals"], fx["away_goals"]) if ft else _score_at(
-                conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], max(mn, 0))
-
-            conn.execute(
-                # UPSERT that FILLS, never replaces. The statement only carries the poly_*
-                # columns, so INSERT OR REPLACE nulled everything it does not name — the
-                # live-captured Kalshi book and the model probabilities recorded at that
-                # minute (measured: 1,414 candlestick rows, 0 with a Kalshi price, against
-                # 206 of 353 live rows that have one). The exit rule prefers the Kalshi bid,
-                # so that loss silently moved backfilled matches onto Poly prices.
-                # A live row was written AT that minute from the real book; candlestick is
-                # a later reconstruction. Keep whichever value already exists and fill only
-                # the gaps.
-                "INSERT INTO milestone_snapshot "
-                "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
-                " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
-                " devig_home, devig_draw, devig_away, poly_token_home, poly_token_draw, poly_token_away, "
-                " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?, ?,?,?, ?) "
-                "ON CONFLICT(fixture_api_id, milestone) DO UPDATE SET "
-                " status_short=COALESCE(milestone_snapshot.status_short, excluded.status_short), "
-                " home_goals=COALESCE(milestone_snapshot.home_goals, excluded.home_goals), "
-                " away_goals=COALESCE(milestone_snapshot.away_goals, excluded.away_goals), "
-                " poly_home_ask=COALESCE(milestone_snapshot.poly_home_ask, excluded.poly_home_ask), "
-                " poly_home_bid=COALESCE(milestone_snapshot.poly_home_bid, excluded.poly_home_bid), "
-                " poly_draw_ask=COALESCE(milestone_snapshot.poly_draw_ask, excluded.poly_draw_ask), "
-                " poly_draw_bid=COALESCE(milestone_snapshot.poly_draw_bid, excluded.poly_draw_bid), "
-                " poly_away_ask=COALESCE(milestone_snapshot.poly_away_ask, excluded.poly_away_ask), "
-                " poly_away_bid=COALESCE(milestone_snapshot.poly_away_bid, excluded.poly_away_bid), "
-                " devig_home=COALESCE(milestone_snapshot.devig_home, excluded.devig_home), "
-                " devig_draw=COALESCE(milestone_snapshot.devig_draw, excluded.devig_draw), "
-                " devig_away=COALESCE(milestone_snapshot.devig_away, excluded.devig_away), "
-                " poly_token_home=COALESCE(milestone_snapshot.poly_token_home, excluded.poly_token_home), "
-                " poly_token_draw=COALESCE(milestone_snapshot.poly_token_draw, excluded.poly_token_draw), "
-                " poly_token_away=COALESCE(milestone_snapshot.poly_token_away, excluded.poly_token_away), "
-                " price_source=CASE WHEN milestone_snapshot.kalshi_home_ask IS NOT NULL "
-                "                    OR milestone_snapshot.p_model_home IS NOT NULL "
-                "                   THEN milestone_snapshot.price_source ELSE excluded.price_source END",
-                (fx["api_id"], code, datetime.fromtimestamp(when, timezone.utc).isoformat(),
-                 max(mn, 0), "FT" if ft else None, gh, ga,
-                 px["home"], px["home"], px["draw"], px["draw"], px["away"], px["away"],
-                 devig["home"] if devig else None, devig["draw"] if devig else None,
-                 devig["away"] if devig else None, tok_home, tok_draw, tok_away,
-                 "candlestick"))
-            n_rows += 1
-        if verbose:
-            print(f"  ✓ {hn} v {an} ({etd}) → {e['slug']}")
-
-    conn.commit()
-    # Knockout 2-way advance PRE price (for the price-track's advance entry ¢) — additive,
-    # UPDATE-only, failure-tolerant (never blocks the 3-way backfill above).
-    try:
-        adv = backfill_advance_pre(conn, verbose=verbose)
-    except Exception as e:
-        adv = {"matched": 0, "updated": 0}
-        if verbose:
-            print(f"  advance PRE backfill skipped: {e}")
-    if verbose and misses:
-        print("  misses (left blank):")
-        for m in misses:
-            print(f"    – {m}")
-    if verbose and resolver.unmapped:
-        print(f"  unmapped venue labels ({len(resolver.unmapped)}) — curate into "
-              f"data/priors/aliases_<comp>.json:")
-        for u in resolver.unmapped:
-            print(f"    ? {u}")
-    return {"fixtures": len(fixtures), "matched": n_matched, "rows": n_rows, "misses": misses,
-            "unmapped": list(resolver.unmapped), "advance_pre": adv}
-
-
-# Round name → the ladder rung a club REACHES by winning this tie, per competition
-# family. The WC version was a flat dict of one tournament's round names; club
-# competitions each run their own ladder, so the rung is looked up here and then kept
-# only if the competition's REGISTRY entry actually lists that market family
-# (`comp.kalshi`). UCL carries the whole ladder (KXUCLRO16/RO8/RO4/FINALIST); UEL and
-# UECL list only the qualification `advance`, so their KO rounds correctly resolve to
-# nothing rather than to a UCL ticker.
 _UEFA_LADDER = {
     "knockout round play-offs": "ro16", "knockout round play-off": "ro16",
     "round of 16": "ro8",
@@ -340,99 +111,380 @@ def _advance_round_key(comp, round_name: str | None) -> str | None:
         return None
     rn = round_name.strip().lower()
     if stage_of(comp.key, round_name) == Stage.CUP_TWO_LEG and comp.kind == "swiss_ucl":
-        if "qualif" in rn or "prelimin" in rn:
+        if rn in {"play-offs", "playoffs", "qualifying play-offs", "qualification play-offs"}:
             return "advance" if comp.kalshi.get("advance") else None
+        if "qualif" in rn or "prelimin" in rn:
+            return None  # winning an early tie is not qualification for league play
     rung = _UEFA_LADDER.get(rn)
     return rung if (rung and comp.kalshi.get(rung)) else None
 
 
-def backfill_advance_pre(conn=None, *, verbose: bool = False) -> dict:
-    """Backfill the 2-way ADVANCE entry price into the PRE milestone row of SETTLED
-    knockout matches that don't have it yet (the price-track marks the knockout argmax
-    entry ¢ from these). Source: Polymarket Global's per-club "reach <rung>" YES price
-    history (keyless), sampled ~5 min before kickoff. UPDATE-only (never REPLACE), so
-    it adds the advance columns without touching the existing 3-way PRE prices.
+def _validate_collection(conn, writer, scope, fixture_ids, limit):
+    if conn is None or writer is None or scope is None:
+        raise ValueError("historical collection requires explicit source, candidate writer and fixed scope")
+    if hasattr(conn, 'conn'):
+        conn = conn.conn
+    if writer.conn is conn:
+        raise ValueError("candidate writer must be separate from source connection")
+    src = conn.execute("PRAGMA database_list").fetchone()[2]
+    if src:
+        from pathlib import Path
+        if Path(src).resolve() == writer.path or (writer.path.exists() and Path(src).samefile(writer.path)):
+            raise ValueError("candidate cannot alias source")
+    ids = tuple(scope.fixture_ids)
+    if fixture_ids is not None and tuple(fixture_ids) != ids:
+        raise ValueError("fixture_ids must exactly match fixed scope")
+    if limit is not None and limit < len(ids):
+        raise ValueError("limit must be applied before scope is frozen")
+    if writer.scope_id != scope.scope_id or not set(ids).issubset(writer.fixture_ids):
+        raise ValueError("candidate scope mismatch")
+    return conn, ids
 
-    The knockout filter is the registry's ``caps_for``, not a round-name substring: a
-    league round is called "Regular Season - 3" and a UCL league-phase round "League
-    Stage - 3", so the WC module's ``round NOT LIKE '%group%'`` test called every
-    single league match a knockout (bug class C1)."""
-    from prediction_market_soccer.config.leagues import by_api_id as _comp_of
-    from prediction_market_soccer.ingest import store
-    from prediction_market_soccer.util.price_history import price_at
-    from prediction_market_soccer.venues.polymarket_global.reader import PolymarketGlobalReader
 
-    conn = conn or store.init_db()
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    # Settled fixtures whose PRE row lacks the advance price; the stage test is applied
-    # per row below (it needs the competition, which SQL has no view of).
-    rows = conn.execute(
-        "SELECT f.api_id, f.home_api_id, f.away_api_id, f.kickoff_ts, f.round, f.league_id "
-        "FROM fixture f JOIN milestone_snapshot m "
-        "  ON m.fixture_api_id=f.api_id AND m.milestone='PRE' "
-        "WHERE f.status_short IN ('FT','AET','PEN') AND f.home_goals IS NOT NULL "
-        "  AND m.poly_adv_home_ask IS NULL AND m.kalshi_adv_home_ask IS NULL").fetchall()
-    if not rows:
-        return {"matched": 0, "updated": 0}
-    rd = PolymarketGlobalReader()
-    idx_cache: dict[tuple[str, str], dict] = {}
-    n_match = n_upd = 0
-    for r in rows:
-        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
-        comp = _comp_of(r["league_id"])
-        rk = _advance_round_key(comp, r["round"])
-        if not (hi and ai and rk):
-            continue
-        n_match += 1
-        ck = (comp.key, rk)
-        if ck not in idx_cache:
-            try:
-                idx_cache[ck] = rd.reach_round_index(rk, comp_key=comp.key)
-            except Exception as e:
-                if verbose:
-                    print(f"  reach_round_index({comp.key}, {rk}) failed: {e}")
-                idx_cache[ck] = {}
-        idx = idx_cache[ck]
-        th, ta = idx.get(hi), idx.get(ai)
-        if not (th and ta):
-            continue
-        try:
-            ko_ts = int(datetime.fromisoformat(r["kickoff_ts"]).timestamp())
-        except Exception:
-            continue
-        when = ko_ts - 5 * 60   # PRE ≈ kickoff − 5 min (matches _MILESTONES PRE)
+def _receipt(reader, token, ko, fidelity=1):
+    start, end = ko - _SERIES_PRE_S, ko + _SERIES_POST_S
+    begun = datetime.now(timezone.utc).isoformat()
+    if hasattr(reader, "prices_history_receipt"):
+        r = reader.prices_history_receipt(token, fidelity=fidelity, start_ts=start, end_ts=end)
+        return series_receipt(r["points"], identity={"token_id": token, "provider": "poly_global"},
+                              start_ts=start, end_ts=end, fidelity=fidelity,
+                              request_started_at=r["request_started_at"], received_at=r["received_at"],
+                              raw=r.get("raw"), raw_hash=r.get("raw_hash"), provider_request_window=r.get("request_window"))
+    points = reader.prices_history(token, fidelity=fidelity, start_ts=start, end_ts=end)
+    return series_receipt(points, identity={"token_id": token, "provider": "poly_global"},
+                          start_ts=start, end_ts=end, fidelity=fidelity, request_started_at=begun,
+                          received_at=datetime.now(timezone.utc).isoformat())
 
-        def _px(token):
-            try:
-                v, _ = price_at(rd.prices_history(token, fidelity=1), when, key="price")
-                return float(v) if v is not None else None
-            except Exception:
+
+def _rescheduled_binding(ev, fx, sides, hi, ai, resolver):
+    """Prove an unchanged regulation contract survived a rescheduled fixture.
+
+    Slug/question dates remain original provider identifiers. A later endDate or
+    matching opponents alone is not schedule evidence. Only the actual aware
+    event start and all three selected contracts' game starts can bridge dates.
+    """
+    from prediction_market_soccer.util.market_identity import yes_token
+
+    def aware(value):
+        if not isinstance(value, str):
+            raise ValueError("missing explicit start time")
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            raise ValueError("start time must include timezone")
+        return dt.astimezone(timezone.utc)
+
+    try:
+        raw, contracts = ev["raw"], ev["contracts"]
+        start = aware(fx["kickoff_ts"])
+        if ev.get("identity_complete") is not True or aware(raw.get("startTime")) != start:
+            return None
+        dates = {start.date().isoformat(), start.astimezone(ET).date().isoformat()}
+        if raw.get("eventDate") and raw["eventDate"] not in dates:
+            return None
+        raw_teams = raw.get("teams") or []
+        if len(raw_teams) != 2 or {t.get("ordering") for t in raw_teams} != {"home", "away"}:
+            return None
+        expected = {"home": hi, "away": ai}
+        if any(resolver.resolve(t.get("name"), ev["comp"]) != expected[t["ordering"]] for t in raw_teams):
+            return None
+        selected, conditions = {}, set()
+        for side, token in sides.items():
+            found = [c for c in contracts.values() if c.get("token_id") == token]
+            if len(found) != 1:
                 return None
+            contract = found[0]
+            mk = contract["raw"]
+            if contract.get("raw_hash") != digest(mk) or yes_token(mk) != token:
+                return None
+            mid = mk.get("conditionId") or mk.get("id")
+            if not mid or mid in conditions or contract.get("market_id") != mid:
+                return None
+            conditions.add(mid)
+            if sum(m == mk for m in (raw.get("markets") or [])) != 1:
+                return None
+            if aware(mk.get("gameStartTime")) != start or mk.get("sportsMarketType") != "moneyline":
+                return None
+            question = mk.get("question") or ""
+            if side == "draw":
+                q = re.fullmatch(r"Will (.+?) vs\. (.+?) end in a draw\?", question, re.I)
+                if not q or [resolver.resolve(q[i], ev["comp"]) for i in (1, 2)] != [hi, ai]:
+                    return None
+            else:
+                q = re.fullmatch(r"Will (.+?) win on (\d{4}-\d{2}-\d{2})\?", question, re.I)
+                if not q or q[2] != ev["date"] or resolver.resolve(q[1], ev["comp"]) != expected[side]:
+                    return None
+                if resolver.resolve(mk.get("groupItemTitle"), ev["comp"]) != expected[side]:
+                    return None
+            description = " ".join((mk.get("description") or "").lower().split())
+            postponement = "if the game is postponed, this market will remain open until the game has been completed."
+            if re.findall(r"if the game is postponed[^.]*\.", description) != [postponement]:
+                return None
+            if "this market refers only to the outcome within the first 90 minutes of regular play plus stoppage time." not in description:
+                return None
+            selected[side] = {"token_id": token, "market_id": mid, "raw_hash": digest(mk),
+                              "game_start_at": mk["gameStartTime"]}
+        return {"basis": "explicit_rescheduled_regulation_contract", "fixture_kickoff": fx["kickoff_ts"],
+                "original_slug_date": ev["date"], "event_start_at": raw["startTime"],
+                "event_raw_hash": digest(raw), "contracts": selected}
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
 
-        ph, pa = _px(th), _px(ta)
-        if ph is None and pa is None:
+
+def _identity_for_fixture(fx, comp, cmap, events, resolver):
+    hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
+    if not hi or not ai or hi == ai or comp is None:
+        return None, "identity_unresolved"
+    day = datetime.fromtimestamp(epoch(fx["kickoff_ts"]), timezone.utc).astimezone(ET).date().isoformat()
+    days = {day, _shift_day(day, -1), _shift_day(day, 1)}
+    matches = []
+    for ev in events:
+        if ev.get("comp") != comp.key:
             continue
-        conn.execute(
-            "UPDATE milestone_snapshot SET poly_adv_home_ask=?, poly_adv_home_bid=?, "
-            "poly_adv_away_ask=?, poly_adv_away_bid=? WHERE fixture_api_id=? AND milestone='PRE'",
-            (ph, ph, pa, pa, r["api_id"]))
-        n_upd += 1
-        if verbose:
-            print(f"  ✓ {hi} v {ai} ({comp.key} {rk}) advance PRE: home={ph} away={pa}")
-    conn.commit()
-    return {"matched": n_match, "updated": n_upd}
+        mapped = {}
+        conflict = False
+        for label, token in (ev.get("teams") or {}).items():
+            cid = "draw" if label.casefold().startswith("draw") else resolver.resolve(label, comp.key)
+            if cid is None:
+                continue
+            if cid in mapped:
+                conflict = True
+            mapped[cid] = token
+        if hi not in mapped or ai not in mapped:
+            continue
+        if conflict or not ev.get("identity_complete", True):
+            if ev.get("date") in days:
+                return None, "identity_conflict"
+            continue
+        sides = {"home": mapped.get(hi), "draw": mapped.get("draw"), "away": mapped.get(ai)}
+        if not all(sides.values()) or len(set(sides.values())) != 3:
+            if ev.get("date") in days:
+                return None, "identity_conflict"
+            continue
+        if ev.get("date") not in days:
+            schedule = _rescheduled_binding(ev, fx, sides, hi, ai, resolver)
+            if schedule is None:
+                continue
+            ev = {**ev, "schedule_binding": schedule}
+        matches.append((ev, sides))
+    if len(matches) != 1:
+        return None, "identity_conflict" if matches else "not_listed"
+    return matches[0], None
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Backfill milestone price tracks from Poly Global history")
-    ap.add_argument("--limit", type=int, default=None, help="cap number of fixtures")
-    ap.add_argument("--verbose", action="store_true")
-    ap.add_argument("--force", action="store_true", help="re-process all settled matches (not just those missing FT)")
-    args = ap.parse_args()
-    st = backfill(limit=args.limit, verbose=args.verbose, force=args.force)
-    print(f"backfill: {st['matched']}/{st['fixtures']} matched, {st['rows']} milestone rows written, "
-          f"{len(st['misses'])} misses, {len(st['unmapped'])} unmapped venue labels")
+def _catalog(reader, method_name, *args, max_requests, **kwargs):
+    """One bounded logical discovery, accounting for actual HTTP dispatches.
+
+    Old injected readers with **kwargs remain usable. A reader that cannot accept
+    the budget is not called: retrying on TypeError could repeat real requests.
+    """
+    if max_requests <= 0:
+        return None, {"complete": False, "state": "not_requested", "requests": 0}, "request_budget_exhausted"
+    method = getattr(reader, method_name)
+    parameters = inspect.signature(method).parameters.values()
+    if not any(p.name == "max_requests" or p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters):
+        return None, {"complete": False, "state": "unsupported", "requests": 0}, "discovery_budget_unsupported"
+    previous = getattr(reader, "discovery_status", None)
+    error, data = None, None
+    try:
+        data = method(*args, max_requests=max_requests, **kwargs)
+    except Exception as exc:
+        error = "discovery_failed:" + type(exc).__name__
+    current = getattr(reader, "discovery_status", None)
+    status = dict(current or {"complete": error is None, "state": "legacy_reader"})
+    # A failed call must not reuse the previous discovery's request count.
+    if error and current is previous:
+        status = {"complete": False, "state": "failed"}
+    attempts = status.get("requests", status.get("pages", 1))
+    if isinstance(attempts, bool) or not isinstance(attempts, int) or not 0 <= attempts <= max_requests:
+        return None, {**status, "complete": False, "requests": max_requests}, "invalid_discovery_request_count"
+    status["requests"] = attempts
+    return data, status, error
+
+
+def collect(conn=None, *, scope=None, fixture_ids=None, writer=None, reader=None,
+            state_conn=None, limit=None, market_kind="match", ticks=False, fidelity=1, timeline_provider=None):
+    """Common positive path for milestone/advance/tick collectors.
+
+    Returns per-target outcomes. Writer has already durably saved every referenced
+    observation before completion state is recorded. Caller seals the combined run.
+    """
+    conn, ids = _validate_collection(conn, writer, scope, fixture_ids, limit)
+    collector = "ticks" if ticks else "milestones"
+    targets = tuple(t for t in scope.target_ids if t.endswith(":" + market_kind) and (t.startswith("tick:") == ticks))
+    if not targets:
+        targets = tuple(f"{m}:{s}:{market_kind}" for m in (["tick"] if ticks else [x[0] for x in _MILESTONES])
+                        for s in (["home", "draw", "away"] if market_kind == "match" else ["home", "away"]))
+    result = {"fixtures": len(ids), "matched": 0, "rows": 0, "items": [], "complete": True,
+              "status": "complete", "discovery": None, "requests": 0}
+    if not ids or market_kind not in scope.market_kinds:
+        return result
+    due = {(fid, t) for fid in ids for t in targets}
+    if state_conn is not None:
+        from prediction_market_soccer.util.collection_state import due_tasks
+        due &= {(r["fixture_id"], r["target_id"]) for r in due_tasks(state_conn, scope, collector)}
+    if not due:
+        return result
+    fixtures = {r["api_id"]: dict(r) for r in conn.execute(
+        "SELECT * FROM fixture WHERE api_id IN (" + ",".join("?" for _ in ids) + ")", ids)}
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute("SELECT api_id,canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    from prediction_market_soccer.config.leagues import by_api_id
+    reader = reader or __import__('prediction_market_soccer.venues.polymarket_global.reader', fromlist=['PolymarketGlobalReader']).PolymarketGlobalReader()
+    events, discovery_error = [], None
+    resolver = _ClubResolver(conn)
+    budget = scope.max_requests
+    if market_kind == "match" and budget:
+        events, result["discovery"], discovery_error = _catalog(
+            reader, "list_match_events", end_date_min=scope.window_start,
+            end_date_max=scope.window_end, max_requests=max(0, budget - 3))
+        events = events or []
+        attempts = result["discovery"]["requests"]
+        budget -= attempts
+        result["requests"] += attempts
+    elif market_kind == "match":
+        discovery_error = "request_budget_exhausted"
+    advance_indexes = {}
+
+    def save(fid, target_id, status, reason, refs=()):
+        item = {"fixture_id": fid, "target_id": target_id, "status": status,
+                "reason": reason, "observation_ids": list(refs)}
+        result["items"].append(item)
+        if status != "complete" and status != "unsupported_market":
+            result["complete"] = False
+        if state_conn is not None:
+            from prediction_market_soccer.util.collection_state import record_attempt
+            record_attempt(state_conn, scope, collector, fid, target_id, status, reason, refs)
+            state_conn.commit()
+
+    for fid in ids:
+        needed = [t for t in targets if (fid, t) in due]
+        if not needed:
+            continue
+        fx = fixtures.get(fid)
+        reason, binding = None, None
+        comp = by_api_id(fx["league_id"]) if fx else None
+        if fx is None or fx.get("status_short") not in _FINISHED or not fx.get("kickoff_ts"):
+            reason = "fixture_not_eligible"
+        elif not epoch(scope.window_start) <= epoch(fx["kickoff_ts"]) <= epoch(scope.window_end):
+            reason = "fixture_outside_window"
+        elif market_kind == "match":
+            binding, reason = (None, discovery_error) if discovery_error else _identity_for_fixture(fx, comp, cmap, events, resolver)
+            if reason == "not_listed":
+                discovery = result["discovery"] or {}
+                if discovery.get("complete") is not True:
+                    reason = "discovery_partial"
+                elif discovery.get("identity_complete") is not True:
+                    reason = "identity_unresolved"
+        else:
+            rung = _advance_round_key(comp, fx.get("round"))
+            # Global reader only implements qualify-for-league-play contracts.
+            if rung != "advance":
+                reason = "unsupported_market"
+            elif budget <= 0:
+                reason = "request_budget_exhausted"
+            else:
+                try:
+                    if comp.key not in advance_indexes:
+                        index, status, error = _catalog(reader, "reach_round_index", "advance",
+                                                       comp_key=comp.key, max_requests=max(0, budget - 2))
+                        advance_indexes[comp.key] = (index or {}, status, error)
+                        result["discovery"] = result["discovery"] or {}
+                        result["discovery"][comp.key] = status
+                        budget -= status["requests"]
+                        result["requests"] += status["requests"]
+                    index, status, error = advance_indexes[comp.key]
+                    sides = {s: index.get(cmap.get(fx[k])) for s, k in [("home", "home_api_id"), ("away", "away_api_id")]}
+                    if error:
+                        reason = error
+                    elif not status.get("complete", False):
+                        reason = "discovery_partial"
+                    elif not all(sides.values()) or len(set(sides.values())) != 2:
+                        reason = "identity_unresolved"
+                    else:
+                        binding = ({"comp": comp.key, "market_kind": "advance", "round": fx.get("round"), "rung": rung}, sides)
+                except Exception as exc:
+                    reason = "discovery_failed:" + type(exc).__name__
+        if reason:
+            for target in needed:
+                save(fid, target, "unsupported_market" if reason == "unsupported_market" else "unavailable", reason)
+            continue
+        ev, sides = binding
+        ko = epoch(fx["kickoff_ts"])
+        result["matched"] += 1
+        receipts = {}
+        for side in {t.split(":")[1] for t in needed}:
+            if budget <= 0:
+                receipts[side] = {"reason": "request_budget_exhausted"}
+                continue
+            try:
+                rec = _receipt(reader, sides[side], ko, fidelity)
+                writer.add("series", fid, ko, rec, side=side, market_kind=market_kind,
+                           status="invalid" if rec["quality"] == "invalid" else "ok")
+                receipts[side] = rec
+            except Exception as exc:
+                receipts[side] = {"reason": "history_failed:" + type(exc).__name__}
+            budget -= 1
+            result["requests"] += 1
+        states_written = set()
+        for target in needed:
+            milestone, side, kind = target.split(":")
+            rec = receipts[side]
+            if "points" not in rec or rec["quality"] != "available":
+                save(fid, target, "unavailable", rec.get("reason") or "empty_series")
+                continue
+            if ticks:
+                refs = []
+                for point in rec["points"]:
+                    sample = sample_price(rec, point["ts"])
+                    payload = {**sample, "token_id": sides[side], "venue": "poly_global", "side": side,
+                               "market_kind": kind, "target_id": target, "received_at": rec["received_at"],
+                               "relative_wall_seconds": point["ts"] - ko, "binding": {**{k: ev.get(k) for k in ("slug", "comp", "date", "identity_version")},
+                                           **({"schedule_binding": ev["schedule_binding"]} if "schedule_binding" in ev else {})}}
+                    refs.append(writer.add("quote", fid, point["ts"], payload, side=side, market_kind=kind))
+                result["rows"] += len(refs)
+                # Interval quality, not requested fidelity, establishes path continuity.
+                gap = rec["coverage"]["max_gap_s"]
+                complete = bool(refs) and gap is not None and gap <= 180 and rec["coverage"]["start_ts"] <= ko - 300 and rec["coverage"]["end_ts"] >= ko + 90 * 60
+                save(fid, target, "complete" if complete else "partial", None if complete else "history_gap_exceeds_tolerance", refs)
+            else:
+                clock = milestone_target(ko, milestone)
+                sample = sample_price(rec, clock["target_at"])
+                if market_kind == "match" and clock["target_at"] not in states_written:
+                    from prediction_market_soccer.util.match_timeline import timeline_state
+                    from prediction_market_soccer.util.source_history import event_revision_at
+                    at = datetime.fromtimestamp(clock["target_at"], timezone.utc).isoformat()
+                    if timeline_provider is not None:
+                        state = timeline_provider(fx, clock["target_at"])
+                    else:
+                        revision = event_revision_at(conn, fid, at)
+                        state = timeline_state(revision, home_id=fx["home_api_id"], away_id=fx["away_api_id"],
+                                               kickoff=ko, target_at=clock["target_at"], cutoff=clock["target_at"])
+                    writer.add("state", fid, clock["target_at"], state, status=state.get("status", "unavailable"))
+                    states_written.add(clock["target_at"])
+                payload = {**sample, "token_id": sides[side], "venue": "poly_global", "side": side,
+                           "market_kind": kind, "target_id": target, "clock": clock,
+                           "received_at": rec["received_at"], "binding": {**{k: ev.get(k) for k in ("slug", "comp", "date", "identity_version")},
+                                           **({"schedule_binding": ev["schedule_binding"]} if "schedule_binding" in ev else {})}}
+                ref = writer.add("quote", fid, clock["target_at"], payload, status=sample["status"], side=side, market_kind=kind)
+                result["rows"] += 1
+                save(fid, target, "complete" if sample["status"] == "ok" else sample["status"], sample["reason"], [ref])
+    result["status"] = "complete" if result["complete"] else "partial"
+    return result
+
+
+def backfill(conn=None, *, scope=None, fixture_ids=None, writer=None, reader=None, state_conn=None,
+             limit=None, verbose=False, force=False, since_days=14):
+    return collect(conn, scope=scope, fixture_ids=fixture_ids, writer=writer, reader=reader,
+                   state_conn=state_conn, limit=limit)
+
+
+def backfill_advance_pre(conn=None, *, scope=None, fixture_ids=None, writer=None, reader=None,
+                         state_conn=None, verbose=False):
+    return collect(conn, scope=scope, fixture_ids=fixture_ids, writer=writer, reader=reader,
+                   state_conn=state_conn, market_kind="advance")
+
+
+def main():
+    raise SystemExit("Use an explicit CollectionScope and CandidateWriter; historical in-place writes are disabled.")
 
 
 if __name__ == "__main__":

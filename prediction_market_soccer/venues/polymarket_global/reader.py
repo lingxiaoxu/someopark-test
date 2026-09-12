@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
+from functools import lru_cache
+from datetime import datetime, timezone
 
 import requests
 
@@ -29,6 +31,8 @@ from prediction_market_soccer.config import CONFIG
 from prediction_market_soccer.config.leagues import active as _active_comps
 from prediction_market_soccer.config.leagues import get as _get_comp
 from prediction_market_soccer.venues.base import OrderBook
+from prediction_market_soccer.util.club_identity import venue_identity_index, identity_manifest_id
+from prediction_market_soccer.util.market_identity import yes_token, content_hash
 
 _VENUE = "poly_global"
 _SOCCER_TAG = "100350"          # Gamma tag id for soccer
@@ -53,53 +57,24 @@ _SEASON_TITLE_RULES: dict[str, re.Pattern] = {
 }
 
 
-# Club legal-form / society abbreviations, as a CLOSED vocabulary. Polymarket writes
-# clubs in their full registered form ("US Sassuolo Calcio", "SSC Napoli", "Angers SCO")
-# while API-Football — the axis our club_ids are derived from — writes the plain name
-# ("Sassuolo", "Napoli", "Angers"). Removing these tokens is normalization, not
-# similarity matching, so it keeps the live path on the exact-only rule. Deliberately
-# EXCLUDED: tokens that are themselves club names (AEK, CSKA, LASK, NEC, PSV, PAOK) —
-# stripping those would erase the club instead of its legal form.
-_CLUB_FORM_TOKENS = """
-ac acf ad afc aj as ass bc bk bsc ca calcio cd cf cfc club cs csd ec es fa fc football
-fsv futbol futebol gf gnk hnk if ks mfk mh nk ofk osc pfc pfk rc rcd rfc rsc ru sc scd
-sco sd se sfp sk sl ss ssc ssd sv tsg tsv ud us usl vfb vfl
-""".split()
-_CLUB_FORM_RE = re.compile(r"(?<![a-z])(" + "|".join(_CLUB_FORM_TOKENS) + r")(?![a-z])", re.I)
+@lru_cache(maxsize=1)
+def _poly_identity(version):
+    return venue_identity_index()
 
 
 def poly_club_id(label: str) -> str:
-    """Polymarket club label -> our canonical club_id, EXACT (never fuzzy).
-
-    Same normalization as ``ingest.soccer_ingest.club_id_of`` plus a Unicode NFKD
-    fold, because Polymarket writes accented club names in full ("São Paulo",
-    "Grêmio FBPA", "Alavés") while club_id_of only strips characters it recognises
-    — without the fold those become ``so_paulo`` / ``alavs`` and join to nothing.
-    """
-    import unicodedata
-    s = unicodedata.normalize("NFKD", (label or "").strip())
-    s = "".join(ch for ch in s if not unicodedata.combining(ch))
-    from prediction_market_soccer.ingest.soccer_ingest import club_id_of
-    return club_id_of(s)
+    """Reviewed unique identity, or ''. Never synthesize a new canonical ID."""
+    return _poly_identity(identity_manifest_id()).resolve(label) or ""
 
 
 def poly_club_candidates(label: str) -> tuple[str, ...]:
-    """Ordered EXACT club_id candidates for a Polymarket label: as-written first,
-    then with the club legal-form tokens removed.
+    """Compatibility tuple: one reviewed identity or none (including collisions).
 
-    Order matters — "Athletic Club" and "Club Brugge" must resolve as themselves
-    before the ``club`` token is ever considered noise. Measured on the live PMUS
-    listing (852 club labels): alias+fold alone resolved 189, adding this second
-    pass resolved 476. The rest are genuine per-comp alias-table entries
-    ("Tottenham Hotspur" → tottenham, "Olympique de Marseille" → marseille) and
-    must be curated there, never guessed here.
+    Legal forms must be registered aliases. Deleting tokens such as FC/Club could
+    conflate separate clubs, so it is no longer a live or historical fallback.
     """
-    out: list[str] = []
-    for s in (label or "").strip(), _CLUB_FORM_RE.sub(" ", (label or "").strip()):
-        cid = poly_club_id(s)
-        if cid and cid not in out:
-            out.append(cid)
-    return tuple(out)
+    cid = poly_club_id(label)
+    return (cid,) if cid else ()
 
 
 def parse_clob_book(payload: dict, token_id: str) -> OrderBook:
@@ -181,31 +156,26 @@ class PolymarketGlobalReader:
         return self._get(self.cfg.pmglobal_data, "/trades", params)
 
     # ── CLOB: historical price series (plan 18 §2.4b) ────────────────────────
-    def prices_history(self, token_id: str, *, start_ts: int | None = None,
-                       end_ts: int | None = None, fidelity: int = 1,
-                       interval: str | None = None) -> list[dict]:
-        """Per-minute (or coarser) historical price series for a token.
+    def prices_history_receipt(self, token_id, *, start_ts=None, end_ts=None, fidelity=1, interval=None):
+        params={'market':token_id,'fidelity':fidelity}
+        if start_ts is not None: params['startTs']=int(start_ts)
+        if end_ts is not None: params['endTs']=int(end_ts)
+        if interval is not None: params['interval']=interval
+        elif start_ts is None and end_ts is None: params['interval']='max'
+        started=datetime.now(timezone.utc).isoformat()
+        payload=self._get(self.cfg.pmglobal_clob,'/prices-history',params)
+        received=datetime.now(timezone.utc).isoformat()
+        points=[]
+        for row in payload.get('history') or []:
+            if row.get('t') is not None and row.get('p') is not None:
+                points.append({'ts':int(row['t']),'price':float(row['p'])})
+        return {'points':points,'raw':payload,'raw_hash':content_hash(payload),
+                'request_started_at':started,'received_at':received,'identity_id':str(token_id),
+                'request_window':params,'quote_kind':'historical_reference','executable':False}
 
-        Public CLOB endpoint, no auth. Returns [{"ts": <unix>, "price": <0..1 float>}]
-        sorted ascending. `fidelity` is the bar size in minutes (1 = per-minute).
-        Pass an explicit start_ts/end_ts window, or `interval` (e.g. 'max','1w','1d').
-        """
-        params: dict = {"market": token_id, "fidelity": fidelity}
-        if start_ts is not None:
-            params["startTs"] = int(start_ts)
-        if end_ts is not None:
-            params["endTs"] = int(end_ts)
-        if interval is not None:
-            params["interval"] = interval
-        elif start_ts is None and end_ts is None:
-            params["interval"] = "max"
-        payload = self._get(self.cfg.pmglobal_clob, "/prices-history", params)
-        out = []
-        for p in payload.get("history") or []:
-            t, pr = p.get("t"), p.get("p")
-            if t is not None and pr is not None:
-                out.append({"ts": int(t), "price": float(pr)})
-        return out
+    def prices_history(self, token_id, *, start_ts=None, end_ts=None, fidelity=1, interval=None):
+        return self.prices_history_receipt(token_id,start_ts=start_ts,end_ts=end_ts,
+                                          fidelity=fidelity,interval=interval)['points']
 
     # ── Gamma: single-match discovery (closed/archived too) ──────────────────
     @staticmethod
@@ -234,7 +204,7 @@ class PolymarketGlobalReader:
                           max_pages: int = 16, page: int = 100,
                           end_date_min: str | None = None,
                           end_date_max: str | None = None,
-                          include_disabled: bool = False) -> list[dict]:
+                          include_disabled: bool = False, max_requests: int | None = None) -> list[dict]:
         """All single-match BASE events of our competitions (`<pfx>-{h}-{a}-{date}`),
         INCLUDING closed/archived ones (so already-played matches are reachable —
         the live `search_events` only sees open events).
@@ -261,52 +231,99 @@ class PolymarketGlobalReader:
         if end_date_max:
             win["end_date_max"] = end_date_max
         out: list[dict] = []
-        seen: set[str] = set()
+        seen: dict[str, str] = {}
+        issues=[]; page_count=0; complete=True
         queries: list[dict] = [{"tag_slug": t} for c in _active_comps(include_disabled)
                                if c.poly_slug_prefix for t in c.poly_tag_slugs]
         if not queries:
             queries = [{"tag_id": soccer_tag}]
 
         def sweep(scope: dict) -> None:
+            nonlocal complete, page_count
             # Query BOTH closed and still-open events: a match that JUST finished can
             # linger as closed=false for a while before Polymarket archives it, but its
             # price history is already complete — so we must see open events too, else a
             # just-ended match can't be backfilled until Poly gets around to closing it.
             for closed in ("true", "false"):
+                exhausted=False
                 for offset in range(0, max_pages * page, page):
+                    if max_requests is not None and page_count >= max_requests:
+                        complete=False
+                        issues.append({'scope':scope,'closed':closed,'code':'request_budget_exhausted'})
+                        break
+                    page_count += 1
                     try:
                         evs = self.list_events(limit=page, closed=closed, archived="true",
                                                offset=offset, order="endDate",
                                                ascending="false", **scope, **win) or []
-                    except Exception:
+                    except Exception as exc:
+                        complete=False
+                        issues.append({'scope':scope,'closed':closed,'offset':offset,'code':'request_failed','error':type(exc).__name__})
                         break
                     if not evs:
+                        exhausted=True
                         break
                     for e in evs:
                         slug = e.get("slug", "") or ""
+                        digest=content_hash(e)
                         if slug in seen:
+                            if seen[slug] != digest:
+                                issues.append({'slug':slug,'code':'conflicting_event_revision'})
+                                out[:]=[r for r in out if r['slug']!=slug]
                             continue
-                        seen.add(slug)
-                        m = base_re.match(slug)
-                        if not m:
-                            continue
-                        teams: dict[str, str] = {}
-                        for mk in e.get("markets") or []:
-                            git = (mk.get("groupItemTitle") or mk.get("question") or "").strip()
-                            toks = mk.get("clobTokenIds")
-                            if isinstance(toks, str):
-                                try:
-                                    toks = _json.loads(toks)
-                                except Exception:
-                                    toks = None
-                            if git and toks:
-                                teams[git] = toks[0]
-                        out.append({"slug": slug, "league_prefix": m.group(1),
-                                    "comp": pmap.get(m.group(1)),
-                                    "date": m.group(4), "teams": teams, "raw": e})
+                        seen[slug]=digest
+                        m=base_re.match(slug)
+                        if not m: continue
+                        teams,contracts,conflicts={}, {}, set()
+                        invalid_identity=False
+                        token_labels={}
+                        for mk in e.get('markets') or []:
+                            label=(mk.get('groupItemTitle') or mk.get('question') or '').strip()
+                            token=yes_token(mk)
+                            if not label or token is None:
+                                invalid_identity=True
+                                issues.append({'slug':slug,'label':label,'code':'unverified_outcome_token'})
+                                continue
+                            question=mk.get('question') or ''
+                            subject=re.match(r'^Will (.+?) win on (\d{4}-\d{2}-\d{2})\?$', question, re.I)
+                            if subject and (subject[2] != m.group(4) or not poly_club_id(label) or poly_club_id(label) != poly_club_id(subject[1])):
+                                invalid_identity=True
+                                issues.append({'slug':slug,'label':label,'code':'market_subject_mismatch'})
+                                continue
+                            if not (mk.get('conditionId') or mk.get('id')):
+                                invalid_identity=True
+                                issues.append({'slug':slug,'label':label,'code':'missing_market_identity'})
+                                continue
+                            if label in teams and teams[label]!=token: conflicts.add(label)
+                            token_labels.setdefault(token,set()).add(label)
+                            teams[label]=token
+                            contracts[label]={'token_id':token,'outcome':'yes',
+                                'market_id':mk.get('conditionId') or mk.get('id'), 'raw':mk,
+                                'raw_hash':content_hash(mk)}
+                        for labels in token_labels.values():
+                            if len(labels)>1: conflicts.update(labels)
+                        for label in conflicts:
+                            teams.pop(label,None); contracts.pop(label,None)
+                            issues.append({'slug':slug,'label':label,'code':'conflicting_token_binding'})
+                        out.append({'event_id':str(e.get('id') or slug),'slug':slug,'league_prefix':m.group(1),'comp':pmap.get(m.group(1)),
+                                    'date':m.group(4),'teams':teams,'contracts':contracts,'raw':e,
+                                    'identity_version':identity_manifest_id(),'identity_complete':not conflicts and not invalid_identity})
+                    if len(evs)<page:
+                        exhausted=True
+                        break
+                if not exhausted:
+                    complete=False
+                    issues.append({'scope':scope,'closed':closed,'code':'listing_not_exhausted'})
 
         for q in queries:
             sweep(q)
+        at=datetime.now(timezone.utc).isoformat()
+        previous=self.__dict__.get('_match_discovery_status',{})
+        self.discovery_status={'complete':complete,'state':'ok' if complete else 'partial',
+            'pages':page_count,'requests':page_count,'issues':issues,'identity_complete':all(e['identity_complete'] for e in out) and not any(i.get('code')=='conflicting_event_revision' for i in issues),
+            'last_attempt_at':at,'last_complete_at':at if complete else previous.get('last_complete_at'),
+            'window':win,'events':len(out)}
+        self._match_discovery_status=dict(self.discovery_status)
         return out
 
     # Historical name kept live: ops/backfill_price_ticks and ops/backfill_milestones
@@ -316,11 +333,13 @@ class PolymarketGlobalReader:
     def find_match_event(self, slug: str) -> dict | None:
         """Fetch a single event by exact slug (e.g. 'epl-ars-che-2026-09-06')."""
         evs = self.list_events(slug=slug)
-        return evs[0] if evs else None
+        exact={content_hash(e):e for e in evs if e.get('slug')==slug}
+        return next(iter(exact.values())) if len(exact)==1 else None
 
     # ── Gamma: per-club season / qualification events ─────────────────────────
     def season_event_index(self, comp_key: str, kind: str = "champion",
-                           *, max_pages: int = 4, page: int = 100) -> dict[str, str]:
+                           *, max_pages: int = 4, page: int = 100,
+                           max_requests: int | None = None) -> dict[str, str]:
         """{canonical_club_id: YES clob token_id} for a competition's season event.
 
         ``kind`` ∈ _SEASON_TITLE_RULES (champion / league_play / euro_spot). Resolved
@@ -329,53 +348,64 @@ class PolymarketGlobalReader:
         event listed — a normal state, not an error (Copa Sudamericana had no season
         event at all on 2026-08-26). Cached per (instance, comp, kind).
         """
-        import json as _json
-        cache = self.__dict__.setdefault("_sei", {})
-        ck = (comp_key, kind)
+        cache=self.__dict__.setdefault('_sei',{})
+        ck=(comp_key,kind,identity_manifest_id())
+        if max_requests is not None and (isinstance(max_requests, bool) or not isinstance(max_requests, int) or max_requests < 0):
+            raise ValueError('max_requests must be a non-negative integer')
         if ck in cache:
+            previous=self.__dict__.setdefault('season_discovery_status',{}).get(ck[:2],{})
+            self.season_discovery_status[ck[:2]]={**previous,'pages':0,'requests':0,'cached':True}
             return cache[ck]
-        idx: dict[str, str] = {}
-        try:
-            tags = _get_comp(comp_key).poly_tag_slugs
-        except KeyError:
-            tags = ()
-        rule = _SEASON_TITLE_RULES.get(kind)
-        ev = None
-        for tag in (tags if rule else ()):
-            for offset in range(0, max_pages * page, page):
+        try: tags=_get_comp(comp_key).poly_tag_slugs
+        except KeyError: tags=()
+        rule=_SEASON_TITLE_RULES.get(kind)
+        events={}; complete=True; issues=[]; pages=0
+        for tag in tags if rule else ():
+            exhausted=False
+            for offset in range(0,max_pages*page,page):
+                if max_requests is not None and pages >= max_requests:
+                    issues.append({'code':'request_budget_exhausted','tag':tag,'offset':offset})
+                    break
+                pages+=1  # Count dispatch attempts, including failed requests.
                 try:
-                    evs = self.list_events(limit=page, tag_slug=tag, archived="true",
-                                           closed="false", offset=offset,
-                                           order="endDate", ascending="false") or []
-                except Exception:
+                    result=self.list_events(limit=page,tag_slug=tag,archived='true',closed='false',
+                        offset=offset,order='endDate',ascending='false') or []
+                except Exception as exc:
+                    issues.append({'code':'request_failed','tag':tag,'offset':offset,'error':type(exc).__name__})
                     break
-                if not evs:
-                    break
-                ev = next((e for e in evs if rule.search(e.get("title") or "")), None)
-                if ev:
-                    break
-            if ev:
-                break
-        for mk in (ev.get("markets") or []) if ev else []:
-            toks = mk.get("clobTokenIds")
-            if isinstance(toks, str):
-                try:
-                    toks = _json.loads(toks)
-                except Exception:
-                    toks = None
-            if not toks:
-                continue
-            # This reader stays DB-free, so it cannot check a candidate against the club
-            # registry the way the US adapter does; instead BOTH exact spellings are
-            # indexed (as-written and legal-form-stripped) and the caller's own club_id
-            # picks the right one. setdefault so a literal match is never overwritten
-            # by another club's stripped form.
-            for tid in poly_club_candidates(mk.get("groupItemTitle", "") or ""):
-                idx.setdefault(tid, toks[0])
-        cache[ck] = idx
+                for event in result:
+                    if rule.search(event.get('title') or ''):
+                        events[event.get('id') or event.get('slug')]=event
+                if len(result)<page:
+                    exhausted=True; break
+            if not exhausted: complete=False
+        idx={}; conflicts=set(); identity=venue_identity_index()
+        if len(events)==1:
+            event=next(iter(events.values()))
+            for market in event.get('markets') or []:
+                token=yes_token(market)
+                cid=identity.resolve(market.get('groupItemTitle') or '')
+                if not token or not cid: continue
+                if cid in idx and idx[cid]!=token: conflicts.add(cid)
+                idx[cid]=token
+            for cid in conflicts: idx.pop(cid,None)
+            duplicate={token for token in idx.values() if list(idx.values()).count(token)>1}
+            idx={cid:token for cid,token in idx.items() if token not in duplicate}
+        elif len(events)>1:
+            issues.append({'code':'ambiguous_season_event','count':len(events)})
+        statuses=self.__dict__.setdefault('season_discovery_status',{})
+        previous=statuses.get(ck[:2],{})
+        at=datetime.now(timezone.utc).isoformat()
+        statuses[ck[:2]]={
+            'complete':complete,'pages':pages,'requests':pages,'cached':False,'issues':issues,'identity_complete':not conflicts,
+            'state':'ok' if complete and not issues else 'partial',
+            'last_attempt_at':at,
+            'last_complete_at':at if complete and not issues else previous.get('last_complete_at')}
+        if complete and not issues: cache[ck]=idx
         return idx
 
-    def reach_round_index(self, round_key: str, *, comp_key: str | None = None) -> dict[str, str]:
+    def reach_round_index(self, round_key: str, *, comp_key: str | None = None,
+                          max_requests: int | None = None) -> dict[str, str]:
         """{canonical_club_id: YES token} for "this club reaches <round_key>".
 
         The WC module fed this from per-nation reach-round events. Those do NOT exist
@@ -385,7 +415,11 @@ class PolymarketGlobalReader:
         treat {} as "no advance reference on this venue" and fall back to Kalshi.
         """
         if round_key == "advance" and comp_key:
-            return self.season_event_index(comp_key, "league_play")
+            result=self.season_event_index(comp_key, "league_play",max_requests=max_requests)
+            self.discovery_status=dict(self.season_discovery_status[(comp_key,'league_play')])
+            return result
+        self.discovery_status={'complete':True,'pages':0,'requests':0,'issues':[],
+                               'identity_complete':True,'state':'not_requested'}
         return {}
 
     def advance_quotes(self, home_id: str, away_id: str, round_key: str,

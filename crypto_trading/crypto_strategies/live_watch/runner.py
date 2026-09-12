@@ -27,6 +27,21 @@ logger = logging.getLogger(__name__)
 STRATS = {"w1": w1_basis, "w2": w2_chronos, "w3": w3_mom24, "w4": w4_carry,
           "w5": w5_knockdown, "w6": w6_residual, "w7": w7_noisefade}
 CADENCE_S = {"w1": 60, "w2": 300, "w3": 3600, "w4": 86400, "w5": 90, "w6": 10, "w7": 60}
+
+# W8 is an experiment living in UNTRACKED files and running in its own process.
+# It was wired in here as a hard module-scope import, which armed a landmine:
+# this file is tracked, so a `git clean`, a fresh clone, or simply retiring the
+# experiment would leave an import the probes cannot satisfy — and W1-W7 would
+# all fail to start (verified 2026-09-11; the live runner predates W8, so the
+# import had never actually run). The probes are the product; they must not be
+# able to die because an experiment was deleted.
+try:
+    from . import w8_complete_set
+except ImportError as _e:                                    # pragma: no cover
+    logger.info("w8 not available (%s) — W1-W7 unaffected", _e)
+else:
+    STRATS["w8"] = w8_complete_set
+    CADENCE_S["w8"] = 2
 TOPUP_S = 21600          # 6h: keep the data the modules depend on fresh
 
 
@@ -69,7 +84,7 @@ def run_once(names: list[str], *, confirm_spot: bool = False) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--strategy", default="all",
-                    choices=["all", "w1", "w2", "w3", "w4", "w5", "w6", "w7"])
+                    choices=["all", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"])
     ap.add_argument("--loop", type=int, default=0,
                     help="seconds between iterations (0 = run once)")
     ap.add_argument("--confirm-spot", action="store_true",
@@ -77,7 +92,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
-    names = list(STRATS) if args.strategy == "all" else [args.strategy]
+    # W8 has a dedicated 2s process: a slow W1-W7 cycle/topup must not stall it.
+    names = [n for n in STRATS if n != "w8"] if args.strategy == "all" else [args.strategy]
 
     if not args.loop:
         out = run_once(names, confirm_spot=args.confirm_spot)

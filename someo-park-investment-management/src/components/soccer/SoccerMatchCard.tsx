@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ClubName from './ClubName';
+import SoccerDataStatus from './SoccerDataStatus';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useAdvanceMode } from '../prediction/AdvanceMode';
 import { clubName, leagueLabel, stageLabel } from './soccerLabels';
@@ -29,11 +30,11 @@ const cents = (v?: number | null) => (v == null ? '—' : `${Math.round(v)}¢`);
 /** Kick-off shown in the reader's locale. The backend `et` string ("08-18 20:30 ET")
  *  is a US-desk convenience, not a translatable value — prefer the ISO kickoff and
  *  fall back to `et` only when there is no timestamp to format. */
-function kickoffLabel(m: any): string {
+function kickoffLabel(m: any, lang?: string): string {
   const iso = m?.kickoff;
   if (iso) {
     try {
-      return new Date(iso).toLocaleString(undefined, {
+      return new Date(iso).toLocaleString(lang || undefined, {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
       });
     } catch { /* fall through to the backend string */ }
@@ -99,17 +100,18 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
   const roundTag = stageLabel(m.round, t);
 
   // Tie whose pairing isn't decided yet (placeholder), or no model row: name-only card.
-  if (m.tentative || !m.model) {
+  const advanceUnavailable = mode === 'advance' && !!caps.advance && !adv?.model;
+  if (m.tentative || !m.model || advanceUnavailable) {
     return (
       <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
             <ClubName club={m.home} /> <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> <ClubName club={m.away} />
           </span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{kickoffLabel(m)}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{kickoffLabel(m, lang)}</span>
         </div>
         <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: 2 }}>
-          {leagueTag ? leagueTag + ' · ' : ''}{roundTag ? roundTag + ' · ' : ''}{t('soccer.tbdPairing')}
+          {leagueTag ? leagueTag + ' · ' : ''}{roundTag ? roundTag + ' · ' : ''}{t(m.tentative ? 'soccer.tbdPairing' : 'soccer.dataHealth.unavailable')}
         </div>
       </div>
     );
@@ -156,14 +158,20 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
 
   return (
     <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+      <SoccerDataStatus source="quotes" data={{ data_status: { issues: Object.entries((twoWay ? adv?.quote_status : m.quote_status) ?? {}).filter(([, state]) => state === 'unavailable').map(([venue]) => ({ code: 'quote_unavailable', venue })) } }} />
+      <div onClick={() => setOpen(o => !o)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
-            <Chevron className="inline w-3.5 h-3.5" style={{ marginRight: 4, verticalAlign: '-2px', color: 'var(--text-muted)' }} />
+            <button type="button" aria-expanded={open}
+              aria-label={t('soccer.toggleMatchDetails', { home, away })}
+              onClick={(event) => { event.stopPropagation(); setOpen(value => !value); }}
+              style={{ background: 'none', border: 'none', padding: 0, marginRight: 4, cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <Chevron className="inline w-3.5 h-3.5" style={{ verticalAlign: '-2px' }} />
+            </button>
             <ClubName club={m.home} /> <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> <ClubName club={m.away} />
           </span>
           <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            {twoWay ? <span style={{ color: 'var(--accent-primary)', marginRight: 6 }}>{t('soccer.modeAdvance')}</span> : null}{kickoffLabel(m)}
+            {twoWay ? <span style={{ color: 'var(--accent-primary)', marginRight: 6 }}>{t('soccer.modeAdvance')}</span> : null}{kickoffLabel(m, lang)}
           </span>
         </div>
         {(leagueTag || roundTag || aggBadge) && (
@@ -189,7 +197,7 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
             )}
           </div>
         )}
-      </button>
+      </div>
 
       {open && (
         <>
@@ -207,11 +215,11 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
           {vKalshi
             ? <><Line label={t('soccer.kalshiPrice')} h={vKalshi.home?.ask} d={twoWay ? null : vKalshi.draw?.ask} a={vKalshi.away?.ask} fmt={px}
                 hc={vKalshi.home?.ask_c} dc={twoWay ? null : vKalshi.draw?.ask_c} ac={vKalshi.away?.ask_c} /><VigNote q={vKalshi} twoWay={twoWay} /></>
-            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.kalshiPrice')}: {t('soccer.notListed')}</div>}
+            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.kalshiPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.kalshi === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {vPoly
             ? <><Line label={t('soccer.polyPrice')} h={vPoly.home?.ask} d={twoWay ? null : vPoly.draw?.ask} a={vPoly.away?.ask} fmt={px}
                 hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} /><VigNote q={vPoly} twoWay={twoWay} /></>
-            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.polyPrice')}: {t('soccer.notListed')}</div>}
+            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.polyPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.poly_us === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {edgeView && (
             <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>
               {t('soccer.colEdge')}: {venueLabelMap[edgeView.venue] ?? edgeView.venue}/{sideLabelMap[edgeView.side] ?? edgeView.side} {edgeView.net_edge >= 0 ? '+' : ''}{(edgeView.net_edge * 100).toFixed(1)}%{betting ? ' ★' : ''}

@@ -2,7 +2,21 @@
  "comp": "uel",
  "series": "KXUELADVANCE",
  "as_of": "2026-08-28T00:03:41.572552+00:00",
- "aliases": {},
+ "aliases": {
+  "Alkmaar": "az_alkmaar",
+  "Be`er Sheva": "hapoel_beer_sheva",
+  "Besiktas": "beikta",
+  "Ferencvarosi": "ferencvarosi_tc",
+  "Lillestroem": "lillestrom",
+  "NK Celje": "celje",
+  "Nijmegen": "nec_nijmegen",
+  "OFI Crete": "ofi",
+  "Olympiacos": "olympiakos_piraeus",
+  "SL Benfica": "benfica",
+  "Salzburg": "red_bull_salzburg",
+  "Sparta Prague": "sparta_praha",
+  "Union Gilloise": "union_st_gilloise"
+ },
  "codes": {},
  "unmatched": []
 }

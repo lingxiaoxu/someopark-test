@@ -12,7 +12,7 @@
  *
  *   node scripts/sync_soccer_data.mjs        (run before `npm run build`)
  */
-import { existsSync, copyFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, copyFileSync, mkdirSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,7 +58,11 @@ let copied = 0;
 const missing = [];
 for (const f of FILES) {
   const s = join(SRC, f);
-  if (existsSync(s)) { copyFileSync(s, join(DST, f)); copied++; }
+  if (existsSync(s)) {
+    const temporary = join(DST, `.${f}.${process.pid}.tmp`);
+    try { copyFileSync(s, temporary); renameSync(temporary, join(DST, f)); copied++; }
+    finally { if (existsSync(temporary)) unlinkSync(temporary); }
+  }
   else missing.push(f);
 }
 

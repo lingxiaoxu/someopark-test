@@ -38,6 +38,52 @@ _LATEST = "volume_forecast_latest.parquet"
 STALE_TD = 3
 
 
+def _validate_rnn_forecast(frame: pd.DataFrame, version: str, asof: str,
+                           trained_through: Optional[str] = None) -> pd.DataFrame:
+    """Reject another model's cache before it can become production output."""
+    required = {"date", "ticker", "pred_v", "pred_V", "pred_eta", "model_version",
+                "trained_through"}
+    if frame.empty or not required.issubset(frame.columns):
+        raise ValueError("RNN forecast is empty or missing required columns")
+    if frame["ticker"].isna().any() or frame["ticker"].duplicated().any():
+        raise ValueError("RNN forecast contains missing or duplicate tickers")
+    if not frame["model_version"].eq(version).all():
+        raise ValueError(f"RNN forecast version mismatch: expected {version}")
+    if not frame["date"].astype(str).str[:10].eq(asof).all():
+        raise ValueError(f"RNN forecast asof mismatch: expected {asof}")
+    if trained_through and not frame["trained_through"].astype(str).str[:10].eq(
+            trained_through).all():
+        raise ValueError("RNN forecast training date mismatch")
+    if not np.isfinite(frame[["pred_v", "pred_V", "pred_eta"]].to_numpy(dtype=float)).all():
+        raise ValueError("RNN forecast contains non-finite predictions")
+    if not frame["pred_V"].gt(0).all():
+        raise ValueError("RNN forecast contains non-positive dollar volume")
+    return frame.set_index("ticker")
+
+
+def _rnn_cache(artifacts_dir: Path, version: str, asof: str,
+               trained_through: Optional[str] = None) -> pd.DataFrame:
+    """Use only date- and version-matched model, candidate, or published caches."""
+    paths = [
+        artifacts_dir / "registry" / "artifacts" / version / f"blend_serve_{asof}.parquet",
+        artifacts_dir / "shadow_rnn" / "candidates" / version / f"rnn_pred_{asof}.parquet",
+        artifacts_dir / "shadow_rnn" / f"rnn_pred_{asof}.parquet",
+    ]
+    errors = []
+    for path in paths:
+        if not path.exists():
+            continue
+        try:
+            frame = _validate_rnn_forecast(pd.read_parquet(path), version, asof,
+                                           trained_through)
+            log.info(f"refresh: blend3 同日重跑 — 复用同版本缓存 {path}")
+            return frame
+        except (ValueError, KeyError, OSError) as exc:
+            errors.append(f"{path.name}: {exc}")
+            log.warning(f"refresh: 拒绝 RNN 缓存 {path}: {exc}")
+    raise RuntimeError(f"no valid RNN cache for {version} asof={asof}: {errors}")
+
+
 def _as_list(symbols) -> list[str]:
     if isinstance(symbols, str):
         return [symbols]
@@ -1055,18 +1101,12 @@ class _Ops:
                 # 退影子当日工件 —— 绝不让重跑把当日工件降级回两层。
                 _cache = _rart / f"blend_serve_{asof}.parquet"
                 with open(_rart / "meta.json") as _mf2:
-                    _seq_d = json.load(_mf2).get("seq_tail_date") or ""
+                    _rmeta = json.load(_mf2)
+                    _seq_d = _rmeta.get("seq_tail_date") or ""
                 _rtgt = _pmr2.next_trading_day(asof)
                 if _seq_d >= _rtgt:
-                    if _cache.exists():
-                        _rn = pd.read_parquet(_cache).set_index("ticker")
-                        log.info(f"refresh: blend3 同日重跑 — 复用缓存 {_cache.name}")
-                    else:
-                        _shadow_p = (self.s.art / "shadow_rnn"
-                                     / f"rnn_pred_{asof}.parquet")
-                        _rn = pd.read_parquet(_shadow_p).set_index("ticker")
-                        log.info(f"refresh: blend3 缓存缺失 — 退影子当日工件"
-                                 f" {_shadow_p.name}")
+                    _rn = _rnn_cache(self.s.art, _blend_cfg["rnn_version"], asof,
+                                     _rmeta.get("trained_through"))
                 else:
                     _rn = None
                     from VolumePrediction.data import polygon_loader as _pl3
@@ -1079,18 +1119,20 @@ class _Ops:
                     if _rn is None:
                         raise RuntimeError(
                             f"blend3: seq_tail={_seq_d} 与 target={_rtgt} 间无交易日")
-                    _ctmp = _cache.with_suffix(".tmp")
-                    _rn.reset_index().to_parquet(_ctmp, index=False)
-                    os.replace(_ctmp, _cache)
-                    for _old in sorted(_rart.glob("blend_serve_*.parquet"))[:-5]:
-                        _old.unlink()                  # 只留近 5 日缓存
-                    # 同步写影子目录: AB 追踪/shadow_blend 逐位对拍继续吃同一份
-                    # 预测(影子已转只读不再自产;evaluate 只认 rnn_pred_*)
-                    _sp = self.s.art / "shadow_rnn" / f"rnn_pred_{asof}.parquet"
-                    _sp.parent.mkdir(parents=True, exist_ok=True)
-                    _stmp = _sp.with_suffix(".tmp")
-                    _rn.reset_index().to_parquet(_stmp, index=False)
-                    os.replace(_stmp, _sp)
+                _rn = _validate_rnn_forecast(_rn.reset_index(),
+                                             _blend_cfg["rnn_version"], asof,
+                                             _rmeta.get("trained_through"))
+                _ctmp = _cache.with_suffix(".tmp")
+                _rn.reset_index().to_parquet(_ctmp, index=False)
+                os.replace(_ctmp, _cache)
+                for _old in sorted(_rart.glob("blend_serve_*.parquet"))[:-5]:
+                    _old.unlink()                  # 只留近 5 日缓存
+                # Also publish after a version switch that reused its isolated cache.
+                _sp = self.s.art / "shadow_rnn" / f"rnn_pred_{asof}.parquet"
+                _sp.parent.mkdir(parents=True, exist_ok=True)
+                _stmp = _sp.with_suffix(".tmp")
+                _rn.reset_index().to_parquet(_stmp, index=False)
+                os.replace(_stmp, _sp)
                 _pv = out.set_index("ticker")["pred_V"]
                 _cov = _rn.index.intersection(_pv.index)
                 _layer, _diag = rnn_layer(_cov, _pv.loc[_cov],
@@ -1187,6 +1229,13 @@ class _Ops:
             cur["rnn_full_coverage"] = bool(full_coverage)
             cur["full_coverage_by"] = by
             cur["full_coverage_at"] = _at
+        previous = data.get("blend") or {}
+        if (previous.get("rnn_version"), previous.get("enabled")) != (ver, bool(enabled)):
+            data.setdefault("blend_changes", []).append({
+                "previous_version": previous.get("rnn_version"),
+                "version": ver, "enabled": bool(enabled), "by": by, "at": _at,
+                "full_coverage": bool(cur.get("rnn_full_coverage")),
+            })
         data["blend"] = cur
         self.s.registry.save(data)
         # 生效路由必须每次都打出来 —— 这个 bug 之所以能潜伏,正是因为改了路由

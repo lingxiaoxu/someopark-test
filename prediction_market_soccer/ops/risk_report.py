@@ -21,6 +21,7 @@ Read-only. No orders. Designed to be read before any trading decision.
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import asdict, dataclass, field
 
@@ -44,18 +45,70 @@ class RiskReport:
     kill_switch: dict
     blocked_summary: list[str] = field(default_factory=list)
     kalshi_series: dict = field(default_factory=dict)
+    as_of: str | None = None
+    source_as_of: str | None = None
+    data_status: dict = field(default_factory=dict)
+    venue_balance_status: dict = field(default_factory=dict)
+    demo_mirror: dict = field(default_factory=dict)
+
+
+def _kalshi_demo_account() -> dict:
+    """Read the exact demo account used by the soccer mirror; never submit orders."""
+    from datetime import datetime, timezone
+    attempted = datetime.now(timezone.utc).isoformat()
+    try:
+        from prediction_market_soccer.exec.kalshi_mirror import DemoBroker
+        raw = DemoBroker().balance()
+        cash = float(raw["balance"]) / 100.0
+        portfolio = float(raw["portfolio_value"]) / 100.0 if raw.get("portfolio_value") is not None else None
+        if not math.isfinite(cash) or (portfolio is not None and not math.isfinite(portfolio)):
+            raise ValueError("Invalid demo balance")
+        provider_at = (datetime.fromtimestamp(float(raw["updated_ts"]), timezone.utc).isoformat()
+                       if raw.get("updated_ts") is not None else None)
+        return {"cash_usd": cash, "portfolio_value_usd": portfolio, "state": "ok",
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "attempted_at": attempted, "provider_as_of": provider_at, "shared_account": True}
+    except Exception:
+        return {"cash_usd": None, "portfolio_value_usd": None, "state": "unavailable",
+                "fetched_at": None, "attempted_at": attempted, "provider_as_of": None,
+                "shared_account": True}
 
 
 def _kalshi_demo_balance() -> float | None:
+    """Compatibility helper for callers needing only cash."""
+    return _kalshi_demo_account()["cash_usd"]
+
+
+def _demo_mirror_state(conn) -> dict:
+    """Local soccer positions are separate from the shared account's holdings."""
+    from prediction_market_soccer.exec.kalshi_mirror import enabled, MAX_ORDER_USD
     try:
-        from prediction_market_soccer.venues.kalshi.orders import KalshiOrders
-        kid, kp = os.getenv("KALSHI_API_KEY_ID"), os.getenv("KALSHI_PRIVATE_KEY_PATH")
-        if not (kid and kp):
-            return None
-        base = "https://external-api.demo.kalshi.co/trade-api/v2"
-        return float(KalshiOrders(kid, kp, base_url=base).get_balance().cash)
+        from crypto_trading.crypto_common.config import kalshi_env
+        environment_ok = CONFIG.venue.kalshi_env == "demo" and kalshi_env() == "demo"
     except Exception:
-        return None
+        environment_ok = False
+    rows = [dict(r) for r in conn.execute(
+        "SELECT status, ticker, fill_count, exit_fill_count, avg_fill_c, ask_c, submitted_at, filled_at "
+        "FROM kalshi_mirror")]
+    open_rows = [r for r in rows if r["status"] not in ("settled", "exited")
+                 and float(r["fill_count"] or 0) > float(r["exit_fill_count"] or 0)]
+    held = lambda r: max(0.0, float(r["fill_count"] or 0) - float(r["exit_fill_count"] or 0))
+    latest = lambda key, values: max((r[key] for r in values if r[key]), default=None)
+    try:
+        previous = json.loads((CONFIG.paths.output / "kalshi_mirror.json").read_text())
+    except (OSError, ValueError):
+        previous = {}
+    return {"enabled": enabled(), "environment_ok": environment_ok, "max_order_usd": MAX_ORDER_USD,
+            "last_cycle_at": previous.get("ts"),
+            "last_cycle_error_count": len((previous.get("last_cycle") or {}).get("errors") or []),
+            "last_order_at": latest("submitted_at", rows),
+            "last_fill_at": latest("filled_at", [r for r in rows if float(r["fill_count"] or 0) > 0]),
+            "open_positions": len({r["ticker"] for r in open_rows}),
+            "open_entries": len(open_rows), "open_contracts": sum(held(r) for r in open_rows),
+            "open_cost_usd": round(sum(held(r) * float(r["avg_fill_c"] if r["avg_fill_c"] is not None
+                                                      else r["ask_c"] or 0) / 100 for r in open_rows), 4),
+            "pending_orders": sum(r["status"] == "pending" for r in rows),
+            "filled_entries": sum(float(r["fill_count"] or 0) > 0 for r in rows)}
 
 
 def _pmus_balance() -> float | None:
@@ -146,19 +199,32 @@ def build(conn=None) -> RiskReport:
         "min_net_lock_theta_arb": r.min_net_lock,
         "daily_loss_killswitch_frac": r.daily_loss_killswitch_frac,
     }
+    from datetime import datetime, timezone
+    demo_account = _kalshi_demo_account()
+    pmus_at = datetime.now(timezone.utc).isoformat()
+    pmus_cash = _pmus_balance()
+    if pmus_cash is not None and not math.isfinite(pmus_cash):
+        pmus_cash = None
     venue_balances = {
-        "kalshi_demo_usd": _kalshi_demo_balance(),
+        "kalshi_demo_usd": demo_account["cash_usd"],
+        "kalshi_demo_portfolio_usd": demo_account["portfolio_value_usd"],
         "kalshi_prod_usd": "not queried (standing rule: prod key only on explicit instruction)",
-        "polymarket_us_usd": _pmus_balance(),
+        "polymarket_us_usd": pmus_cash,
     }
-    # Exposure: no fills are recorded yet (live trading gated, only a demo test
-    # order was ever placed and cancelled). There is no `position`/fills table by
-    # design, so realized exposure is 0 until execution is enabled and tracked.
+    balance_status = {
+        "kalshi_demo": {k: v for k, v in demo_account.items() if k not in ("cash_usd", "portfolio_value_usd")},
+        "polymarket_us": {"state": "ok" if pmus_cash is not None else "unavailable",
+                          "attempted_at": pmus_at,
+                          "fetched_at": datetime.now(timezone.utc).isoformat() if pmus_cash is not None else None},
+    }
+    demo_mirror = _demo_mirror_state(conn)
     exposure = {
-        "open_positions": 0,
-        "total_at_risk_usd": 0.0,
+        "open_positions": demo_mirror["open_positions"],
+        "total_at_risk_usd": demo_mirror["open_cost_usd"],
+        "pending_orders": demo_mirror["pending_orders"],
+        "scope": "soccer_demo_mirror",
         "max_total_allowed_note": "per-market <= 5% bankroll, per-theme <= 10% (plan 04 §6)",
-        "note": "no fills recorded (execution gated; demo test order placed+cancelled only)",
+        "note": "Soccer demo mirror open entry cost; excludes other strategies in the shared account.",
     }
     # API-Football bills per DAY (Pro = 7,500/day, resets 00:00 UTC) — the daily figure is
     # the real budget; monthly is a loose backstop.
@@ -201,14 +267,22 @@ def build(conn=None) -> RiskReport:
         blocked.append("All edge signals BLOCKED by calibration gate (model not trade-grade).")
     if venue_balances["polymarket_us_usd"] == 0.0:
         blocked.append("Polymarket US has $0 USDC.e — cannot trade until funded.")
-    blocked.append(f"Every order hard-capped at ${r.max_test_order_usd:.2f} notional.")
+    blocked.append(f"Standard venue orders hard-capped at ${r.max_test_order_usd:.2f} notional; "
+                   f"the separate demo mirror has a ${demo_mirror['max_order_usd']:.2f} cap.")
 
     series = _kalshi_series_inventory()
     for g in series["gaps"]:
         blocked.append(f"Kalshi coverage gap — {g} (that market is never priced).")
 
+    now = datetime.now(timezone.utc).isoformat()
+    issues = [{"code": "balance_unavailable", "venue": key}
+              for key, status in balance_status.items() if status["state"] != "ok"]
+    if demo_mirror["enabled"] and not demo_mirror["environment_ok"]:
+        issues.append({"code": "demo_environment_unavailable"})
     return RiskReport(gates, limits, venue_balances, exposure, api_budget, cal, kill, blocked,
-                      kalshi_series=series)
+                      kalshi_series=series, as_of=now, source_as_of=now,
+                      data_status={"state": "degraded" if issues else "ok", "issues": issues},
+                      venue_balance_status=balance_status, demo_mirror=demo_mirror)
 
 
 def build_pdf(rep: RiskReport, output_path: str, *, as_of: str = "") -> str:
@@ -234,9 +308,11 @@ def build_pdf(rep: RiskReport, output_path: str, *, as_of: str = "") -> str:
     g = rep.gates
     story.append(ps.make_kv_table([
         ("Kalshi 环境", g["kalshi_env"]),
-        ("Kalshi 交易开关", g["kalshi_trading_enabled"]),
+        ("Kalshi 模拟镜像", rep.demo_mirror.get("enabled")),
+        ("Kalshi 真钱交易开关", g["kalshi_trading_enabled"]),
         ("Polymarket US 交易开关", g["pmus_trading_enabled"]),
         ("单单硬顶 (USD notional)", ps.money(g["hard_order_cap_usd"])),
+        ("独立模拟镜像单单上限", ps.money(rep.demo_mirror.get("max_order_usd"))),
         ("可执行场所", ", ".join(g["executable_venues"]) or "(无)"),
     ], label_w=8.4 * cm, val_w=8.6 * cm))
 
@@ -281,6 +357,8 @@ def build_pdf(rep: RiskReport, output_path: str, *, as_of: str = "") -> str:
     vb = rep.venue_balances
     story.append(ps.make_kv_table([
         ("Kalshi demo", ps.money(vb["kalshi_demo_usd"]) if isinstance(vb["kalshi_demo_usd"], (int, float)) else str(vb["kalshi_demo_usd"])),
+        ("共享 demo 账户持仓价值", ps.money(vb.get("kalshi_demo_portfolio_usd"))),
+        ("demo 余额采集时间", str((rep.venue_balance_status.get("kalshi_demo") or {}).get("fetched_at") or "未取得")),
         ("Polymarket US", ps.money(vb["polymarket_us_usd"]) if isinstance(vb["polymarket_us_usd"], (int, float)) else str(vb["polymarket_us_usd"])),
         ("Kalshi prod", str(vb["kalshi_prod_usd"])),
     ], label_w=8.4 * cm, val_w=8.6 * cm))
@@ -327,8 +405,8 @@ def main() -> None:
 
     rep = build()
     CONFIG.paths.ensure()
-    (CONFIG.paths.output / "risk_report.json").write_text(
-        json.dumps(asdict(rep), ensure_ascii=False, indent=2), encoding="utf-8")
+    from prediction_market_soccer.ops.run_status import atomic_json
+    atomic_json(CONFIG.paths.output / "risk_report.json", asdict(rep))
     print("RISK REPORT")
     print(f"  gates        : env={rep.gates['kalshi_env']} | kalshi_trading={rep.gates['kalshi_trading_enabled']} "
           f"| pmus_trading={rep.gates['pmus_trading_enabled']} | order_cap=${rep.gates['hard_order_cap_usd']}")

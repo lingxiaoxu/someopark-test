@@ -164,55 +164,13 @@ def _fc26_style_prior() -> dict[str, list[tuple[str, float]]]:
     from collections import Counter, defaultdict
 
     from prediction_market_soccer.ingest import store as _store
-    from prediction_market_soccer.ingest.fc_ingest import load_fc_frame
-    from prediction_market_soccer.venues.polymarket_global.reader import poly_club_candidates
+    from prediction_market_soccer.ingest.fc_ingest import load_fc_frame, _EA_ALIASES
+    from prediction_market_soccer.util.club_identity import FCClubResolver
 
     conn = _store.init_db()
-    comps_of: dict[str, set[str]] = {}
-    reg_names: dict[str, str] = {}
-    for r in conn.execute("SELECT club_id, comp, name FROM club_registry"):
-        comps_of.setdefault(r["club_id"], set()).add(r["comp"])
-        if r["name"]:
-            reg_names.setdefault(r["name"], r["club_id"])
-    reg_ids = set(comps_of)
-    aliases = _venue_aliases()
-
-    import difflib as _difflib
-
-    def club_of(team_name: str, league_name: str) -> str:
-        """FC26 team label → registry club_id, exact spellings first (§3.6 order).
-
-        The old path was ``club_id_of`` then a 0.85 difflib guess, which resolved only
-        129 clubs AND mis-resolved across countries ("Vitória SC" of Guimarães onto
-        Brazil's Vitória, "R. Racing Club" of Santander onto Racing Avellaneda). Both
-        failures are fixed by the same two rules: try the exact spellings the venue
-        alias tables already carry, and let a club only match a competition its FC26
-        league can actually feed.
-        """
-        s = (team_name or "").strip()
-        if not s or _RESERVE_RE.search(s):
-            return ""
-        strict = _FC_LEAGUE_COMPS.get(league_name)
-        allowed = (strict | _CONTINENTAL) if strict else _CONTINENTAL
-        cid = _FC_TEAM_ALIASES.get(s)
-        if cid and cid in reg_ids:
-            return cid
-        cid = aliases.get(s)
-        if cid and cid in reg_ids:
-            return cid
-        for i, cid in enumerate(poly_club_candidates(s)):
-            # The as-written spelling (i == 0) is unambiguous enough to stand alone;
-            # the legal-form-stripped one is not, so it must clear the league gate.
-            if cid in reg_ids and (i == 0 or comps_of[cid] & allowed):
-                return cid
-        # Last resort: a fuzzy name match, held to the club's OWN competition (no
-        # continental escape hatch) — that is what kept Racing Santander out.
-        best = _difflib.get_close_matches(s, list(reg_names), n=1, cutoff=0.85)
-        if best:
-            cid = reg_names[best[0]]
-            if comps_of[cid] & (strict or _CONTINENTAL):
-                return cid
-        return ""
+    records = [dict(r) for r in conn.execute("SELECT club_id,comp,api_team_id,name FROM club_registry")]
+    # Ingest and the descriptive prior use identical source-scoped identity rules.
+    club_of = FCClubResolver(records, league_aliases=_EA_ALIASES).resolve
 
     df = load_fc_frame()
     tag_style = {t: code for code, tags in _TAG_TO_STYLE.items() for t in tags}

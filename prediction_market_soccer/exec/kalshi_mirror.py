@@ -1,4 +1,16 @@
-"""exec/kalshi_mirror.py — mirror the 择时(实现) strategy onto the Kalshi DEMO account.
+"""exec/kalshi_mirror.py — execute immutable forward paper decisions on DEMO.
+
+CURRENT LIVE PATH
+    run_cycle calls exec.demo_forward after the independent paper lifecycle has
+    durably recorded its decisions. Demo only executes that fixed side, stake and
+    exit intent; it never generates paper entries/exits or depends on public
+    market discovery. Missing liquidity is retried with fresh execution context,
+    and every IOC attempt and outcome is preserved separately.
+
+    The older calculation/scanner helpers below remain for compatibility and
+    historical inspection. They are NOT called by the current live run_cycle.
+
+LEGACY IMPLEMENTATION NOTES (describe those compatibility helpers only)
 
 WHAT IS MIRRORED (and nothing else)
     The paper ledger behind the 准确度 & 盈亏 view (ops/settle_bets + ops/performance_report)
@@ -66,6 +78,8 @@ KNOWN, IRREDUCIBLE DIFFERENCES FROM THE LEDGER (recorded, not hidden)
 """
 from __future__ import annotations
 
+from prediction_market_soccer.ops.maintenance_gate import writer
+
 import json
 import os
 import time
@@ -83,12 +97,10 @@ MAX_ORDERS_PER_DAY = 80
 MAX_OPEN_POSITIONS = 40
 MAX_ATTEMPTS = 4                # venue-side failures (5xx / IOC missed the ask / no ask yet) retried up to this
 PRE_WINDOW_BEFORE_MIN = 25      # a PRE row is stashed ≤20' pre-kickoff; scan a little wider
-PRE_LATE_GRACE_MIN = 5          # still mirror a PRE bet discovered ≤5' after kickoff
+PRE_LATE_GRACE_MIN = 0          # PRE means observed and submitted strictly before kickoff
 _REG_MAX_MIN = 95               # regulation incl. stoppage (same clamp as smart_exit)
-_PIT_CACHE = CONFIG.paths.output / "pit_records.json"
 _PIT_CACHE_MAX_AGE_H = 36.0
 _LOG = CONFIG.paths.logs / "kalshi_mirror.jsonl"
-_EXPORT = CONFIG.paths.output / "kalshi_mirror.json"
 _SIDES = ("home", "draw", "away")
 _FINISHED = ("FT", "AET", "PEN", "AWD", "WO")
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
@@ -104,7 +116,7 @@ def _now() -> datetime:
 
 
 def _iso(dt: datetime) -> str:
-    return dt.isoformat(timespec="seconds")
+    return dt.isoformat()
 
 
 def _log(_event: str, **fields) -> None:
@@ -142,12 +154,31 @@ class DemoBroker:
         self.limiter = KalshiRateLimiter()
 
     # reads
-    def book(self, ticker: str):
+    def _book_capture(self, ticker: str):
         from prediction_market_soccer.venues.kalshi.market_data import best_prices
-        self.limiter.acquire_read()
-        r = self.c._authed("GET", f"/markets/{ticker}/orderbook")
-        r.raise_for_status()
-        return best_prices(r.json(), market_key=ticker)
+        if not self.limiter.acquire_read():
+            raise TimeoutError('Demo read rate limit')
+        started = _now().isoformat()
+        response = self.c._authed("GET", f"/markets/{ticker}/orderbook")
+        response.raise_for_status()
+        raw = response.json()
+        received = _now().isoformat()
+        return best_prices(raw, market_key=ticker), raw, started, received
+
+    def book(self, ticker: str):
+        return self._book_capture(ticker)[0]
+
+    def book_observation(self, ticker: str, binding: dict):
+        """Same GET's BBO and raw bytes; never attach evidence from another read."""
+        from prediction_market_soccer.util.market_identity import validate_binding
+        from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt
+        if not validate_binding(binding, environment='demo') or binding['market_id'] != ticker or binding['provider'] != 'kalshi':
+            raise ValueError('Demo orderbook requires its exact reviewed contract binding')
+        book, raw, started, received = self._book_capture(ticker)
+        return quote_from_receipt(make_receipt(binding, ask=book.yes_ask, bid=book.yes_bid,
+            raw=raw, request_started_at=started, received_at=received,
+            ask_size=book.no_depth, bid_size=book.yes_depth,
+            derivation={'rule':'binary_complement','ask_from':'no_bid'}))
 
     def balance(self) -> dict:
         self.limiter.acquire_read()
@@ -157,21 +188,85 @@ class DemoBroker:
 
     def positions(self) -> dict[str, float]:
         """{ticker: signed contracts} from the venue (positive = YES long)."""
-        self.limiter.acquire_read()
-        r = self.c._authed("GET", "/portfolio/positions?limit=200")
-        r.raise_for_status()
         out: dict[str, float] = {}
-        for p in r.json().get("market_positions") or []:
+        for p in self._pages('/portfolio/positions', 'market_positions', limit=200):
             try:
-                out[p["ticker"]] = float(p.get("position_fp") or 0.0)
+                import math
+                value = float(p.get("position_fp") or 0.0)
+                if not math.isfinite(value):
+                    raise ValueError('Non-finite position')
+                out[p["ticker"]] = value
             except (TypeError, ValueError):
-                continue
+                raise ValueError('Invalid demo position response')
         return out
 
+    def _pages(self, path: str, key: str, **filters) -> list[dict]:
+        """A complete demo listing or an exception; partial pages never mean absent."""
+        from urllib.parse import urlencode
+        out, cursor, seen = [], None, set()
+        while True:
+            params = dict(filters)
+            if cursor:
+                params['cursor'] = cursor
+            if not self.limiter.acquire_read():
+                raise TimeoutError('Demo read rate limit')
+            response = self.c._authed('GET', path + '?' + urlencode(params))
+            response.raise_for_status()
+            doc = response.json()
+            if not isinstance(doc.get(key), list):
+                raise ValueError('Incomplete demo listing')
+            out.extend(doc[key])
+            cursor = doc.get('cursor')
+            if not cursor:
+                return out
+            if cursor in seen:
+                raise ValueError('Repeated demo listing cursor')
+            seen.add(cursor)
+
+    def markets(self, series_ticker: str) -> list[dict]:
+        return self._pages('/markets', 'markets', series_ticker=series_ticker,
+                           status='open', limit=1000)
+
+    def events(self, series_ticker: str) -> list[dict]:
+        return self._pages('/events', 'events', series_ticker=series_ticker,
+                           status='open', with_nested_markets='true', limit=200)
+
+    def market(self, ticker: str) -> dict:
+        if not self.limiter.acquire_read():
+            raise TimeoutError('Demo read rate limit')
+        response = self.c._authed('GET', f'/markets/{ticker}')
+        response.raise_for_status()
+        return response.json()['market']
+
     def orders_for(self, ticker: str) -> list[dict]:
-        self.limiter.acquire_read()
-        r = self.c._authed("GET", f"/portfolio/orders?ticker={ticker}&limit=50")
-        return (r.json().get("orders") or []) if r.status_code == 200 else []
+        return self._pages('/portfolio/orders', 'orders', ticker=ticker, limit=200)
+
+    def fills_for_order(self, ticker: str, order_id: str) -> list[dict]:
+        return [f for f in self._pages('/portfolio/fills', 'fills', ticker=ticker, order_id=order_id, limit=1000)
+                if f.get('order_id') == order_id and f.get('ticker', f.get('market_ticker')) == ticker]
+
+    def estimate_taker_fee(self, ticker: str, count: int, price: float) -> dict:
+        """Current series schedule, conservative direct-member estimate; fills remain authoritative."""
+        series = ticker.split('-')[0]
+        cache = getattr(self,'_series_fees',{})
+        if series not in cache:
+            self.limiter.acquire_read()
+            res = self.c._authed('GET',f'/series/{series}')
+            res.raise_for_status()
+            cache[series] = res.json()['series']
+            self._series_fees = cache
+        info = cache[series]
+        if info.get('fee_type') != 'quadratic':
+            raise ValueError('Unknown series taker fee type')
+        from decimal import Decimal, ROUND_CEILING
+        p,n,m = Decimal(str(price)),Decimal(count),Decimal(str(info.get('fee_multiplier')))
+        if not m.is_finite() or m<0: raise ValueError('Unknown series fee multiplier')
+        # Official July 2026 schedule: round cost + fee to $0.0001; no slippage beyond IOC limit.
+        raw = Decimal('.07')*m*n*p*(1-p)
+        fee = (n*p+raw).quantize(Decimal('.0001'),rounding=ROUND_CEILING)-n*p
+        return {'fee_usd':float(fee),'fee_per_contract':float(fee/n), 'fee_multiplier':float(m),
+                'source':'current_series_quadratic_schedule','precision':'estimated_before_fill',
+                'observed_at':_iso(_now()),'series':series}
 
     # writes — IOC only: fills now or dies at the engine; nothing rests
     def _send(self, *, ticker: str, contract_side: str, count: int, price: float,
@@ -182,21 +277,33 @@ class DemoBroker:
             raise ValueError(f"price {price} outside (0,1)")
         if count < 1:
             raise ValueError("count must be ≥ 1")
-        self.limiter.acquire_write()
-        rec = self.c.create_order(ticker=ticker, side=contract_side, count=int(count),
-                                  price_dollars=round(price, 4), client_order_id=client_order_id,
-                                  tif="immediate_or_cancel")
-        body = {}
+        if contract_side == 'yes' and count * price > MAX_ORDER_USD + 1e-9:
+            raise ValueError('Demo entry exceeds current order cap')
+        if not self.limiter.acquire_write():
+            raise TimeoutError('Demo write rate limit')
+        # Reuse the client's verified V2 translation and authentication, but retain
+        # the COMPLETE HTTP response: create_order truncates its body to 400 chars.
+        from crypto_trading.crypto_common.kalshi.rest_event import EVENTS_ORDERS_V2
+        sent = self.c.v2_body(ticker=ticker, contract_side=contract_side, count=int(count),
+                              price_dollars=round(price, 4), client_order_id=client_order_id,
+                              tif='immediate_or_cancel')
+        response = self.c._authed('POST', EVENTS_ORDERS_V2, sent)
+        body, parsed = {}, False
         try:
-            body = json.loads(rec.get("response") or "{}")
-        except json.JSONDecodeError:
-            body = {}
-        ok = rec.get("status_code") in (200, 201)
-        return {"ok": ok, "status_code": rec.get("status_code"),
-                "order_id": body.get("order_id"), "fill_count": float(body.get("fill_count") or 0.0),
-                "remaining_count": float(body.get("remaining_count") or 0.0),
-                "avg_fill": (float(body["average_fill_price"]) if body.get("average_fill_price") else None),
-                "raw": rec.get("response"), "sent": rec.get("body_sent")}
+            import math
+            body = response.json()
+            filled, remaining = float(body['fill_count']), float(body['remaining_count'])
+            avg = float(body['average_fill_price']) if body.get('average_fill_price') is not None else None
+            parsed = (bool(body.get('order_id')) and math.isfinite(filled) and 0 <= filled <= count
+                      and math.isfinite(remaining) and remaining == 0
+                      and (filled == 0 or (avg is not None and math.isfinite(avg) and 0 <= avg <= 1)))
+        except (ValueError, TypeError, KeyError):
+            filled, remaining, avg = 0.0, 0.0, None
+        ok = response.status_code in (200, 201)
+        return {"ok": ok, "status_code": response.status_code, 'outcome_known': bool(ok and parsed),
+                "order_id": body.get("order_id") if isinstance(body, dict) else None,
+                "fill_count": filled, "remaining_count": remaining, "avg_fill": avg,
+                "raw": response.text, "sent": sent}
 
     def buy_yes(self, ticker: str, count: int, ask: float, client_order_id: str) -> dict:
         """Take the YES ask: wire side=bid @ ask."""
@@ -236,8 +343,10 @@ def build_pit_cache(conn) -> dict:
     recs = _pit_py(conn, cmap)
     doc = {"built_at": _iso(_now()), "n": len(recs), "records": recs}
     CONFIG.paths.ensure()
-    _PIT_CACHE.write_text(json.dumps(doc), encoding="utf-8")
-    return {"n": len(recs), "path": str(_PIT_CACHE)}
+    from prediction_market_soccer.ops.run_status import atomic_json
+    path = CONFIG.paths.output / "pit_records.json"
+    atomic_json(path, doc)
+    return {"n": len(recs), "path": str(path)}
 
 
 _PIT_REBUILD_SPAWNED = False
@@ -253,7 +362,7 @@ def load_pit_records() -> list | None:
     global _PIT_REBUILD_SPAWNED
     doc = None
     try:
-        doc = json.loads(_PIT_CACHE.read_text(encoding="utf-8"))
+        doc = json.loads((CONFIG.paths.output / "pit_records.json").read_text(encoding="utf-8"))
         built = datetime.fromisoformat(doc["built_at"])
         stale = (_now() - built) > timedelta(hours=_PIT_CACHE_MAX_AGE_H)
     except (OSError, ValueError, KeyError):
@@ -352,7 +461,7 @@ def _mark_eval(conn, fid: int, milestone: str, verdict: str) -> None:
 
 
 # ── leg 1: the PRE bet ────────────────────────────────────────────────────────
-def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _Strength) -> dict | None:
+def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _Strength, *, decision_at=None) -> dict | None:
     """The ledger's pre-match decision for an UNSETTLED fixture — the decision block of
     performance_report.match_pick, line for line, minus everything that needs a final score.
 
@@ -367,13 +476,14 @@ def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _
     from prediction_market_soccer.util.pricing import to_cents
 
     comp = _row_comp(fx)
+    decision_at = decision_at or _iso(_now())
     if not comp or not fx["kickoff_ts"]:
         return None
     knockout = is_knockout(fx["round"], comp)
-    sm = strength.get(fx["kickoff_ts"], comp)
+    sm = strength.get(decision_at, comp)
     if not (hi in sm.ratings and ai in sm.ratings):
         return None
-    cal = _pit_cal(records, fx["kickoff_ts"])
+    cal = _pit_cal(records, decision_at)
     conf = _conf(cal)
     lam_mult = None
     mh, ma, motiv = motivation_multipliers(conn, _fifa_ranks(), hi, ai, fx["round"], CONFIG.model)
@@ -381,11 +491,13 @@ def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _
         lam_mult = (mh, ma)
     mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal, lam_mult=lam_mult,
                                 host_neutral=knockout)
+    raw_mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=None, lam_mult=lam_mult,
+                                    host_neutral=knockout)
     model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
     # bookmaker consensus (pre-match book only) → the argmax bet's reference price
     bd = conn.execute(
         "SELECT AVG(p_home) bh, AVG(p_draw) bdr, AVG(p_away) ba FROM match_odds "
-        "WHERE fixture_api_id=? AND bookmaker <> 'live_consensus'", (fx["api_id"],)).fetchone()
+        "WHERE fixture_api_id=? AND bookmaker <> 'live_consensus' AND fetched_at<=?", (fx["api_id"],decision_at)).fetchone()
     if bd and bd["bh"] is not None:
         s = (bd["bh"] or 0) + (bd["bdr"] or 0) + (bd["ba"] or 0)
         price = {"home": bd["bh"] / s, "draw": bd["bdr"] / s, "away": bd["ba"] / s} if s else model
@@ -393,7 +505,7 @@ def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _
         price = model
     model_pick = max(_SIDES, key=lambda k: model[k])
     try:
-        fi = form_index(conn, as_of=fx["kickoff_ts"])
+        fi = form_index(conn, as_of=decision_at)
         form = {"home_z": fi[hi].form_z if hi in fi else None,
                 "away_z": fi[ai].form_z if ai in fi else None}
     except Exception:  # noqa: BLE001 — the ledger tolerates a missing form index the same way
@@ -412,11 +524,14 @@ def pre_decision(conn, fx, hi: str, ai: str, pre_row, records: list, strength: _
     elif pre_row[f"kalshi_{side}_ask"] is not None:
         ledger_c, ledger_venue = to_cents(pre_row[f"kalshi_{side}_ask"]), "kalshi"
     else:
-        ledger_c, ledger_venue = to_cents(price[side]), "book_devig"
+        return None  # No observed offer for the chosen side: no forward paper entry or demo order.
     return {"side": side, "stake_usd": round(float(stake), 2), "bet_kind": kind,
             "ledger_entry_c": ledger_c, "ledger_venue": ledger_venue,
             "net_edge": (round(float(edge), 4) if edge is not None else None),
             "model": {k: round(v, 4) for k, v in model.items()},
+            "raw_model": dict(zip(_SIDES, (raw_mp.p_home, raw_mp.p_draw, raw_mp.p_away))),
+            "pit_status": "forward_recorded_model_version_not_fully_audited",
+            "decision_at": decision_at,
             "cal": {"method": (cal or {}).get("method"), "param": (cal or {}).get("param"), "n": (cal or {}).get("n")}}
 
 
@@ -445,6 +560,13 @@ def _scan_pre(conn, broker: DemoBroker, tickers: _Tickers, strength: _Strength, 
         fx = _fixture(conn, fid)
         if fx is None:
             _mark_eval(conn, fid, "PRE", "no_fixture"); continue
+        from prediction_market_soccer.util.timing_provenance import live_snapshots, record_decision, _dt
+        if _now() >= _dt(fx['kickoff_ts']):
+            _mark_eval(conn, fid, "PRE", "late:at_or_after_kickoff"); continue
+        observed = next((m for m in live_snapshots(conn, fid, _iso(_now())) if m['milestone'] == 'PRE'), None)
+        if observed is None:
+            _mark_eval(conn, fid, "PRE", "unverified_snapshot_provenance"); continue
+        pr = observed
         if fx["status_short"] in _FINISHED or (fx["status_short"] in _LIVE and (fx["elapsed"] or 0) > PRE_LATE_GRACE_MIN):
             _mark_eval(conn, fid, "PRE", f"late:{fx['status_short']}/{fx['elapsed']}")
             _log("pre_skipped_late", fixture=fid, status=fx["status_short"], elapsed=fx["elapsed"]); continue
@@ -452,11 +574,13 @@ def _scan_pre(conn, broker: DemoBroker, tickers: _Tickers, strength: _Strength, 
         if not (hi and ai):
             _mark_eval(conn, fid, "PRE", "unmapped_team"); continue
         try:
-            dec = pre_decision(conn, fx, hi, ai, pr, records, strength)
+            dec = pre_decision(conn, fx, hi, ai, pr, records, strength, decision_at=_iso(_now()))
         except Exception as e:  # noqa: BLE001 — transient: NOT marked, retried next cycle
             _log("pre_decision_error", fixture=fid, error=str(e)[:200]); continue
         if dec is None:
             _mark_eval(conn, fid, "PRE", "unpriceable"); continue
+        dec['snapshot_observed_at'] = observed['observed_at']
+        record_decision(conn, fid, 'pre', dec)
         from prediction_market_soccer.ops.performance_report import _row_comp
         act = _place_entry(conn, broker, tickers, fx, hi, ai, track="pre", side=dec["side"],
                            stake=dec["stake_usd"], bet_kind=dec["bet_kind"], entry_min=0,
@@ -495,8 +619,9 @@ def _scan_inplay(conn, broker: DemoBroker, tickers: _Tickers, live_fids: list[in
             for m in miles:
                 _mark_eval(conn, fid, m, "no_fixture")
             continue
-        have = conn.execute("SELECT 1 FROM kalshi_mirror WHERE fixture_api_id=? AND track='inplay'", (fid,)).fetchone()
-        if have:
+        have = conn.execute("SELECT status,fill_count,attempts FROM kalshi_mirror WHERE fixture_api_id=? AND track='inplay'", (fid,)).fetchone()
+        retryable = have and have['status'] in ('unfilled','error') and float(have['fill_count'] or 0)==0 and int(have['attempts'] or 1)<MAX_ATTEMPTS
+        if have and not retryable:
             for m in miles:
                 _mark_eval(conn, fid, m, "already_entered")
             continue
@@ -508,7 +633,7 @@ def _scan_inplay(conn, broker: DemoBroker, tickers: _Tickers, live_fids: list[in
         if fx["home_goals"] is None or fx["away_goals"] is None:
             continue                                     # score not synced yet — retry next cycle
         try:
-            entry = _inplay_entry(conn, fx, hi, ai)     # the ledger's own causal rule, live
+            entry = _inplay_entry(conn, fx, hi, ai, decision_at=_iso(_now()))
         except Exception as e:  # noqa: BLE001 — transient: NOT marked, retried next cycle
             _log("inplay_entry_error", fixture=fid, error=str(e)[:200]); continue
         verdict = "no_edge" if not entry else f"relative_value:{entry['side']}@{entry['entry_cents']}¢ {entry['milestone']}"
@@ -520,11 +645,13 @@ def _scan_inplay(conn, broker: DemoBroker, tickers: _Tickers, live_fids: list[in
             for m in miles:
                 _mark_eval(conn, fid, m, verdict + ":late")
             _log("inplay_skipped_late", fixture=fid, elapsed=fx["elapsed"]); continue
+        from prediction_market_soccer.util.timing_provenance import record_decision
+        record_decision(conn, fid, 'inplay', entry)
         act = _place_entry(conn, broker, tickers, fx, hi, ai, track="inplay", side=entry["side"],
                            stake=entry["stake_usd"], bet_kind="relative_value", entry_min=int(entry["entry_min"]),
                            ledger_c=entry["entry_cents"], ledger_venue=entry.get("source"),
                            ledger_edge=entry.get("edge"), comp=_row_comp(fx),
-                           extra={k: entry[k] for k in ("milestone", "edge", "stake_usd") if k in entry})
+                           extra=entry)
         if act.get("terminal", True):
             for m in miles:
                 _mark_eval(conn, fid, m, verdict + f":{act.get('status', 'done')}")
@@ -535,6 +662,7 @@ def _scan_inplay(conn, broker: DemoBroker, tickers: _Tickers, live_fids: list[in
 
 
 # ── shared: place an entry ────────────────────────────────────────────────────
+@writer
 def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: str, *, track: str,
                  side: str, stake: float, bet_kind: str, entry_min: int, ledger_c, ledger_venue,
                  ledger_edge, comp: str | None, extra: dict | None = None) -> dict | None:
@@ -556,7 +684,7 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
         # clean response with fill_count 0 (an IOC that missed), and 'error' is only set by
         # _reconcile_pending after it confirmed the venue holds no order under our
         # client_order_id. Only then is replacing the row with a fresh attempt safe.
-        retryable = prev["status"] in ("error", "unfilled") and float(prev["fill_count"] or 0) < 1
+        retryable = prev["status"] in ("error", "unfilled") and float(prev["fill_count"] or 0) == 0
         if not retryable or int(prev["attempts"] or 1) >= MAX_ATTEMPTS:
             return {"terminal": True}
         attempts = int(prev["attempts"] or 1) + 1
@@ -602,6 +730,38 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
         _log("entry_no_ask", fixture=fid, track=track, ticker=ticker, attempt=attempts)
         return {"terminal": attempts >= MAX_ATTEMPTS}
     n = contracts(ask, stake)
+    # An edge at another venue/earlier quote is not permission to pay any demo price.
+    fair = (extra or {}).get('fair')
+    if fair is None:
+        fair = ((extra or {}).get('model') or {}).get(side)
+    threshold = CONFIG.risk.min_net_edge if track == 'inplay' else CONFIG.decision.min_net_edge
+    if track == 'pre' and ask * 100 < CONFIG.decision.longshot_cents:
+        threshold += CONFIG.decision.longshot_extra_theta
+    if track == 'pre' and side == 'draw':
+        threshold += getattr(CONFIG.decision, 'draw_extra_theta', 0.0)
+    try:
+        import math
+        from dataclasses import asdict
+        from prediction_market_soccer.strategy.edge import compute_edge
+        if n<1 or fair is None or not math.isfinite(float(fair)) or not 0 <= float(fair) <= 1:
+            raise ValueError('Missing finite model probability')
+        fee = broker.estimate_taker_fee(ticker,n,ask)
+        fee_p = float(fee['fee_per_contract'])
+        if not math.isfinite(fee_p) or fee_p<0: raise ValueError('Invalid fee estimate')
+        edge = compute_edge(float(fair),ask,sigma_p=float(((extra or {}).get('sigma') or {}).get(side,0)),
+                            k=CONFIG.risk.shrink_k,fee=fee_p,theta=threshold)
+        extra = {**(extra or {}),'execution_quote':{'ask':ask,'observed_at':_iso(_now()),'fee':fee,
+                  'edge':asdict(edge),'strategy_kind':bet_kind}}
+        if bet_kind in ('value','relative_value') and not edge.tradable:
+            _log('entry_price_rejected',fixture=fid,track=track,ask=ask,fair=fair,net_edge=edge.net_edge,threshold=threshold)
+            return {'terminal':False,'status':'execution_edge_unavailable'}
+    except Exception as exc:
+        _log('entry_edge_unavailable',fixture=fid,track=track,error=str(exc)[:120])
+        return {'terminal':False,'status':'execution_edge_unavailable'}
+    if track == 'pre':
+        from prediction_market_soccer.util.timing_provenance import _dt
+        if _now() >= _dt(fx['kickoff_ts']):
+            return {'terminal': True, 'status': 'late_pre'}
     coid = f"mirror-{track}-{fid}-{uuid.uuid4().hex[:8]}"
     # write the intent BEFORE the HTTP call: the row is the idempotency key, so a crash
     # between send and record can never place this (fixture, track) twice
@@ -624,13 +784,21 @@ def _place_entry(conn, broker: DemoBroker, tickers: _Tickers, fx, hi: str, ai: s
         return {"terminal": False}
     filled = res["fill_count"]
     status = "open" if filled > 0 else ("unfilled" if res["ok"] else "error")
+    if (not res['ok'] and int(res.get('status_code') or 500)>=500) or (filled and res.get('avg_fill') is None):
+        status = 'pending'
     conn.execute(
         "UPDATE kalshi_mirror SET status=?, order_id=?, fill_count=?, avg_fill_c=?, filled_at=?, note=?, "
         "raw_json=json_patch(coalesce(raw_json,'{}'), ?) WHERE id=?",
-        (status, res["order_id"], filled, (round(res["avg_fill"] * 100, 1) if res["avg_fill"] else (round(ask * 100, 1) if filled else None)),
+        (status, res["order_id"], filled, (round(res["avg_fill"] * 100, 1) if res["avg_fill"] is not None else None),
          (_iso(_now()) if filled else None), (None if res["ok"] else f"http {res['status_code']}: {str(res['raw'])[:150]}"),
          json.dumps({"entry_response": res.get("raw"), "entry_sent": res.get("sent")}, default=str), row_id))
     conn.commit()
+    if filled and res.get('order_id') and hasattr(broker,'fills_for_order'):
+        try:
+            from prediction_market_soccer.util.timing_provenance import record_fills
+            record_fills(conn,broker.fills_for_order(ticker,res['order_id']));conn.commit()
+        except Exception as e:
+            _log('fill_receipt_unavailable',fixture=fid,order_id=res['order_id'],error=str(e)[:120])
     act = {"action": "entry", "track": track, "fixture": fid, "side": side, "ticker": ticker, "bet_kind": bet_kind,
            "ledger_c": ledger_c, "ask_c": round(ask * 100, 1), "count": n, "filled": filled,
            "avg_fill_c": (round(res["avg_fill"] * 100, 1) if res["avg_fill"] else None), "status": status,
@@ -653,25 +821,17 @@ def _insert(conn, row: dict) -> int:
 _MILESTONE_MIN = {"T15": 15, "T30": 30, "HT": 45, "T60": 60, "T75": 75}
 
 
+@writer
 def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict[int, dict]) -> list[dict]:
-    """The ledger's exit, evaluated where the ledger evaluates it.
+    """Evaluate immutable observed milestones, then recheck the actual demo bid.
 
-    strategy/smart_exit prices a held pick only at the recorded MILESTONE rows (club
-    fixtures have no per-minute Poly Global ticks): at each milestone minute mn ≥ the entry
-    minute it reconstructs the score from fixture_event, prices the live fair with the PIT
-    lambdas (knockout-scaled by the round), takes the row's own price for the pick — Kalshi
-    bid, else ask, else Poly — and sells the first time price ≥ fair + trigger. That is the
-    "15' 卖 43¢" the 择时 tab shows. The first version of this leg re-evaluated every cycle on
-    the live demo bid, which would have sold more often and earlier than the ledger; this one
-    decides on the SAME row, the SAME minute and the SAME price the ledger will read back,
-    and only executes on the demo venue. A milestone is evaluated exactly once per position;
-    a triggered sell that the venue did not fill is retried on later cycles (the decision
-    stands — the ledger sold at that minute).
+    Stored score/reds/elapsed must still match the currently observed live state.
+    A retry loses its old signal when that state or freshness changes. The intent is
+    durable before HTTP; unknown outcomes are reconciled before another sell.
     """
     from prediction_market_soccer.model.inplay import live_match_prob
     from prediction_market_soccer.model.inplay_constants import OVERSHOOT_MARGIN, overshoot_trigger
     from prediction_market_soccer.model.match_pricing import is_knockout
-    from prediction_market_soccer.ops.settle_bets import _event_timelines, _state_at
     from prediction_market_soccer.util.pricing import reg_score
     rows = conn.execute("SELECT * FROM kalshi_mirror WHERE status='open'").fetchall()
     if not rows:
@@ -679,23 +839,37 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
     cmap = _cmap(conn)
     actions = []
     venue_pos: dict[str, float] | None = None
+    blocked_tickers = {r['ticker'] for r in rows if json.loads(r['raw_json'] or '{}').get('exit_outcome_unknown')}
     for r in rows:
         fid, side, ticker, track = r["fixture_api_id"], r["side"], r["ticker"], r["track"]
         held = float(r["fill_count"]) - float(r["exit_fill_count"] or 0.0)
-        if held < 1:
+        if held <= 1e-8:
             conn.execute("UPDATE kalshi_mirror SET status='exited' WHERE id=?", (r["id"],)); continue
         fx = _fixture(conn, fid)
         if fx is None:
             continue
-        # settled at the whistle → bookkeeping only (the venue settles the contract itself)
+        if ticker in blocked_tickers:
+            _log('exit_reconciliation_required', fixture=fid, ticker=ticker)
+            continue
+        # A final fixture is insufficient: record only the venue's terminal payout.
         if fx["status_short"] in _FINISHED and fx["home_goals"] is not None:
+            from prediction_market_soccer.util.demo_settlement import terminal_binary_settlement
+            try:
+                market = broker.market(ticker)
+                terminal = terminal_binary_settlement(market, ticker=ticker)
+            except Exception:
+                terminal = None
+            if terminal is None:
+                continue
             gh, ga = reg_score(fx["raw_json"], fx["home_goals"], fx["away_goals"])
-            result = "home" if gh > ga else ("draw" if gh == ga else "away")
-            won = int(side == result)
+            won = int(terminal == 'yes')
             entry_c = float(r["avg_fill_c"] or r["ask_c"] or 0.0)
-            pnl = (100.0 - entry_c) if won else -entry_c
+            sold = float(r['exit_fill_count'] or 0)
+            proceeds_c = sold * float(r['exit_avg_c'] or 0) + held * (100.0 if won else 0)
+            pnl = proceeds_c / float(r['fill_count']) - entry_c
+            raw = json.loads(r['raw_json'] or '{}'); raw['demo_settlement'] = market
             conn.execute("UPDATE kalshi_mirror SET status='settled', exit_reason='settled', won=?, pnl_c=?, "
-                         "exited_at=? WHERE id=?", (won, round(pnl, 1), _iso(_now()), r["id"]))
+                         "exited_at=?,raw_json=? WHERE id=?", (won, round(pnl, 1), _iso(_now()), json.dumps(raw), r["id"]))
             act = {"action": "settled", "track": track, "fixture": fid, "side": side, "won": won,
                    "score": f"{gh}-{ga}", "pnl_c_per_contract": round(pnl, 1), "held": held}
             _log("settled", **act); actions.append(act); continue
@@ -708,17 +882,22 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
         # is retried first — the ledger's decision is made, only the execution is pending.
         pending_min = r["exit_min"] if (r["exit_reason"] is None and r["exit_min"] is not None) else None
         entry_floor = max(1, int(r["entry_min"] or 0))
-        ms_rows = conn.execute(
-            "SELECT * FROM milestone_snapshot WHERE fixture_api_id=? AND milestone IN ('T15','T30','HT','T60','T75')",
-            (fid,)).fetchall()
-        ms_rows.sort(key=lambda m: _MILESTONE_MIN[m["milestone"]])
+        from prediction_market_soccer.util.timing_provenance import live_snapshots, record_decision, current_state_matches
+        decision_at = _iso(_now())
+        ms_rows = [m for m in live_snapshots(conn, fid, decision_at) if m['milestone'] in _MILESTONE_MIN
+                   and current_state_matches(conn,fx,m,decision_at)]
+        if pending_min is not None and not any(m['elapsed']==pending_min for m in ms_rows):
+            conn.execute('UPDATE kalshi_mirror SET exit_min=NULL,exit_bid_c=NULL,exit_fair_c=NULL WHERE id=?',(r['id'],))
+            pending_min = None
         decided_min, decided_price, decided_fair, decided_trig = None, None, None, None
         if pending_min is not None:
             decided_min, decided_price, decided_fair = pending_min, r["exit_bid_c"], r["exit_fair_c"]
         else:
             lam = None
             for m in ms_rows:
-                mn = _MILESTONE_MIN[m["milestone"]]
+                mn = m.get('elapsed')
+                if mn is None:
+                    continue
                 if mn < entry_floor or mn > _REG_MAX_MIN:
                     continue
                 ekey = f"exit:{track}:{m['milestone']}"
@@ -726,17 +905,17 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
                                 (fid, ekey)).fetchone():
                     continue
                 # the row's own price for the pick — the ledger's _milestone_ticks order
-                price = next((v for v in (m[f"kalshi_{side}_bid"], m[f"kalshi_{side}_ask"],
-                                          m[f"poly_{side}_bid"], m[f"poly_{side}_ask"]) if v is not None), None)
+                price = next((v for v in (m[f"kalshi_{side}_bid"], m[f"poly_{side}_bid"]) if v is not None), None)
                 if price is None:
                     _mark_eval(conn, fid, ekey, "no_price"); continue
                 try:
                     if lam is None:
                         sm = strength.get(fx["kickoff_ts"], r["comp"])
                         lam = sm.pair_lambdas(hi, ai, knockout=is_knockout(fx["round"]))
-                    goals, _reds = _event_timelines(conn, fid, fx["home_api_id"])
-                    sh, sa = _state_at(goals, mn)
-                    lp = live_match_prob(lam[0], lam[1], mn, sh, sa)     # no red-card term — as smart_exit
+                    sh, sa, rh, ra = (m.get(k) for k in ('home_goals','away_goals','reds_home','reds_away'))
+                    if any(v is None for v in (sh,sa,rh,ra)):
+                        _mark_eval(conn, fid, ekey, 'unverified_observed_state'); continue
+                    lp = live_match_prob(lam[0], lam[1], mn, sh, sa, red_home=rh, red_away=ra)
                 except Exception as e:  # noqa: BLE001 — transient: not marked, retried next cycle
                     _log("exit_fair_error", fixture=fid, milestone=m["milestone"], error=str(e)[:160]); break
                 fair = {"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away}[side]
@@ -748,6 +927,8 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
                     decided_min, decided_price, decided_fair, decided_trig = mn, round(float(price) * 100, 1), round(fair * 100, 1), round(trig * 100, 1)
                     conn.execute("UPDATE kalshi_mirror SET exit_min=?, exit_bid_c=?, exit_fair_c=? WHERE id=?",
                                  (mn, decided_price, decided_fair, r["id"]))
+                    record_decision(conn, fid, f'exit:{track}', {'side':side,'sold_min':mn,'sold_c':decided_price,
+                                    'fair_c':decided_fair,'snapshot_observed_at':m['observed_at'],'evidence_level':'forward_observed_paper'})
                     break
             conn.commit()
         if decided_min is None:
@@ -756,46 +937,85 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
         try:
             ob = broker.book(ticker)
         except Exception as e:  # noqa: BLE001
+            blocked_tickers.add(ticker)
             _log("exit_book_error", fixture=fid, ticker=ticker, error=str(e)[:160]); continue
         bid = float(ob.yes_bid) if ob.yes_bid is not None else None
         if bid is None or not (0.0 < bid < 1.0):
             _log("exit_no_bid", fixture=fid, ticker=ticker); continue
+        if decided_fair is not None and bid < (float(decided_fair)/100 + overshoot_trigger(float(decided_fair)/100)):
+            _log('exit_price_rejected', fixture=fid, ticker=ticker, bid=bid, fair_c=decided_fair); continue
         if venue_pos is None:
             try:
                 venue_pos = broker.positions()
             except Exception:  # noqa: BLE001
-                venue_pos = {}
+                continue
         vp = venue_pos.get(ticker)
-        n = int(held) if vp is None else max(0, min(int(held), int(vp)))
+        n = max(0, min(int(held), int(vp or 0)))
         if n < 1:
             _log("exit_nothing_held", fixture=fid, ticker=ticker, ours=held, venue=vp); continue
         coid = f"mirror-exit-{track}-{fid}-{uuid.uuid4().hex[:8]}"
-        conn.execute("UPDATE kalshi_mirror SET exit_client_order_id=? WHERE id=?", (coid, r["id"]))
+        state = json.loads(r['raw_json'] or '{}')
+        if state.get('exit_outcome_unknown'):
+            _log('exit_reconciliation_required', fixture=fid, ticker=ticker); continue
+        conn.execute("UPDATE kalshi_mirror SET exit_client_order_id=?,raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                     (coid,json.dumps({'exit_outcome_unknown':coid,'exit_intent_at':_iso(_now())}),r['id']))
         conn.commit()
         try:
             res = broker.sell_yes(ticker, n, bid, coid)
         except Exception as e:  # noqa: BLE001
+            blocked_tickers.add(ticker)
+            conn.execute("UPDATE kalshi_mirror SET raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                         (json.dumps({'exit_outcome_unknown':coid}),r['id']))
+            conn.commit()
             _log("exit_send_error", fixture=fid, ticker=ticker, error=str(e)[:160]); continue
         if not res["ok"]:
+            if int(res.get('status_code') or 500)>=500:
+                blocked_tickers.add(ticker)
+                conn.execute("UPDATE kalshi_mirror SET raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                             (json.dumps({'exit_outcome_unknown':coid}),r['id']))
+            else:
+                conn.execute("UPDATE kalshi_mirror SET raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                             (json.dumps({'exit_outcome_unknown':None}),r['id']))
             conn.execute("UPDATE kalshi_mirror SET note=? WHERE id=?",
                          (f"exit http {res['status_code']}: {str(res['raw'])[:120]}", r["id"]))
             conn.commit()
             _log("exit_venue_error", fixture=fid, ticker=ticker, http=res["status_code"], raw=res["raw"])
             continue                       # decision stands → retried next cycle
         sold = res["fill_count"]
+        if sold and res.get('avg_fill') is None:
+            blocked_tickers.add(ticker)
+            _log('exit_fill_price_unknown',fixture=fid,ticker=ticker)
+            continue
         new_exit_fill = float(r["exit_fill_count"] or 0.0) + sold
         remaining = float(r["fill_count"]) - new_exit_fill
         entry_c = float(r["avg_fill_c"] or r["ask_c"] or 0.0)
-        sold_c = (res["avg_fill"] * 100.0) if res["avg_fill"] else (bid * 100.0)
-        done = sold > 0 and remaining < 1
+        sold_c = (res["avg_fill"] * 100.0) if res["avg_fill"] is not None else 0.0
+        previous_sold = float(r['exit_fill_count'] or 0)
+        weighted_sold_c = ((float(r['exit_avg_c'] or 0)*previous_sold + sold_c*sold)/new_exit_fill) if new_exit_fill else None
+        exit_fills = list(state.get('exit_fills') or [])
+        if not exit_fills and previous_sold and state.get('exit_response'):
+            exit_fills.append(state['exit_response'])
+        if sold:
+            exit_fills.append(res.get('raw'))
+        done = sold > 0 and remaining <= 1e-8
+        exit_order_ids = list(state.get('exit_order_ids') or ([r['exit_order_id']] if previous_sold and r['exit_order_id'] else []))
+        if sold and res.get('order_id'): exit_order_ids.append(res['order_id'])
         conn.execute(
             "UPDATE kalshi_mirror SET exit_order_id=?, exit_fill_count=?, exit_avg_c=?, exited_at=?, "
             "status=?, exit_reason=?, pnl_c=?, raw_json=json_patch(coalesce(raw_json,'{}'), ?) WHERE id=?",
-            (res["order_id"], new_exit_fill, (round(sold_c, 1) if sold else None), (_iso(_now()) if done else None),
+            (res["order_id"], new_exit_fill, weighted_sold_c, (_iso(_now()) if done else None),
              ("exited" if done else "open"), ("smart_exit" if done else None),
-             (round(sold_c - entry_c, 1) if done else None),
-             json.dumps({"exit_response": res.get("raw"), "exit_sent": res.get("sent")}, default=str), r["id"]))
+             (round(weighted_sold_c - entry_c, 1) if done else None),
+             json.dumps({"exit_response": res.get("raw"), "exit_sent": res.get("sent"), 'exit_fills':exit_fills,
+                         'exit_order_ids':exit_order_ids,'exit_outcome_unknown':None}, default=str), r["id"]))
         conn.commit()
+        venue_pos[ticker] = max(0,float(venue_pos.get(ticker) or 0)-sold)
+        if sold and res.get('order_id') and hasattr(broker,'fills_for_order'):
+            try:
+                from prediction_market_soccer.util.timing_provenance import record_fills
+                record_fills(conn,broker.fills_for_order(ticker,res['order_id']));conn.commit()
+            except Exception as e:
+                _log('fill_receipt_unavailable',fixture=fid,order_id=res['order_id'],error=str(e)[:120])
         act = {"action": "smart_exit", "track": track, "fixture": fid, "side": side, "ticker": ticker,
                "milestone_min": decided_min, "ledger_price_c": decided_price, "fair_c": decided_fair,
                "trigger_c": decided_trig, "demo_bid_c": round(bid * 100, 1), "requested": n, "sold": sold,
@@ -808,32 +1028,76 @@ def _scan_exits(conn, broker: DemoBroker, strength: _Strength, live_by_fid: dict
 
 
 # ── reconcile rows whose send outcome is unknown ─────────────────────────────
+@writer
 def _reconcile_pending(conn, broker: DemoBroker) -> int:
+    """Resolve persisted intents by client ID and actual fills; limit prices are never fills."""
+    from prediction_market_soccer.util.timing_provenance import record_fills, fills_cash, _dt
     n = 0
-    for r in conn.execute("SELECT id, ticker, client_order_id, ask_c, submitted_at FROM kalshi_mirror WHERE status='pending'").fetchall():
+    rows = conn.execute("SELECT * FROM kalshi_mirror WHERE json_extract(raw_json,'$.paper_entry_id') IS NULL AND (status='pending' OR json_extract(raw_json,'$.exit_outcome_unknown') IS NOT NULL)").fetchall()
+    for r in rows:
+        raw = json.loads(r['raw_json'] or '{}')
+        is_exit = bool(raw.get('exit_outcome_unknown'))
+        coid = raw['exit_outcome_unknown'] if is_exit else r['client_order_id']
         try:
             orders = broker.orders_for(r["ticker"])
         except Exception:  # noqa: BLE001
             continue
-        o = next((x for x in orders if x.get("client_order_id") == r["client_order_id"]), None)
+        matches = [x for x in orders if x.get('client_order_id')==coid]
+        if len(matches)>1: continue
+        o = matches[0] if matches else None
         if o is None:
             # the venue has no record of this client_order_id, so the POST never landed and
             # nothing is live. Release the row to the retry path (bounded by MAX_ATTEMPTS).
             age = 0.0
             try:
-                age = (_now() - datetime.fromisoformat(r["submitted_at"])).total_seconds()
+                age = (_now() - _dt(raw.get('exit_intent_at') if is_exit else r['submitted_at'])).total_seconds()
             except (TypeError, ValueError):
                 pass
             if age > 120:      # give the exchange time to make a just-sent order listable
-                conn.execute("UPDATE kalshi_mirror SET status='error', note=? WHERE id=?",
-                             ("send outcome unknown; venue has no such client_order_id — safe to retry", r["id"]))
+                if is_exit:
+                    conn.execute("UPDATE kalshi_mirror SET raw_json=json_patch(coalesce(raw_json,'{}'),?),note=? WHERE id=?",
+                                 (json.dumps({'exit_outcome_unknown':None}),'exit intent absent in complete venue order listing',r['id']))
+                elif float(r['fill_count'] or 0)==0:
+                    conn.execute("UPDATE kalshi_mirror SET status='error', note=? WHERE id=?",
+                                 ("send outcome unknown; venue has no such client_order_id — safe to retry", r["id"]))
                 n += 1
             continue
-        filled = float(o.get("fill_count_fp") or 0.0)
-        px = o.get("yes_price_dollars")
-        conn.execute("UPDATE kalshi_mirror SET status=?, order_id=?, fill_count=?, avg_fill_c=?, filled_at=? WHERE id=?",
-                     ("open" if filled > 0 else "unfilled", o.get("order_id"), filled,
-                      (round(float(px) * 100, 1) if (px and filled) else None), (_iso(_now()) if filled else None), r["id"]))
+        # IOC must have reached a terminal state before an empty response can permit retry.
+        if o.get('status') not in ('executed','canceled','cancelled'):
+            continue
+        try:
+            import math
+            filled = float(o.get('fill_count_fp') if o.get('fill_count_fp') is not None else o.get('fill_count',0))
+            if not math.isfinite(filled) or filled<0: continue
+            receipts = broker.fills_for_order(r['ticker'],o['order_id']) if filled else []
+            expected_action = 'sell' if is_exit else 'buy'
+            if any(f.get('order_id')!=o['order_id'] or f.get('ticker',f.get('market_ticker'))!=r['ticker'] or f.get('action')!=expected_action for f in receipts):
+                continue
+            cash = fills_cash(receipts)
+            if cash is None or abs(cash['count']-filled)>1e-8: continue
+            if filled: record_fills(conn,receipts)
+        except Exception as exc:
+            _log('pending_fill_receipt_unavailable',order_id=o.get('order_id'),error=str(exc)[:120]);continue
+        avg = cash['cash_usd']/filled if filled else None
+        recovered = {'order_id':o['order_id'],'fill_count':filled,'average_fill_price':avg,
+                     'average_fee_paid':cash['fee_usd']/filled if filled else None,'source':'verified_fills_recovery'}
+        if is_exit:
+            prior = float(r['exit_fill_count'] or 0)
+            total = prior+filled
+            if total>float(r['fill_count'])+1e-8: continue
+            price = (prior*float(r['exit_avg_c'] or 0)+cash['cash_usd']*100)/total if total else None
+            done = total>=float(r['fill_count'])-1e-8
+            parts = list(raw.get('exit_fills') or ([raw['exit_response']] if prior and raw.get('exit_response') else []))
+            ids = list(raw.get('exit_order_ids') or ([r['exit_order_id']] if prior and r['exit_order_id'] else []))
+            if filled: parts.append(recovered);ids.append(o['order_id'])
+            conn.execute("UPDATE kalshi_mirror SET status=?,exit_fill_count=?,exit_avg_c=?,exit_order_id=?,exited_at=?,exit_reason=?,pnl_c=?,raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                         ('exited' if done else 'open',total,price,o['order_id'],_iso(_now()) if done else None,
+                          'smart_exit' if done else None,price-float(r['avg_fill_c']) if done and r['avg_fill_c'] is not None else None,
+                          json.dumps({'exit_outcome_unknown':None,'exit_fills':parts,'exit_order_ids':ids,'exit_response':recovered}),r['id']))
+        else:
+            conn.execute("UPDATE kalshi_mirror SET status=?,order_id=?,fill_count=?,avg_fill_c=?,filled_at=?,raw_json=json_patch(coalesce(raw_json,'{}'),?) WHERE id=?",
+                         ('open' if filled else 'unfilled',o['order_id'],filled,avg*100 if avg is not None else None,
+                          min((f['created_time'] for f in receipts),default=None),json.dumps({'entry_response':recovered}),r['id']))
         n += 1
     if n:
         conn.commit()
@@ -841,6 +1105,7 @@ def _reconcile_pending(conn, broker: DemoBroker) -> int:
 
 
 # ── the cycle ─────────────────────────────────────────────────────────────────
+@writer
 def run_cycle(conn, inplay_doc: dict | None = None) -> dict:
     """One mirror pass: PRE entries → in-play entries → exits/settlements. Never raises
     into the caller; every leg is isolated. Returns a summary dict."""
@@ -852,21 +1117,15 @@ def run_cycle(conn, inplay_doc: dict | None = None) -> dict:
     except Exception as e:  # noqa: BLE001
         _log("broker_refused", error=str(e)[:200])
         return {"enabled": True, "error": str(e)[:200]}
-    if inplay_doc is None:
-        from prediction_market_soccer.ops import inplay_export
-        inplay_doc = inplay_export.build(conn, with_venues=True)
-    live = [m for m in (inplay_doc.get("matches") or []) if m.get("fixture_id")]
-    live_by_fid = {int(m["fixture_id"]): m for m in live}
-    tickers, strength = _Tickers(), _Strength(conn)
     out = {"enabled": True, "actions": [], "errors": []}
-    for name, fn in (("reconcile", lambda: _reconcile_pending(conn, broker)),
-                     ("pre", lambda: _scan_pre(conn, broker, tickers, strength, load_pit_records())),
-                     ("inplay", lambda: _scan_inplay(conn, broker, tickers, list(live_by_fid))),
-                     ("exits", lambda: _scan_exits(conn, broker, strength, live_by_fid))):
+    from prediction_market_soccer.exec import demo_forward
+    # Paper lifecycle has already recorded immutable entry/exit decisions. Demo
+    # consumes them and never writes a paper decision or reselects side/timing.
+    for name, fn in (("forward", lambda: demo_forward.run(conn, broker)),):
         try:
             res = fn()
-            if isinstance(res, list):
-                out["actions"].extend(res)
+            out["actions"].extend(res.get('actions', []))
+            out["errors"].extend(res.get('errors', []))
         except Exception as e:  # noqa: BLE001
             out["errors"].append(f"{name}: {str(e)[:160]}")
             _log("leg_error", leg=name, error=str(e)[:200])
@@ -882,6 +1141,7 @@ def run_cycle(conn, inplay_doc: dict | None = None) -> dict:
 
 
 def _export(conn, broker: DemoBroker | None, last: dict) -> None:
+    from prediction_market_soccer.util.timing_provenance import demo_execution_summary
     rows = [dict(r) for r in conn.execute(
         "SELECT * FROM kalshi_mirror ORDER BY submitted_at DESC LIMIT 200").fetchall()]
     for r in rows:
@@ -900,13 +1160,16 @@ def _export(conn, broker: DemoBroker | None, last: dict) -> None:
                       for k in ("open", "exited", "settled", "unfilled", "skipped", "error", "pending")},
            "realized_c": round(sum(float(r["pnl_c"]) * (float(r["fill_count"]) if r["status"] == "settled"
                                                           else float(r["exit_fill_count"] or 0)) for r in closed), 1),
+           "realized_c_basis":"legacy_gross_before_fees", "execution_summary":demo_execution_summary(conn),
            "last_cycle": {k: last.get(k) for k in ("actions", "errors", "elapsed_s")},
            "rows": rows}
     CONFIG.paths.ensure()
-    _EXPORT.write_text(json.dumps(doc, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    from prediction_market_soccer.ops.run_status import atomic_json
+    atomic_json(CONFIG.paths.output / "kalshi_mirror.json", doc)
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
+@writer
 def main() -> None:
     import argparse
     ap = argparse.ArgumentParser(description="Kalshi DEMO mirror of the 择时(实现) strategy")

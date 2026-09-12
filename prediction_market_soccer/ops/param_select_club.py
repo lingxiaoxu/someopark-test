@@ -21,13 +21,12 @@ harness scores candidate parameter sets the way production actually prices:
                  leagues (disclosed in the output; affects all candidates alike);
                  blend indices for TEST scoring are cut as-of the TEST start.
 
-Adoption: if a non-DEF candidate beats DEF's pooled calibrated TEST Brier by more
-than --adopt-margin (default 0.005), param_selected.json is written (config
-auto-loads it → production switches). Otherwise report-only.
+This is a research recommendation only. Changing loaded trading parameters needs
+an explicit validated forward-method release with no incompatible open positions.
 
     python -m prediction_market_soccer.ops.param_select_club [--test-days 14]
         [--adopt-margin 0.005] [--dry-run]
-    → data/output/param_select_club.json (+ param_selected.json on adoption)
+    → data/output/param_select_club.json
 """
 from __future__ import annotations
 
@@ -244,7 +243,9 @@ def refit(ev: _Evaluator) -> dict:
     return {"params": best_p, "train_brier": best_b}
 
 
-def run(test_days: int = 14, adopt_margin: float = 0.005, dry_run: bool = False) -> dict:
+def run(test_days: int = 14, adopt_margin: float = 0.005, dry_run: bool = True) -> dict:
+    if not dry_run:
+        raise ValueError('Automatic parameter adoption is retired; use an isolated validated forward-method release')
     from prediction_market_soccer.ingest import store
     conn = store.init_db()
     cutoff = (datetime.now(timezone.utc) - timedelta(days=test_days)).isoformat(timespec="seconds")
@@ -293,25 +294,14 @@ def run(test_days: int = 14, adopt_margin: float = 0.005, dry_run: bool = False)
     report["winner"] = winner
     adopt = (winner is not None and winner != "DEF"
              and briers[winner] <= briers.get("DEF", math.inf) - adopt_margin)
-    report["adopted"] = bool(adopt) and not dry_run
+    report['adopted'] = False
+    report['adoption_recommended'] = bool(adopt)
+    report['adoption_requires'] = 'validated_forward_method_release'
 
     CONFIG.paths.ensure()
     (CONFIG.paths.output / "param_select_club.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    if adopt and not dry_run:
-        sel = {"params": candidates[winner],
-               "brier": briers[winner], "n_settled": n_test,
-               "selection": {"method": f"club per-league time-split (TEST last {test_days}d), "
-                                       f"winner {winner} by pooled calibrated test Brier",
-                             "margin_vs_DEF": round(briers.get("DEF", math.nan) - briers[winner], 4),
-                             "source": "ops/param_select_club.py"},
-               "ts": report["ts"]}
-        (CONFIG.paths.output / "param_selected.json").write_text(
-            json.dumps(sel, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"[param_select] ADOPTED {winner} → param_selected.json (production auto-loads)")
-    else:
-        print(f"[param_select] winner={winner}; no adoption "
-              f"({'dry-run' if dry_run else 'margin not met or DEF wins'})")
+    print(f"[param_select] winner={winner}; recommendation saved; active parameters unchanged")
     return report
 
 
@@ -321,7 +311,7 @@ def main():
     ap.add_argument("--adopt-margin", type=float, default=0.005)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
-    run(test_days=a.test_days, adopt_margin=a.adopt_margin, dry_run=a.dry_run)
+    run(test_days=a.test_days, adopt_margin=a.adopt_margin, dry_run=True)
 
 
 if __name__ == "__main__":

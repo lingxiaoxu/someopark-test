@@ -16,20 +16,26 @@ a re-implementation would drift, and #141 is the standing proof of how expensive
 from __future__ import annotations
 
 import json
+import math
+import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.config.registry import REGISTRY, effective_strike_type
 from prediction_market_macro.ops.ledger import open_positions
 from prediction_market_macro.strategy.edge import taker_fee, two_sided
+from prediction_market_macro.util.quotes import quote_is_fresh
+from prediction_market_macro.util.execution import serialized_execution
 
 EXIT_EDGE = -0.06
 SLIP = 0.01
 
 
-def _quote(conn, ticker):
-    return conn.execute(
-        "SELECT yes_bid, yes_ask, bid_depth, ask_depth FROM quotes WHERE ticker=?"
+def _quote(conn, ticker, now: datetime | None = None):
+    row = conn.execute(
+        "SELECT ts, yes_bid, yes_ask, bid_depth, ask_depth FROM quotes WHERE ticker=?"
         " ORDER BY ts DESC LIMIT 1", (ticker,)).fetchone()
+    return row if now is None or quote_is_fresh(row, now) else None
 
 
 def exit_realized(legs_exit) -> float:
@@ -109,7 +115,82 @@ def opens_into_exit(st, mid_cost: float | None) -> bool:
     return mid_cost is not None and (st.fair - mid_cost) < EXIT_EDGE
 
 
-def _write_exit(conn, pos, ts: str, hold_edge, legs_exit, note: str) -> None:
+def _quote_version(q) -> tuple | None:
+    # Include values as well as ts: a same-timestamp correction is a new book too.
+    return (tuple(q[k] for k in ("ts", "yes_bid", "yes_ask", "bid_depth", "ask_depth"))
+            if q is not None else None)
+
+
+def _quotes_unchanged(conn, pos, versions: dict, now: datetime) -> bool:
+    return all(f["ticker"] in versions
+               and _quote_version(_quote(conn, f["ticker"], now)) == versions[f["ticker"]]
+               for f in pos["fills"])
+
+
+@contextmanager
+def _write_snapshot(conn):
+    """Pin the validated book through the paper writes, without owning mirror I/O.
+
+    execution_lock excludes other ledger passes, but market ingestion intentionally
+    does not take it. A SQLite write reservation closes that remaining race. Preserve
+    a caller's existing transaction; a stale deferred snapshot must fail its upgrade
+    instead of writing from old data. The savepoint rolls back only this exit on error.
+    """
+    own_transaction = not conn.in_transaction
+    try:
+        if own_transaction:
+            conn.execute("BEGIN IMMEDIATE")
+        else:
+            conn.execute("UPDATE quotes SET ts=ts WHERE 0")  # reserve writer, change no rows
+    except sqlite3.OperationalError as exc:
+        if getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY_SNAPSHOT:
+            raise
+        # The caller's deferred read snapshot predates an ingestion commit. It
+        # cannot be upgraded, and we must not roll back unrelated caller work.
+        yield False
+        return
+    conn.execute("SAVEPOINT macro_exit_write")
+    try:
+        yield True
+    except BaseException:
+        conn.execute("ROLLBACK TO macro_exit_write")
+        conn.execute("RELEASE macro_exit_write")
+        if own_transaction:
+            conn.rollback()
+        raise
+    else:
+        conn.execute("RELEASE macro_exit_write")
+        if own_transaction:
+            conn.commit()
+
+
+def _write_exit(conn, pos, ts: str, hold_edge, legs_exit, note: str,
+                *, quote_versions: dict) -> bool:
+    # Earlier positions can spend seconds in their inline mirror HTTP calls. Check
+    # the actual write instant, not the clock that began the maintenance cycle.
+    with _write_snapshot(conn) as usable:
+        if not usable:
+            return False
+        now = datetime.now(timezone.utc)
+        if (not _exit_window_open(conn, pos, now)
+                or not _quotes_unchanged(conn, pos, quote_versions, now)):
+            return False
+        if any(_forced_sell_quote(_quote(conn, f["ticker"], now), f["side"]) is None
+               for f in pos["fills"]):
+            return False
+        ts = now.isoformat()
+        fill_ids = _record_exit(conn, pos, ts, hold_edge, legs_exit, note)
+    # All legs are recorded against one verified book before any mirror request.
+    # run already owns/commits its caller's ledger pass; finish it here as well when
+    # a prior caller write started the transaction, so HTTP never holds its writer.
+    conn.commit()
+    from prediction_market_macro.ops import trading_kalshi
+    for fill_id in fill_ids:
+        trading_kalshi.on_fill(conn, fill_id)
+    return True
+
+
+def _record_exit(conn, pos, ts: str, hold_edge, legs_exit, note: str) -> list[int]:
     # Stored in inputs_json so the rolling-20 drawdown breaker and reports see
     # exit losses, not just settlement losses.
     #
@@ -129,14 +210,15 @@ def _write_exit(conn, pos, ts: str, hold_edge, legs_exit, note: str) -> None:
          pos["model_version"], "{}",
          f"{note} realized={realized:+.4f}", pos["id"]))
     did = cur.lastrowid
-    from prediction_market_macro.ops import trading_kalshi
+    fill_ids = []
     for f, px, _ in legs_exit:
         curf = conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
             " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
             (did, ts, f["ticker"], f"close_{f['side']}", px, f["count"],
              taker_fee(px, f["count"])))
-        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
+        fill_ids.append(curf.lastrowid)
+    return fill_ids
 
 
 def frozen(conn, pos, now: datetime) -> bool:
@@ -156,7 +238,7 @@ def frozen(conn, pos, now: datetime) -> bool:
     return 0 <= dt_min <= 10
 
 
-def hold_state(conn, pos) -> dict | None:
+def hold_state(conn, pos, now: datetime | None = None) -> dict | None:
     """This position's CURRENT structure holding edge and its transactable exit legs.
 
     Returns `{"hold_edge": float, "legs_exit": [(fill, exit_px, depth), ...]}`, or None
@@ -168,11 +250,21 @@ def hold_state(conn, pos) -> dict | None:
     probs — they were previously never re-evaluated at all (blind spot: the deep-OTM Fed
     lottery legs from the pre-gate era just sat there).
     """
+    spec = REGISTRY.get(pos["series"])
+    if spec is None:
+        return None
+    # Shadow predictions must never drive exits, just as they cannot drive entries.
     pr = conn.execute(
-        "SELECT ladder_json, dist_json FROM preds WHERE series=? AND period=?"
-        " ORDER BY asof DESC LIMIT 1", (pos["series"], pos["period"])).fetchone()
+        "SELECT asof, ladder_json, dist_json FROM preds WHERE series=? AND period=?"
+        " AND model_version LIKE ? ORDER BY asof DESC LIMIT 1",
+        (pos["series"], pos["period"], spec.model + "/%")).fetchone()
     if pr is None:
         return None
+    if now is not None:
+        from prediction_market_macro.ops.decide_all import PRED_STALE_H
+        age = (now - datetime.fromisoformat(pr["asof"])).total_seconds() / 3600
+        if not 0 <= age <= PRED_STALE_H:
+            return None
     pmf = ({float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
            if pr["ladder_json"] else None)
     probs = None
@@ -182,14 +274,15 @@ def hold_state(conn, pos) -> dict | None:
         if probs is None:
             return None
     from prediction_market_macro.model.common import leg_fair
-    hold_edges, legs_exit = [], []
+    hold_edges, legs_exit, quote_versions = [], [], {}
     for f in pos["fills"]:
         c = conn.execute(
             "SELECT floor_strike, cap_strike, strike_type FROM contracts"
             " WHERE ticker=?", (f["ticker"],)).fetchone()
-        q = _quote(conn, f["ticker"])
+        q = _quote(conn, f["ticker"], now)
         if q is None:
             return None
+        quote_versions[f["ticker"]] = _quote_version(q)
         base_side = f["side"].replace("close_", "")
         if probs is not None:                        # categorical leg
             cat = f["ticker"].rsplit("-", 1)[-1]
@@ -241,37 +334,82 @@ def hold_state(conn, pos) -> dict | None:
     # Verified NOT a fair disagreement: reconstructing the structure fair from these
     # per-leg `leg_fair` calls reproduces the entry `fair` to 4dp, and strike_type vs
     # spec.strict_gt agrees on all 6,000+ contracts across all 14 series.
-    return {"hold_edge": sum(hold_edges), "legs_exit": legs_exit}
+    return {"hold_edge": sum(hold_edges), "legs_exit": legs_exit,
+            "quote_versions": quote_versions}
 
 
-def run(conn, settings) -> int:
+def _closed_book(conn, pos, now: datetime) -> bool:
+    """Only explicitly active contracts with a verified future close are sellable."""
+    if not pos["fills"]:
+        return True
+    for f in pos["fills"]:
+        c = conn.execute("SELECT status, close_time FROM contracts WHERE ticker=?",
+                         (f["ticker"],)).fetchone()
+        if c is None or c["status"] != "active" or not c["close_time"]:
+            return True
+        try:
+            if datetime.fromisoformat(c["close_time"].replace("Z", "+00:00")) <= now:
+                return True
+        except (AttributeError, TypeError, ValueError):
+            return True
+    return False
+
+
+def _exit_window_open(conn, pos, now: datetime) -> bool:
+    """Recheck timing and each quote immediately before recording an exit."""
+    return (not frozen(conn, pos, now) and not _closed_book(conn, pos, now)
+            and all(_quote(conn, f["ticker"], now) is not None for f in pos["fills"]))
+
+
+def _forced_sell_quote(q, side: str) -> tuple[float, float] | None:
+    """A red light may cross a wide spread, but cannot sell to absent liquidity."""
+    if q is None or side not in {"yes", "no"}:
+        return None
+    try:
+        bid = round(float(q["yes_bid"]) if side == "yes" else 1 - float(q["yes_ask"]), 4)
+        depth = float(q["bid_depth"] if side == "yes" else q["ask_depth"])
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(bid) or not math.isfinite(depth) or not SLIP < bid <= 1 or depth <= 0:
+        return None
+    return max(bid - SLIP, 0.01), depth
+
+
+@serialized_execution
+def run(conn, settings, *, eligible_tickers: set[str] | None = None) -> int:
     from prediction_market_macro.ops import risk
-    now = datetime.now(timezone.utc)
     n = 0
     for pos in open_positions(conn):
+        if eligible_tickers is not None and any(
+                f["ticker"] not in eligible_tickers for f in pos["fills"]):
+            continue
+        now = datetime.now(timezone.utc)
         if frozen(conn, pos, now):
+            continue
+        if _closed_book(conn, pos, now):
             continue
 
         # rule 2 — red light: breaker tripped ⇒ forced market exit, no edge check
         trip = risk.breaker_tripped(conn, pos["series"])
         if trip:
-            legs_exit, ok = [], True
+            legs_exit, quote_versions, ok = [], {}, True
             for f in pos["fills"]:
-                q = _quote(conn, f["ticker"])
-                if q is None or q["yes_bid"] is None or q["yes_ask"] is None:
+                q = _quote(conn, f["ticker"], now)
+                sell = _forced_sell_quote(q, f["side"])
+                if sell is None:
                     ok = False
                     break
-                exit_px = (q["yes_bid"] if f["side"] == "yes" else 1 - q["yes_ask"])
-                depth = q["bid_depth"] if f["side"] == "yes" else q["ask_depth"]
-                legs_exit.append((f, max(exit_px - SLIP, 0.01), depth))
+                exit_px, depth = sell
+                legs_exit.append((f, exit_px, depth))
+                quote_versions[f["ticker"]] = _quote_version(q)
             if ok and legs_exit:
-                _write_exit(conn, pos, now.isoformat(), None, legs_exit,
-                            f"health_red_forced_exit [{trip[:120]}]")
-                n += 1
+                n += int(_write_exit(conn, pos, now.isoformat(), None, legs_exit,
+                                     f"health_red_forced_exit [{trip[:120]}]",
+                                     quote_versions=quote_versions))
             continue
 
         # rule 1 — edge reversal against the CURRENT model.
-        state = hold_state(conn, pos)
+        state = hold_state(conn, pos, now)
         if state is None:
             continue
         hold_edge, legs_exit = state["hold_edge"], state["legs_exit"]
@@ -285,16 +423,15 @@ def run(conn, settings) -> int:
                       and hold_edge < 0.0
                       and all(px >= 0.02 for _, px, _ in legs_exit))
         if regime_bad:
-            _write_exit(conn, pos, now.isoformat(), hold_edge, legs_exit,
-                        f"regime_review_exit hold_edge={hold_edge:.4f} (penny-entry,"
-                        f" no current edge)")
-            n += 1
+            n += int(_write_exit(conn, pos, now.isoformat(), hold_edge, legs_exit,
+                                 f"regime_review_exit hold_edge={hold_edge:.4f} (penny-entry,"
+                                 f" no current edge)", quote_versions=state["quote_versions"]))
             continue
         if hold_edge >= EXIT_EDGE or any(d < 20 for _, _, d in legs_exit):
             continue
-        _write_exit(conn, pos, now.isoformat(), hold_edge, legs_exit,
-                    f"edge_reversal hold_edge={hold_edge:.4f}")
-        n += 1
+        n += int(_write_exit(conn, pos, now.isoformat(), hold_edge, legs_exit,
+                             f"edge_reversal hold_edge={hold_edge:.4f}",
+                             quote_versions=state["quote_versions"]))
     conn.commit()
     return n
 
@@ -314,7 +451,7 @@ Changing this number re-opens the registration. It may not be swept.
 """
 
 
-def shadow_run(conn, settings) -> int:
+def shadow_run(conn, settings, *, eligible_tickers: set[str] | None = None) -> int:
     """Record what S2 would have done. **Never executes, never touches `decisions`.**
 
     One row per open position per cycle in `shadow_exits`, carrying the holding edge, the
@@ -334,13 +471,17 @@ def shadow_run(conn, settings) -> int:
     `triggered = 0` and the reason in `note`, so "S2 never fired" and "the logger was
     dead" can be told apart.
     """
-    now = datetime.now(timezone.utc)
-    ts = now.isoformat()
     n = 0
     for pos in open_positions(conn):
+        if eligible_tickers is not None and any(
+                f["ticker"] not in eligible_tickers for f in pos["fills"]):
+            continue
+        now = datetime.now(timezone.utc)
         if frozen(conn, pos, now):
             continue                                   # not sellable ⇒ not shadowable
-        state = hold_state(conn, pos)
+        if _closed_book(conn, pos, now):
+            continue
+        state = hold_state(conn, pos, now)
         if state is None:
             continue
         hold_edge, legs_exit = state["hold_edge"], state["legs_exit"]
@@ -349,16 +490,24 @@ def shadow_run(conn, settings) -> int:
         note = ("s2_trigger" if triggered
                 else "no_depth" if thin
                 else "edge_intact")
-        conn.execute(
-            "INSERT OR REPLACE INTO shadow_exits(ts_utc, rule, decision_id, series,"
-            " period, hold_edge, triggered, realized_usd, legs_json, note)"
-            " VALUES(?,'S2',?,?,?,?,?,?,?,?)",
-            (ts, pos["id"], pos["series"], pos["period"], hold_edge, int(triggered),
-             round(exit_realized(legs_exit), 6),
-             json.dumps([{"ticker": f["ticker"], "side": f["side"],
-                          "entry_px": f["price"], "count": f["count"],
-                          "exit_px": px, "depth": d} for f, px, d in legs_exit]),
-             f"{note} hold_edge={hold_edge:.4f}"))
+        with _write_snapshot(conn) as usable:
+            if not usable:
+                continue
+            now = datetime.now(timezone.utc)
+            if (not _exit_window_open(conn, pos, now)
+                    or not _quotes_unchanged(conn, pos, state["quote_versions"], now)):
+                continue
+            ts = now.isoformat()
+            conn.execute(
+                "INSERT OR REPLACE INTO shadow_exits(ts_utc, rule, decision_id, series,"
+                " period, hold_edge, triggered, realized_usd, legs_json, note)"
+                " VALUES(?,'S2',?,?,?,?,?,?,?,?)",
+                (ts, pos["id"], pos["series"], pos["period"], hold_edge, int(triggered),
+                 round(exit_realized(legs_exit), 6),
+                 json.dumps([{"ticker": f["ticker"], "side": f["side"],
+                              "entry_px": f["price"], "count": f["count"],
+                              "exit_px": px, "depth": d} for f, px, d in legs_exit]),
+                 f"{note} hold_edge={hold_edge:.4f}"))
         n += int(triggered)
     conn.commit()
     return n

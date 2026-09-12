@@ -582,6 +582,36 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPROQGF97J": {
+  "aliases": [
+   "HUM/STZ"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US4448591028|S:US21036P1084",
+  "display_name": "HUM/STZ",
+  "first_seen": "2026-09-09T12:53:11+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRQ34B8D1": {
+  "aliases": [
+   "RMD/SYK"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US8636671013|S:US7611521078",
+  "display_name": "RMD/SYK",
+  "first_seen": "2026-09-09T12:53:11+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRQA5DOMJ": {
   "aliases": [
    "VLO/YUM"

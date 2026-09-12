@@ -98,3 +98,14 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
   # any other bucket requires a NEW pre-registration in the plan doc. Maker
   # parallel book is a measurement, never a trading mode (backtest: -10.6c
   # t -5.3, adverse selection). Five coins = one macro bet.
+
+w8_complete_set:          # 2026-09-10: bilateral inventory + bounded residual
+  enabled: false          # implementation rejects true; observation only
+  demo_mirror: false
+  contracts: 5            # each maker quote, fractionally filled if tape permits
+  max_net_contracts: 15   # per market, including potential pending side fills
+  max_total_net_contracts: 30
+  max_cum_loss_usd: 100   # halt new simulated risk; keep settling existing lots
+  # Independent 2s process; excluded from the slower runner's default 'all'.
+  # Fixed kernel parameters and methodology: event_binary/W8_RESEARCH.md.
+  # Two OVERLAPPING experiments: tilted main and paired-only control, not sums.

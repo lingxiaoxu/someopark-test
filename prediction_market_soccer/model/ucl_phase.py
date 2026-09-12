@@ -1,13 +1,12 @@
 """European/CONMEBOL cup phases — league-phase wrapper + KO-tree champion sim
 (TRANSFORM_PLAN §3.4).
 
-Three regimes by competition state:
-  1. swiss league phase (UCL/UEL/UECL post-draw): handled by league_season with
-     rank cuts (p_qual_direct/p_qual_playoff) — this module adds nothing.
-  2. pre-draw swiss (now, Aug 2026): champion odds deliberately N/A (returning
-     None) — pricing a 36-team field before the opponents exist would be noise.
-  3. KO state (Libertadores/Sudamericana now; UCL KO from Feb 2027):
-     ``ko_champion`` — Monte-Carlo over the remaining knockout tree.
+UEFA Swiss competitions delegate to swiss_champion: their complete 36-club
+league calendar, official rank cuts, legal seeded draw slots and all knockout
+rounds determine championship odds. Incomplete calendars/brackets return no
+championship distribution; simulate_swiss exposes the availability reason.
+
+The legacy non-Swiss CONMEBOL path below is unchanged in this repair.
 
 KO-tree v1 honesty notes (mirrors the WC module's v1 disclosure discipline):
   * current-round tie winners use the REAL tie state (two_leg/tie_advance with
@@ -92,8 +91,10 @@ def ko_ladder(conn, comp_key: str, sm: StrengthModel, *,
     Returns None when the comp is not in a simulable KO state (pre-draw swiss)."""
     comp = get(comp_key)
     if comp.kind == "swiss_ucl":
-        # pre-draw: no field to price. Post-draw league phase → league_season path.
-        return None
+        from prediction_market_soccer.model.swiss_champion import simulate_swiss
+        result = simulate_swiss(conn, comp_key, sm, n_sims=n_sims, seed=seed)
+        return ({"champion": result.sim.p_champion, **result.ladder}
+                if result.sim.p_champion else None)
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     ties = _alive_ties(conn, comp)

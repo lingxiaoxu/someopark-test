@@ -8,9 +8,11 @@
 	<array>
 		<string>/bin/bash</string>
 		<string>-lc</string>
-		<string>cd /Users/xuling/code/someopark-test &amp;&amp; conda run -n someopark_run python -m prediction_market_macro.jobs.tick &gt;&gt; /Users/xuling/code/someopark-test/prediction_market_macro/data/logs/macrotick.log 2&gt;&amp;1</string>
+		<string>cd /Users/xuling/code/someopark-test &amp;&amp; conda run --no-capture-output -n someopark_run python -u -m prediction_market_macro.jobs.tick &gt;&gt; /Users/xuling/code/someopark-test/prediction_market_macro/data/logs/macrotick.log 2&gt;&amp;1</string>
 	</array>
 	<key>StartInterval</key>
-	<integer>900</integer>
+	<integer>60</integer>
+	<key>RunAtLoad</key>
+	<true/>
 </dict>
 </plist>

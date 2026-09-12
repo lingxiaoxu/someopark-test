@@ -8,7 +8,7 @@ where it could liquidate a held position into the 0.18 bid.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -26,7 +26,7 @@ def _quote(conn, ticker, bid, ask):
     conn.execute(
         "INSERT INTO quotes(ts, ticker, yes_bid, yes_ask, bid_depth, ask_depth)"
         " VALUES(?,?,?,?,?,?)",
-        ("2026-08-04T00:00:00+00:00", ticker, bid, ask, 500.0, 500.0))
+        (datetime.now(timezone.utc).isoformat(), ticker, bid, ask, 500.0, 500.0))
 
 
 def _position(conn, ticker, price, count=1, side="yes"):
@@ -101,17 +101,18 @@ def test_exits_will_not_dump_a_position_into_a_wide_book(conn):
     Before the fix the 0.58 midpoint could show a reversal and sell at the 0.18 bid.
     """
     from prediction_market_macro.ops import exits
+    now = datetime.now(timezone.utc)
     did = _position(conn, "WIDE", price=0.90, count=1)
     _quote(conn, "WIDE", 0.18, 0.98)
     conn.execute(
         "INSERT INTO contracts(ticker, event_ticker, series, period, floor_strike,"
-        " strike_type, close_time, first_seen_ts) VALUES(?,?,?,?,?,?,?,?)",
+        " strike_type, close_time, status, first_seen_ts) VALUES(?,?,?,?,?,?,?,'active',?)",
         ("WIDE", "KXCPICORE-26AUG", "KXCPICORE", "2026-08", 0.0, "greater",
-         "2026-09-01T00:00:00+00:00", "2026-08-01T00:00:00+00:00"))
+         (now + timedelta(days=1)).isoformat(), "2026-08-01T00:00:00+00:00"))
     conn.execute(
         "INSERT INTO preds(series, period, asof, ladder_json, dist_json, model_version,"
         " data_horizon, created_ts) VALUES(?,?,?,?,?,?,?,?)",
-        ("KXCPICORE", "2026-08", "2026-08-04T00:00:00+00:00", '{"0.0": 1.0}', "{}",
+        ("KXCPICORE", "2026-08", now.isoformat(), '{"0.0": 1.0}', "{}",
          "cpi/0.1.0", "2026-08-04T00:00:00+00:00", "2026-08-04T00:00:00+00:00"))
     conn.commit()
 
@@ -128,7 +129,7 @@ def test_exits_will_not_dump_a_position_into_a_wide_book(conn):
 def test_unmarked_alert_is_deduped_but_never_suppressed_on_change(conn):
     """The carried-at-cost disclosure must survive, without burying the alert feed.
 
-    mark_all runs from jobs.tick every 900s. A book that stays illiquid for a day wrote
+    With ordinary 15-minute maintenance, a book that stayed illiquid for a day wrote
     ~96 byte-identical warn rows (25 were visible in a single frontend screenshot on
     2026-08-09), which is how a routine disclosure came to read as an outage. Dedupe is
     on the message text, so it is only ever silence about a state that has not changed.

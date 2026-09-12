@@ -11,6 +11,7 @@
  * raw token is readable to at most one of the five audiences we ship.
  */
 import { useTranslation } from 'react-i18next';
+import { resolveClubId, soccerClubIdentity, type SoccerClubRef } from '../../lib/soccerClubIdentity';
 
 export type ChipLeague = { league: string; name?: string; zh?: string };
 type TFn = (k: string, o?: any) => string;
@@ -188,15 +189,13 @@ export function useLocalizedNotes() {
 
 
 export function clubName(
-  c?: { name?: string; zh?: string; id?: string; club_id?: string; team_id?: string } | null,
+  c?: SoccerClubRef,
   lang?: string, t?: (k: string, o?: any) => string,
 ): string {
   if (!c) return '—';
-  // Club names are looked up by club_id in the locale files (soccer.club.<id>), so
-  // Chinese and Japanese get real names instead of the Latin spelling. English,
-  // Spanish and French use the club's own name, which is what those languages
-  // print anyway — the lookup simply finds nothing and falls through.
-  const id = c.club_id || c.team_id || c.id;
+  // Identity and display are separate. Name-only legacy exports resolve through the
+  // same reviewed catalog; conflicting/unknown explicit IDs never fall back by name.
+  const id = resolveClubId(c);
   if (t && id) {
     const key = `soccer.club.${id}`;
     // fallbackLng:[] keeps the lookup inside the ACTIVE language. The app-wide chain
@@ -206,6 +205,8 @@ export function clubName(
     const v = t(key, { defaultValue: '', fallbackLng: [] });
     if (v && v !== key) return v;
   }
+  if (typeof c === 'string') return c;
+  if (typeof c === 'number') return id ? soccerClubIdentity.byId.get(id)?.source_name || '—' : '—';
   if ((lang || '').startsWith('zh') && c.zh) return c.zh;
-  return c.name || '—';
+  return c.name || (id ? soccerClubIdentity.byId.get(id)?.source_name : '') || '—';
 }

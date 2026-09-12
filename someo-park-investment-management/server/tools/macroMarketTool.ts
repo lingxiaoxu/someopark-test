@@ -17,7 +17,7 @@ export const MACRO_ARTIFACT_TYPES = [
   'macro_board', 'macro_fed', 'macro_inflation', 'macro_labor', 'macro_energy',
   'macro_divergence', 'macro_decisions', 'macro_performance', 'macro_calibration',
   'macro_coverage', 'macro_risk', 'macro_overview', 'macro_reports',
-  'macro_walkforward', 'macro_bets',
+  'macro_walkforward', 'macro_bets', 'macro_livereplay',
 ] as const
 
 // EN + ZH keyword dictionary for mode-scoped artifact detection (macro mode only).
@@ -37,6 +37,7 @@ export const MACRO_KEYWORD_PATTERNS: Array<{ type: string; title: string; keywor
   { type: 'macro_reports',     title: 'Reports',            keywords: ['report', 'reports', 'download', 'pdf', '报告', '下载'] },
   { type: 'macro_walkforward', title: 'Walk-Forward Lab',   keywords: ['walk-forward', 'walkforward', 'wf lab', 'bet log', 'bet history', 'ml selector', 'smart switch', 'favourite line', 'edge line', 'entry lead', '走前', '实验室', 'ML 线', 'ML选注', '智能切换', '大热线', '边际线', '三线', 'bet 历史', '逐注', '30天前上线', '入场提前'] },
   { type: 'macro_bets',        title: "Today's Bets",       keywords: ['today\'s bets', 'todays bets', 'what are we betting', 'current bets', 'open bets', 'next bets', 'bet plan', '今日下注', '下什么', '下注计划', '当前下注', '在场的注', '要下的注', '接下来的bet', '下一个bet'] },
+  { type: 'macro_livereplay', title: 'Replay vs Live', keywords: ['live replay', 'replay vs live', 'replay/live', '回放对账', '重放对账', '回放与实盘'] },
 ]
 
 // artifact type → the macro_*.json file(s) that back it. Family views (inflation /
@@ -58,6 +59,7 @@ const TYPE_TO_FILES: Record<string, string[]> = {
   macro_reports:     ['macro_reports.json'],
   macro_walkforward: ['macro_walkforward.json'],
   macro_bets:        ['macro_bets.json'],
+  macro_livereplay:  ['macro_livereplay.json'],
 }
 
 const ABOUT: Record<string, string> = {
@@ -76,6 +78,7 @@ const ABOUT: Record<string, string> = {
   macro_reports:     'daily + weekly PDF reports (board snapshot, open positions & marks, alerts, weekly adds calibration deciles + gates); the panel lists the newest renderer-fixed PDFs',
   macro_bets:        'the direct "what are we betting" view: open_bets = placed unsettled paper bets with latest unrealized mark; stances = every market inside the 7-day entry window with today\'s decision (bet placed with structure/fair/cost, or PASS with the gate reason); upcoming = releases in the next 14 days. Cadence: full re-decision daily 05:00, book re-check every 15 min',
   macro_walkforward: 'the live 30d track record (production started 30d ago, strict PIT — each day used only that day\'s information) rebuilt daily at 16:00 UTC. daily.streams = hybrid (live rule) / edge (value) / argmax (defer-to-market favourite: max-fair pick, bet only when fair<=cost). ml = three-line walk-forward comparison on the same dataset: top-level windows (last30/last60/all) = ML selector (expanding-window logistic, per-event weights, 0.10-0.90 price window); .baseline = defer-to-market favourite replica; .blend = smart switch that per event follows whichever line has the better trailing settled record (strictly pre-entry). Adoption rule: a challenger must beat the baseline on BOTH windows; blend currently does but the sample is thin and PnL concentrates in few equal-risk bets, so it is displayed as candidate, NOT live. sweep = one full PIT walk-forward per entry lead (1/3/5/7d) + per-series coverage',
+  macro_livereplay: 'replay/live reconciliation through window_end: latest_ts is the research result time; generated_at is only publication time. STRUCTURAL differences are documented harness limits, DISAGREED are rule differences, and UNEXPLAINED requires review. These paths are not directly comparable trading results; live is paper, not real-money execution.',
 }
 
 // Family-filter the big board file so inflation/labor/energy grounding stays compact.
@@ -145,8 +148,56 @@ function slimFile(file: string, data: any, type: string): any {
   if (file === 'macro_decisions.json') {
     return {
       generated_at: data?.generated_at,
-      decisions: (data?.decisions ?? []).slice(0, 25),
+      valuation: data?.valuation,
       latest_marks: data?.latest_marks ?? [],
+      decisions: (data?.decisions ?? []).slice(0, 25).map((d: any) => ({
+        id: d.id, ts_utc: d.ts_utc, series: d.series, period: d.period, kind: d.kind,
+        fair: d.fair, ask: d.ask, net_edge: d.net_edge, size_usd: d.size_usd, note: d.note,
+      })),
+    }
+  }
+  if (file === 'macro_performance.json') {
+    const tr = data?.track;
+    return {
+      generated_at: data?.generated_at, valuation: data?.valuation,
+      unrealized_usd: data?.unrealized_usd, bankroll_usd: data?.bankroll_usd,
+      bankroll_source: data?.bankroll_source, mode: data?.mode,
+      track: tr ? {
+        cutover: tr.cutover, combined: tr.combined,
+        live: tr.live ? { ...tr.live,
+          open: tr.live.open,
+          settled: tr.live.settled ? { ...tr.live.settled,
+            trades: (tr.live.settled.trades ?? []).slice(-5) } : undefined,
+        } : undefined,
+        history: tr.history ? { ...tr.history, trades: (tr.history.trades ?? []).slice(-5) } : undefined,
+      } : undefined,
+    }
+  }
+  if (file === 'macro_bets.json') {
+    return { generated_at: data?.generated_at, valuation: data?.valuation,
+      open_bets: data?.open_bets ?? [], stances: data?.stances ?? [], upcoming: data?.upcoming ?? [] };
+  }
+  if (file === 'macro_livereplay.json') {
+    const latest = data?.latest, r = latest?.reconciliation;
+    return {
+      generated_at: data?.generated_at, latest_ts: data?.latest_ts,
+      latest: latest ? {
+        window_start: latest.window_start, window_end: latest.window_end,
+        days: latest.days, generated_at: latest.generated_at,
+        replay: latest.replay, live: latest.live,
+        reconciliation: r ? {
+          verdict: r.verdict, n_matched: r.n_matched, n_replay_only: r.n_replay_only,
+          n_live_only: r.n_live_only, n_unexplained: r.n_unexplained,
+          replay_only_by_cause: r.replay_only_by_cause, live_only_by_cause: r.live_only_by_cause,
+          unexplained: (r.unexplained ?? []).slice(0, 5), note: r.note,
+        } : undefined,
+        opportunity: latest.opportunity ? {
+          n_pass: latest.opportunity.n_pass, infra_share: latest.opportunity.infra_share,
+          by_bucket: latest.opportunity.by_bucket, by_reason: latest.opportunity.by_reason,
+          counterfactual: latest.opportunity.counterfactual,
+        } : undefined,
+      } : undefined,
+      history: (data?.history ?? []).slice(-7),
     }
   }
   return data
@@ -181,5 +232,8 @@ export async function macroContextForArtifacts(types: string[]): Promise<string>
     }
   }
   if (!blocks.length) return ''
-  return '## Macro prediction-market data (authoritative — cite these numbers)\n\n' + blocks.join('\n\n')
+  return '## Macro prediction-market data (authoritative — cite these numbers)\n' +
+    'Valuation: quote_ts is the market-data time; generated_at and mark_ts are not quote freshness. ' +
+    'If valuation.n_unmarked > 0 or mark_status is not marked, carrying PnL includes entry fees ' +
+    'and cost-carried unavailable legs; do not describe it as a complete live market valuation.\n\n' + blocks.join('\n\n')
 }

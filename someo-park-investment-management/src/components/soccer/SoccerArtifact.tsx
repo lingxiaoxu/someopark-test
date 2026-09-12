@@ -16,6 +16,8 @@
 import type { CSSProperties, ReactNode, ReactElement } from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import SoccerDataStatus from './SoccerDataStatus';
+import { hasStrategyLedger, ledgerQuote, SoccerStrategyLedgerSummary, SoccerStrategyRecord, StrategyLedgerUnavailable } from './SoccerStrategyLedger';
 import { useApi } from '../../hooks/useApi';
 import { usePoll } from '../prediction/usePoll';
 import { AdvanceModeToggle, useAdvanceMode } from '../prediction/AdvanceMode';
@@ -51,7 +53,6 @@ const num = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : v.toF
 const signed = (v?: number | null, d = 2) => (v == null || isNaN(v) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(d));
 const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
 
-const SYNC_CMD = 'npm run sync:soccer';
 
 function Loading() {
   const { t } = useTranslation();
@@ -63,8 +64,7 @@ function ErrorBox({ e }: { e: string }) {
   // differs enough in ja/fr that "<msg>. <cmd>" reads as a fragment there.
   return (
     <div className="text-xs py-3" style={{ color: 'var(--error)', ...mono }}>
-      <div>{t('soccer.loadFailed')}: {e}</div>
-      <div>{t('soccer.loadFailedHint', { cmd: SYNC_CMD })}</div>
+      <div>{t('soccer.dataHealth.loadFailed')}</div>
     </div>
   );
 }
@@ -237,6 +237,7 @@ function SeasonOdds() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
   const noteOf = useLocalizedNote();
+  const notesOf = useLocalizedNotes();
   const { data, loading, error } = useApi<any>(() => getSoccerSeasonOdds(), []);
   const leagues = (data?.leagues ?? []) as any[];
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league));
@@ -245,8 +246,11 @@ function SeasonOdds() {
   const asOf = fmtDateTime(data?.as_of, lang);
   return (
     <div>
+      <SoccerDataStatus source="season" data={data} />
       <Title sub={`${t('soccer.subSeasonOdds')}${asOf ? ` · ${t('soccer.asOf')} ${asOf}` : ''}`} />
       <LeagueChips leagues={leagues} value={lg?.league ?? ''} onChange={choose} />
+      {lg?.coverage && <div style={{ fontSize: 10, ...mono, color: 'var(--text-muted)', marginBottom: 8 }}>{t('soccer.dataHealth.coverage', { modeled: lg.coverage.modeled_teams, expected: lg.coverage.expected_teams })}</div>}
+      {notesOf(lg?.odds_notes, lg?.odds_notes_i18n).map((note: string, i: number) => <div key={i} style={{ fontSize: 10, ...mono, color: 'var(--text-muted)', marginBottom: 6 }}>{note}</div>)}
       {!lg && <EmptyBox title={t('soccer.empty')} />}
       {lg && !(lg.boards ?? []).length && (
         <EmptyBox title={t(`soccer.oddsState.${lg.state ?? 'ok'}`, { defaultValue: t('soccer.empty') })}
@@ -254,6 +258,7 @@ function SeasonOdds() {
       )}
       {(lg?.boards ?? []).map((b: any, bi: number) => {
         const rows = [...(b.rows ?? [])].sort((a: any, x: any) => (x.model_pct ?? -1) - (a.model_pct ?? -1));
+        if (b.state && b.state !== 'ok') return <div key={bi} style={{ marginBottom: 12 }}><b>{t(`soccer.family.${b.family}`, { defaultValue: b.family })}</b><EmptyBox title={t(`soccer.oddsState.${b.state}`, { defaultValue: t('soccer.dataHealth.unavailable') })} hint={t('soccer.oddsStateHint')} /></div>;
         return (
           <div key={bi} style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
@@ -344,11 +349,13 @@ function MatchPricing() {
   const leagues = leaguesOf(ms);
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league), true);
   if (loading) return <Loading />;
-  if (error || !ms.length) return <EmptyBox title={t('soccer.noUpcoming')} hint={t('soccer.emptyHint')} />;
+  if (error) return <ErrorBox e={error} />;
+  if (!ms.length) return <><SoccerDataStatus source="upcoming" data={data} /><EmptyBox title={t(data?.data_status?.state === 'unavailable' || (data?.as_of && Date.now() - Date.parse(data.as_of) > 30 * 3600000) ? 'soccer.dataHealth.unavailable' : 'soccer.noUpcoming')} hint={t('soccer.emptyHint')} /></>;
   const hasAdvance = ms.some((m) => m.caps?.advance);
   const shown = sel === 'all' ? ms : ms.filter((m) => m.league === sel);
   return (
     <div>
+      <SoccerDataStatus source="upcoming" data={data} />
       <Title sub={`${t('soccer.subMatchPricing')} · ${shown.length} ${t('soccer.matches')}`}
         right={hasAdvance ? <AdvanceModeToggle /> : undefined} />
       <LeagueChips leagues={leagues} value={sel} onChange={choose} allowAll />
@@ -382,7 +389,8 @@ function Predictions() {
   const { data, loading, error } = useApi<any>(() => getSoccerUpcoming(), []);
   if (loading) return <Loading />;
   const ms = (data?.matches ?? []) as SoccerUpcomingMatch[];
-  if (error || !ms.length) return <EmptyBox title={t('soccer.noUpcoming')} hint={t('soccer.emptyHint')} />;
+  if (error) return <ErrorBox e={error} />;
+  if (!ms.length) return <><SoccerDataStatus source="upcoming" data={data} /><EmptyBox title={t(data?.data_status?.state === 'unavailable' || (data?.as_of && Date.now() - Date.parse(data.as_of) > 30 * 3600000) ? 'soccer.dataHealth.unavailable' : 'soccer.noUpcoming')} hint={t('soccer.emptyHint')} /></>;
   const hasAdvance = ms.some((m) => m.caps?.advance);
   const sorted = [...ms].sort((a, b) => String(a.kickoff).localeCompare(String(b.kickoff)));
   const byDate = new Map<string, SoccerUpcomingMatch[]>();
@@ -394,6 +402,7 @@ function Predictions() {
   const nBets = ms.filter((m) => m.decision?.bet).length;
   return (
     <div>
+      <SoccerDataStatus source="upcoming" data={data} />
       <Title sub={`${t('soccer.subPredictions')} · ${ms.length} ${t('soccer.matches')} · ${nBets} ${t('soccer.bets')}`}
         right={hasAdvance ? <AdvanceModeToggle /> : undefined} />
       {[...byDate.entries()].map(([d, group]) => (
@@ -419,11 +428,13 @@ function ScheduleView() {
   const leagues = leaguesOf(ms);
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league), true);
   if (sched.loading && up.loading) return <Loading />;
+  if (sched.error && up.error) return <ErrorBox e={sched.error} />;
   if (!ms.length) return <EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} />;
   const shown = sel === 'all' ? ms : ms.filter((m) => m.league === sel);
   const played = shown.filter((m) => m.finished).length;
   return (
     <div>
+      <SoccerDataStatus source="schedule" data={sched.data || up.data} error={sched.error} />
       <Title sub={`${t('soccer.subSchedule')} · ${shown.length} ${t('soccer.matches')}${played ? ` (${played} ${t('soccer.finished')})` : ''}`} />
       <LeagueChips leagues={leagues} value={sel} onChange={choose} allowAll />
       <DataTable
@@ -448,21 +459,24 @@ function InPlay() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
   const { mode } = useAdvanceMode();
-  const { data, loading, error, updatedAt } = usePoll<any>(() => getSoccerInplay(), 30000);
+  const { data, loading, error } = usePoll<any>(() => getSoccerInplay(), 30000);
   if (loading && !data) return <Loading />;
   const ms: any[] = data?.matches ?? [];
   const hasAdvance = ms.some((m) => m.caps?.advance);
-  const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
-  if (error || !ms.length) {
+  const upd = data?.source_as_of || data?.ts ? new Date(data.source_as_of || data.ts).toLocaleTimeString() : '';
+  if (error) return <ErrorBox e={error} />;
+  if (!ms.length) {
     return (
       <div>
         <Title sub={t('soccer.subInplay')} />
-        <EmptyBox title={t('soccer.noLiveMatches')} hint={t('soccer.emptyHint')} />
+        <SoccerDataStatus source="inplay" data={data} maxAgeSeconds={900} />
+        <EmptyBox title={t(data?.scan_error || data?.data_status?.state === 'unavailable' || (data?.ts && Date.now() - Date.parse(data.ts) > 900000) ? 'soccer.dataHealth.unavailable' : 'soccer.noLiveMatches')} hint={t('soccer.emptyHint')} />
       </div>
     );
   }
   return (
     <div>
+      <SoccerDataStatus source="inplay" data={data} maxAgeSeconds={data?.n_live ? 300 : 900} />
       <Title sub={`${t('soccer.subInplay')} · ${ms.length} ${t('soccer.live')}`}
         right={hasAdvance ? <AdvanceModeToggle /> : undefined} />
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }} className="mb-2">
@@ -489,7 +503,9 @@ function InPlay() {
  * the standing rule is that WC wording is the reference translation. */
 function InPlayMatch({ m, mode, lang }: { m: any; mode: string; lang: string; key?: any }) {
   const { t } = useTranslation();
-  const adv = mode === 'advance' && m.caps?.advance && m.advance?.model ? m.advance : null;
+  const wantsAdvance = mode === 'advance' && m.caps?.advance;
+  const adv = wantsAdvance && m.advance?.model ? m.advance : null;
+  if (!m.model || (wantsAdvance && !adv)) return <div className="card" style={{ marginBottom: 12 }}><b><ClubName club={m.home} /> {m.score} <ClubName club={m.away} /></b><EmptyBox title={t('soccer.dataHealth.unavailable')} /><SoccerDataStatus source="inplay" data={m} /></div>;
   const model = adv ? adv.model : m.model;
   const prices = adv
     ? { model_c: adv.model?.cents, kalshi: adv.kalshi, poly_us: adv.poly_us }
@@ -515,6 +531,7 @@ function InPlayMatch({ m, mode, lang }: { m: any; mode: string; lang: string; ke
         {leagueLabel({ league: m.league ?? '', zh: m.league_zh }, lang, t)}{m.round ? ` · ${stageLabel(m.round, t)}` : ''}
         {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{t('soccer.modeAdvance')}</span>}
       </div>
+      <SoccerDataStatus source="inplay" data={{...m, data_status: { issues: Object.values((adv ? adv.quote_status : m.quote_status) ?? {}).includes('unavailable') ? [{code: 'quote_unavailable'}] : [] }}} maxAgeSeconds={300} />
       {/* model — probability + per-contract ¢. Advance lens: H/A only (incl. ET+pens). */}
       <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginBottom: 2 }}>
         {t('soccer.model')}: {adv
@@ -685,7 +702,6 @@ function ModelNotes() {
  * {name, zh} ref (club-style) — the xv/backtest exporters are in flux. */
 function anyName(x: any, lang: string, t?: (k: string, o?: any) => string): string {
   if (x == null) return '—';
-  if (typeof x === 'string') return x;
   return clubName(x, lang, t);
 }
 
@@ -742,7 +758,8 @@ function SquadStrength() {
   const leagues = leaguesOf(teams);
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league), true);
   if (loading) return <Loading />;
-  if (error || !teams.length) {
+  if (error) return <ErrorBox e={error} />;
+  if (!teams.length) {
     return (<div><Title sub={t('soccer.subSquad')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const shown = (sel === 'all' || !leagues.length) ? teams : teams.filter((x) => x.league === sel);
@@ -788,7 +805,8 @@ function TeamStyles() {
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league), true);
   if (loading) return <Loading />;
   const styles = (data?.styles ?? []) as any[];
-  if (error || !teamsAll.length || !styles.length) {
+  if (error) return <ErrorBox e={error} />;
+  if (!teamsAll.length || !styles.length) {
     return (<div><Title sub={t('soccer.subStyles')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const teams = (sel === 'all' || !leagues.length) ? teamsAll : teamsAll.filter((x) => x.league === sel);
@@ -871,7 +889,8 @@ function FormCard() {
   const leagues = leaguesOf(teams);
   const [sel, choose] = useLeagueChoice(leagues.map((l) => l.league), true);
   if (loading) return <Loading />;
-  if (error || !teams.length) {
+  if (error) return <ErrorBox e={error} />;
+  if (!teams.length) {
     return (<div><Title sub={t('soccer.subForm')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const shown = (sel === 'all' || !leagues.length) ? teams : teams.filter((x) => x.league === sel);
@@ -932,7 +951,7 @@ function Divergence() {
   let body: ReactNode;
   if (tab === 'matches') {
     const ms = [...(xm.data?.matches ?? [])].sort((a: any, b: any) => (b.max_abs ?? 0) - (a.max_abs ?? 0));
-    body = (xm.error || !ms.length)
+    body = xm.error ? <ErrorBox e={xm.error} /> : (!ms.length)
       ? <EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} />
       : (
         <DataTable cols={[t('soccer.colMatch'),
@@ -955,7 +974,7 @@ function Divergence() {
       );
   } else {
     const lg = chLeagues.find((l) => l.league === sel) ?? chLeagues[0];
-    body = (xc.error || !chLeagues.length)
+    body = xc.error ? <ErrorBox e={xc.error} /> : (!chLeagues.length)
       ? <EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} />
       : (
         <div>
@@ -983,214 +1002,81 @@ function Divergence() {
   );
 }
 
-/** 价格轨迹 — mirror of wc_pricetrack: per-contract ¢ at each milestone
- * (PRE→T15→T30→HT→T60→T75→FT). Empty until matches run under our live loop. */
-function PriceTrack() {
+/** Quotes are supplementary observations; only the strategy ledger defines a position or its P&L. */
+function MilestonePrices({ marks }: { marks: any[] }) {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language || '';
-  const { data, loading, error } = useApi<any>(() => getSoccerMilestones(), []);
-  if (loading) return <Loading />;
-  const matches = (data?.matches ?? []) as any[];
-  if (error || !matches.length) {
-    return (<div><Title sub={t('soccer.subPricetrack')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyPricetrack')} /></div>);
-  }
-  return (
-    <div>
-      <Title sub={t('soccer.subPricetrack')} />
-      {matches.map((m: any, mi: number) => {
-        const b = m.our_bet || {}; const mtm = m.mtm; const s = m.smart_exit;
-        return (
-          <div key={m.fixture_id ?? mi} className="card" style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 4 }}>
-              {anyName(m.home, lang, t)} {t('soccer.versus')} {anyName(m.away, lang, t)}
-              {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
-              {m.league ? <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 10, marginLeft: 6 }}>{leagueLabel({ league: String(m.league) }, lang, t)}</span> : null}
-            </div>
-            <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {b.bet === false ? (
-                <span style={{ color: 'var(--text-muted)' }}>{t('soccer.ptBet')}: {t('soccer.noBet')}</span>
-              ) : (<>
-                <div>{t('soccer.ptBet')}: <b style={{ color: 'var(--text-primary)' }}>{anyName(b.pick_team ?? b.pick, lang, t)}</b>{b.stake_usd != null ? <> · {fmtMoney(b.stake_usd, lang)}</> : null}</div>
-                {s ? (
-                  <div>　{t('soccer.ptBuy')} <b>{t('soccer.milestone.PRE')} {cc(b.entry_cents)}</b> → {t('soccer.ptSell')} <b>{s.sold_min}′ {Math.round(s.sold_c)}¢</b> · {t('soccer.lblRealized')} <b style={{ color: s.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{s.pnl_c >= 0 ? '+' : ''}{cc(s.pnl_c)}</b></div>
-                ) : mtm ? (
-                  <div>　{t('soccer.ptBuy')} <b>{t('soccer.milestone.PRE')} {cc(b.entry_cents)}</b> → {t('soccer.lblSettle')} <b>{cc(mtm.ft_c)}</b> · <b style={{ color: mtm.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)} {mtm.won ? t('soccer.betWon') : t('soccer.betLost')}</b></div>
-                ) : null}
-                {s && mtm && (
-                  <div style={{ color: 'var(--text-muted)' }}>　{t('soccer.ptIfHeld')}: {cc(mtm.ft_c)} · {mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</div>
-                )}
-              </>)}
-            </div>
-            <DataTable
-              cols={[t('soccer.colMilestone'), t('soccer.colScore'),
-                `${t('soccer.abbrHome')}¢`, `${t('soccer.abbrDraw')}¢`, `${t('soccer.abbrAway')}¢`]}
-              rows={(m.marks ?? []).map((mk: any) => {
-                const px = mk.poly_c ?? mk.kalshi_c ?? mk.model_c ?? {};
-                const hl = (side: string) => ({ fontWeight: b.side === side ? 700 : 400, color: b.side === side ? 'var(--text-primary)' : undefined });
-                return [
-                  <b>{t(`soccer.milestone.${mk.milestone}`, { defaultValue: mk.milestone })}</b>, mk.score,
-                  <span style={hl('home')}>{cc(px.home)}</span>,
-                  <span style={hl('draw')}>{cc(px.draw)}</span>,
-                  <span style={hl('away')}>{cc(px.away)}</span>,
-                ];
-              })} />
-          </div>
-        );
-      })}
-      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('soccer.priceTrackNote')}</div>
-    </div>
-  );
+  const sides = ['home', 'draw', 'away'];
+  const rows = marks.flatMap(mk => {
+    const sources = [['Polymarket', mk.poly_c], ['Kalshi', mk.kalshi_c]] as const;
+    const available = sources.filter(([, quotes]) => quotes && sides.some(side => typeof quotes[side] === 'number' && Number.isFinite(quotes[side])));
+    return (available.length ? available : [['—', {}]] as const).map(([venue, quotes]) => [
+      t(`soccer.milestone.${mk.milestone}`, { defaultValue: mk.milestone }), mk.score ?? '—', venue,
+      ...sides.map(side => ledgerQuote((quotes as any)?.[side], i18n.language)),
+    ]);
+  });
+  return <div data-ledger-price-observations="true" style={{ marginTop: 10 }}>
+    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>{t('soccer.strategyLedger.quoteNote')}</div>
+    {rows.length ? <div style={{ overflowX: 'auto' }}><DataTable
+      cols={[t('soccer.colMilestone'), t('soccer.colScore'), t('soccer.colVenue'),
+        `${t('soccer.abbrHome')}¢`, `${t('soccer.abbrDraw')}¢`, `${t('soccer.abbrAway')}¢`]}
+      rows={rows} /></div> : <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('soccer.strategyLedger.noQuotes')}</div>}
+  </div>;
 }
 
-// W/L + signed-¢ cells shared by the performance views.
-const wlCell = (t: (k: string) => string, won?: boolean) =>
-  <span style={{ color: won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{won ? t('soccer.betWon') : t('soccer.betLost')}</span>;
-const cVal = (v: number | null | undefined): ReactNode =>
-  v == null ? '—' : <span style={{ color: v >= 0 ? 'var(--success)' : 'var(--error)' }}>{v >= 0 ? '+' : ''}{cc(v)}</span>;
-
-/** 准确度与盈亏 — mirror of wc_performance (frozen-ledger KV + bet log). Cold-start
- * empty state until the first settlements land. */
-
-/** The three settlement views the World Cup card has, on the club data (附录 C-20).
- *
- * The backend has produced all of them for a while — bet_log carries `smart_exit`,
- * `realized_*`, `argmax_*`, the five `inplay_*` fields and both cumulative streams — but
- * the card rendered a single flat table, which is the HOLD track and only that. So the
- * two headline facts of the strategy were invisible here: that we cash out rather than
- * hold, and that a match can carry a SECOND, in-play position on top of the pre-match one.
- *
- * Columns mirror the World Cup exactly: the pre-match stream (下注/离场/入场¢/实现¢/赛前Cum)
- * mirrored by the in-play stream (盘中下注/盘中离场/盘中入场¢/盘中实现¢/盘中Cum), both sized
- * the same way, then 合计Cum.
- */
-function PerformanceTracks({ data, log, lang }: { data: any; log: any[]; lang: string }) {
-  const { t } = useTranslation();
-  const [mode, setMode] = useState<'cashout' | 'hold' | 'argmax'>('cashout');
-  const muted = (x: ReactNode) => <span style={{ color: 'var(--text-muted)' }}>{x}</span>;
-  const rec = (raw: any) => {
-    const m = String(raw ?? '').match(/^(\d+)\s*W\s*-\s*(\d+)\s*L$/i);
-    return m ? t('soccer.record', { w: m[1], l: m[2] }) : (raw ?? '—');
-  };
-  const tab = (k: typeof mode, label: string) => (
-    <button key={k} onClick={() => setMode(k)}
-      style={{ fontSize: 10, ...mono, padding: '3px 9px', marginRight: 6, cursor: 'pointer',
-               background: mode === k ? 'var(--text-primary)' : 'transparent',
-               color: mode === k ? 'var(--bg-primary)' : 'var(--text-muted)',
-               border: `1px solid ${mode === k ? 'var(--text-primary)' : 'var(--border-subtle)'}` }}>
-      {label}
-    </button>
-  );
-  // Smart-exit sold min/price when it fired, else the settle W/L — one cell shape so the
-  // pre-match 离场 and the 盘中离场 read identically.
-  const exitCell = (se: any, won: boolean) => se
-    ? <span style={{ color: (se.pnl_c ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
-        {t('soccer.smartExitSold', { min: se.sold_min, c: Math.round(se.sold_c) })}</span>
-    : <span style={{ color: won ? 'var(--success)' : 'var(--error)' }}>
-        {t(won ? 'soccer.exitSettleWon' : 'soccer.exitSettleLost')}</span>;
-  const inplayBet = (b: any) => b.inplay_side
-    ? <span style={{ color: b.inplay_won ? 'var(--success)' : 'var(--error)' }}>
-        {b.inplay_side === 'draw' ? t('soccer.drawResult') : anyName(b.inplay_side_team, lang, t)} {b.inplay_milestone}</span>
-    : muted('—');
-  const inplayCells = (b: any) => b.inplay_side
-    ? [inplayBet(b), exitCell(b.inplay_exit, b.inplay_won), cc(b.inplay_entry_cents),
-       cVal(b.inplay_pnl_cents), cVal(b.inplay_cum_pnl_cents)]
-    : [muted('—'), muted('—'), '—', '—', cVal(b.inplay_cum_pnl_cents)];
-
-  const headline = () => {
-    if (mode === 'cashout') return (
-      <><b>{rec(data.realized_record)}</b> · {cVal(data.combined_pnl_cents_total)} · {t('soccer.colRealizedC')} {cVal(data.realized_pnl_cents_total)} + {t('soccer.colInplayRealized')} {rec(data.inplay_record)} {cVal(data.inplay_pnl_cents_total)} = {t('soccer.colCombinedCum')}</>);
-    if (mode === 'hold') return (
-      <><b>{rec(data.hold_record ?? data.pnl_record)}</b> · {cVal(data.hold_pnl_cents_total ?? data.pnl_cents_total)} · {data.n_decision_bets ?? log.length} {t('soccer.lblBets')} · {data.n_skipped ?? 0} {t('soccer.lblSkipped')}</>);
-    return (
-      <><b>{rec(data.argmax_record)}</b> · {cVal(data.argmax_pnl_cents_total)} · {data.argmax_priced_n ?? 0}/{log.length} {t('soccer.lblMatchesAll')} · {t('soccer.lblModelAcc')} {pct(data.model_pred_accuracy, 0)}</>);
-  };
-  const note = () => mode === 'cashout'
-    ? t('soccer.noteCashout', { entry: data.avg_entry_cents == null ? '—' : Math.round(data.avg_entry_cents),
-                                clv: ((data.avg_clv_cents ?? 0) >= 0 ? '+' : '') + Math.round(data.avg_clv_cents ?? 0) })
-    : mode === 'hold' ? t('soccer.noteHold') : t('soccer.noteArgmax');
-
-  const cols = mode === 'argmax'
-    ? [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colResult'), t('soccer.colEntryC'), t('soccer.colRealizedC'), t('soccer.colCumC')]
-    : mode === 'cashout'
-      ? [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colStake'), t('soccer.colExit'), t('soccer.colEntryC'), t('soccer.colRealizedC'), t('soccer.colPreCum'), t('soccer.colInplayBet'), t('soccer.colInplayExit'), t('soccer.colInplayEntryC'), t('soccer.colInplayRealized'), t('soccer.colInplayCum'), t('soccer.colCombinedCum')]
-      : [t('soccer.colDate'), t('soccer.colMatchup'), t('soccer.colOurPick'), t('soccer.colStake'), t('soccer.colResult'), t('soccer.colEntryC'), t('soccer.colPnlC'), t('soccer.colCumC')];
-
-  const rows = log.map((b: any) => {
-    const matchup = <span>{anyName(b.home, lang, t)} {b.score ?? ''} {anyName(b.away, lang, t)}</span>;
-    const side = b.pick === 'draw' ? t('soccer.drawResult') : anyName(b.pick_team ?? b.pick, lang, t);
-    if (mode === 'argmax') {
-      const am = b.model_pick === 'draw' ? t('soccer.drawResult') : anyName(b.model_pick_team ?? b.model_pick, lang, t);
-      return [b.date?.slice(5) ?? '—', matchup, am, wlCell(t, b.model_won),
-              cc(b.argmax_entry_cents), cVal(b.argmax_pnl_cents), cVal(b.argmax_cum_pnl_cents)];
-    }
-    if (b.bet === false) {
-      const base = [b.date?.slice(5) ?? '—', matchup, muted(t('soccer.noBetShort')), muted('$0')];
-      // A no-bet match still shows its in-play position: 赛前Cum is unchanged while the
-      // in-play columns and 合计Cum move.
-      return mode === 'cashout'
-        ? [...base, muted('—'), '—', '—', cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)]
-        : [...base, muted('—'), '—', '—', cVal(b.cum_pnl_cents)];
-    }
-    if (mode === 'cashout')
-      return [b.date?.slice(5) ?? '—', matchup, side, b.stake_usd != null ? fmtMoney(b.stake_usd, lang) : '—',
-              exitCell(b.smart_exit, b.won), cc(b.entry_cents), cVal(b.realized_pnl_cents),
-              cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)];
-    return [b.date?.slice(5) ?? '—', matchup, side, b.stake_usd != null ? fmtMoney(b.stake_usd, lang) : '—',
-            wlCell(t, b.won), cc(b.entry_cents), cVal(b.pnl_cents), cVal(b.cum_pnl_cents)];
-  });
-
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ marginBottom: 8 }}>
-        {tab('cashout', t('soccer.modeCashout'))}
-        {tab('hold', t('soccer.modeHold'))}
-        {tab('argmax', t('soccer.modeArgmax'))}
-      </div>
-      <div style={{ fontSize: 12, ...mono, marginBottom: 4, color: 'var(--text-primary)' }}>{headline()}</div>
-      <div style={{ fontSize: 10, ...mono, marginBottom: 6, color: 'var(--text-muted)', lineHeight: 1.55 }}>{note()}</div>
-      <DataTable cols={cols} rows={rows} />
-    </div>
-  );
+function PriceTrack() {
+  const { t, i18n } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getSoccerMilestones(), []);
+  if (loading) return <Loading />;
+  if (error) return <ErrorBox e={error} />;
+  const ledger = hasStrategyLedger(data?.strategy_ledger) ? data.strategy_ledger : null;
+  const byFixture = new Map<number, any>((data?.matches ?? []).map((m: any) => [m.fixture_id, m]));
+  const priceOnly = data?.price_only_matches ?? [];
+  return <div>
+    <Title sub={t('soccer.strategyLedger.priceSubtitle')} />
+    {ledger ? <>
+      <SoccerStrategyLedgerSummary ledger={ledger} />
+      {ledger.records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b}>
+        <MilestonePrices marks={byFixture.get(b.fixture_id)?.marks ?? []} />
+      </SoccerStrategyRecord></div>)}
+    </> : <StrategyLedgerUnavailable />}
+    {!!priceOnly.length && <section data-price-only="true" style={{ marginTop: 16 }}>
+      <h3 style={{ fontSize: 12 }}>{t('soccer.strategyLedger.priceOnlyTitle', { count: priceOnly.length })}</h3>
+      <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>{t('soccer.strategyLedger.priceOnlyNote')}</div>
+      {priceOnly.map((m: any) => <div className="card" key={m.fixture_id} style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700 }}>{anyName(m.home, i18n.language, t)} {t('soccer.versus')} {anyName(m.away, i18n.language, t)}</div>
+        <MilestonePrices marks={m.marks ?? []} />
+      </div>)}
+    </section>}
+  </div>;
 }
 
 function PerformanceCard() {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language || '';
-  const notesOf = useLocalizedNotes();
+  const { t } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getSoccerPerformance(), []);
   if (loading) return <Loading />;
-  const settled = data?.n_settled ?? 0;
-  const log = (data?.bet_log ?? []) as any[];
-  if (error || !data || (!settled && !log.length)) {
-    return (<div><Title sub={t('soccer.subPerformance')} /><EmptyBox title={t('soccer.emptyPerformance')} hint={t('soccer.emptyHint')} /></div>);
-  }
-  const pass = !!data.trade_grade;
-  const hasCal = data.calibrated_brier != null;
-  return (
-    <div>
-      <Title sub={t('soccer.subPerformance')} />
-      <KV rows={[
-        [t('soccer.lblSettled'), settled],
-        [t('soccer.lblBrier'), t('soccer.cmpVsUniform', { v: num(data.brier, 4), u: num(data.brier_uniform, 4) })],
-        ...(hasCal ? [[t('soccer.lblBrierCal'), <span style={{ color: pass ? 'var(--success)' : undefined }}>{t('soccer.cmpLeUniform', { v: num(data.calibrated_brier, 4), u: num(data.brier_uniform, 4) })}</span>] as [string, ReactNode]] : []),
-        [t('soccer.lblLogLoss'), num(data.log_loss, 4)],
-        [t('soccer.lblModelAcc'), pct(data.model_pred_accuracy ?? data.favourite_hit_rate, 0)],
-        ...(data.avg_clv_cents != null ? [[t('soccer.lblAvgClv'), <span style={{ color: data.avg_clv_cents > 0 ? 'var(--success)' : undefined }}>{data.avg_clv_cents > 0 ? '+' : ''}{cc(data.avg_clv_cents)}</span>] as [string, ReactNode]] : []),
-        [t('soccer.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? t('soccer.gradePass') : t('soccer.gradeBlock')}</span>],
-      ]} />
-      {!!log.length && <PerformanceTracks data={data} log={log} lang={lang} />}
-      {(() => {
-        // performance_report.json ships notes_i18n=[{key,args}] next to the English
-        // prose; the keys are the same templates the WC module already translates.
-        const notes = notesOf(data.notes, data.notes_i18n);
-        return notes.length ? (
-          <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 11, color: 'var(--text-muted)', ...mono }}>
-            {notes.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}
-          </ul>
-        ) : null;
-      })()}
-    </div>
-  );
+  if (error) return <ErrorBox e={error} />;
+  const ledger = hasStrategyLedger(data?.strategy_ledger) ? data.strategy_ledger : null;
+  const pass = !!data?.trade_grade;
+  const hasCal = data?.calibrated_brier != null;
+  return <div>
+    <SoccerDataStatus source="performance" data={data} />
+    {ledger ? <>
+      <SoccerStrategyLedgerSummary ledger={ledger} />
+      <details style={{ margin: '8px 0 14px' }}>
+        <summary style={{ cursor: 'pointer', fontSize: 11 }}>{t('soccer.strategyLedger.diagnostics')}</summary>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', margin: '5px 0' }}>{t('soccer.strategyLedger.diagnosticsNote')}</div>
+        <KV rows={[
+          [t('soccer.lblSettled'), data.n_settled ?? '—'],
+          [t('soccer.lblBrier'), t('soccer.cmpVsUniform', { v: num(data.brier, 4), u: num(data.brier_uniform, 4) })],
+          ...(hasCal ? [[t('soccer.lblBrierCal'), t('soccer.cmpLeUniform', { v: num(data.calibrated_brier, 4), u: num(data.brier_uniform, 4) })] as [string, ReactNode]] : []),
+          [t('soccer.lblLogLoss'), num(data.log_loss, 4)],
+          [t('soccer.lblModelAcc'), pct(data.model_pred_accuracy ?? data.favourite_hit_rate, 1)],
+          [t('soccer.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)' }}>{t(pass ? 'soccer.gradePass' : 'soccer.gradeBlock')}</span>],
+        ]} />
+      </details>
+      {ledger.records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b} /></div>)}
+    </> : <StrategyLedgerUnavailable />}
+  </div>;
 }
 
 /** 校准 (OOS) — mirror of wc_calibration reading oos_report.json. */
@@ -1199,7 +1085,8 @@ function Calibration() {
   const notesOf = useLocalizedNotes();
   const { data, loading, error } = useApi<any>(() => getSoccerOos(), []);
   if (loading) return <Loading />;
-  if (error || !data || data.n_matches == null) {
+  if (error) return <ErrorBox e={error} />;
+  if (!data || data.n_matches == null) {
     return (<div><Title sub={t('soccer.subCalibration')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const ci = Array.isArray(data.brier_ci95) ? ` [${num(data.brier_ci95[0], 4)}, ${num(data.brier_ci95[1], 4)}]` : '';
@@ -1241,7 +1128,8 @@ function Backtest() {
   const { data, loading, error } = useApi<any>(() => getSoccerBacktest(), []);
   if (loading) return <Loading />;
   const ms = (data?.matches ?? []) as any[];
-  if (error || !data || (!data.n_settled && !ms.length)) {
+  if (error) return <ErrorBox e={error} />;
+  if (!data || (!data.n_settled && !ms.length)) {
     return (<div><Title sub={t('soccer.subBacktest')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const b = data.brier ?? {};
@@ -1286,7 +1174,8 @@ function ParamSweep() {
   const lang = i18n.language || '';
   const { data, loading, error } = useApi<any>(() => getSoccerParams(), []);
   if (loading) return <Loading />;
-  if (error || !data?.candidates) {
+  if (error) return <ErrorBox e={error} />;
+  if (!data?.candidates) {
     return (<div><Title sub={t('soccer.subParams')} /><EmptyBox title={t('soccer.emptyParams')} hint={t('soccer.emptyParamsHint')} /></div>);
   }
   // Candidates are compared on the SAME held-out window, so the table reads as a
@@ -1338,26 +1227,66 @@ function ParamSweep() {
 function VenuesApi() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
-  const noteOf = useLocalizedNote();
-  const { data, loading, error } = useApi<any>(() => getSoccerRisk(), []);
-  if (loading) return <Loading />;
-  if (error || !data) {
-    return (<div><Title sub={t('soccer.subVenues')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
-  }
+  const risk = usePoll<any>(() => getSoccerRisk(), 30000);
+  const overview = usePoll<any>(() => getSoccerOverview(), 30000);
+  const upcoming = usePoll<any>(() => getSoccerUpcoming(), 30000);
+  const inplay = usePoll<any>(() => getSoccerInplay(), 30000);
+  const data = risk.data ?? {};
+  if (risk.loading && !risk.data) return <Loading />;
   const g = data.gates ?? {}, b = data.venue_balances ?? {}, ab = data.api_budget ?? {};
   const cal = data.calibration_gate ?? {};
-  // blocked_summary is English risk prose. Prefer the keyed export; otherwise rebuild the
-  // same guardrails from the gate flags so the safety lines read in the UI language, and
-  // only fall back to the raw sentences when neither is available.
-  const rawBlocked: string[] = (data.blocked_summary ?? []);
-  const derivedBlocked: string[] = [
-    ...(g.pmus_trading_enabled === false ? [t('soccer.blocked.pmusOrders')] : []),
-    ...(g.kalshi_trading_enabled === false ? [t('soccer.blocked.kalshiOrders')] : []),
-    ...(g.hard_order_cap_usd != null ? [t('soccer.blocked.orderCap', { cap: fmtMoney(g.hard_order_cap_usd, lang) })] : []),
+  const mirror = data.demo_mirror ?? {};
+  const balanceStatus = data.venue_balance_status ?? {};
+  // Disabled real-money gates and order caps are normal configuration, not incidents.
+  const blocked: string[] = data.kalshi_series?.gaps ?? [];
+  const stamp = (value: any) => value && Number.isFinite(Date.parse(value)) ? fmtDateTime(value, lang) : '—';
+  const demoFlag = typeof mirror.enabled !== 'boolean' ? t('soccer.venueStatus.unknown')
+    : t(!mirror.enabled ? 'soccer.venueStatus.demoDisabled'
+      : mirror.environment_ok == null ? 'soccer.venueStatus.unknown'
+      : mirror.environment_ok ? 'soccer.venueStatus.demoEnabled' : 'soccer.venueStatus.demoGuardBlocked');
+  const balanceCell = (key: string, cash: any) => {
+    const status = balanceStatus[key];
+    const fetched = status?.fetched_at || (!status ? data.source_as_of || data.as_of : null);
+    const expired = !!fetched && Date.now() - Date.parse(fetched) > 900000;
+    return <div>
+      <div>{fmtMoney(cash, lang)}</div>
+      <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{t('soccer.venueStatus.balanceAt')}: {stamp(fetched)}</div>
+      {(status?.state === 'unavailable' || cash == null) && <div role="status" style={{ color: 'var(--warning, #a86b00)', fontSize: 10 }}>{t('soccer.venueStatus.balanceUnavailable')}</div>}
+      {expired && <div role="status" style={{ color: 'var(--warning, #a86b00)', fontSize: 10 }}>{t('soccer.dataHealth.stale')}</div>}
+    </div>;
+  };
+  const sourceRows = [
+    { key: 'operations', poll: overview, runtime: true, maxAge: 300 },
+    { key: 'upcoming', poll: upcoming, runtime: false, maxAge: 30 * 3600 },
+    { key: 'inplay', poll: inplay, runtime: false, maxAge: inplay.data?.n_live ? 300 : 900 },
   ];
-  const blocked: string[] = Array.isArray(data.blocked_i18n) && data.blocked_i18n.length
-    ? data.blocked_i18n.map((x: any) => (typeof x === 'string' ? noteOf(null, x) : noteOf(null, x?.key, x?.args))).filter(Boolean)
-    : (derivedBlocked.length ? derivedBlocked : rawBlocked);
+  const sourceHealth = (row: typeof sourceRows[number]) => {
+    const doc = row.poll.data;
+    const source = row.runtime ? doc?.operations : doc;
+    const generated = source?.as_of || source?.ts || source?.meta?.run_ts;
+    const sourceAt = source?.source_as_of || generated;
+    const missingStamp = !generated || !Number.isFinite(Date.parse(generated));
+    const tooOld = !!generated && Date.now() - Date.parse(generated) > row.maxAge * 1000;
+    const issues: any[] = source?.data_status?.issues ?? [];
+    const jobs: any[] = row.runtime ? source?.jobs ?? [] : [];
+    const failed = jobs.filter(j => ['failed', 'degraded', 'unavailable'].includes(j.state));
+    const state = row.runtime ? source?.state : source?.data_status?.state;
+    const fault = row.poll.error || !source || missingStamp || (row.runtime && !state) || tooOld || failed.length || source?.scan_error
+      || ['failed', 'unavailable'].includes(state) || (state === 'degraded' && !issues.length);
+    const quoteOnly = !fault && issues.length > 0 && issues.every(i => i.code === 'quote_unavailable');
+    const venueNames: Record<string, string> = { kalshi: 'Kalshi', poly_us: 'Polymarket US' };
+    const venues = [...new Set(issues.map(i => venueNames[i.venue]).filter(Boolean))];
+    let message = row.poll.error ? t('soccer.dataHealth.loadFailed')
+      : !source || missingStamp || (row.runtime && !state) ? t('soccer.venueStatus.unknown')
+      : tooOld ? t('soccer.dataHealth.stale')
+      : quoteOnly ? `${t('soccer.dataHealth.reasons.quote_unavailable')}${venues.length ? ` (${venues.join(' / ')})` : ''}`
+      : fault || issues.length ? t('soccer.dataHealth.degraded')
+      : state === 'running' || jobs.some(j => j.state === 'running') ? t('soccer.dataHealth.updating')
+      : t('soccer.venueStatus.healthy');
+    if (failed.length) message += ` · ${failed.map(j => t(`soccer.dataHealth.jobs.${j.name}`, { defaultValue: j.name })).join(' / ')}`;
+    if (issues.length && !quoteOnly) message += ` · ${[...new Set(issues.map(i => t(`soccer.dataHealth.reasons.${i.code}`, { defaultValue: t('soccer.dataHealth.unavailable') })))].join(' / ')}`;
+    return { generated, sourceAt, warning: !!fault || issues.length > 0, message };
+  };
   const tradingFlag = (v: any) => (typeof v === 'boolean' ? t(v ? 'soccer.tradingOn' : 'soccer.tradingOff') : '—');
   const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
   const bar = (f: number, w = 110) => (
@@ -1371,7 +1300,8 @@ function VenuesApi() {
     : `${t(cal.trade_grade ? 'soccer.gradePass' : 'soccer.gradeBlock')}${cal.method ? ` · ${t(`soccer.calMethod.${cal.method}`, { defaultValue: cal.method })}` : ''}`;
   const controls: [string, ReactNode][] = [
     [t('soccer.lblKalshiEnv'), t(`soccer.env.${g.kalshi_env}`, { defaultValue: g.kalshi_env ?? '—' })],
-    [t('soccer.lblOrderCap'), fmtMoney(g.hard_order_cap_usd, lang)],
+    [t('soccer.venueStatus.standardOrderCap'), fmtMoney(g.hard_order_cap_usd, lang)],
+    [t('soccer.venueStatus.demoOrderCap'), fmtMoney(mirror.max_order_usd, lang)],
     [t('soccer.lblCalibrationGate'), <span style={{ color: cal.trade_grade ? 'var(--success)' : 'var(--error)' }}>{calVerdict}</span>],
     [t('soccer.lblApiBudget'), <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: frac > 0.8 ? 'var(--error)' : undefined }}>
       {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) {bar(frac)}
@@ -1386,25 +1316,49 @@ function VenuesApi() {
   return (
     <div>
       <Title sub={t('soccer.subVenues')} />
-      <table className="table">
+      <div style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-primary)', marginBottom: 6 }}>{t('soccer.venueStatus.heading')}</div>
+      <div style={{ overflowX: 'auto', marginBottom: 16 }}><table className="table">
+        <thead><tr><th>{t('soccer.venueStatus.source')}</th><th>{t('soccer.dataHealth.sourceAt')}</th><th>{t('soccer.venueStatus.generatedAt')}</th><th>{t('soccer.venueStatus.status')}</th></tr></thead>
+        <tbody>{sourceRows.map(row => {
+          const health = sourceHealth(row);
+          return <tr key={row.key}>
+            <td>{t(`soccer.dataHealth.sources.${row.key}`)}</td>
+            <td>{stamp(health.sourceAt)}</td><td>{stamp(health.generated)}</td>
+            <td role={health.warning ? 'status' : undefined} style={{ color: health.warning ? 'var(--warning, #a86b00)' : 'var(--text-secondary)' }}>{health.message}</td>
+          </tr>;
+        })}</tbody>
+      </table></div>
+      {risk.error && <div role="status" style={{ color: 'var(--warning, #a86b00)', marginBottom: 8 }}>{t('soccer.dataHealth.loadFailed')}</div>}
+      <div style={{ overflowX: 'auto' }}><table className="table">
         <thead><tr>
           <th style={{ textAlign: 'left' }}>{t('soccer.colVenue')}</th>
           <th style={{ textAlign: 'right' }}>{t('soccer.colRole')}</th>
-          <th style={{ textAlign: 'right' }}>{t('soccer.colBalance')}</th>
+          <th style={{ textAlign: 'right' }}>{t('soccer.venueStatus.cash')}</th>
           <th style={{ textAlign: 'right' }}>{t('soccer.colTrading')}</th>
         </tr></thead>
         <tbody>
           {([
-            [t('soccer.venueWithEnv', { venue: 'Kalshi', env: t('soccer.env.demo') }), t('soccer.roleExecute'), fmtMoney(b.kalshi_demo_usd, lang), tradingFlag(g.kalshi_trading_enabled)],
-            ['Polymarket US', t('soccer.roleExecute'), fmtMoney(b.polymarket_us_usd, lang), tradingFlag(g.pmus_trading_enabled)],
+            [t('soccer.venueWithEnv', { venue: 'Kalshi', env: t('soccer.env.demo') }), t('soccer.roleExecute'), balanceCell('kalshi_demo', b.kalshi_demo_usd), demoFlag],
+            ['Polymarket US', t('soccer.roleExecute'), balanceCell('polymarket_us', b.polymarket_us_usd), tradingFlag(g.pmus_trading_enabled)],
             // The prod balance field carries an English sentence when the key was never
             // queried — only a real number belongs in a balance cell.
             [t('soccer.venueWithEnv', { venue: 'Kalshi', env: t('soccer.env.prod') }), t('soccer.roleRealMoney'),
-              typeof b.kalshi_prod_usd === 'number' ? fmtMoney(b.kalshi_prod_usd, lang) : t('soccer.balanceNotQueried'), t('soccer.tradingGated')],
-            ['Polymarket Global', t('soccer.roleReference'), fmtMoney(0, lang), t('soccer.tradingReadonly')],
+              typeof b.kalshi_prod_usd === 'number' ? fmtMoney(b.kalshi_prod_usd, lang) : t('soccer.balanceNotQueried'), tradingFlag(g.kalshi_trading_enabled)],
+            ['Polymarket Global', t('soccer.roleReference'), '—', t('soccer.tradingReadonly')],
           ] as ReactNode[][]).map((r, i) => (
             <tr key={`v${i}`}>{r.map((c, j) => <td key={j} style={{ textAlign: j === 0 ? 'left' : 'right' }}>{c}</td>)}</tr>
           ))}
+          {([
+            [t('soccer.venueStatus.portfolio'), fmtMoney(b.kalshi_demo_portfolio_usd, lang)],
+            [t('soccer.venueStatus.soccerPositions'), mirror.open_positions ?? '—'],
+            [t('soccer.venueStatus.soccerOpenCost'), fmtMoney(mirror.open_cost_usd, lang)],
+            [t('soccer.venueStatus.pendingOrders'), mirror.pending_orders ?? '—'],
+            [t('soccer.venueStatus.lastOrder'), mirror.last_order_at ? stamp(mirror.last_order_at) : typeof mirror.enabled === 'boolean' ? t('soccer.venueStatus.noOrder') : '—'],
+            [t('soccer.venueStatus.lastFill'), stamp(mirror.last_fill_at)],
+            [t('soccer.venueStatus.lastCycle'), stamp(mirror.last_cycle_at)],
+          ] as [string, ReactNode][]).map(([label, value]) => <tr key={label}><td>{label}</td><td colSpan={3} style={{ textAlign: 'right' }}>{value}</td></tr>)}
+          <tr><td colSpan={4} style={{ color: 'var(--text-muted)', fontSize: 10 }}>{t('soccer.venueStatus.sharedAccount')}</td></tr>
+          {mirror.last_cycle_error_count > 0 && <tr><td colSpan={4} role="status" style={{ color: 'var(--warning, #a86b00)' }}>{t('soccer.venueStatus.cycleErrors')}: {mirror.last_cycle_error_count} · {stamp(mirror.last_cycle_at)}</td></tr>}
           {controls.map(([k, v], i) => (
             <tr key={`g${i}`}>
               <td style={{ textAlign: 'left', fontWeight: 700 }}>{k}</td>
@@ -1417,8 +1371,8 @@ function VenuesApi() {
             </tr>
           ))}
         </tbody>
-      </table>
-      <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('soccer.budgetNote')}</div>
+      </table></div>
+      <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('soccer.venueStatus.refreshNote')} {t('soccer.budgetNote')}</div>
     </div>
   );
 }
@@ -1434,7 +1388,8 @@ function Overview() {
   const lang = i18n.language || '';
   const { data, loading, error } = useApi<any>(() => getSoccerOverview(), []);
   if (loading) return <Loading />;
-  if (error || !data) return <ModelNotes />;
+  if (error) return <ErrorBox e={error} />;
+  if (!data) return <EmptyBox title={t('soccer.dataHealth.unavailable')} />;
   const leagues = (data.leagues ?? []) as any[];
   const series = data.series && typeof data.series === 'object' ? Object.entries(data.series) : [];
   const cal = data.calibration ?? {};
@@ -1578,7 +1533,8 @@ function RiskLimits() {
   const { t } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getSoccerRisk(), []);
   if (loading) return <Loading />;
-  if (error || !data) {
+  if (error) return <ErrorBox e={error} />;
+  if (!data) {
     return (<div><Title sub={t('soccer.subRisk')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
   }
   const lim = data.limits ?? {}, exp = data.exposure ?? {}, ks = data.kill_switch ?? {};

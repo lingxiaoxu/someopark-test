@@ -8,43 +8,104 @@ decision.py sized the order against.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from prediction_market_macro.strategy.decision import Decision
 from prediction_market_macro.strategy.edge import taker_fee
 
 
+class EntryWindowClosed(RuntimeError):
+    """A live entry's window elapsed while pricing or waiting for SQLite."""
+
+
+def ensure_live_entry_window(conn, series, period, tickers, *, min_minutes_to_close=0):
+    from prediction_market_macro.config.registry import REGISTRY
+    now = datetime.now(timezone.utc)
+    spec = REGISTRY.get(series)
+    if spec is None:
+        raise EntryWindowClosed("unregistered entry series")
+    release = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
+                           (spec.calendar, period)).fetchone()
+    if release is not None:
+        try:
+            seconds = (datetime.fromisoformat(release["scheduled_ts"]) - now).total_seconds()
+        except (TypeError, ValueError) as exc:
+            raise EntryWindowClosed("unverified release time") from exc
+        if 0 <= seconds <= 600:
+            raise EntryWindowClosed("freeze_window")
+    for ticker in tickers:
+        contract = conn.execute("SELECT status,close_time FROM contracts WHERE ticker=?",
+                                (ticker,)).fetchone()
+        if contract is None or contract["status"] != "active":
+            raise EntryWindowClosed("market not active")
+        try:
+            close = datetime.fromisoformat(contract["close_time"].replace("Z", "+00:00"))
+            seconds = (close - now).total_seconds()
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise EntryWindowClosed("unverified close time") from exc
+        if seconds <= 0 or seconds < min_minutes_to_close * 60:
+            raise EntryWindowClosed("too_close_to_close")
+
+
+@contextmanager
+def atomic_structure(conn, before_write=None):
+    """Roll back an incomplete structure without discarding the caller's writes.
+
+    Callers finish/commit the whole paper structure before any mirror HTTP call.
+    A savepoint also works when the surrounding decision pass already has a SQLite
+    transaction; a failed leg must not leave a decision with only half its fills.
+    """
+    conn.execute("SAVEPOINT macro_structure")
+    try:
+        # Acquire SQLite's writer reservation BEFORE checking the live clock.
+        # A no-row update changes no history and works inside a caller transaction,
+        # where BEGIN IMMEDIATE would be illegal. Busy waits can cross a freeze.
+        conn.execute("UPDATE decisions SET id=id WHERE 0")
+        if before_write is not None:
+            before_write()
+        yield
+    except BaseException:
+        conn.execute("ROLLBACK TO SAVEPOINT macro_structure")
+        conn.execute("RELEASE SAVEPOINT macro_structure")
+        raise
+    else:
+        conn.execute("RELEASE SAVEPOINT macro_structure")
+
+
 
 def record(conn, *, series: str, period: str, decision: Decision, pred_inputs: dict,
-           model_version: str, note: str = "") -> int:
-    now = datetime.now(timezone.utc).isoformat()
+           model_version: str, note: str = "", before_write=None) -> int:
     st = decision.struct
-    cur = conn.execute(
-        "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
-        " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (now, series, period,
-         json.dumps({"kind": st.kind, "desc": st.desc,
-                     "legs": [{"ticker": l.ticker, "side": l.side, "price": l.price}
-                              for l in st.legs]} if st else {}),
-         decision.action, st.fair if st else None, st.cost if st else None,
-         st.net_edge() if st else None, decision.size_usd,
-         json.dumps(pred_inputs, ensure_ascii=False), model_version,
-         json.dumps(decision.gate_snapshot), note or ";".join(decision.reasons)))
-    did = cur.lastrowid
-    if decision.action == "open" and st is not None:
-        # one shared fill model with strategy/decision.py, which sized `count` against
-        # these same prices — a flat pad here (the old PAPER_SLIP) was invisible to sizing
-        # and blew the $1 cap on cheap legs. See strategy/edge.py::fill_price.
-        from prediction_market_macro.ops import trading_kalshi
-        for leg, px in zip(st.legs, st.fill_prices(decision.count)):
-            curf = conn.execute(
-                "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
-                " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-                (did, now, leg.ticker, leg.side, px, decision.count,
-                 taker_fee(px, decision.count)))
-            trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
+    fill_ids = []
+    with atomic_structure(conn, before_write=before_write):
+        now = datetime.now(timezone.utc).isoformat()
+        cur = conn.execute(
+            "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
+            " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (now, series, period,
+             json.dumps({"kind": st.kind, "desc": st.desc,
+                         "legs": [{"ticker": l.ticker, "side": l.side, "price": l.price}
+                                  for l in st.legs]} if st else {}),
+             decision.action, st.fair if st else None, st.cost if st else None,
+             st.net_edge() if st else None, decision.size_usd,
+             json.dumps(pred_inputs, ensure_ascii=False), model_version,
+             json.dumps(decision.gate_snapshot), note or ";".join(decision.reasons)))
+        did = cur.lastrowid
+        if decision.action == "open" and st is not None:
+            # Use the same fill model the decision sized its count against.
+            for leg, px in zip(st.legs, st.fill_prices(decision.count)):
+                curf = conn.execute(
+                    "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
+                    " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+                    (did, now, leg.ticker, leg.side, px, decision.count,
+                     taker_fee(px, decision.count)))
+                fill_ids.append(curf.lastrowid)
     conn.commit()
+    from prediction_market_macro.ops import trading_kalshi
+    for fill_id in fill_ids:
+        trading_kalshi.on_fill(conn, fill_id)
     return did
 
 

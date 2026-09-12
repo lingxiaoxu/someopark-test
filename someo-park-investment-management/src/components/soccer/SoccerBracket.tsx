@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import { apiHeaders } from '../../lib/api';
 import { soccerFileUrl } from '../../lib/soccerApi';
-import { leagueLabel, stageLabel, fmtDate, fmtDateTime, type ChipLeague } from './soccerLabels';
+import { clubName, leagueLabel, stageLabel, fmtDate, fmtDateTime, type ChipLeague } from './soccerLabels';
 
 // ── payload contract (loose on purpose — the exporter is the truth) ──────────
 type ClubRef = { club_id: string | null; name: string; zh?: string; logo?: string | null };
@@ -39,7 +39,7 @@ type Round = { round: string; stage: string; n_ties: number; open: boolean; ties
 type ChampionRow = { club_id: string; name: string; zh?: string; logo?: string | null; p: number };
 type LeagueBracket = {
   league: string; name: string; zh?: string; kind: string;
-  state: 'ok' | 'pending_draw' | 'pending_bracket';
+  state: string;
   league_phase: { drawn: boolean; n_fixtures: number } | null;
   et_in_ties: boolean; n_rounds: number; rounds: Round[];
   champion: ChampionRow[] | null;
@@ -108,7 +108,8 @@ function Side({ club, goals, p, won, dim, lang }: {
   club: ClubRef | null; goals: number | null; p: number | null;
   won: boolean; dim: boolean; lang: string;
 }) {
-  const name = club ? ((lang || '').startsWith('zh') && club.zh ? club.zh : club.name) : '—';
+  const { t } = useTranslation();
+  const name = clubName(club, lang, t);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
       <Crest club={club} />
@@ -217,7 +218,7 @@ function ChampionBoard({ rows, lang }: { rows: ChampionRow[]; lang: string }) {
         <div key={c.club_id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
           <Crest club={c} />
           <span style={{ flex: 1, fontSize: 11, ...mono, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {(lang || '').startsWith('zh') && c.zh ? c.zh : c.name}
+            {clubName(c, lang, t)}
           </span>
           <span style={{ width: 60, height: 5, background: 'var(--bg-tertiary)' }}>
             <span style={{ display: 'block', height: '100%', width: `${Math.max(2, (c.p / top) * 100)}%`, background: 'var(--accent-primary)' }} />
@@ -245,7 +246,8 @@ export default function SoccerBracket() {
   if (loading) return <div className="text-xs py-3" style={{ color: 'var(--text-muted)', ...mono }}>{t('common.loading')}</div>;
   // A missing file is the normal state until the exporter has run once — that is an
   // empty state with a reason, not the red "load failed" an actual break deserves.
-  if (error || !data) return <Banner title={t('soccer.bracket.empty')} hint={t('soccer.bracket.emptyHint')} />;
+  if (error) return <Banner title={t('soccer.dataHealth.loadFailed')} />;
+  if (!data) return <Banner title={t('soccer.bracket.empty')} hint={t('soccer.bracket.emptyHint')} />;
 
   const leagues = data.leagues || [];
   if (!leagues.length) return <Banner title={t('soccer.bracket.empty')} hint={t('soccer.bracket.emptyHint')} />;

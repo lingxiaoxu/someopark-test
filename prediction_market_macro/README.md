@@ -270,9 +270,16 @@ python -m prediction_market_macro.ops.refresh --weekly
 | plist | 频率 | 干什么 |
 |---|---|---|
 | `com.someopark.macrorefresh` | 每天 05:00 | 全量日更 |
-| `com.someopark.macrotick` | 每 900 秒 | 刷行情、盯市、跑平仓检查 |
+| `com.someopark.macrotick` | 每 60 秒唤起；事件窗持续轮询 | 刷行情、盯市、跑平仓检查；单实例锁防止重复执行 |
 | `com.someopark.macrowatchdog` | 每 3600 秒 | 扫 `runs` 表里过期未完成的任务 |
 | `com.someopark.macroweekly` | 周日 06:30 | `--weekly`：评估闸门 + 归因 + 30d/60d 走查 + ML 选择器 + 周报 |
+
+事件窗执行器持续驻留到所有发布窗口结束，避免旧的 840 秒驻留与 900 秒启动间隔之间留下空档。
+到期的 `freeze` 标记先于慢请求处理；`decide` / `reassess` 在领取和执行前均检查既有 30 分钟宽限，超时记为 `MISSED`，不等小时 watchdog 才阻止补跑。
+发布前 10 分钟的入场冻结统一置于普通策略、arb 和 argmax 之前，直接按发布时间判断，不依赖覆盖矩阵更新是否及时。
+
+只更新 tick 定时配置可执行 `bash prediction_market_macro/ops/install_launchd.sh install com.someopark.macrotick`。
+省略标签仍安装全部五个任务；单标签更新可保留其他已安装任务的本机配置。
 
 ---
 
@@ -425,7 +432,7 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 | 项 | 现状 | 影响 |
 |---|---|---|
 | **AAA 汽油日均价** (`ingest/aaa_daily.py`) | 抓取已上线但**没有历史**——AAA 不免费提供，只能一天攒一行。至今 17 行（2026-07-31 起） | `KXAAAGASW` 结算的就是这个日读数，所以 `energy.py` 在读数够新时直接锚它，过期则退回 EIA `GASREGW` 周度代理（采样口径不同，模型以 σ 放大补偿）。**skill 闸门目前仍封禁该系列**——那是代理时代攒下的记录，日读数的优势只能向前累积 |
-| **事件窗口快速重定价** (`jobs/tick.py`) | 固定 900 秒；设计要求发布前后切到更细粒度 | 发布瞬间的重定价窗口观测不到，`snipe` 能看到的只是 15 分钟后的残余 |
+| **事件窗口快速重定价** (`jobs/tick.py`) | 2026-09-10 修复：launchd 每 60 秒唤起，事件窗完整驻留；窗内 5 分钟快照、发布前后 10 分钟内 1 分钟快照 | 移除旧 840 秒驻留结束后的调度空档；发布后先补 FRED 再重估，决策获取执行锁后仍须通过超时检查 |
 | **`event_flags` 结构性断点** (`analysis/llm.py`) | 已接线（`decide_all` 读 `active_flags()`，回测按 PIT 过滤读），整库仅 **5 行** | 停摆 / 大规模裁员 / 能源冲击这类"模型卡上写明会失效"的场景，实际上还没有被标注出足够样本去验证这条路径有没有用 |
 
 ### E. 试过、结论是"不做"的方向（保留记录以免重做）

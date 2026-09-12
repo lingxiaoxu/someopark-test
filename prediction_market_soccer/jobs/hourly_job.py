@@ -34,30 +34,38 @@ from prediction_market_soccer.config import CONFIG
 log = logging.getLogger("hourly_job")
 
 
-def _setup_logging() -> None:
-    CONFIG.paths.ensure()
+def _setup_logging(*, dry_run: bool = False) -> None:
+    if not dry_run:
+        CONFIG.paths.ensure()
     if log.handlers:
         return
     log.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     sh = logging.StreamHandler()
     sh.setFormatter(fmt)
-    fh = logging.FileHandler(CONFIG.paths.logs / "hourly.log")
-    fh.setFormatter(fmt)
     log.addHandler(sh)
-    log.addHandler(fh)
+    if not dry_run:
+        fh = logging.FileHandler(CONFIG.paths.logs / "hourly.log")
+        fh.setFormatter(fmt)
+        log.addHandler(fh)
 
 
 def run_once(*, dry_run: bool = False, ingest: bool = True, emit_frontend: bool = False,
-             n_sims: int = 50_000) -> dict:
+             n_sims: int = 50_000, conn=None) -> dict:
     """One pipeline pass. Returns a summary dict (also logged)."""
-    _setup_logging()
+    _setup_logging(dry_run=dry_run)
     t0 = time.monotonic()
     run_ts = datetime.now(timezone.utc).isoformat()
-    log.info("hourly_job START (dry_run=%s, ingest=%s)", dry_run, emit_frontend)
+    log.info("hourly_job START (dry_run=%s, ingest=%s)", dry_run, ingest)
 
     from prediction_market_soccer.ingest import store
-    conn = store.init_db()
+    if conn is None:
+        if dry_run:
+            import sqlite3
+            conn = sqlite3.connect(f"file:{store.DB_PATH}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+        else:
+            conn = store.init_db()
     reqs_before = store.monthly_request_count(conn)
 
     # 1) Incremental ingest (watermark-gated; results + topscorers). Skipped on dry-run.
@@ -71,25 +79,37 @@ def run_once(*, dry_run: bool = False, ingest: bool = True, emit_frontend: bool 
     # 2) Model run (strength + result-update → tournament/golden-boot/pricing).
     from prediction_market_soccer.ingest.club_prior import load_prior
     from prediction_market_soccer.model.run_model import build_payload, write_outputs
-    prior = load_prior()
-    payload = build_payload(prior, n_sims=n_sims, seed=CONFIG.model.random_seed, update_results=True)
+    payload = build_payload(n_sims=n_sims, seed=CONFIG.model.random_seed, conn=conn,
+                            save_cache=not dry_run, fetch_markets=not dry_run)
     if not dry_run:
         write_outputs(payload, emit_frontend=emit_frontend)
-    champ = payload["champion"][0]
-    boot = payload["golden_boot"][0]
+    champions = [r for league in payload.get("leagues", []) for r in league.get("season_odds", [])
+                 if r.get("p_champion") is not None]
+    scorers = [r for league in payload.get("leagues", []) for r in league.get("top_scorer", [])
+               if r.get("p_top_scorer") is not None]
+    champ = max(champions, key=lambda r: r["p_champion"], default=None)
+    boot = max(scorers, key=lambda r: r["p_top_scorer"], default=None)
+    leaders = {"top_champion": (champ["name"], champ["p_champion"]) if champ else None,
+               "top_golden_boot": (boot["name"], boot["p_top_scorer"]) if boot else None}
+    if dry_run:
+        # These legacy subjobs persist their own reports or fetch markets; a dry
+        # run returns the computed model summary before entering those write paths.
+        return {"run_ts": run_ts, "dry_run": True, **leaders,
+                "elapsed_s": round(time.monotonic() - t0, 1),
+                "data_status": payload.get("meta", {}).get("data_status"),
+                "api_requests_used": 0, "api_requests_month": reqs_before}
 
     # 3) Cross-venue champion monitor (Global, read-only).
     xv_top = None
     try:
         from prediction_market_soccer.strategy.xv_monitor import compare_champion, write_report
-        rows = compare_champion(n_sims=min(n_sims, 30_000))
-        if not dry_run:
-            write_report(rows)
-        flagged = [r for r in rows if (r.rel_value_kalshi or r.rel_value_global) is not None]
+        report = compare_champion(n_sims=min(n_sims, 30_000))
+        flagged = [r for league in report.get("leagues", []) for r in league.get("rows", [])
+                   if r.get("divergence") is not None]
         if flagged:
-            top = flagged[0]
-            xv_top = (top.name, top.rel_value_kalshi if top.rel_value_kalshi is not None
-                      else top.rel_value_global)
+            top = max(flagged, key=lambda r: abs(r["divergence"]))
+            xv_top = (top["name"], top["divergence"])
+
     except Exception as e:
         log.warning("cross-venue monitor skipped: %s", e)
 
@@ -98,7 +118,7 @@ def run_once(*, dry_run: bool = False, ingest: bool = True, emit_frontend: bool 
     try:
         from prediction_market_soccer.strategy.xv_monitor import compare_matches
         mrows = compare_matches(limit=12)
-        n_match_xv = len(mrows)
+        n_match_xv = int(mrows.get("n", len(mrows.get("matches", []))))
         if not dry_run:
             import json as _json
             (CONFIG.paths.output / "xv_matches.json").write_text(
@@ -156,18 +176,16 @@ def run_once(*, dry_run: bool = False, ingest: bool = True, emit_frontend: bool 
         "run_ts": run_ts,
         "elapsed_s": round(time.monotonic() - t0, 1),
         "dry_run": dry_run,
-        "top_champion": (champ["name"], champ["p_champion"]),
-        "top_golden_boot": (boot["name"], boot["p_golden_boot"]),
+        **leaders,
+        "data_status": payload.get("meta", {}).get("data_status"),
         "xv_top_divergence": xv_top,
         "oos": oos,
         "api_requests_used": reqs_after - reqs_before,
         "api_requests_month": reqs_after,
     }
-    log.info("hourly_job DONE %.1fs | champ=%s %.1f%% | boot=%s %.1f%% | xv=%s | "
-             "match_xv=%d | champ_sig=%s | inplay=%d | oos=%s | reqs=%d (mo %d)",
-             summary["elapsed_s"], champ["name"], champ["p_champion"] * 100,
-             boot["name"], boot["p_golden_boot"] * 100, xv_top, n_match_xv, sig_summary,
-             inplay_n, oos, summary["api_requests_used"], reqs_after)
+    log.info("hourly_job DONE %.1fs | champ=%s | scorer=%s | xv=%s | reqs=%d",
+             summary["elapsed_s"], leaders["top_champion"], leaders["top_golden_boot"],
+             xv_top, summary["api_requests_used"])
     return summary
 
 

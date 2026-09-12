@@ -34,12 +34,17 @@ def _polygon_ban(session):
     raise AssertionError("TEST NETWORK BAN: Polygon grouped bars in unit test")
 
 
+def _minute_unavailable(*args, **kwargs):
+    raise rolloff.SourceError("test fixture has no fixed-minute evidence")
+
+
 @pytest.fixture(autouse=True)
 def _ban_network(monkeypatch):
     monkeypatch.setattr(qc_api, "QcClient", _NetBan)
     # Q 现在要官方收盘价,取数走 Polygon —— 同样禁网。需要价的单测由 eq_env
     # 覆盖成固定表;没覆盖却走到这里的,是漏掉了桩,必须炸而不是偷偷联网。
     monkeypatch.setattr(official_close, "grouped_closes", _polygon_ban)
+    monkeypatch.setattr(official_close, "qc_reference_prices", _minute_unavailable)
     yield
 
 
@@ -196,6 +201,56 @@ def test_holdings_breach_on_one_share(target_file):
     assert row["status"] == "breach"
     assert row["diffs"] == [{"ticker": "AAPL", "qc": 99, "target": 100,
                              "diff": -1}]
+
+
+@pytest.fixture()
+def qc_historical_name_snapshot():
+    """9/9 已核实的两票 SID/股数/盘中价;现金为合成测试值,不访问 QC。"""
+    class Client:
+        def live_read(self, pid):
+            return {"status": "Running", "deployId": "test-deploy"}
+
+        def live_portfolio(self, pid):
+            return {"portfolio": {
+                "holdings": {
+                    "RESM R735QTJ8XC9X": {
+                        "q": -394, "p": 217.22, "v": -85584.68},
+                    "CBRNA R735QTJ8XC9X": {
+                        "q": -432, "p": 121.17, "v": -52345.44},
+                },
+                "cash": {"USD": {"amount": 200_000.0}},
+            }}
+
+    return rolloff.qc_snapshot(client=Client(), pid=1)
+
+
+def test_historical_sid_names_match_current_targets_without_hiding_qty_error(
+        target_file, qc_historical_name_snapshot):
+    """同一证券的历史前缀不应造成四条假差异;真实一股差仍须报错。"""
+    qc = qc_historical_name_snapshot
+    target_file(32, {"RMD": -394, "STZ": -432})
+    row = qr.holdings_plane(qc, 32)
+    assert row["status"] == "ok" and row["diffs"] == []
+    assert row["n_matched"] == row["n_tickers"] == 2
+
+    qc["shares"]["RESM"] += 1
+    row = qr.holdings_plane(qc, 32)
+    assert row["status"] == "breach"
+    assert row["diffs"] == [{"ticker": "RMD", "qc": -393,
+                             "target": -394, "diff": 1}]
+
+
+def test_historical_sid_names_use_current_symbols_for_official_valuation(
+        monkeypatch, qc_historical_name_snapshot):
+    """只提供现行代码的合成收盘价,验证 SID 解析到官方 Q 的完整路径。"""
+    qc = qc_historical_name_snapshot
+    assert qc["shares"] == {"RESM": -394, "CBRNA": -432}
+    assert qc["prices"] == {"RMD": 217.22, "STZ": 121.17}
+    closes = {"RMD": 218.0, "STZ": 120.0}
+    monkeypatch.setattr(official_close, "grouped_closes", lambda s: closes)
+    out = rolloff.official_q("2026-09-09", qc)
+    assert out["closes"] == closes
+    assert out["Q"] == pytest.approx(200_000.0 - 394 * 218.0 - 432 * 120.0)
 
 
 def test_holdings_pending_when_pushed_ahead_of_applied(target_file):
@@ -363,6 +418,14 @@ def test_equity_pending_when_official_eod_lacks_that_session(eq_env):
     assert "D_usd" not in row
 
 
+def test_missing_session_account_cannot_silently_drop_dividends(monkeypatch, eq_env):
+    monkeypatch.setattr(qr, "_ledger_accounts", lambda s: ({}, ["mrpt:no exact archive"]))
+    row = qr.equity_plane("2026-08-27", _qc(388), [], {}, {}, {})
+    assert row["status"] == "pending" and row["D_usd"] == 100000
+    assert len(row["ledger_missing"]) == 5
+    assert "attribution" not in row and "cumulative_dividends" not in row
+
+
 def test_equity_pending_when_two_paths_disagree(monkeypatch, eq_env):
     """收盘价复算的 Q 与 QC 自报净值对不上 → 不挑一个信,直接不出裁决。
 
@@ -390,6 +453,108 @@ def test_equity_cross_check_passes_just_inside_tolerance(monkeypatch, eq_env):
                           [], {}, {}, {})
     assert row["status"] == "baseline"
     assert row["cross_check_bp"] == 4.99 and row["D_usd"] == 100_000.0
+
+
+def _fixed_minute(monkeypatch, prices, directory):
+    monkeypatch.setattr(qr, "REPORT_DIR", directory)
+    (directory / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "session": "2026-08-26", "close_snapshot": {"qc": {"cash": 388, "deploy_id": "L-cur"}}}))
+    monkeypatch.setattr(official_close, "qc_reference_prices", lambda session, tickers: {
+        "bar_start_et": f"{session}T15:58:00-04:00", "source": "test exact minute",
+        "prices": prices})
+
+
+def test_time_bridge_keeps_official_Q_and_frozen_K(monkeypatch, eq_env):
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    _fixed_minute(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env)
+    frozen = eq_env / "rolloff.json"
+    frozen.write_text(json.dumps({"k_equity": -12004.77, "measured_on": "2026-08-25"}))
+    before = frozen.read_bytes()
+    monkeypatch.setattr(qr, "ROLLOFF_PATH", frozen)
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "baseline"
+    assert row["cross_check_usd"] == 600 and row["cross_check_bp"] == 6
+    assert row["qc_equity_Q"] == 5900000 and row["D_usd"] == 100000
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "verified" and b["close_minus_reference_usd"] == 600
+    assert b["remaining_usd"] == 0 and b["n_tickers"] == 2
+    assert sum(x["close_minus_reference_usd"] for x in b["per_ticker"]) == 600
+    assert row["k_frozen"] == -12004.77 and frozen.read_bytes() == before
+
+
+@pytest.mark.parametrize("extra_cash_error", [500.01, -500.01])
+def test_time_bridge_does_not_hide_remaining_account_error(monkeypatch, eq_env, extra_cash_error):
+    _fixed_minute(monkeypatch, {"X": 8.0, "Y": 1.0}, eq_env)
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5898000 + extra_cash_error),
+                          [], {}, {}, {})
+    assert row["status"] == "pending" and "D_usd" not in row
+    assert row["valuation_time_bridge"]["status"] == "mismatch"
+    assert row["valuation_time_bridge"]["remaining_bp"] > 5
+
+
+def test_time_bridge_unavailable_keeps_original_gate_closed(eq_env):
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "pending" and "D_usd" not in row
+    assert row["valuation_time_bridge"]["status"] == "unavailable"
+
+
+def test_normal_cross_check_does_not_request_minute_prices(monkeypatch, eq_env):
+    def unexpected(*args):
+        raise AssertionError("raw cross below threshold must use original path")
+    monkeypatch.setattr(official_close, "qc_reference_prices", unexpected)
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    row = qr.equity_plane("2026-08-27", _qc(388), [], {}, {}, {})
+    assert row["status"] == "baseline" and "valuation_time_bridge" not in row
+
+
+@pytest.mark.parametrize("fill_at", [None, "2026-08-27T15:58:00-04:00",
+                                    "2026-08-27T16:01:00-04:00"])
+def test_time_bridge_rejects_late_or_untimed_fills(monkeypatch, eq_env, fill_at):
+    _fixed_minute(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env)
+    fills = [{"at_et": fill_at, "qty": 1, "fill_px": 1}]
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), fills, {}, {}, {})
+    assert row["status"] == "pending"
+    assert row["valuation_time_bridge"]["status"] == "unavailable"
+
+
+def test_nonzero_filled_event_without_time_is_not_silently_dropped():
+    order = _order(1, "X", 1, 10, None, "[MIRROR] v1 open {}")
+    with pytest.raises(qr.SourceError, match="缺 time"):
+        qr.fills_of_session([order], "2026-09-08", _ET)
+
+
+@pytest.mark.parametrize("prev_qc", [{"cash": 389, "deploy_id": "L-cur"},
+                                    {"cash": 388, "deploy_id": "L-other"},
+                                    {"cash": float("nan"), "deploy_id": "L-cur"},
+                                    {"cash": float("inf"), "deploy_id": "L-cur"},
+                                    {"cash": "broken", "deploy_id": "L-cur"}, {}])
+def test_time_bridge_requires_verified_cash_and_same_deployment(monkeypatch, eq_env, prev_qc):
+    _fixed_minute(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env)
+    (eq_env / "qc_reconcile_2026-08-26.json").write_text(json.dumps({"qc": prev_qc}))
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert row["valuation_time_bridge"]["status"] == "unavailable"
+
+
+def test_september_8_archived_46_position_valuation_bridge(monkeypatch, eq_env):
+    evidence = json.loads((Path(__file__).parent / "fixtures/qc_20260908_reference.json").read_text())
+    monkeypatch.setattr(qr, "REPORT_DIR", eq_env)
+    (eq_env / "qc_reconcile_2026-09-04.json").write_text(json.dumps({
+        "session": "2026-09-04", "close_snapshot": {"qc": evidence["previous_qc"]}}))
+    monkeypatch.setattr(rolloff, "official_eod", lambda s: (s, {"mrpt": 6000000}))
+    monkeypatch.setattr(qr, "intraday_official_files", lambda s: [])
+    monkeypatch.setattr(official_close, "grouped_closes", lambda s: {
+        r["ticker"]: r["daily_close"] for r in evidence["rows"]})
+    monkeypatch.setattr(official_close, "qc_reference_prices", lambda s, ts: {
+        "bar_start_et": "2026-09-08T15:58:00-04:00", "prices": {
+            r["ticker"]: r["minute_1558_close"] for r in evidence["rows"]}})
+    row = qr.equity_plane("2026-09-08", evidence["qc"], evidence["fills"], {}, {}, {}, residual={})
+    assert row["qc_equity_Q"] == 5792806.58 and row["cross_check_usd"] == 5923.73
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "verified" and b["n_tickers"] == 46
+    assert b["close_minus_reference_usd"] == 6074.2635
+    assert b["remaining_usd"] == -150.5335 and b["remaining_bp"] == 0.193898
+    assert b["book_check"]["nonfill_cash_usd"] == 0
 
 
 def test_equity_pending_when_snapshot_has_no_shares(monkeypatch, eq_env):
@@ -850,6 +1015,19 @@ def test_settle_prefers_archived_residual_over_current_state(settle_env):
     assert rep["equity_check"]["fractional_residual"]["value_usd"] == 20.0
 
 
+def test_settle_uses_archived_zero_queues_without_reading_current_inventory(monkeypatch, settle_env):
+    import inventory_source
+    import exporter
+    def forbidden(*args, **kwargs):
+        raise AssertionError("historical zero queues must not read today's book")
+    monkeypatch.setattr(inventory_source, "read_snapshot", forbidden)
+    monkeypatch.setattr(exporter, "compose", forbidden)
+    _archived(settle_env, bootstrap={"known": True, "transition": False,
+                                    "legacy_remaining": 0, "scaled_remaining": 0})
+    rep = qr.settle(dry=True)
+    assert rep["equity_check"]["status"] == "baseline"
+
+
 def test_settle_refuses_when_no_report_exists(settle_env):
     with pytest.raises(qr.SourceError, match="没有 2026-08-27 的报告"):
         qr.settle(dry=True)
@@ -1143,6 +1321,16 @@ def test_k_effective_missing_step_blocks_verdict(monkeypatch, tmp_path,
     assert row["k_steps_missing"] == ["2026-08-26"]
     assert any("k_effective 缺" in b for b in row["blocked_terms"])
     assert row["status"] == "partial"
+
+
+def test_k_effective_detects_entire_missing_reports_and_skips_labor_day(monkeypatch, tmp_path):
+    monkeypatch.setattr(qr, "REPORT_DIR", tmp_path / "no_reports_directory")
+    monkeypatch.setattr(qr, "onboard_step", lambda s: 0)
+    frozen = {"measured_on": "2026-09-04", "k_equity": -12004.77}
+    k, count, missing = qr.k_effective(frozen, "2026-09-10")
+    assert (k, count, missing) == (-12004.77, 0, ["2026-09-08", "2026-09-09"])
+    assert qr.k_effective(frozen, "2026-09-10", include_upto=True)[2] == [
+        "2026-09-08", "2026-09-09", "2026-09-10"]
 
 
 def test_dividend_basis_only_required_for_strategies_in_P(monkeypatch, eq_env):

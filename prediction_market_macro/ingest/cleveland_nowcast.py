@@ -178,7 +178,7 @@ def refresh_if_stale(conn, now: datetime | None = None,
           kt has passed — before 18:00 UTC today's row would be PIT-invisible anyway,
           so fetching it early buys nothing;
       (b) no attempt ran in the last `min_gap_min` — holidays publish no new file,
-          and without the throttle a holiday means a 7.5MB fetch per 900s tick for
+          and without the throttle a holiday means a 7.5MB fetch per prediction pass for
           the rest of the day. The attempt is recorded BEFORE the fetch, so a dead
           feed also degrades to ~one attempt (and one alert upstream) per hour.
     Returns the refresh() dict when a fetch ran, None when skipped."""

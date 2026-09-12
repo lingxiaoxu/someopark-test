@@ -144,7 +144,7 @@ All tools below accept strategy="mrpt", "mtfs", "ssrs", "aiss", or "aeus" where 
 9. **PnL Reports**: Available PDF report dates per strategy (get_pnl_reports strategy=mrpt|mtfs|ssrs|aiss|aeus — mrpt/mtfs share the joint pairs report; ssrs/aiss/aeus each have their own dir, returned in the response)
 10. **Risk Report**: Institutional risk pack PDF/JSON/XLSX — exposure, leverage, VaR/CVaR, concentration, factor/beta, stress, limits + balance/income/capital/cash-flow statements + theory diagnostics (risk contribution, FF5+UMD attribution, fat-tail, PSR/DSR, CDaR, Kelly). List via get_risk_reports strategy=mrpt|mtfs|ssrs|aiss|aeus (mrpt/mtfs joint; ssrs/aiss/aeus own dirs); read exact numbers via read_file on <returned dir>/risk_report_<ts>.json
 11. **Strategy Performance**: Daily equity time series (get_strategy_performance)
-11b. **Realtime NAV (intraday)**: LIVE minute-level valuation from the central controller — official-anchored value per strategy & PORTFOLIO (official EOD × (1+day_return)), day_return/day_pnl from the shares×price dollar account, stock-level holdings, quality checks + position-level reconcile verdict (get_realtime_nav). Same numbers as the Realtime NAV panel; for daily history use get_strategy_performance
+11b. **Realtime NAV (intraday)**: get_realtime_nav shares the Realtime NAV panel's display calculations. Use value/display_value and display_return for portfolio/strategy cards, respecting basis (official or ledger fallback), baseline dates, price timestamp/delay and quality states. Holdings include displayed and QC mirror shares. Frozen k/C are read unchanged; the rolloff K memo is historical, not a fresh QC check. ledger_day_return_pct/day_pnl_usd are separately labelled ledger diagnostics, not the panel card percentage. Compare the same as_of_utc snapshot; for daily history use get_strategy_performance
 12. **Compare Strategies**: Side-by-side MRPT vs MTFS (compare_strategies)
 13. **Pair Stats**: Comprehensive single-pair analysis (get_pair_stats)
 ### SSRS (Sector Rotation)
@@ -268,6 +268,10 @@ comparable across them — never rank a Premier League club against a Bundesliga
 then its trading gate is SHUT and the view says so. A shut gate means "not enough evidence
 yet", not "no opportunity". Some competitions are also mid-transition: when a draw has not
 happened yet the odds come back null with a pending_draw state — report that, do not guess.
+Check source_as_of/as_of and data_status/operations before describing soccer snapshots as current.
+A failed fetch or missing model is unavailable, not no matches or no opportunity. Respect each
+odds_family_states entry; unknown champion odds cannot be replaced with league-phase first place.
+Soccer P&L is gross paper-replay position P&L before fees, not account-realized profit.
 Club football is PAPER-ONLY here (no live trading), with the same hard $1 order cap.
 
 ### Macro Prediction Market — Kalshi Macro System (macro_market_data tool)

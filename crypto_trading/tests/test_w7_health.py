@@ -200,3 +200,45 @@ def test_demo_positions_flags_only_strays_and_degrades_without_access(monkeypatc
         "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Boom)
     r = H.check_demo_positions()
     assert r["status"] == H.PASS and "skipped" in r["detail"]
+
+
+def test_diskmon_liveness_check(tmp_path, monkeypatch):
+    """A silent alarm must be loud somewhere: fresh+ok passes, fresh+warn
+    surfaces the alert text, and stale is a FAIL naming the launchd job."""
+    import json as _json
+    import time as _t
+
+    f = tmp_path / "disk_monitor_status.json"
+    monkeypatch.setattr(H, "DISKMON_STATUS", f)
+    now = _t.time()
+    f.write_text(_json.dumps({"ts": now - 600, "level": "ok", "free_gb": 200}))
+    assert H.check_diskmon(now)["status"] == H.PASS
+    f.write_text(_json.dumps({"ts": now - 600, "level": "warn", "free_gb": 40,
+                              "alerts": ["mlruns at 70 GB"]}))
+    r = H.check_diskmon(now)
+    assert r["status"] == H.WARN and "mlruns" in r["detail"]
+    f.write_text(_json.dumps({"ts": now - 3 * 3600, "level": "ok", "free_gb": 200}))
+    r = H.check_diskmon(now)
+    assert r["status"] == H.FAIL and "diskmon" in r["detail"]
+    monkeypatch.setattr(H, "DISKMON_STATUS", tmp_path / "missing.json")
+    assert H.check_diskmon(now)["status"] == H.FAIL
+
+
+def test_errors_check_distinguishes_live_from_historical(tmp_path, monkeypatch):
+    """An error stream that has STOPPED is history (WARN), not an alarm: the
+    9/11 ENOSPC tracebacks kept the check red for hours after every cycle was
+    already clean. A fresh error must still be a FAIL."""
+    log = tmp_path / "watch.log"
+    monkeypatch.setattr(H, "WATCH_LOG", log)
+    ok = "2026-09-11 21:00:00 INFO [w7] OK\n"
+    err = "2026-09-11 19:00:00 ERROR [w6] run failed\nTraceback (most recent call last):\n"
+    # old errors followed by >500 clean lines → WARN, not FAIL
+    log.write_text(err * 50 + ok * 600)
+    r = H.check_errors()
+    assert r["status"] == H.WARN and "older" in r["detail"]
+    # an error inside the recent window → FAIL
+    log.write_text(ok * 600 + err)
+    assert H.check_errors()["status"] == H.FAIL
+    # all clean → PASS
+    log.write_text(ok * 700)
+    assert H.check_errors()["status"] == H.PASS

@@ -1,0 +1,5903 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-10",
+  "scope": "409 currently registered clubs; future IDs require review. Unreviewed display names retain source spelling.",
+  "identity_policy": "Canonical/API IDs are immutable. Exact and normalized registered names only; collisions fail closed. No fuzzy matching or automatic transliteration.",
+  "clubs": [
+    {
+      "club_id": "1899_hoffenheim",
+      "api_football_id": 167,
+      "source_name": "1899 Hoffenheim",
+      "competitions": [
+        "bundesliga",
+        "uel"
+      ],
+      "aliases": [
+        "1899 Hoffenheim",
+        "Hoffenheim",
+        "TSG 1899 Hoffenheim",
+        "TSG Hoffenheim",
+        "ホッフェンハイム",
+        "霍芬海姆"
+      ]
+    },
+    {
+      "club_id": "1_fc_kln",
+      "api_football_id": 192,
+      "source_name": "1. FC Köln",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "1. FC Köln",
+        "FC Cologne",
+        "FC Köln",
+        "ケルン",
+        "科隆"
+      ]
+    },
+    {
+      "club_id": "2_de_mayo",
+      "api_football_id": 2140,
+      "source_name": "2 de Mayo",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "2 de Mayo",
+        "ドス・デ・マヨ",
+        "五月二日"
+      ]
+    },
+    {
+      "club_id": "a_italiano",
+      "api_football_id": 2329,
+      "source_name": "A. Italiano",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "A. Italiano",
+        "アウダックス・イタリアーノ",
+        "奥达克斯意大利人"
+      ]
+    },
+    {
+      "club_id": "aarhus",
+      "api_football_id": 406,
+      "source_name": "Aarhus",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Aarhus",
+        "オーフス",
+        "奥胡斯",
+        "Aarhus GF"
+      ]
+    },
+    {
+      "club_id": "ac_milan",
+      "api_football_id": 489,
+      "source_name": "AC Milan",
+      "competitions": [
+        "seriea",
+        "uel"
+      ],
+      "aliases": [
+        "AC Milan",
+        "AC米兰",
+        "Milan",
+        "ミラン"
+      ]
+    },
+    {
+      "club_id": "aek_athens_fc",
+      "api_football_id": 575,
+      "source_name": "AEK Athens FC",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "AEK",
+        "AEK Athens",
+        "AEK Athens FC",
+        "AEKアテネ",
+        "雅典AEK"
+      ]
+    },
+    {
+      "club_id": "aek_larnaca",
+      "api_football_id": 614,
+      "source_name": "AEK Larnaca",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "AEK Larnaca",
+        "AEK Lárnakas",
+        "AEKラルナカ",
+        "拉纳卡AEK"
+      ]
+    },
+    {
+      "club_id": "af_elbasani",
+      "api_football_id": 20406,
+      "source_name": "AF Elbasani",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "AF Elbasani",
+        "エルバサニ",
+        "埃尔巴桑"
+      ]
+    },
+    {
+      "club_id": "ajax",
+      "api_football_id": 194,
+      "source_name": "Ajax",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Ajax",
+        "アヤックス",
+        "阿贾克斯",
+        "AFC Ajax"
+      ]
+    },
+    {
+      "club_id": "alashkert",
+      "api_football_id": 582,
+      "source_name": "Alashkert",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Alashkert",
+        "アラシュケルト",
+        "阿拉什克特"
+      ]
+    },
+    {
+      "club_id": "alaves",
+      "api_football_id": 542,
+      "source_name": "Alaves",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Alaves",
+        "Alavés",
+        "Deportivo Alavés",
+        "アラベス",
+        "阿拉维斯"
+      ]
+    },
+    {
+      "club_id": "aldosivi",
+      "api_football_id": 463,
+      "source_name": "Aldosivi",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Aldosivi",
+        "CA Aldosivi",
+        "アルドシビ",
+        "阿尔多西维"
+      ]
+    },
+    {
+      "club_id": "alianza_atletico",
+      "api_football_id": 2560,
+      "source_name": "Alianza Atletico",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Alianza Atletico",
+        "アリアンサ・アトレティコ",
+        "阿连萨竞技"
+      ]
+    },
+    {
+      "club_id": "alianza_lima",
+      "api_football_id": 2553,
+      "source_name": "Alianza Lima",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Alianza Lima",
+        "アリアンサ・リマ",
+        "利马联盟"
+      ]
+    },
+    {
+      "club_id": "aluminij",
+      "api_football_id": 4358,
+      "source_name": "Aluminij",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Aluminij",
+        "アルミニイ",
+        "阿卢米尼"
+      ]
+    },
+    {
+      "club_id": "always_ready",
+      "api_football_id": 3700,
+      "source_name": "Always Ready",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Always Ready",
+        "オールウェイズ・レディ",
+        "永远准备好",
+        "拉巴斯准备"
+      ]
+    },
+    {
+      "club_id": "america_de_cali",
+      "api_football_id": 1138,
+      "source_name": "America de Cali",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "America de Cali",
+        "アメリカ・デ・カリ",
+        "卡利美洲"
+      ]
+    },
+    {
+      "club_id": "anderlecht",
+      "api_football_id": 554,
+      "source_name": "Anderlecht",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Anderlecht",
+        "RSC Anderlecht",
+        "アンデルレヒト",
+        "安德莱赫特"
+      ]
+    },
+    {
+      "club_id": "angers",
+      "api_football_id": 77,
+      "source_name": "Angers",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Angers",
+        "Angers SCO",
+        "アンジェ",
+        "昂热"
+      ]
+    },
+    {
+      "club_id": "apollon_limassol",
+      "api_football_id": 602,
+      "source_name": "Apollon Limassol",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Apollon Limassol",
+        "Apóllon Lemesoú",
+        "アポロン・リマソール",
+        "利马索尔阿波罗"
+      ]
+    },
+    {
+      "club_id": "ararat_armenia",
+      "api_football_id": 3683,
+      "source_name": "Ararat-Armenia",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Ararat-Armenia",
+        "Ararat-Armenia FA",
+        "アララト・アルメニア",
+        "阿拉拉特-亚美尼亚"
+      ]
+    },
+    {
+      "club_id": "argentinos_jrs",
+      "api_football_id": 458,
+      "source_name": "Argentinos JRS",
+      "competitions": [
+        "argentina",
+        "libertadores"
+      ],
+      "aliases": [
+        "AA Argentinos Juniors",
+        "Argentinos JRS",
+        "Argentinos Jrs.",
+        "Argentinos Juniors",
+        "アルヘンティノス",
+        "阿根廷青年"
+      ]
+    },
+    {
+      "club_id": "arsenal",
+      "api_football_id": 42,
+      "source_name": "Arsenal",
+      "competitions": [
+        "epl",
+        "ucl"
+      ],
+      "aliases": [
+        "Arsenal",
+        "Arsenal FC",
+        "アーセナル",
+        "阿森纳"
+      ]
+    },
+    {
+      "club_id": "as_roma",
+      "api_football_id": 497,
+      "source_name": "AS Roma",
+      "competitions": [
+        "seriea",
+        "ucl"
+      ],
+      "aliases": [
+        "AS Roma",
+        "AS Rome",
+        "Roma",
+        "ローマ",
+        "罗马"
+      ]
+    },
+    {
+      "club_id": "aston_villa",
+      "api_football_id": 66,
+      "source_name": "Aston Villa",
+      "competitions": [
+        "epl",
+        "ucl"
+      ],
+      "aliases": [
+        "Aston Villa",
+        "Aston Villa FC",
+        "アストン・ヴィラ",
+        "阿斯顿维拉"
+      ]
+    },
+    {
+      "club_id": "atalanta",
+      "api_football_id": 499,
+      "source_name": "Atalanta",
+      "competitions": [
+        "seriea",
+        "uecl"
+      ],
+      "aliases": [
+        "Atalanta",
+        "Atalanta BC",
+        "アタランタ",
+        "亚特兰大"
+      ]
+    },
+    {
+      "club_id": "atert_bissen",
+      "api_football_id": 15847,
+      "source_name": "Atert Bissen",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Atert Bissen",
+        "アテルト・ビッセン",
+        "阿特尔特比森"
+      ]
+    },
+    {
+      "club_id": "athletic_club",
+      "api_football_id": 531,
+      "source_name": "Athletic Club",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Athletic Bilbao",
+        "Athletic Club",
+        "Bilbao",
+        "アスレティック",
+        "毕尔巴鄂竞技"
+      ]
+    },
+    {
+      "club_id": "atletico_madrid",
+      "api_football_id": 530,
+      "source_name": "Atletico Madrid",
+      "competitions": [
+        "laliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Atletico",
+        "Atletico Madrid",
+        "Club Atlético de Madrid",
+        "アトレティコ",
+        "马德里竞技"
+      ]
+    },
+    {
+      "club_id": "atletico_mg",
+      "api_football_id": 1062,
+      "source_name": "Atletico-MG",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Atletico Mineiro",
+        "Atletico-MG",
+        "CA Mineiro",
+        "アトレチコ・ミネイロ",
+        "米内罗竞技"
+      ]
+    },
+    {
+      "club_id": "atletico_nacional",
+      "api_football_id": 1137,
+      "source_name": "Atletico Nacional",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Atletico Nacional",
+        "アトレティコ・ナシオナル",
+        "国民竞技"
+      ]
+    },
+    {
+      "club_id": "atletico_paranaense",
+      "api_football_id": 134,
+      "source_name": "Atletico Paranaense",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "Atletico Paranaense",
+        "CA Paranaense",
+        "Paranaense",
+        "アトレチコ・パラナエンセ",
+        "巴拉纳竞技"
+      ]
+    },
+    {
+      "club_id": "atletico_torque",
+      "api_football_id": 2365,
+      "source_name": "Atletico Torque",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Atletico Torque",
+        "Montevideo City",
+        "Montevideo City Torque",
+        "アトレティコ・トルケ",
+        "托尔克竞技",
+        "蒙得维的亚城扭矩",
+        "蒙特維多城圖爾克"
+      ]
+    },
+    {
+      "club_id": "atletico_tucuman",
+      "api_football_id": 455,
+      "source_name": "Atletico Tucuman",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Atletico Tucuman",
+        "CA Tucumán",
+        "Tucuman",
+        "トゥクマン",
+        "图库曼竞技"
+      ]
+    },
+    {
+      "club_id": "atltic_club_d_escaldes",
+      "api_football_id": 3345,
+      "source_name": "Atlètic Club d'Escaldes",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Atlètic Club d'Escaldes",
+        "Atlétic Club d'Escaldes",
+        "アトレティック・エスカルデス",
+        "埃斯卡尔德竞技"
+      ]
+    },
+    {
+      "club_id": "auda",
+      "api_football_id": 4135,
+      "source_name": "Auda",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Auda",
+        "FK Auda",
+        "アウダ",
+        "奥达"
+      ]
+    },
+    {
+      "club_id": "austria_vienna",
+      "api_football_id": 601,
+      "source_name": "Austria Vienna",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Austria Vienna",
+        "FK Austria Wien",
+        "アウストリア・ウィーン",
+        "维也纳奥地利"
+      ]
+    },
+    {
+      "club_id": "auxerre",
+      "api_football_id": 108,
+      "source_name": "Auxerre",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "AJ Auxerre",
+        "Auxerre",
+        "オセール",
+        "欧塞尔"
+      ]
+    },
+    {
+      "club_id": "az_alkmaar",
+      "api_football_id": 201,
+      "source_name": "AZ Alkmaar",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "AZ Alkmaar",
+        "AZアルクマール",
+        "Alkmaar",
+        "阿尔克马尔"
+      ]
+    },
+    {
+      "club_id": "baakehir",
+      "api_football_id": 564,
+      "source_name": "Başakşehir",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Başakşehir",
+        "Rams Başakşehir FK",
+        "バシャクシェヒル",
+        "巴萨克塞希尔"
+      ]
+    },
+    {
+      "club_id": "bahia",
+      "api_football_id": 118,
+      "source_name": "Bahia",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Bahia",
+        "EC Bahia",
+        "バイーア",
+        "巴伊亚"
+      ]
+    },
+    {
+      "club_id": "ballkani",
+      "api_football_id": 12733,
+      "source_name": "Ballkani",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Ballkani",
+        "バルカニ",
+        "巴尔卡尼"
+      ]
+    },
+    {
+      "club_id": "banfield",
+      "api_football_id": 449,
+      "source_name": "Banfield",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Banfield",
+        "CA Banfield",
+        "バンフィエルド",
+        "班菲尔德"
+      ]
+    },
+    {
+      "club_id": "barcelona",
+      "api_football_id": 529,
+      "source_name": "Barcelona",
+      "competitions": [
+        "laliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Barcelona",
+        "FC Barcelona",
+        "バルセロナ",
+        "巴塞罗那"
+      ]
+    },
+    {
+      "club_id": "barcelona_sc",
+      "api_football_id": 1152,
+      "source_name": "Barcelona SC",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Barcelona SC",
+        "バルセロナSC",
+        "巴塞罗那体育会"
+      ]
+    },
+    {
+      "club_id": "barracas_central",
+      "api_football_id": 2432,
+      "source_name": "Barracas Central",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Barracas",
+        "Barracas Central",
+        "CA Barracas Central",
+        "バラカス・セントラル",
+        "巴拉卡斯中央"
+      ]
+    },
+    {
+      "club_id": "bate_borisov",
+      "api_football_id": 388,
+      "source_name": "Bate Borisov",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "BATEボリソフ",
+        "Bate Borisov",
+        "FK BATE Barysaŭ",
+        "鲍里索夫BATE"
+      ]
+    },
+    {
+      "club_id": "bayer_leverkusen",
+      "api_football_id": 168,
+      "source_name": "Bayer Leverkusen",
+      "competitions": [
+        "bundesliga",
+        "uel"
+      ],
+      "aliases": [
+        "Bayer 04 Leverkusen",
+        "Bayer Leverkusen",
+        "Leverkusen",
+        "レヴァークーゼン",
+        "勒沃库森"
+      ]
+    },
+    {
+      "club_id": "bayern_mnchen",
+      "api_football_id": 157,
+      "source_name": "Bayern München",
+      "competitions": [
+        "bundesliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Bayern Munich",
+        "Bayern München",
+        "Bayern de Múnich",
+        "FC Bayern München",
+        "バイエルン",
+        "拜仁慕尼黑"
+      ]
+    },
+    {
+      "club_id": "beikta",
+      "api_football_id": 549,
+      "source_name": "Beşiktaş",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Besiktas",
+        "Beşiktaş",
+        "Beşiktaş JK",
+        "ベシクタシュ",
+        "贝西克塔斯"
+      ]
+    },
+    {
+      "club_id": "beitar_jerusalem",
+      "api_football_id": 657,
+      "source_name": "Beitar Jerusalem",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Beitar Jerusalem",
+        "ベイタル・エルサレム",
+        "耶路撒冷比塔尔",
+        "MH Beitar Jerusalem"
+      ]
+    },
+    {
+      "club_id": "belgrano_cordoba",
+      "api_football_id": 440,
+      "source_name": "Belgrano Cordoba",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Belgrano Cordoba",
+        "Belgrano de Cordoba",
+        "CA Belgrano",
+        "ベルグラーノ",
+        "贝尔格拉诺"
+      ]
+    },
+    {
+      "club_id": "benfica",
+      "api_football_id": 211,
+      "source_name": "Benfica",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Benfica",
+        "SL Benfica",
+        "Sport Lisboa e Benfica",
+        "ベンフィカ",
+        "本菲卡"
+      ]
+    },
+    {
+      "club_id": "blooming",
+      "api_football_id": 3701,
+      "source_name": "Blooming",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Blooming",
+        "ブルーミング",
+        "布卢明"
+      ]
+    },
+    {
+      "club_id": "boca_juniors",
+      "api_football_id": 451,
+      "source_name": "Boca Juniors",
+      "competitions": [
+        "argentina",
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Boca Juniors",
+        "CA Boca Juniors",
+        "ボカ・ジュニアーズ",
+        "博卡青年"
+      ]
+    },
+    {
+      "club_id": "bodo_glimt",
+      "api_football_id": 327,
+      "source_name": "Bodo/Glimt",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Bodo/Glimt",
+        "Bodoe/Glimt",
+        "Bodø/Glimt",
+        "FK Bodø/Glimt",
+        "ボードー/グリムト",
+        "博多格林特"
+      ]
+    },
+    {
+      "club_id": "bohemians",
+      "api_football_id": 3840,
+      "source_name": "Bohemians",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Bohemian FC",
+        "Bohemians",
+        "ボヘミアンズ",
+        "波希米亚人"
+      ]
+    },
+    {
+      "club_id": "bologna",
+      "api_football_id": 500,
+      "source_name": "Bologna",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Bologna",
+        "Bologna FC 1909",
+        "ボローニャ",
+        "博洛尼亚"
+      ]
+    },
+    {
+      "club_id": "bolvar",
+      "api_football_id": 3702,
+      "source_name": "Bolívar",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Bolívar",
+        "Club Bolívar",
+        "ボリバル",
+        "玻利瓦尔"
+      ]
+    },
+    {
+      "club_id": "borac_banja_luka",
+      "api_football_id": 3364,
+      "source_name": "Borac Banja Luka",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Borac Banja Luka",
+        "FK Borac Banja Luka",
+        "ボラツ・バニャルカ",
+        "巴尼亚卢卡博拉茨"
+      ]
+    },
+    {
+      "club_id": "borussia_dortmund",
+      "api_football_id": 165,
+      "source_name": "Borussia Dortmund",
+      "competitions": [
+        "bundesliga",
+        "ucl"
+      ],
+      "aliases": [
+        "BV Borussia 09 Dortmund",
+        "Borussia Dortmund",
+        "Dortmund",
+        "ドルトムント",
+        "多特蒙德"
+      ]
+    },
+    {
+      "club_id": "borussia_mnchengladbach",
+      "api_football_id": 163,
+      "source_name": "Borussia Mönchengladbach",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Borussia Mönchengladbach",
+        "M´gladbach",
+        "ボルシアMG",
+        "门兴格拉德巴赫"
+      ]
+    },
+    {
+      "club_id": "boston_river",
+      "api_football_id": 2361,
+      "source_name": "Boston River",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Boston River",
+        "ボストン・リバー",
+        "波士顿河"
+      ]
+    },
+    {
+      "club_id": "botafogo",
+      "api_football_id": 120,
+      "source_name": "Botafogo",
+      "competitions": [
+        "brasileirao",
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Botafogo",
+        "Botafogo FR",
+        "ボタフォゴ",
+        "博塔弗戈"
+      ]
+    },
+    {
+      "club_id": "bournemouth",
+      "api_football_id": 35,
+      "source_name": "Bournemouth",
+      "competitions": [
+        "epl",
+        "uel"
+      ],
+      "aliases": [
+        "AFC Bournemouth",
+        "Bournemouth",
+        "ボーンマス",
+        "伯恩茅斯"
+      ]
+    },
+    {
+      "club_id": "brann",
+      "api_football_id": 319,
+      "source_name": "Brann",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Brann",
+        "SK Brann",
+        "ブラン",
+        "布兰"
+      ]
+    },
+    {
+      "club_id": "bravo",
+      "api_football_id": 4359,
+      "source_name": "Bravo",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Bravo",
+        "ブラボ",
+        "布拉沃"
+      ]
+    },
+    {
+      "club_id": "brentford",
+      "api_football_id": 55,
+      "source_name": "Brentford",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Brentford",
+        "Brentford FC",
+        "ブレントフォード",
+        "布伦特福德"
+      ]
+    },
+    {
+      "club_id": "brighton",
+      "api_football_id": 51,
+      "source_name": "Brighton",
+      "competitions": [
+        "epl",
+        "uecl"
+      ],
+      "aliases": [
+        "Brighton",
+        "Brighton & Hove Albion",
+        "Brighton & Hove Albion FC",
+        "ブライトン",
+        "布莱顿"
+      ]
+    },
+    {
+      "club_id": "bucaramanga",
+      "api_football_id": 1131,
+      "source_name": "Bucaramanga",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Bucaramanga",
+        "ブカラマンガ",
+        "布卡拉曼加"
+      ]
+    },
+    {
+      "club_id": "caernarfon_town",
+      "api_football_id": 356,
+      "source_name": "Caernarfon Town",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Caernarfon Town",
+        "カーナーヴォン・タウン",
+        "卡纳芬镇"
+      ]
+    },
+    {
+      "club_id": "cagliari",
+      "api_football_id": 490,
+      "source_name": "Cagliari",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Cagliari",
+        "Cagliari Calcio",
+        "カリアリ",
+        "卡利亚里"
+      ]
+    },
+    {
+      "club_id": "carabobo_fc",
+      "api_football_id": 2810,
+      "source_name": "Carabobo FC",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Carabobo FC",
+        "カラボボ",
+        "卡拉沃沃"
+      ]
+    },
+    {
+      "club_id": "caracas_fc",
+      "api_football_id": 2808,
+      "source_name": "Caracas FC",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Caracas FC",
+        "カラカス",
+        "加拉加斯"
+      ]
+    },
+    {
+      "club_id": "celje",
+      "api_football_id": 4360,
+      "source_name": "Celje",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Celje",
+        "NK Celje",
+        "ツェリェ",
+        "采列"
+      ]
+    },
+    {
+      "club_id": "celta_vigo",
+      "api_football_id": 538,
+      "source_name": "Celta Vigo",
+      "competitions": [
+        "laliga",
+        "uel"
+      ],
+      "aliases": [
+        "Celta Vigo",
+        "RC Celta de Vigo",
+        "セルタ",
+        "塞尔塔"
+      ]
+    },
+    {
+      "club_id": "celtic",
+      "api_football_id": 247,
+      "source_name": "Celtic",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Celtic",
+        "Celtic Glasgow",
+        "セルティック",
+        "凯尔特人",
+        "Celtic FC"
+      ]
+    },
+    {
+      "club_id": "central_cordoba_de_santiago",
+      "api_football_id": 1065,
+      "source_name": "Central Cordoba de Santiago",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Central Córdoba",
+        "Central Cordoba",
+        "Central Cordoba de Santiago",
+        "セントラル・コルドバ",
+        "中央科尔多瓦"
+      ]
+    },
+    {
+      "club_id": "cerro_porteno",
+      "api_football_id": 1176,
+      "source_name": "Cerro Porteno",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Cerro Porteno",
+        "セロ・ポルテーニョ",
+        "塞罗波尔特尼奥",
+        "Club Cerro Porteño"
+      ]
+    },
+    {
+      "club_id": "cfr_1907_cluj",
+      "api_football_id": 2246,
+      "source_name": "CFR 1907 Cluj",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "CFR 1907 Cluj",
+        "CFRクルジュ",
+        "克卢日CFR",
+        "FC CFR 1907 Cluj"
+      ]
+    },
+    {
+      "club_id": "chapecoense_sc",
+      "api_football_id": 132,
+      "source_name": "Chapecoense-sc",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "Associação Chapecoense de Futebol",
+        "Chapecoense",
+        "Chapecoense-sc",
+        "シャペコエンセ",
+        "沙佩科恩斯"
+      ]
+    },
+    {
+      "club_id": "chelsea",
+      "api_football_id": 49,
+      "source_name": "Chelsea",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Chelsea",
+        "Chelsea FC",
+        "チェルシー",
+        "切尔西"
+      ]
+    },
+    {
+      "club_id": "cienciano",
+      "api_football_id": 2562,
+      "source_name": "Cienciano",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "CS Cienciano",
+        "Cienciano",
+        "シエンシアーノ",
+        "西恩西亚诺"
+      ]
+    },
+    {
+      "club_id": "club_brugge_kv",
+      "api_football_id": 569,
+      "source_name": "Club Brugge KV",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Club Brugge",
+        "Club Brugge KV",
+        "クラブ・ブルージュ",
+        "布鲁日"
+      ]
+    },
+    {
+      "club_id": "club_guarani",
+      "api_football_id": 1174,
+      "source_name": "Club Guarani",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Club Guarani",
+        "グアラニ",
+        "瓜拉尼"
+      ]
+    },
+    {
+      "club_id": "club_nacional",
+      "api_football_id": 2356,
+      "source_name": "Club Nacional",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Club Nacional",
+        "Club Nacional de Football",
+        "ナシオナル(ウルグアイ)",
+        "民族(乌拉圭)"
+      ]
+    },
+    {
+      "club_id": "cobresal",
+      "api_football_id": 2331,
+      "source_name": "Cobresal",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Cobresal",
+        "コブレサル",
+        "科布雷萨尔"
+      ]
+    },
+    {
+      "club_id": "coleraine_fc",
+      "api_football_id": 669,
+      "source_name": "Coleraine FC",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Coleraine FC",
+        "コールレイン",
+        "科尔雷恩"
+      ]
+    },
+    {
+      "club_id": "como",
+      "api_football_id": 895,
+      "source_name": "Como",
+      "competitions": [
+        "seriea",
+        "ucl"
+      ],
+      "aliases": [
+        "Como",
+        "Como 1907",
+        "コモ",
+        "科莫"
+      ]
+    },
+    {
+      "club_id": "coquimbo_unido",
+      "api_football_id": 2330,
+      "source_name": "Coquimbo Unido",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Coquimbo",
+        "Coquimbo Unido",
+        "コキンボ・ウニド",
+        "科金博联合",
+        "CD Coquimbo Unido"
+      ]
+    },
+    {
+      "club_id": "corinthians",
+      "api_football_id": 131,
+      "source_name": "Corinthians",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Corinthians",
+        "SC Corinthians Paulista",
+        "コリンチャンス",
+        "科林蒂安"
+      ]
+    },
+    {
+      "club_id": "coritiba",
+      "api_football_id": 147,
+      "source_name": "Coritiba",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "Coritiba",
+        "Coritiba FBC",
+        "コリチーバ",
+        "库里蒂巴"
+      ]
+    },
+    {
+      "club_id": "coventry",
+      "api_football_id": 1346,
+      "source_name": "Coventry",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Coventry",
+        "Coventry City",
+        "Coventry City FC",
+        "コヴェントリー",
+        "考文垂"
+      ]
+    },
+    {
+      "club_id": "cruzeiro",
+      "api_football_id": 135,
+      "source_name": "Cruzeiro",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Cruzeiro",
+        "Cruzeiro EC",
+        "クルゼイロ",
+        "克鲁塞罗"
+      ]
+    },
+    {
+      "club_id": "crystal_palace",
+      "api_football_id": 52,
+      "source_name": "Crystal Palace",
+      "competitions": [
+        "epl",
+        "uel"
+      ],
+      "aliases": [
+        "Crystal Palace",
+        "Crystal Palace FC",
+        "クリスタル・パレス",
+        "水晶宫"
+      ]
+    },
+    {
+      "club_id": "cska_1948",
+      "api_football_id": 1426,
+      "source_name": "CSKA 1948",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "CSKA 1948",
+        "CSKA1948",
+        "FK CSKA 1948 Sofia",
+        "中央陆军1948"
+      ]
+    },
+    {
+      "club_id": "cska_sofia",
+      "api_football_id": 853,
+      "source_name": "CSKA Sofia",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "CSKA Sofia",
+        "CSKAソフィア",
+        "索非亚中央陆军",
+        "PFK CSKA Sofia"
+      ]
+    },
+    {
+      "club_id": "cusco",
+      "api_football_id": 10013,
+      "source_name": "Cusco",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Cusco",
+        "クスコ",
+        "库斯科"
+      ]
+    },
+    {
+      "club_id": "debreceni_vsc",
+      "api_football_id": 2392,
+      "source_name": "Debreceni VSC",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Debreceni VSC",
+        "デブレツェニ",
+        "德布勒森"
+      ]
+    },
+    {
+      "club_id": "defensa_y_justicia",
+      "api_football_id": 442,
+      "source_name": "Defensa Y Justicia",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CSyD Defensa y Justicia",
+        "Defensa Y Justicia",
+        "Defensa y Justicia",
+        "デフェンサ",
+        "正义之神",
+        "国防与司法",
+        "防御与正义",
+        "防卫与正义",
+        "防衛與正義"
+      ]
+    },
+    {
+      "club_id": "defensor_sporting",
+      "api_football_id": 2350,
+      "source_name": "Defensor Sporting",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Defensor Sporting",
+        "デフェンソール・スポルティング",
+        "防卫者体育"
+      ]
+    },
+    {
+      "club_id": "dei",
+      "api_football_id": 3745,
+      "source_name": "Dečić",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dečić",
+        "FK Dečić Tuzi",
+        "デチッチ",
+        "德契奇"
+      ]
+    },
+    {
+      "club_id": "deportes_tolima",
+      "api_football_id": 1142,
+      "source_name": "Deportes Tolima",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "CD Tolima",
+        "Deportes Tolima",
+        "Tolima",
+        "デポルテス・トリマ",
+        "托利马"
+      ]
+    },
+    {
+      "club_id": "deportivo_cuenca",
+      "api_football_id": 1154,
+      "source_name": "Deportivo Cuenca",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Deportivo Cuenca",
+        "デポルティボ・クエンカ",
+        "昆卡"
+      ]
+    },
+    {
+      "club_id": "deportivo_garcilaso",
+      "api_football_id": 20960,
+      "source_name": "Deportivo Garcilaso",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Deportivo Garcilaso",
+        "デポルティボ・ガルシラソ",
+        "加西拉索"
+      ]
+    },
+    {
+      "club_id": "deportivo_la_coruna",
+      "api_football_id": 544,
+      "source_name": "Deportivo La Coruna",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Deportivo De La Coruna",
+        "Deportivo La Coruna",
+        "RC Deportivo A Coruña",
+        "RC Deportivo La Coruña",
+        "デポルティボ",
+        "拉科鲁尼亚"
+      ]
+    },
+    {
+      "club_id": "deportivo_la_guaira",
+      "api_football_id": 2813,
+      "source_name": "Deportivo La Guaira",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Deportivo La Guaira",
+        "デポルティボ・ラ・グアイラ",
+        "拉瓜伊拉"
+      ]
+    },
+    {
+      "club_id": "deportivo_recoleta",
+      "api_football_id": 10476,
+      "source_name": "Deportivo Recoleta",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Deportivo Recoleta",
+        "Recoleta FC",
+        "デポルティボ・レコレタ",
+        "雷科莱塔"
+      ]
+    },
+    {
+      "club_id": "deportivo_riestra",
+      "api_football_id": 476,
+      "source_name": "Deportivo Riestra",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CD Riestra",
+        "Deportivo Riestra",
+        "Riestra",
+        "リエストラ",
+        "列斯特拉"
+      ]
+    },
+    {
+      "club_id": "deportivo_tachira_fc",
+      "api_football_id": 2807,
+      "source_name": "Deportivo Tachira FC",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Deportivo Tachira FC",
+        "デポルティボ・タチラ",
+        "塔奇拉"
+      ]
+    },
+    {
+      "club_id": "derry_city",
+      "api_football_id": 670,
+      "source_name": "Derry City",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Derry City",
+        "デリー・シティ",
+        "德里城"
+      ]
+    },
+    {
+      "club_id": "dila",
+      "api_football_id": 3499,
+      "source_name": "Dila",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dila",
+        "SK Dila Gori",
+        "ディラ・ゴリ",
+        "哥里迪拉"
+      ]
+    },
+    {
+      "club_id": "dinamo_minsk",
+      "api_football_id": 394,
+      "source_name": "Dinamo Minsk",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dinamo Minsk",
+        "FK Dynama-Minsk",
+        "ディナモ・ミンスク",
+        "明斯克迪纳摩"
+      ]
+    },
+    {
+      "club_id": "dinamo_tbilisi",
+      "api_football_id": 2262,
+      "source_name": "Dinamo Tbilisi",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dinamo Tbilisi",
+        "ディナモ・トビリシ",
+        "第比利斯迪纳摩"
+      ]
+    },
+    {
+      "club_id": "dinamo_tirana",
+      "api_football_id": 3326,
+      "source_name": "Dinamo Tirana",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dinamo Tirana",
+        "FC Dinamo City",
+        "ディナモ・ティラナ",
+        "地拉那迪纳摩"
+      ]
+    },
+    {
+      "club_id": "dinamo_zagreb",
+      "api_football_id": 620,
+      "source_name": "Dinamo Zagreb",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Dinamo Zagreb",
+        "GNK Dinamo Zagreb",
+        "ディナモ・ザグレブ",
+        "萨格勒布迪纳摩"
+      ]
+    },
+    {
+      "club_id": "drita",
+      "api_football_id": 14281,
+      "source_name": "Drita",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Drita",
+        "ドリタ",
+        "德里塔",
+        "FC Drita"
+      ]
+    },
+    {
+      "club_id": "dukagjini",
+      "api_football_id": 14393,
+      "source_name": "Dukagjini",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dukagjini",
+        "KF Dukagjini Klinë",
+        "ドゥカジニ",
+        "杜卡吉尼"
+      ]
+    },
+    {
+      "club_id": "dunajska_streda",
+      "api_football_id": 2257,
+      "source_name": "Dunajska Streda",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Dunajska Streda",
+        "FC DAC 1904 Dunajská Streda",
+        "ドゥナイスカー・ストレダ",
+        "杜纳伊斯卡-斯特雷达"
+      ]
+    },
+    {
+      "club_id": "dynamo_kyiv",
+      "api_football_id": 572,
+      "source_name": "Dynamo Kyiv",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Dynamo Kyiv",
+        "FK Dynamo Kyiv",
+        "ディナモ・キーウ",
+        "基辅迪纳摩"
+      ]
+    },
+    {
+      "club_id": "egnatia_rrogozhin",
+      "api_football_id": 3327,
+      "source_name": "Egnatia Rrogozhinë",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Egnatia Rrogozhinë",
+        "KF Egnatia Rrogozhinë",
+        "エグナティア",
+        "埃格纳蒂亚"
+      ]
+    },
+    {
+      "club_id": "eintracht_frankfurt",
+      "api_football_id": 169,
+      "source_name": "Eintracht Frankfurt",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Eintracht Frankfurt",
+        "Frankfurt",
+        "フランクフルト",
+        "法兰克福"
+      ]
+    },
+    {
+      "club_id": "elche",
+      "api_football_id": 797,
+      "source_name": "Elche",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Elche",
+        "Elche CF",
+        "エルチェ",
+        "埃尔切"
+      ]
+    },
+    {
+      "club_id": "elezniar_panevo",
+      "api_football_id": 12360,
+      "source_name": "Železničar Pančevo",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Železničar Pančevo",
+        "Železničar Pančevo",
+        "ジェレズニチャル・パンチェヴォ",
+        "潘切沃铁路"
+      ]
+    },
+    {
+      "club_id": "espanyol",
+      "api_football_id": 540,
+      "source_name": "Espanyol",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Espanyol",
+        "RCD Espanyol de Barcelona",
+        "エスパニョール",
+        "西班牙人"
+      ]
+    },
+    {
+      "club_id": "estac_troyes",
+      "api_football_id": 110,
+      "source_name": "Estac Troyes",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "ES Troyes AC",
+        "ESTAC Troyes",
+        "Estac Troyes",
+        "Troyes",
+        "トロワ",
+        "特鲁瓦"
+      ]
+    },
+    {
+      "club_id": "estudiantes_de_rio_cuarto",
+      "api_football_id": 2424,
+      "source_name": "Estudiantes de Rio Cuarto",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "AA Estudiantes",
+        "Estudiantes de Rio Cuarto",
+        "Rio Cuarto",
+        "エストゥディアンテスRC",
+        "第四河大学生"
+      ]
+    },
+    {
+      "club_id": "estudiantes_l_p",
+      "api_football_id": 450,
+      "source_name": "Estudiantes L.P.",
+      "competitions": [
+        "argentina",
+        "libertadores"
+      ],
+      "aliases": [
+        "Estudiantes L.P.",
+        "Estudiantes La Plata",
+        "Estudiantes de La Plata",
+        "エストゥディアンテス",
+        "拉普拉塔大学生"
+      ]
+    },
+    {
+      "club_id": "europa",
+      "api_football_id": 10125,
+      "source_name": "Europa",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Europa",
+        "エウロパ",
+        "欧罗巴"
+      ]
+    },
+    {
+      "club_id": "everton",
+      "api_football_id": 45,
+      "source_name": "Everton",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Everton",
+        "Everton FC",
+        "エヴァートン",
+        "埃弗顿"
+      ]
+    },
+    {
+      "club_id": "fbc_melgar",
+      "api_football_id": 2554,
+      "source_name": "FBC Melgar",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "FBC Melgar",
+        "メルガル",
+        "梅尔加"
+      ]
+    },
+    {
+      "club_id": "fc_astana",
+      "api_football_id": 562,
+      "source_name": "FC Astana",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Astana FK",
+        "FC Astana",
+        "アスタナ",
+        "阿斯塔纳"
+      ]
+    },
+    {
+      "club_id": "fc_augsburg",
+      "api_football_id": 170,
+      "source_name": "FC Augsburg",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Augsburg",
+        "FC Augsburg",
+        "アウクスブルク",
+        "奥格斯堡"
+      ]
+    },
+    {
+      "club_id": "fc_copenhagen",
+      "api_football_id": 400,
+      "source_name": "FC Copenhagen",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Copenhagen",
+        "FC Copenhague",
+        "FC København",
+        "コペンハーゲン",
+        "哥本哈根"
+      ]
+    },
+    {
+      "club_id": "fc_differdange_03",
+      "api_football_id": 684,
+      "source_name": "FC Differdange 03",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Differdange 03",
+        "FC Déifferdeng 03",
+        "ディファーダンジュ03",
+        "迪弗当日03"
+      ]
+    },
+    {
+      "club_id": "fc_iberia_1999",
+      "api_football_id": 3502,
+      "source_name": "FC Iberia 1999",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC Iberia 1999",
+        "SK Iberia 1999",
+        "イベリア1999",
+        "伊比利亚1999"
+      ]
+    },
+    {
+      "club_id": "fc_levadia_tallinn",
+      "api_football_id": 2273,
+      "source_name": "FC Levadia Tallinn",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Levadia Tallinn",
+        "FCI Levadia",
+        "レヴァディア・タリン",
+        "塔林列瓦迪亚"
+      ]
+    },
+    {
+      "club_id": "fc_lugano",
+      "api_football_id": 606,
+      "source_name": "FC Lugano",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Lugano",
+        "ルガーノ",
+        "卢加诺"
+      ]
+    },
+    {
+      "club_id": "fc_midtjylland",
+      "api_football_id": 397,
+      "source_name": "FC Midtjylland",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC Midtjylland",
+        "ミッティラン",
+        "中日德兰"
+      ]
+    },
+    {
+      "club_id": "fc_noah",
+      "api_football_id": 3684,
+      "source_name": "FC Noah",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Noah",
+        "Noah FA",
+        "ノア",
+        "诺亚"
+      ]
+    },
+    {
+      "club_id": "fc_nordsjaelland",
+      "api_football_id": 398,
+      "source_name": "FC Nordsjaelland",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Nordsjaelland",
+        "FC Nordsjælland",
+        "ノアシェラン",
+        "北西兰"
+      ]
+    },
+    {
+      "club_id": "fc_porto",
+      "api_football_id": 212,
+      "source_name": "FC Porto",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "FC Porto",
+        "ポルト",
+        "波尔图"
+      ]
+    },
+    {
+      "club_id": "fc_santa_coloma",
+      "api_football_id": 591,
+      "source_name": "FC Santa Coloma",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Santa Coloma",
+        "サンタ・コロマ",
+        "圣科洛马"
+      ]
+    },
+    {
+      "club_id": "fc_schalke_04",
+      "api_football_id": 174,
+      "source_name": "FC Schalke 04",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "FC Schalke 04",
+        "Schalke",
+        "シャルケ",
+        "沙尔克04"
+      ]
+    },
+    {
+      "club_id": "fc_sion",
+      "api_football_id": 630,
+      "source_name": "FC Sion",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Sion",
+        "シオン",
+        "锡永"
+      ]
+    },
+    {
+      "club_id": "fc_st_gallen",
+      "api_football_id": 1011,
+      "source_name": "FC ST. Gallen",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC ST. Gallen",
+        "FC St. Gallen",
+        "ザンクト・ガレン",
+        "圣加仑"
+      ]
+    },
+    {
+      "club_id": "fc_thun",
+      "api_football_id": 1012,
+      "source_name": "FC Thun",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC Thun",
+        "トゥーン",
+        "图恩"
+      ]
+    },
+    {
+      "club_id": "fc_vaduz",
+      "api_football_id": 660,
+      "source_name": "FC Vaduz",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Vaduz",
+        "ファドゥーツ",
+        "瓦杜兹"
+      ]
+    },
+    {
+      "club_id": "fcsb",
+      "api_football_id": 559,
+      "source_name": "FCSB",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FCSB",
+        "布加勒斯特星"
+      ]
+    },
+    {
+      "club_id": "fenerbahe",
+      "api_football_id": 611,
+      "source_name": "Fenerbahçe",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Fenerbahce",
+        "Fenerbahçe",
+        "Fenerbahçe SK",
+        "フェネルバフチェ",
+        "费内巴切"
+      ]
+    },
+    {
+      "club_id": "ferencvarosi_tc",
+      "api_football_id": 651,
+      "source_name": "Ferencvarosi TC",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Ferencvarosi",
+        "Ferencvarosi TC",
+        "Ferencvárosi TC",
+        "フェレンツヴァーロシュ",
+        "费伦茨瓦罗斯"
+      ]
+    },
+    {
+      "club_id": "feyenoord",
+      "api_football_id": 209,
+      "source_name": "Feyenoord",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Feyenoord",
+        "Feyenoord Rotterdam",
+        "フェイエノールト",
+        "费耶诺德"
+      ]
+    },
+    {
+      "club_id": "fiorentina",
+      "api_football_id": 502,
+      "source_name": "Fiorentina",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "ACF Fiorentina",
+        "Fiorentina",
+        "フィオレンティーナ",
+        "佛罗伦萨"
+      ]
+    },
+    {
+      "club_id": "fk_crvena_zvezda",
+      "api_football_id": 598,
+      "source_name": "FK Crvena Zvezda",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FK Crvena Zvezda",
+        "ツルヴェナ・ズヴェズダ",
+        "贝尔格莱德红星"
+      ]
+    },
+    {
+      "club_id": "fk_jablonec",
+      "api_football_id": 1122,
+      "source_name": "FK Jablonec",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Jablonec",
+        "ヤブロネツ",
+        "亚布洛内茨"
+      ]
+    },
+    {
+      "club_id": "fk_liepaja",
+      "api_football_id": 661,
+      "source_name": "FK Liepaja",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Liepaja",
+        "リエパーヤ",
+        "利耶帕亚"
+      ]
+    },
+    {
+      "club_id": "fk_partizan",
+      "api_football_id": 573,
+      "source_name": "FK Partizan",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Partizan",
+        "FK Partizan Beograd",
+        "パルチザン",
+        "游击队"
+      ]
+    },
+    {
+      "club_id": "fk_sarajevo",
+      "api_football_id": 679,
+      "source_name": "FK Sarajevo",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Sarajevo",
+        "サラエヴォ",
+        "萨拉热窝"
+      ]
+    },
+    {
+      "club_id": "fk_tobol_kostanay",
+      "api_football_id": 2259,
+      "source_name": "FK Tobol Kostanay",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Tobol Kostanay",
+        "トボル",
+        "托波尔",
+        "Tobyl FK"
+      ]
+    },
+    {
+      "club_id": "fk_zalgiris_vilnius",
+      "api_football_id": 586,
+      "source_name": "FK Zalgiris Vilnius",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Zalgiris Vilnius",
+        "ジャルギリス・ヴィリニュス",
+        "维尔纽斯萨尔基里斯"
+      ]
+    },
+    {
+      "club_id": "flamengo",
+      "api_football_id": 127,
+      "source_name": "Flamengo",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "CR Flamengo",
+        "Flamengo",
+        "フラメンゴ",
+        "弗拉门戈"
+      ]
+    },
+    {
+      "club_id": "flora_tallinn",
+      "api_football_id": 687,
+      "source_name": "Flora Tallinn",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "FC Flora",
+        "Flora Tallinn",
+        "フローラ・タリン",
+        "塔林弗洛拉"
+      ]
+    },
+    {
+      "club_id": "floriana",
+      "api_football_id": 4625,
+      "source_name": "Floriana",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Floriana",
+        "フロリアーナ",
+        "弗洛里亚纳"
+      ]
+    },
+    {
+      "club_id": "fluminense",
+      "api_football_id": 124,
+      "source_name": "Fluminense",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Fluminense",
+        "Fluminense FC",
+        "フルミネンセ",
+        "弗鲁米嫩塞"
+      ]
+    },
+    {
+      "club_id": "frosinone",
+      "api_football_id": 512,
+      "source_name": "Frosinone",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Frosinone",
+        "Frosinone Calcio",
+        "フロジノーネ",
+        "弗罗西诺内"
+      ]
+    },
+    {
+      "club_id": "fsv_mainz_05",
+      "api_football_id": 164,
+      "source_name": "FSV Mainz 05",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "1. FSV Mainz 05",
+        "FSV Mainz 05",
+        "Mainz",
+        "マインツ",
+        "美因茨"
+      ]
+    },
+    {
+      "club_id": "fulham",
+      "api_football_id": 36,
+      "source_name": "Fulham",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Fulham",
+        "Fulham FC",
+        "フラム",
+        "富勒姆"
+      ]
+    },
+    {
+      "club_id": "gais",
+      "api_football_id": 2170,
+      "source_name": "Gais",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "GAIS",
+        "Gais",
+        "ガイス",
+        "哥德堡GAIS"
+      ]
+    },
+    {
+      "club_id": "galatasaray",
+      "api_football_id": 645,
+      "source_name": "Galatasaray",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Galatasaray",
+        "Galatasaray SK",
+        "ガラタサライ",
+        "加拉塔萨雷"
+      ]
+    },
+    {
+      "club_id": "gap_connah_s_quay_fc",
+      "api_football_id": 357,
+      "source_name": "GAP Connah S Quay FC",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Connah's Quay Nomads FC",
+        "GAP Connah S Quay FC",
+        "コナーズ・キー・ノマッズ",
+        "康纳码头游牧者"
+      ]
+    },
+    {
+      "club_id": "genoa",
+      "api_football_id": 495,
+      "source_name": "Genoa",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Genoa",
+        "Genoa CFC",
+        "ジェノア",
+        "热那亚"
+      ]
+    },
+    {
+      "club_id": "gent",
+      "api_football_id": 631,
+      "source_name": "Gent",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Gent",
+        "KAA Gent",
+        "ヘント",
+        "根特"
+      ]
+    },
+    {
+      "club_id": "getafe",
+      "api_football_id": 546,
+      "source_name": "Getafe",
+      "competitions": [
+        "laliga",
+        "uecl"
+      ],
+      "aliases": [
+        "Getafe",
+        "Getafe CF",
+        "ヘタフェ",
+        "赫塔菲"
+      ]
+    },
+    {
+      "club_id": "gimnasia_l_p",
+      "api_football_id": 434,
+      "source_name": "Gimnasia L.P.",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Gimnasia L.P.",
+        "Gimnasia La Plata",
+        "Gimnasia y Esgrima de La Plata",
+        "ヒムナシア",
+        "拉普拉塔体操"
+      ]
+    },
+    {
+      "club_id": "gimnasia_m",
+      "api_football_id": 1066,
+      "source_name": "Gimnasia M.",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Gimnasia y Esgrima de Mendoza",
+        "Gimnasia M.",
+        "Mendoza",
+        "ヒムナシアM",
+        "门多萨体操"
+      ]
+    },
+    {
+      "club_id": "gks_katowice",
+      "api_football_id": 3484,
+      "source_name": "GKS Katowice",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "GKS GieKSa Katowice",
+        "GKS Katowice",
+        "GKSカトヴィツェ",
+        "卡托维兹GKS"
+      ]
+    },
+    {
+      "club_id": "glentoran",
+      "api_football_id": 5352,
+      "source_name": "Glentoran",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Glentoran",
+        "グレントラン",
+        "格伦托兰"
+      ]
+    },
+    {
+      "club_id": "gornik_zabrze",
+      "api_football_id": 340,
+      "source_name": "Gornik Zabrze",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Gornik Zabrze",
+        "グルニク・ザブジェ",
+        "扎布热矿工"
+      ]
+    },
+    {
+      "club_id": "gremio",
+      "api_football_id": 130,
+      "source_name": "Gremio",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Gremio",
+        "Grêmio",
+        "Grêmio FBPA",
+        "グレミオ",
+        "格雷米奥"
+      ]
+    },
+    {
+      "club_id": "guabir",
+      "api_football_id": 3704,
+      "source_name": "Guabirá",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Guabirá",
+        "グアビラ",
+        "瓜维拉"
+      ]
+    },
+    {
+      "club_id": "gyori_eto_fc",
+      "api_football_id": 2402,
+      "source_name": "Gyori ETO FC",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "ETO FC",
+        "Gyori ETO FC",
+        "ジェール・ETO",
+        "杰尔ETO"
+      ]
+    },
+    {
+      "club_id": "hamburger_sv",
+      "api_football_id": 175,
+      "source_name": "Hamburger SV",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Hamburg",
+        "Hamburger SV",
+        "ハンブルク",
+        "汉堡"
+      ]
+    },
+    {
+      "club_id": "hammarby_ff",
+      "api_football_id": 363,
+      "source_name": "Hammarby FF",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Hammarby FF",
+        "Hammarby Fotboll",
+        "Hammarby IF",
+        "ハンマルビー",
+        "哈马比"
+      ]
+    },
+    {
+      "club_id": "hamrun_spartans",
+      "api_football_id": 4626,
+      "source_name": "Hamrun Spartans",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Hamrun Spartans",
+        "Ħamrun Spartans FC",
+        "ハムルン・スパルタンズ",
+        "哈姆伦斯巴达"
+      ]
+    },
+    {
+      "club_id": "hapoel_beer_sheva",
+      "api_football_id": 563,
+      "source_name": "Hapoel Beer Sheva",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Be`er Sheva",
+        "Hapoel Be`er Sheva FC",
+        "Hapoel Beer Sheva",
+        "MH Hapoel Be'er Sheva",
+        "ハポエル・ベエルシェバ",
+        "贝尔谢巴夏普尔"
+      ]
+    },
+    {
+      "club_id": "hapoel_tel_aviv",
+      "api_football_id": 4501,
+      "source_name": "Hapoel Tel Aviv",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Hapoel Tel Aviv",
+        "ハポエル・テルアビブ",
+        "特拉维夫夏普尔",
+        "MH Hapoel Tel Aviv"
+      ]
+    },
+    {
+      "club_id": "hb_torshavn",
+      "api_football_id": 4133,
+      "source_name": "HB Torshavn",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "HB",
+        "HB Torshavn",
+        "HBトースハウン",
+        "托尔斯港HB"
+      ]
+    },
+    {
+      "club_id": "heart_of_midlothian",
+      "api_football_id": 254,
+      "source_name": "Heart Of Midlothian",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Heart Of Midlothian",
+        "Heart of Midlothian",
+        "ハーツ",
+        "赫斯",
+        "Heart of Midlothian FC"
+      ]
+    },
+    {
+      "club_id": "hegelmann_litauen",
+      "api_football_id": 3861,
+      "source_name": "Hegelmann Litauen",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Hegelmann",
+        "Hegelmann Litauen",
+        "ヘーゲルマン",
+        "赫格尔曼"
+      ]
+    },
+    {
+      "club_id": "hibernian",
+      "api_football_id": 249,
+      "source_name": "Hibernian",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Hibernian",
+        "ハイバーニアン",
+        "希伯尼安",
+        "Hibernian FC"
+      ]
+    },
+    {
+      "club_id": "hjk_helsinki",
+      "api_football_id": 649,
+      "source_name": "HJK Helsinki",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "HJK Helsinki",
+        "HJKヘルシンキ",
+        "Helsingin JK",
+        "赫尔辛基HJK"
+      ]
+    },
+    {
+      "club_id": "hnk_hajduk_split",
+      "api_football_id": 608,
+      "source_name": "HNK Hajduk Split",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "HNK Hajduk Split",
+        "Hajduk Split",
+        "ハイドゥク・スプリト",
+        "斯普利特海杜克"
+      ]
+    },
+    {
+      "club_id": "hnk_rijeka",
+      "api_football_id": 561,
+      "source_name": "HNK Rijeka",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "HNK Rijeka",
+        "リエカ",
+        "里耶卡"
+      ]
+    },
+    {
+      "club_id": "hradec_krlov",
+      "api_football_id": 3723,
+      "source_name": "Hradec Králové",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC Hradec Králové",
+        "Hradec Králové",
+        "フラデツ・クラーロヴェー",
+        "赫拉德茨-克拉洛韦"
+      ]
+    },
+    {
+      "club_id": "huachipato",
+      "api_football_id": 2328,
+      "source_name": "Huachipato",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Huachipato",
+        "ウアチパト",
+        "瓦奇帕托"
+      ]
+    },
+    {
+      "club_id": "hull_city",
+      "api_football_id": 64,
+      "source_name": "Hull City",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Hull City",
+        "Hull City AFC",
+        "ハル・シティ",
+        "赫尔城"
+      ]
+    },
+    {
+      "club_id": "huracan",
+      "api_football_id": 445,
+      "source_name": "Huracan",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Huracán",
+        "Huracan",
+        "ウラカン",
+        "飓风"
+      ]
+    },
+    {
+      "club_id": "ifk_goteborg",
+      "api_football_id": 366,
+      "source_name": "IFK Goteborg",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "IFK Goteborg",
+        "IFKヨーテボリ",
+        "哥德堡"
+      ]
+    },
+    {
+      "club_id": "ilina",
+      "api_football_id": 3554,
+      "source_name": "Žilina",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "MŠK Žilina",
+        "Žilina",
+        "ジリナ",
+        "日利纳"
+      ]
+    },
+    {
+      "club_id": "ilves",
+      "api_football_id": 1163,
+      "source_name": "Ilves",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Ilves",
+        "Ilves Tampere",
+        "イルヴェス",
+        "伊尔韦斯"
+      ]
+    },
+    {
+      "club_id": "independ_rivadavia",
+      "api_football_id": 473,
+      "source_name": "Independ. Rivadavia",
+      "competitions": [
+        "argentina",
+        "libertadores"
+      ],
+      "aliases": [
+        "CS Independiente Rivadavia",
+        "Independ. Rivadavia",
+        "Independiente Rivadavia",
+        "Rivadavia",
+        "リバダビア",
+        "里瓦达维亚独立"
+      ]
+    },
+    {
+      "club_id": "independiente",
+      "api_football_id": 453,
+      "source_name": "Independiente",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CA Independiente",
+        "Independiente",
+        "Independiente Avellaneda",
+        "インデペンディエンテ",
+        "独立"
+      ]
+    },
+    {
+      "club_id": "independiente_del_valle",
+      "api_football_id": 1153,
+      "source_name": "Independiente del Valle",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Ind. del Valle",
+        "Independiente del Valle",
+        "インデペンディエンテ・デル・バジェ",
+        "山谷独立"
+      ]
+    },
+    {
+      "club_id": "independiente_medellin",
+      "api_football_id": 1128,
+      "source_name": "Independiente Medellin",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Independiente Medellin",
+        "インデペンディエンテ・メデジン",
+        "麦德林独立"
+      ]
+    },
+    {
+      "club_id": "independiente_petrolero",
+      "api_football_id": 15702,
+      "source_name": "Independiente Petrolero",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Independiente Petrolero",
+        "インデペンディエンテ・ペトロレロ",
+        "石油独立"
+      ]
+    },
+    {
+      "club_id": "instituto_cordoba",
+      "api_football_id": 478,
+      "source_name": "Instituto Cordoba",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "Instituto AC Córdoba",
+        "Instituto Cordoba",
+        "インスティトゥト",
+        "科尔多瓦学院"
+      ]
+    },
+    {
+      "club_id": "inter",
+      "api_football_id": 505,
+      "source_name": "Inter",
+      "competitions": [
+        "seriea",
+        "ucl"
+      ],
+      "aliases": [
+        "FC Internazionale Milano",
+        "Inter",
+        "Inter Milan",
+        "Inter de Milán",
+        "インテル",
+        "国际米兰"
+      ]
+    },
+    {
+      "club_id": "inter_club_d_escaldes",
+      "api_football_id": 3342,
+      "source_name": "Inter Club d'Escaldes",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Inter Club d'Escaldes",
+        "インテル・エスカルデス",
+        "埃斯卡尔德国际"
+      ]
+    },
+    {
+      "club_id": "inter_turku",
+      "api_football_id": 1164,
+      "source_name": "Inter Turku",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Inter Turku",
+        "インテル・トゥルク",
+        "图尔库国际",
+        "FC Inter Turku"
+      ]
+    },
+    {
+      "club_id": "internacional",
+      "api_football_id": 119,
+      "source_name": "Internacional",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "Internacional",
+        "SC Internacional",
+        "インテルナシオナル",
+        "国际"
+      ]
+    },
+    {
+      "club_id": "ipswich",
+      "api_football_id": 57,
+      "source_name": "Ipswich",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Ipswich",
+        "Ipswich Town",
+        "Ipswich Town FC",
+        "イプスウィッチ",
+        "伊普斯维奇"
+      ]
+    },
+    {
+      "club_id": "jagiellonia",
+      "api_football_id": 336,
+      "source_name": "Jagiellonia",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Jagiellonia",
+        "Jagiellonia Białystok",
+        "ヤギェロニア",
+        "亚盖隆尼亚"
+      ]
+    },
+    {
+      "club_id": "junior",
+      "api_football_id": 1135,
+      "source_name": "Junior",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Junior",
+        "フニオール",
+        "青年(巴兰基亚)"
+      ]
+    },
+    {
+      "club_id": "juventud",
+      "api_football_id": 2353,
+      "source_name": "Juventud",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Juventud",
+        "フベントゥ",
+        "尤文图德"
+      ]
+    },
+    {
+      "club_id": "juventus",
+      "api_football_id": 496,
+      "source_name": "Juventus",
+      "competitions": [
+        "seriea",
+        "uel"
+      ],
+      "aliases": [
+        "Juventus",
+        "Juventus FC",
+        "Juventus Turin",
+        "ユヴェントス",
+        "尤文图斯"
+      ]
+    },
+    {
+      "club_id": "kairat_almaty",
+      "api_football_id": 664,
+      "source_name": "Kairat Almaty",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Kairat Almaty",
+        "Qairat FK",
+        "カイラト・アルマトイ",
+        "阿拉木图凯拉特"
+      ]
+    },
+    {
+      "club_id": "kalju_nomme",
+      "api_football_id": 662,
+      "source_name": "Kalju Nomme",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Kalju Nomme",
+        "Nõmme Kalju FC",
+        "ノンメ・カリュ",
+        "诺姆卡尔尤"
+      ]
+    },
+    {
+      "club_id": "kauno_algiris",
+      "api_football_id": 3872,
+      "source_name": "Kauno Žalgiris",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FK Kauno Žalgiris",
+        "Kauno Žalgiris",
+        "カウナス・ジャルギリス",
+        "考纳斯萨尔基里斯"
+      ]
+    },
+    {
+      "club_id": "ki_klaksvik",
+      "api_football_id": 701,
+      "source_name": "KI Klaksvik",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "KI Klaksvik",
+        "KIクラクスヴィク",
+        "KÍ",
+        "克拉克斯维克KI"
+      ]
+    },
+    {
+      "club_id": "koper",
+      "api_football_id": 4374,
+      "source_name": "Koper",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Koper",
+        "コペル",
+        "科佩尔"
+      ]
+    },
+    {
+      "club_id": "kups",
+      "api_football_id": 1165,
+      "source_name": "KuPS",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "KuPS",
+        "Kuopion PS",
+        "クオピオンKuPS",
+        "库奥皮奥KuPS"
+      ]
+    },
+    {
+      "club_id": "la_fiorita",
+      "api_football_id": 2249,
+      "source_name": "La Fiorita",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "La Fiorita",
+        "SP La Fiorita",
+        "ラ・フィオリータ",
+        "拉菲奥里塔"
+      ]
+    },
+    {
+      "club_id": "lanus",
+      "api_football_id": 446,
+      "source_name": "Lanus",
+      "competitions": [
+        "argentina",
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CA Lanús",
+        "Lanus",
+        "ラヌース",
+        "拉努斯"
+      ]
+    },
+    {
+      "club_id": "larne",
+      "api_football_id": 5354,
+      "source_name": "Larne",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Larne",
+        "ラーン",
+        "拉恩",
+        "Larne FC"
+      ]
+    },
+    {
+      "club_id": "lask_linz",
+      "api_football_id": 1026,
+      "source_name": "Lask Linz",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "LASK Linz",
+        "LASKリンツ",
+        "Lask Linz",
+        "林茨LASK"
+      ]
+    },
+    {
+      "club_id": "lazio",
+      "api_football_id": 487,
+      "source_name": "Lazio",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Lazio",
+        "SS Lazio",
+        "ラツィオ",
+        "拉齐奥"
+      ]
+    },
+    {
+      "club_id": "ldu_de_quito",
+      "api_football_id": 1158,
+      "source_name": "LDU de Quito",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "LDU Quito",
+        "LDU de Quito",
+        "LDUキト",
+        "基多大学"
+      ]
+    },
+    {
+      "club_id": "le_havre",
+      "api_football_id": 111,
+      "source_name": "Le Havre",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Le Havre",
+        "Le Havre AC",
+        "ル・アーヴル",
+        "勒阿弗尔"
+      ]
+    },
+    {
+      "club_id": "le_mans",
+      "api_football_id": 1298,
+      "source_name": "Le Mans",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Le Mans",
+        "Le Mans FC",
+        "ル・マン",
+        "勒芒"
+      ]
+    },
+    {
+      "club_id": "lecce",
+      "api_football_id": 867,
+      "source_name": "Lecce",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Lecce",
+        "US Lecce",
+        "レッチェ",
+        "莱切"
+      ]
+    },
+    {
+      "club_id": "lech_poznan",
+      "api_football_id": 347,
+      "source_name": "Lech Poznan",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "KKS Lech Poznań",
+        "Lech Poznan",
+        "レフ・ポズナン",
+        "波兹南莱赫"
+      ]
+    },
+    {
+      "club_id": "leeds",
+      "api_football_id": 63,
+      "source_name": "Leeds",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Leeds",
+        "Leeds United",
+        "Leeds United FC",
+        "リーズ",
+        "利兹联"
+      ]
+    },
+    {
+      "club_id": "lens",
+      "api_football_id": 116,
+      "source_name": "Lens",
+      "competitions": [
+        "ligue1",
+        "ucl"
+      ],
+      "aliases": [
+        "Lens",
+        "Racing Club de Lens",
+        "ランス",
+        "朗斯"
+      ]
+    },
+    {
+      "club_id": "levante",
+      "api_football_id": 539,
+      "source_name": "Levante",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Levante",
+        "Levante UD",
+        "レバンテ",
+        "莱万特"
+      ]
+    },
+    {
+      "club_id": "levski_sofia",
+      "api_football_id": 646,
+      "source_name": "Levski Sofia",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Levski Sofia",
+        "PFC Levski Sofia",
+        "レフスキ・ソフィア",
+        "索非亚列夫斯基",
+        "PFK Levski Sofia"
+      ]
+    },
+    {
+      "club_id": "libertad",
+      "api_football_id": 18762,
+      "source_name": "Libertad",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Libertad",
+        "リベルタ",
+        "自由"
+      ]
+    },
+    {
+      "club_id": "libertad_asuncion",
+      "api_football_id": 1179,
+      "source_name": "Libertad Asuncion",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Libertad Asuncion",
+        "リベルタ・アスンシオン",
+        "亚松森自由"
+      ]
+    },
+    {
+      "club_id": "lille",
+      "api_football_id": 79,
+      "source_name": "Lille",
+      "competitions": [
+        "ligue1",
+        "ucl"
+      ],
+      "aliases": [
+        "Lille",
+        "Lille OSC",
+        "リール",
+        "里尔"
+      ]
+    },
+    {
+      "club_id": "lillestrom",
+      "api_football_id": 321,
+      "source_name": "Lillestrom",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "Lillestroem",
+        "Lillestrom",
+        "Lillestrøm SK",
+        "リレストローム",
+        "利勒斯特罗姆"
+      ]
+    },
+    {
+      "club_id": "lincoln_red_imps_fc",
+      "api_football_id": 667,
+      "source_name": "Lincoln Red Imps FC",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Lincoln Red Imps",
+        "Lincoln Red Imps FC",
+        "リンカーン・レッド・インプス",
+        "林肯红魔"
+      ]
+    },
+    {
+      "club_id": "linfield",
+      "api_football_id": 583,
+      "source_name": "Linfield",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Linfield",
+        "リンフィールド",
+        "林菲尔德"
+      ]
+    },
+    {
+      "club_id": "liverpool",
+      "api_football_id": 40,
+      "source_name": "Liverpool",
+      "competitions": [
+        "epl",
+        "ucl"
+      ],
+      "aliases": [
+        "Liverpool",
+        "Liverpool FC",
+        "リヴァプール",
+        "利物浦"
+      ]
+    },
+    {
+      "club_id": "liverpool_montevideo",
+      "api_football_id": 2358,
+      "source_name": "Liverpool Montevideo",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Liverpool Montevideo",
+        "リバプール(モンテビデオ)",
+        "利物浦(蒙得维的亚)"
+      ]
+    },
+    {
+      "club_id": "lnz_cherkasy",
+      "api_football_id": 17161,
+      "source_name": "LNZ Cherkasy",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK LNZ Cherkasy",
+        "LNZ Cherkasy",
+        "LNZチェルカスィ",
+        "切尔卡瑟LNZ"
+      ]
+    },
+    {
+      "club_id": "lorient",
+      "api_football_id": 97,
+      "source_name": "Lorient",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "FC Lorient",
+        "Lorient",
+        "ロリアン",
+        "洛里昂"
+      ]
+    },
+    {
+      "club_id": "ludogorets",
+      "api_football_id": 566,
+      "source_name": "Ludogorets",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Ludogorets",
+        "PFK Ludogorets 1945 Razgrad",
+        "ルドゴレツ",
+        "卢多戈雷茨"
+      ]
+    },
+    {
+      "club_id": "lyon",
+      "api_football_id": 80,
+      "source_name": "Lyon",
+      "competitions": [
+        "ligue1",
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Lyon",
+        "Olympique Lyon",
+        "Olympique Lyonnais",
+        "リヨン",
+        "里昂"
+      ]
+    },
+    {
+      "club_id": "macara",
+      "api_football_id": 1155,
+      "source_name": "Macara",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "CSyD Macará",
+        "Macara",
+        "マカラ",
+        "马卡拉"
+      ]
+    },
+    {
+      "club_id": "maccabi_tel_aviv",
+      "api_football_id": 604,
+      "source_name": "Maccabi Tel Aviv",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Maccabi Tel Aviv",
+        "マッカビ・テルアビブ",
+        "特拉维夫马卡比",
+        "MH Maccabi Tel Aviv"
+      ]
+    },
+    {
+      "club_id": "malaga",
+      "api_football_id": 535,
+      "source_name": "Malaga",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Malaga",
+        "Málaga CF",
+        "マラガ",
+        "马拉加"
+      ]
+    },
+    {
+      "club_id": "malisheva",
+      "api_football_id": 15576,
+      "source_name": "Malisheva",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Malisheva",
+        "マリシェヴァ",
+        "马利舍沃"
+      ]
+    },
+    {
+      "club_id": "manchester_city",
+      "api_football_id": 50,
+      "source_name": "Manchester City",
+      "competitions": [
+        "epl",
+        "ucl"
+      ],
+      "aliases": [
+        "Manchester City",
+        "Manchester City FC",
+        "マンチェスター・C",
+        "曼城"
+      ]
+    },
+    {
+      "club_id": "manchester_united",
+      "api_football_id": 33,
+      "source_name": "Manchester United",
+      "competitions": [
+        "epl",
+        "ucl"
+      ],
+      "aliases": [
+        "Manchester United",
+        "Manchester United FC",
+        "マンチェスター・U",
+        "曼联"
+      ]
+    },
+    {
+      "club_id": "marsaxlokk",
+      "api_football_id": 14507,
+      "source_name": "Marsaxlokk",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Marsaxlokk",
+        "マルサシュロック",
+        "马萨什洛克"
+      ]
+    },
+    {
+      "club_id": "marseille",
+      "api_football_id": 81,
+      "source_name": "Marseille",
+      "competitions": [
+        "ligue1",
+        "uel"
+      ],
+      "aliases": [
+        "Marseille",
+        "Olympique Marseille",
+        "Olympique de Marseille",
+        "マルセイユ",
+        "马赛"
+      ]
+    },
+    {
+      "club_id": "metropolitanos_fc",
+      "api_football_id": 2825,
+      "source_name": "Metropolitanos FC",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Metropolitanos FC",
+        "メトロポリターノス",
+        "大都会"
+      ]
+    },
+    {
+      "club_id": "millonarios",
+      "api_football_id": 1125,
+      "source_name": "Millonarios",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Millonarios",
+        "ミジョナリオス",
+        "百万富翁"
+      ]
+    },
+    {
+      "club_id": "milsami_orhei",
+      "api_football_id": 691,
+      "source_name": "Milsami Orhei",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Milsami Orhei",
+        "ミルサミ・オルヘイ",
+        "米尔萨米"
+      ]
+    },
+    {
+      "club_id": "mirassol",
+      "api_football_id": 7848,
+      "source_name": "Mirassol",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Mirassol",
+        "Mirassol FC",
+        "ミラソウ",
+        "米拉索尔"
+      ]
+    },
+    {
+      "club_id": "mjallby_aif",
+      "api_football_id": 2240,
+      "source_name": "Mjallby AIF",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Mjallby AIF",
+        "ミャルビー",
+        "米亚尔比"
+      ]
+    },
+    {
+      "club_id": "ml_vitebsk",
+      "api_football_id": 7808,
+      "source_name": "ML Vitebsk",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "FK ML Viciebsk",
+        "ML Vitebsk",
+        "ヴィテプスク",
+        "维捷布斯克"
+      ]
+    },
+    {
+      "club_id": "monaco",
+      "api_football_id": 91,
+      "source_name": "Monaco",
+      "competitions": [
+        "ligue1",
+        "uecl"
+      ],
+      "aliases": [
+        "AS Monaco FC",
+        "Monaco",
+        "モナコ",
+        "摩纳哥"
+      ]
+    },
+    {
+      "club_id": "monagas_sc",
+      "api_football_id": 2811,
+      "source_name": "Monagas SC",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Monagas SC",
+        "モナガス",
+        "莫纳加斯"
+      ]
+    },
+    {
+      "club_id": "monza",
+      "api_football_id": 1579,
+      "source_name": "Monza",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "AC Monza",
+        "Monza",
+        "モンツァ",
+        "蒙扎"
+      ]
+    },
+    {
+      "club_id": "mornar",
+      "api_football_id": 3740,
+      "source_name": "Mornar",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Mornar Bar",
+        "Mornar",
+        "モルナル",
+        "莫尔纳"
+      ]
+    },
+    {
+      "club_id": "motherwell",
+      "api_football_id": 256,
+      "source_name": "Motherwell",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Motherwell",
+        "マザーウェル",
+        "马瑟韦尔",
+        "Motherwell FC"
+      ]
+    },
+    {
+      "club_id": "nacional_asuncion",
+      "api_football_id": 1175,
+      "source_name": "Nacional Asuncion",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Nacional Asuncion",
+        "ナシオナル・アスンシオン",
+        "亚松森民族"
+      ]
+    },
+    {
+      "club_id": "nacional_potos",
+      "api_football_id": 3706,
+      "source_name": "Nacional Potosí",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Nacional Potosí",
+        "ナシオナル・ポトシ",
+        "波托西民族"
+      ]
+    },
+    {
+      "club_id": "napoli",
+      "api_football_id": 492,
+      "source_name": "Napoli",
+      "competitions": [
+        "seriea",
+        "ucl"
+      ],
+      "aliases": [
+        "Naples",
+        "Napoli",
+        "SSC Napoli",
+        "ナポリ",
+        "那不勒斯"
+      ]
+    },
+    {
+      "club_id": "nec_nijmegen",
+      "api_football_id": 413,
+      "source_name": "NEC Nijmegen",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "NEC",
+        "NEC Nijmegen",
+        "NECナイメヘン",
+        "Nijmegen",
+        "奈梅亨"
+      ]
+    },
+    {
+      "club_id": "neftchi_baku",
+      "api_football_id": 2270,
+      "source_name": "Neftchi Baku",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Neftchi Baku",
+        "Neftçi PFK",
+        "ネフチ・バクー",
+        "巴库石油"
+      ]
+    },
+    {
+      "club_id": "newcastle",
+      "api_football_id": 34,
+      "source_name": "Newcastle",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Newcastle",
+        "Newcastle United",
+        "Newcastle United FC",
+        "ニューカッスル",
+        "纽卡斯尔"
+      ]
+    },
+    {
+      "club_id": "newells_old_boys",
+      "api_football_id": 457,
+      "source_name": "Newells Old Boys",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Newell's Old Boys",
+        "Newell's Old Boys",
+        "Newells Old Boys",
+        "ニューウェルス",
+        "纽维尔老男孩"
+      ]
+    },
+    {
+      "club_id": "nice",
+      "api_football_id": 84,
+      "source_name": "Nice",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Nice",
+        "OGC Nice",
+        "ニース",
+        "尼斯"
+      ]
+    },
+    {
+      "club_id": "nk_varazdin",
+      "api_football_id": 1483,
+      "source_name": "NK Varazdin",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "NK Varazdin",
+        "ヴァラジュディン",
+        "瓦拉日丁"
+      ]
+    },
+    {
+      "club_id": "nottingham_forest",
+      "api_football_id": 65,
+      "source_name": "Nottingham Forest",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Nottingham",
+        "Nottingham Forest",
+        "Nottingham Forest FC",
+        "ノッティンガム",
+        "诺丁汉森林"
+      ]
+    },
+    {
+      "club_id": "nsi_runavik",
+      "api_football_id": 682,
+      "source_name": "NSI Runavik",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "NSI Runavik",
+        "NSIルナヴィーク",
+        "鲁纳维克NSI"
+      ]
+    },
+    {
+      "club_id": "o_higgins",
+      "api_football_id": 2320,
+      "source_name": "O'Higgins",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "O'Higgins",
+        "オヒギンス",
+        "奥希金斯"
+      ]
+    },
+    {
+      "club_id": "ofi",
+      "api_football_id": 1124,
+      "source_name": "OFI",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "OFI",
+        "OFI Crete",
+        "OFIクレタ",
+        "OFI克里特"
+      ]
+    },
+    {
+      "club_id": "olimpia",
+      "api_football_id": 1182,
+      "source_name": "Olimpia",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Olimpia",
+        "オリンピア",
+        "奥林匹亚",
+        "Club Olimpia"
+      ]
+    },
+    {
+      "club_id": "olympiakos_piraeus",
+      "api_football_id": 553,
+      "source_name": "Olympiakos Piraeus",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Olympiacos",
+        "Olympiacos Piraeus",
+        "Olympiakos Piraeus",
+        "Olympiakós SFP",
+        "オリンピアコス",
+        "奥林匹亚科斯"
+      ]
+    },
+    {
+      "club_id": "omonia_nicosia",
+      "api_football_id": 3402,
+      "source_name": "Omonia Nicosia",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "AC Omonia Nicosia",
+        "AS Omónoia Leukosías",
+        "Omonia Nicosia",
+        "オモニア・ニコシア",
+        "尼科西亚奥莫尼亚"
+      ]
+    },
+    {
+      "club_id": "orense_sc",
+      "api_football_id": 1992,
+      "source_name": "Orense SC",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Orense SC",
+        "オレンセ",
+        "奥伦塞"
+      ]
+    },
+    {
+      "club_id": "osasuna",
+      "api_football_id": 727,
+      "source_name": "Osasuna",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "CA Osasuna",
+        "Osasuna",
+        "オサスナ",
+        "奥萨苏纳"
+      ]
+    },
+    {
+      "club_id": "pafos",
+      "api_football_id": 3403,
+      "source_name": "Pafos",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Pafos",
+        "パフォス",
+        "帕福斯",
+        "Páfos FC"
+      ]
+    },
+    {
+      "club_id": "paide",
+      "api_football_id": 3528,
+      "source_name": "Paide",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Paide",
+        "Paide Linnameeskond",
+        "パイデ",
+        "派德"
+      ]
+    },
+    {
+      "club_id": "paks",
+      "api_football_id": 2390,
+      "source_name": "Paks",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Paks",
+        "Paksi FC",
+        "パクシュ",
+        "帕克什"
+      ]
+    },
+    {
+      "club_id": "palestino",
+      "api_football_id": 2318,
+      "source_name": "Palestino",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Palestino",
+        "パレスティーノ",
+        "巴勒斯坦人"
+      ]
+    },
+    {
+      "club_id": "palmeiras",
+      "api_football_id": 121,
+      "source_name": "Palmeiras",
+      "competitions": [
+        "brasileirao",
+        "libertadores"
+      ],
+      "aliases": [
+        "Palmeiras",
+        "SE Palmeiras",
+        "パルメイラス",
+        "帕尔梅拉斯"
+      ]
+    },
+    {
+      "club_id": "panathinaikos",
+      "api_football_id": 617,
+      "source_name": "Panathinaikos",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Panathinaikos",
+        "Panathinaikós AO",
+        "パナシナイコス",
+        "帕纳辛纳科斯"
+      ]
+    },
+    {
+      "club_id": "panevys",
+      "api_football_id": 3874,
+      "source_name": "Panevėžys",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Panevėžys",
+        "Panevėžys",
+        "パネヴェジース",
+        "帕内韦日斯"
+      ]
+    },
+    {
+      "club_id": "paok",
+      "api_football_id": 619,
+      "source_name": "PAOK",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "PAOK",
+        "PAOK FC",
+        "塞萨洛尼基PAOK"
+      ]
+    },
+    {
+      "club_id": "paris_fc",
+      "api_football_id": 114,
+      "source_name": "Paris FC",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Paris",
+        "Paris FC",
+        "パリFC",
+        "巴黎FC"
+      ]
+    },
+    {
+      "club_id": "paris_saint_germain",
+      "api_football_id": 85,
+      "source_name": "Paris Saint Germain",
+      "competitions": [
+        "ligue1",
+        "ucl"
+      ],
+      "aliases": [
+        "PSG",
+        "Paris Saint Germain",
+        "Paris Saint-Germain",
+        "Paris Saint-Germain FC",
+        "パリSG",
+        "巴黎圣日耳曼"
+      ]
+    },
+    {
+      "club_id": "parma",
+      "api_football_id": 523,
+      "source_name": "Parma",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Parma",
+        "Parma Calcio",
+        "Parma Calcio 1913",
+        "パルマ",
+        "帕尔马"
+      ]
+    },
+    {
+      "club_id": "penarol",
+      "api_football_id": 2348,
+      "source_name": "Penarol",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Penarol",
+        "Peñarol",
+        "ペニャロール",
+        "佩纳罗尔"
+      ]
+    },
+    {
+      "club_id": "penybont",
+      "api_football_id": 2191,
+      "source_name": "Penybont",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Penybont",
+        "ペニボント",
+        "彭尼邦特"
+      ]
+    },
+    {
+      "club_id": "petrocub",
+      "api_football_id": 2271,
+      "source_name": "Petrocub",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "FC Petrocub Hînceşti",
+        "Petrocub",
+        "ペトロクブ",
+        "彼得罗库布"
+      ]
+    },
+    {
+      "club_id": "petrovac",
+      "api_football_id": 3741,
+      "source_name": "Petrovac",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Petrovac",
+        "ペトロヴァツ",
+        "彼得罗瓦茨"
+      ]
+    },
+    {
+      "club_id": "platense",
+      "api_football_id": 1064,
+      "source_name": "Platense",
+      "competitions": [
+        "argentina",
+        "libertadores"
+      ],
+      "aliases": [
+        "CA Platense",
+        "Platense",
+        "プラテンセ",
+        "普拉滕斯"
+      ]
+    },
+    {
+      "club_id": "plzen",
+      "api_football_id": 567,
+      "source_name": "Plzen",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "FC Viktoria Plzeň",
+        "Plzen",
+        "プルゼニ",
+        "比尔森胜利"
+      ]
+    },
+    {
+      "club_id": "polessya",
+      "api_football_id": 6496,
+      "source_name": "Polessya",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Polissia",
+        "Polessya",
+        "ポリシャ",
+        "波列西亚"
+      ]
+    },
+    {
+      "club_id": "psv_eindhoven",
+      "api_football_id": 197,
+      "source_name": "PSV Eindhoven",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Eindhoven",
+        "PSV",
+        "PSV Eindhoven",
+        "PSVアイントホーフェン",
+        "PSV埃因霍温"
+      ]
+    },
+    {
+      "club_id": "puerto_cabello",
+      "api_football_id": 2827,
+      "source_name": "Puerto Cabello",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Puerto Cabello",
+        "プエルト・カベジョ",
+        "卡贝略港"
+      ]
+    },
+    {
+      "club_id": "pyunik_yerevan",
+      "api_football_id": 709,
+      "source_name": "Pyunik Yerevan",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Pyunik FA",
+        "Pyunik Yerevan",
+        "ピュニク・エレバン",
+        "埃里温普尼克"
+      ]
+    },
+    {
+      "club_id": "qarabag",
+      "api_football_id": 556,
+      "source_name": "Qarabag",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Qarabag",
+        "Qarabağ Ağdam FK",
+        "カラバフ",
+        "卡拉巴赫"
+      ]
+    },
+    {
+      "club_id": "racing_club",
+      "api_football_id": 436,
+      "source_name": "Racing Club",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Racing Avellaneda",
+        "Racing Club",
+        "ラシン",
+        "竞技俱乐部"
+      ]
+    },
+    {
+      "club_id": "racing_montevideo",
+      "api_football_id": 2359,
+      "source_name": "Racing Montevideo",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Racing Montevideo",
+        "ラシン(モンテビデオ)",
+        "竞技(蒙得维的亚)"
+      ]
+    },
+    {
+      "club_id": "racing_santander",
+      "api_football_id": 4665,
+      "source_name": "Racing Santander",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Racing Santander",
+        "Real Racing Club",
+        "Santander",
+        "ラシン・サンタンデール",
+        "桑坦德竞技"
+      ]
+    },
+    {
+      "club_id": "rakw_czstochowa",
+      "api_football_id": 3491,
+      "source_name": "Raków Częstochowa",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "RKS Raków Częstochowa",
+        "Raków Częstochowa",
+        "ラクフ・チェンストホヴァ",
+        "琴斯托霍瓦拉科夫"
+      ]
+    },
+    {
+      "club_id": "rangers",
+      "api_football_id": 257,
+      "source_name": "Rangers",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Rangers",
+        "レンジャーズ",
+        "流浪者",
+        "Rangers FC"
+      ]
+    },
+    {
+      "club_id": "rapid_vienna",
+      "api_football_id": 781,
+      "source_name": "Rapid Vienna",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Rapid Vienna",
+        "SK Rapid Wien",
+        "ラピード・ウィーン",
+        "维也纳快速"
+      ]
+    },
+    {
+      "club_id": "rayo_vallecano",
+      "api_football_id": 728,
+      "source_name": "Rayo Vallecano",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Rayo Vallecano",
+        "Rayo Vallecano de Madrid",
+        "Vallecano",
+        "ラージョ",
+        "巴列卡诺"
+      ]
+    },
+    {
+      "club_id": "rb_bragantino",
+      "api_football_id": 794,
+      "source_name": "RB Bragantino",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Bragantino",
+        "RB Bragantino",
+        "Red Bull Bragantino",
+        "ブラガンチーノ",
+        "布拉干蒂诺"
+      ]
+    },
+    {
+      "club_id": "rb_leipzig",
+      "api_football_id": 173,
+      "source_name": "RB Leipzig",
+      "competitions": [
+        "bundesliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Leipzig",
+        "RB Leipzig",
+        "ライプツィヒ",
+        "莱比锡红牛"
+      ]
+    },
+    {
+      "club_id": "real_betis",
+      "api_football_id": 543,
+      "source_name": "Real Betis",
+      "competitions": [
+        "laliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Betis",
+        "Real Betis",
+        "Real Betis Balompié",
+        "Real Betis Seville",
+        "ベティス",
+        "皇家贝蒂斯"
+      ]
+    },
+    {
+      "club_id": "real_madrid",
+      "api_football_id": 541,
+      "source_name": "Real Madrid",
+      "competitions": [
+        "laliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Real Madrid",
+        "Real Madrid CF",
+        "レアル・マドリード",
+        "皇家马德里"
+      ]
+    },
+    {
+      "club_id": "real_sociedad",
+      "api_football_id": 548,
+      "source_name": "Real Sociedad",
+      "competitions": [
+        "laliga",
+        "uel"
+      ],
+      "aliases": [
+        "Real Sociedad",
+        "Real Sociedad San Sebastian",
+        "Real Sociedad de Fútbol",
+        "ソシエダ",
+        "皇家社会"
+      ]
+    },
+    {
+      "club_id": "red_bull_salzburg",
+      "api_football_id": 571,
+      "source_name": "Red Bull Salzburg",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "FC Red Bull Salzburg",
+        "Red Bull Salzburg",
+        "Salzburg",
+        "ザルツブルク",
+        "萨尔茨堡红牛"
+      ]
+    },
+    {
+      "club_id": "remo",
+      "api_football_id": 1198,
+      "source_name": "Remo",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "Clube do Remo",
+        "Remo",
+        "レモ",
+        "雷莫"
+      ]
+    },
+    {
+      "club_id": "rennes",
+      "api_football_id": 94,
+      "source_name": "Rennes",
+      "competitions": [
+        "ligue1",
+        "uel"
+      ],
+      "aliases": [
+        "Rennes",
+        "Stade Rennais",
+        "Stade Rennais FC",
+        "Stade Rennais FC 1901",
+        "Stade Rennes",
+        "レンヌ",
+        "雷恩"
+      ]
+    },
+    {
+      "club_id": "rgas_fs",
+      "api_football_id": 4160,
+      "source_name": "Rīgas FS",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Rīgas FS",
+        "リガスFS",
+        "里加FS",
+        "FK Rīgas Futbola Skola"
+      ]
+    },
+    {
+      "club_id": "riga",
+      "api_football_id": 10124,
+      "source_name": "Riga",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Riga",
+        "リガFC",
+        "里加",
+        "Rīga FC"
+      ]
+    },
+    {
+      "club_id": "river_plate",
+      "api_football_id": 435,
+      "source_name": "River Plate",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CA River Plate",
+        "River Plate",
+        "リーベル・プレート",
+        "河床"
+      ]
+    },
+    {
+      "club_id": "rosario_central",
+      "api_football_id": 437,
+      "source_name": "Rosario Central",
+      "competitions": [
+        "argentina",
+        "libertadores"
+      ],
+      "aliases": [
+        "CA Rosario Central",
+        "Rosario",
+        "Rosario Central",
+        "ロサリオ・セントラル",
+        "罗萨里奥中央"
+      ]
+    },
+    {
+      "club_id": "sabah_fa",
+      "api_football_id": 13976,
+      "source_name": "Sabah FA",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Sabah FA",
+        "Sabah FK",
+        "Sabah Masazir",
+        "サバフ",
+        "萨巴赫"
+      ]
+    },
+    {
+      "club_id": "san_antonio_bulo_bulo",
+      "api_football_id": 17760,
+      "source_name": "San Antonio Bulo Bulo",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "San Antonio Bulo Bulo",
+        "サンアントニオ・ブロブロ",
+        "圣安东尼奥布洛布洛"
+      ]
+    },
+    {
+      "club_id": "san_lorenzo",
+      "api_football_id": 460,
+      "source_name": "San Lorenzo",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CA San Lorenzo de Almagro",
+        "San Lorenzo",
+        "San Lorenzo de Almagro",
+        "サン・ロレンソ",
+        "圣洛伦索"
+      ]
+    },
+    {
+      "club_id": "santa_fe",
+      "api_football_id": 1139,
+      "source_name": "Santa Fe",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Independ. Santa Fe",
+        "Independiente Santa Fe",
+        "Santa Fe",
+        "サンタフェ",
+        "圣菲独立"
+      ]
+    },
+    {
+      "club_id": "santos",
+      "api_football_id": 128,
+      "source_name": "Santos",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Santos",
+        "Santos FC",
+        "サントス",
+        "桑托斯"
+      ]
+    },
+    {
+      "club_id": "sao_paulo",
+      "api_football_id": 126,
+      "source_name": "Sao Paulo",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "Sao Paulo",
+        "São Paulo",
+        "São Paulo FC",
+        "サンパウロ",
+        "圣保罗"
+      ]
+    },
+    {
+      "club_id": "sarmiento_junin",
+      "api_football_id": 474,
+      "source_name": "Sarmiento Junin",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Sarmiento",
+        "Junin",
+        "Sarmiento Junin",
+        "サルミエント",
+        "萨米恩托"
+      ]
+    },
+    {
+      "club_id": "sassuolo",
+      "api_football_id": 488,
+      "source_name": "Sassuolo",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Sassuolo",
+        "US Sassuolo Calcio",
+        "サッスオーロ",
+        "萨索洛"
+      ]
+    },
+    {
+      "club_id": "sc_braga",
+      "api_football_id": 217,
+      "source_name": "SC Braga",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "SC Braga",
+        "ブラガ",
+        "布拉加"
+      ]
+    },
+    {
+      "club_id": "sc_freiburg",
+      "api_football_id": 160,
+      "source_name": "SC Freiburg",
+      "competitions": [
+        "bundesliga",
+        "uecl"
+      ],
+      "aliases": [
+        "Freiburg",
+        "SC Freiburg",
+        "フライブルク",
+        "弗赖堡"
+      ]
+    },
+    {
+      "club_id": "sc_paderborn_07",
+      "api_football_id": 185,
+      "source_name": "SC Paderborn 07",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Paderborn",
+        "SC Paderborn 07",
+        "パーダーボルン",
+        "帕德博恩"
+      ]
+    },
+    {
+      "club_id": "sevilla",
+      "api_football_id": 536,
+      "source_name": "Sevilla",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Sevilla",
+        "Sevilla FC",
+        "セビージャ",
+        "塞维利亚"
+      ]
+    },
+    {
+      "club_id": "shakhtar_donetsk",
+      "api_football_id": 550,
+      "source_name": "Shakhtar Donetsk",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "FC Shakhtar Donetsk",
+        "FK Shakhtar Donetsk",
+        "Shakhtar",
+        "Shakhtar Donetsk",
+        "ФК Шахтар Донецьк",
+        "Шахтар Донецьк",
+        "シャフタール・ドネツク",
+        "顿涅茨克矿工"
+      ]
+    },
+    {
+      "club_id": "shamrock_rovers",
+      "api_football_id": 652,
+      "source_name": "Shamrock Rovers",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Shamrock Rovers",
+        "シャムロック・ローバーズ",
+        "三叶草流浪者",
+        "Shamrock Rovers FC"
+      ]
+    },
+    {
+      "club_id": "shelbourne",
+      "api_football_id": 3854,
+      "source_name": "Shelbourne",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Shelbourne",
+        "シェルボーン",
+        "谢尔本",
+        "Shelbourne FC"
+      ]
+    },
+    {
+      "club_id": "sheriff_tiraspol",
+      "api_football_id": 568,
+      "source_name": "Sheriff Tiraspol",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Sheriff Tiraspol",
+        "シェリフ・ティラスポリ",
+        "蒂拉斯波尔警长",
+        "FC Sheriff Tiraspol"
+      ]
+    },
+    {
+      "club_id": "shkendija",
+      "api_football_id": 609,
+      "source_name": "Shkendija",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "KF Shkëndija 79",
+        "Shkendija",
+        "シュケンディヤ",
+        "什肯迪亚"
+      ]
+    },
+    {
+      "club_id": "sileks",
+      "api_football_id": 4331,
+      "source_name": "Sileks",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Sileks",
+        "Sileks",
+        "シレクス",
+        "西莱克斯"
+      ]
+    },
+    {
+      "club_id": "slavia_praha",
+      "api_football_id": 560,
+      "source_name": "Slavia Praha",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "SK Slavia Praha",
+        "Slavia Prague",
+        "Slavia Praha",
+        "Slavia de Praga",
+        "スラビア・プラハ",
+        "布拉格斯拉维亚"
+      ]
+    },
+    {
+      "club_id": "slovan_bratislava",
+      "api_football_id": 656,
+      "source_name": "Slovan Bratislava",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Slovan Bratislava",
+        "ŠK Slovan Bratislava",
+        "スロヴァン・ブラチスラヴァ",
+        "布拉迪斯拉发斯洛万"
+      ]
+    },
+    {
+      "club_id": "sparta_praha",
+      "api_football_id": 628,
+      "source_name": "Sparta Praha",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "Sparta Prague",
+        "Sparta Praha",
+        "スパルタ・プラハ",
+        "布拉格斯巴达"
+      ]
+    },
+    {
+      "club_id": "spartak_trnava",
+      "api_football_id": 1120,
+      "source_name": "Spartak Trnava",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Spartak Trnava",
+        "スパルタク・トルナヴァ",
+        "特尔纳瓦斯巴达"
+      ]
+    },
+    {
+      "club_id": "sporting_cp",
+      "api_football_id": 228,
+      "source_name": "Sporting CP",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Sporting CP",
+        "スポルティングCP",
+        "葡萄牙体育"
+      ]
+    },
+    {
+      "club_id": "sporting_cristal",
+      "api_football_id": 2546,
+      "source_name": "Sporting Cristal",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CS Cristal",
+        "Sporting Cristal",
+        "スポルティング・クリスタル",
+        "水晶体育"
+      ]
+    },
+    {
+      "club_id": "sportivo_trinidense",
+      "api_football_id": 1187,
+      "source_name": "Sportivo Trinidense",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Sportivo Trinidense",
+        "スポルティボ・トリニデンセ",
+        "特立尼达体育"
+      ]
+    },
+    {
+      "club_id": "st_joseph_s_fc",
+      "api_football_id": 698,
+      "source_name": "St Joseph S Fc",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "St Joseph S Fc",
+        "セント・ジョセフス",
+        "圣约瑟夫"
+      ]
+    },
+    {
+      "club_id": "st_truiden",
+      "api_football_id": 735,
+      "source_name": "St. Truiden",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "K. Sint-Truidense VV",
+        "St. Truiden",
+        "シント=トロイデン",
+        "圣特雷登"
+      ]
+    },
+    {
+      "club_id": "stade_brestois_29",
+      "api_football_id": 106,
+      "source_name": "Stade Brestois 29",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Stade Brest 29",
+        "Stade Brestois 29",
+        "ブレスト",
+        "布雷斯特"
+      ]
+    },
+    {
+      "club_id": "stjarnan",
+      "api_football_id": 275,
+      "source_name": "Stjarnan",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Stjarnan",
+        "UMF Stjarnan",
+        "スチャルナン",
+        "斯塔尔南"
+      ]
+    },
+    {
+      "club_id": "strasbourg",
+      "api_football_id": 95,
+      "source_name": "Strasbourg",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "RC Strasbourg Alsace",
+        "Strasbourg",
+        "Strasbourg Alsace",
+        "ストラスブール",
+        "斯特拉斯堡"
+      ]
+    },
+    {
+      "club_id": "sturm_graz",
+      "api_football_id": 637,
+      "source_name": "Sturm Graz",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "SK Puntigamer Sturm Graz",
+        "SK Sturm Graz",
+        "Sturm Graz",
+        "シュトゥルム・グラーツ",
+        "格拉茨风暴"
+      ]
+    },
+    {
+      "club_id": "sunderland",
+      "api_football_id": 746,
+      "source_name": "Sunderland",
+      "competitions": [
+        "epl",
+        "uel"
+      ],
+      "aliases": [
+        "Sunderland",
+        "Sunderland AFC",
+        "サンダーランド",
+        "桑德兰"
+      ]
+    },
+    {
+      "club_id": "sutjeska",
+      "api_football_id": 673,
+      "source_name": "Sutjeska",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "FK Sutjeska Nikšić",
+        "Sutjeska",
+        "スティエスカ",
+        "苏捷斯卡"
+      ]
+    },
+    {
+      "club_id": "sv_elversberg",
+      "api_football_id": 1660,
+      "source_name": "SV Elversberg",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Elversberg",
+        "SV 07 Elversberg",
+        "SV Elversberg",
+        "エルファースベルク",
+        "埃尔弗斯堡"
+      ]
+    },
+    {
+      "club_id": "talleres_cordoba",
+      "api_football_id": 456,
+      "source_name": "Talleres Cordoba",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Talleres",
+        "Talleres Cordoba",
+        "タジェレス",
+        "塔耶雷斯"
+      ]
+    },
+    {
+      "club_id": "the_new_saints",
+      "api_football_id": 354,
+      "source_name": "The New Saints",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "The New Saints",
+        "ニュー・セインツ",
+        "新圣徒"
+      ]
+    },
+    {
+      "club_id": "the_strongest",
+      "api_football_id": 3711,
+      "source_name": "The Strongest",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "The Strongest",
+        "ザ・ストロンゲスト",
+        "最强者"
+      ]
+    },
+    {
+      "club_id": "tigre",
+      "api_football_id": 452,
+      "source_name": "Tigre",
+      "competitions": [
+        "argentina",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CA Tigre",
+        "Tigre",
+        "ティグレ",
+        "蒂格雷"
+      ]
+    },
+    {
+      "club_id": "torino",
+      "api_football_id": 503,
+      "source_name": "Torino",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Torino",
+        "Torino FC",
+        "トリノ",
+        "都灵"
+      ]
+    },
+    {
+      "club_id": "torpedo_kutaisi",
+      "api_football_id": 685,
+      "source_name": "Torpedo Kutaisi",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Torpedo Kutaisi",
+        "トルペド・クタイシ",
+        "库塔伊西鱼雷"
+      ]
+    },
+    {
+      "club_id": "torreense",
+      "api_football_id": 4799,
+      "source_name": "Torreense",
+      "competitions": [
+        "uel"
+      ],
+      "aliases": [
+        "SCU Torreense",
+        "Torreense",
+        "托伦斯",
+        "托林斯",
+        "杜連斯"
+      ]
+    },
+    {
+      "club_id": "tottenham",
+      "api_football_id": 47,
+      "source_name": "Tottenham",
+      "competitions": [
+        "epl"
+      ],
+      "aliases": [
+        "Tottenham",
+        "Tottenham Hotspur",
+        "Tottenham Hotspur FC",
+        "トッテナム",
+        "热刺"
+      ]
+    },
+    {
+      "club_id": "toulouse",
+      "api_football_id": 96,
+      "source_name": "Toulouse",
+      "competitions": [
+        "ligue1"
+      ],
+      "aliases": [
+        "Toulouse",
+        "Toulouse FC",
+        "トゥールーズ",
+        "图卢兹"
+      ]
+    },
+    {
+      "club_id": "trabzonspor",
+      "api_football_id": 998,
+      "source_name": "Trabzonspor",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Trabzonspor",
+        "トラブゾンスポル",
+        "特拉布宗体育"
+      ]
+    },
+    {
+      "club_id": "tre_fiori",
+      "api_football_id": 2260,
+      "source_name": "Tre Fiori",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "Tre Fiori",
+        "トレ・フィオーリ",
+        "特雷菲奥里",
+        "Tre Fiori FC"
+      ]
+    },
+    {
+      "club_id": "tromso",
+      "api_football_id": 325,
+      "source_name": "Tromso",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Tromso",
+        "Tromsø IL",
+        "トロムソ",
+        "特罗姆瑟"
+      ]
+    },
+    {
+      "club_id": "twente",
+      "api_football_id": 415,
+      "source_name": "Twente",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FC Twente",
+        "FC Twente '65",
+        "Twente",
+        "トゥエンテ",
+        "特温特"
+      ]
+    },
+    {
+      "club_id": "u_catolica",
+      "api_football_id": 2994,
+      "source_name": "U. Catolica",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "U. Catolica",
+        "U・カトリカ",
+        "天主教大学(智利)"
+      ]
+    },
+    {
+      "club_id": "ucv",
+      "api_football_id": 2840,
+      "source_name": "UCV",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "aliases": [
+        "UCV",
+        "委内瑞拉中央大学"
+      ]
+    },
+    {
+      "club_id": "udinese",
+      "api_football_id": 494,
+      "source_name": "Udinese",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Udinese",
+        "Udinese Calcio",
+        "ウディネーゼ",
+        "乌迪内斯"
+      ]
+    },
+    {
+      "club_id": "una_strassen",
+      "api_football_id": 2036,
+      "source_name": "UNA Strassen",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "UNA Strassen",
+        "UNAシュトラッセン",
+        "UNA斯特拉森"
+      ]
+    },
+    {
+      "club_id": "union_berlin",
+      "api_football_id": 182,
+      "source_name": "Union Berlin",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "1. FC Union Berlin",
+        "FC Union Berlin",
+        "Union Berlin",
+        "ウニオン・ベルリン",
+        "柏林联合"
+      ]
+    },
+    {
+      "club_id": "union_santa_fe",
+      "api_football_id": 441,
+      "source_name": "Union Santa Fe",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Unión",
+        "Union Santa Fe",
+        "ウニオン",
+        "圣菲联合"
+      ]
+    },
+    {
+      "club_id": "union_st_gilloise",
+      "api_football_id": 1393,
+      "source_name": "Union St. Gilloise",
+      "competitions": [
+        "ucl",
+        "uel"
+      ],
+      "aliases": [
+        "RU Saint-Gilloise",
+        "Union Gilloise",
+        "Union Saint-Gilloise",
+        "Union St. Gilloise",
+        "ユニオン・サン=ジロワーズ",
+        "圣吉罗斯联合"
+      ]
+    },
+    {
+      "club_id": "universidad_catolica",
+      "api_football_id": 1157,
+      "source_name": "Universidad Catolica",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Universidad Catolica",
+        "ウニベルシダ・カトリカ",
+        "天主教大学"
+      ]
+    },
+    {
+      "club_id": "universidad_de_chile",
+      "api_football_id": 2323,
+      "source_name": "Universidad de Chile",
+      "competitions": [
+        "sudamericana"
+      ],
+      "aliases": [
+        "Universidad de Chile",
+        "ウニベルシダ・デ・チレ",
+        "智利大学"
+      ]
+    },
+    {
+      "club_id": "universitario",
+      "api_football_id": 2540,
+      "source_name": "Universitario",
+      "competitions": [
+        "libertadores"
+      ],
+      "aliases": [
+        "Universitario",
+        "ウニベルシタリオ",
+        "体育大学"
+      ]
+    },
+    {
+      "club_id": "universitatea_cluj",
+      "api_football_id": 2599,
+      "source_name": "Universitatea Cluj",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Universitatea Cluj",
+        "ウニヴェルシタテア・クルジュ",
+        "克卢日大学"
+      ]
+    },
+    {
+      "club_id": "universitatea_craiova",
+      "api_football_id": 632,
+      "source_name": "Universitatea Craiova",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Universitatea Craiova",
+        "ウニヴェルシタテア・クラヨーヴァ",
+        "克拉约瓦大学",
+        "Universitatea Craiova CS"
+      ]
+    },
+    {
+      "club_id": "us_mondorf_les_bains",
+      "api_football_id": 2037,
+      "source_name": "US Mondorf-les-bains",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "US Mondorf-les-bains",
+        "モンドルフ=レ=バン",
+        "蒙多夫"
+      ]
+    },
+    {
+      "club_id": "valencia",
+      "api_football_id": 532,
+      "source_name": "Valencia",
+      "competitions": [
+        "laliga"
+      ],
+      "aliases": [
+        "Valencia",
+        "Valencia CF",
+        "バレンシア",
+        "瓦伦西亚"
+      ]
+    },
+    {
+      "club_id": "valletta_fc",
+      "api_football_id": 659,
+      "source_name": "Valletta FC",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Valletta FC",
+        "ヴァレッタ",
+        "瓦莱塔"
+      ]
+    },
+    {
+      "club_id": "valur_reykjavik",
+      "api_football_id": 274,
+      "source_name": "Valur Reykjavik",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "KF Valur",
+        "Valur Reykjavik",
+        "ヴァルル",
+        "瓦鲁尔"
+      ]
+    },
+    {
+      "club_id": "vardar_skopje",
+      "api_football_id": 574,
+      "source_name": "Vardar Skopje",
+      "competitions": [
+        "ucl",
+        "uecl"
+      ],
+      "aliases": [
+        "FK Vardar Skopje",
+        "Vardar Skopje",
+        "ヴァルダル・スコピエ",
+        "斯科普里瓦尔达尔"
+      ]
+    },
+    {
+      "club_id": "vasco_da_gama",
+      "api_football_id": 133,
+      "source_name": "Vasco DA Gama",
+      "competitions": [
+        "brasileirao",
+        "sudamericana"
+      ],
+      "aliases": [
+        "CR Vasco da Gama",
+        "Vasco DA Gama",
+        "Vasco da Gama",
+        "ヴァスコ",
+        "瓦斯科"
+      ]
+    },
+    {
+      "club_id": "vele",
+      "api_football_id": 3381,
+      "source_name": "Velež",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FK Velež Mostar",
+        "Velež",
+        "ヴェレジュ・モスタル",
+        "莫斯塔尔韦莱兹"
+      ]
+    },
+    {
+      "club_id": "velez_sarsfield",
+      "api_football_id": 438,
+      "source_name": "Velez Sarsfield",
+      "competitions": [
+        "argentina"
+      ],
+      "aliases": [
+        "CA Vélez Sarsfield",
+        "Velez Sarsfield",
+        "ベレス",
+        "萨斯菲尔德"
+      ]
+    },
+    {
+      "club_id": "venezia",
+      "api_football_id": 517,
+      "source_name": "Venezia",
+      "competitions": [
+        "seriea"
+      ],
+      "aliases": [
+        "Venezia",
+        "Venezia FC",
+        "ヴェネツィア",
+        "威尼斯"
+      ]
+    },
+    {
+      "club_id": "vestri",
+      "api_football_id": 4165,
+      "source_name": "Vestri",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Vestri",
+        "ÍF Vestri",
+        "ヴェストリ",
+        "韦斯特里"
+      ]
+    },
+    {
+      "club_id": "vfb_stuttgart",
+      "api_football_id": 172,
+      "source_name": "VfB Stuttgart",
+      "competitions": [
+        "bundesliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Stuttgart",
+        "VfB Stuttgart",
+        "シュツットガルト",
+        "斯图加特"
+      ]
+    },
+    {
+      "club_id": "viking",
+      "api_football_id": 759,
+      "source_name": "Viking",
+      "competitions": [
+        "ucl"
+      ],
+      "aliases": [
+        "Viking",
+        "Viking FK",
+        "ヴァイキング",
+        "维京"
+      ]
+    },
+    {
+      "club_id": "vikingur_gota",
+      "api_football_id": 580,
+      "source_name": "Vikingur Gota",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Vikingur Gota",
+        "ヴィーキングル・ゴータ",
+        "戈塔维京"
+      ]
+    },
+    {
+      "club_id": "vikingur_reykjavik",
+      "api_football_id": 278,
+      "source_name": "Vikingur Reykjavik",
+      "competitions": [
+        "ucl",
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "Vikingur Reykjavik",
+        "ヴィーキングル・レイキャヴィク",
+        "雷克雅未克维京"
+      ]
+    },
+    {
+      "club_id": "villarreal",
+      "api_football_id": 533,
+      "source_name": "Villarreal",
+      "competitions": [
+        "laliga",
+        "ucl"
+      ],
+      "aliases": [
+        "Villarreal",
+        "Villarreal CF",
+        "ビジャレアル",
+        "比利亚雷亚尔"
+      ]
+    },
+    {
+      "club_id": "virtus",
+      "api_football_id": 5308,
+      "source_name": "Virtus",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Virtus",
+        "ヴィルトゥス",
+        "维尔图斯"
+      ]
+    },
+    {
+      "club_id": "vitoria",
+      "api_football_id": 136,
+      "source_name": "Vitoria",
+      "competitions": [
+        "brasileirao"
+      ],
+      "aliases": [
+        "EC Vitória",
+        "Vitoria",
+        "ヴィトーリア",
+        "维多利亚"
+      ]
+    },
+    {
+      "club_id": "vllaznia_shkodr",
+      "api_football_id": 3339,
+      "source_name": "Vllaznia Shkodër",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "KF Vllaznia Shkodër",
+        "Vllaznia Shkodër",
+        "ヴラズニア・シュコドラ",
+        "斯库台弗拉兹尼亚"
+      ]
+    },
+    {
+      "club_id": "vojvodina",
+      "api_football_id": 702,
+      "source_name": "Vojvodina",
+      "competitions": [
+        "uecl",
+        "uel"
+      ],
+      "aliases": [
+        "FK Vojvodina Novi Sad",
+        "Vojvodina",
+        "ヴォイヴォディナ",
+        "伏伊伏丁那"
+      ]
+    },
+    {
+      "club_id": "werder_bremen",
+      "api_football_id": 162,
+      "source_name": "Werder Bremen",
+      "competitions": [
+        "bundesliga"
+      ],
+      "aliases": [
+        "Bremen",
+        "SV Werder Bremen",
+        "Werder Bremen",
+        "ブレーメン",
+        "云达不莱梅"
+      ]
+    },
+    {
+      "club_id": "yelimay_semey",
+      "api_football_id": 21011,
+      "source_name": "Yelimay Semey",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Yelimay Semey",
+        "エリマイ",
+        "叶利迈"
+      ]
+    },
+    {
+      "club_id": "zimbru",
+      "api_football_id": 4633,
+      "source_name": "Zimbru",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "FC Zimbru Chişinău",
+        "Zimbru",
+        "ジンブル",
+        "津布鲁"
+      ]
+    },
+    {
+      "club_id": "zira",
+      "api_football_id": 648,
+      "source_name": "Zira",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "Zira",
+        "Zirə FK",
+        "ジラ",
+        "齐拉"
+      ]
+    },
+    {
+      "club_id": "zrinjski",
+      "api_football_id": 588,
+      "source_name": "Zrinjski",
+      "competitions": [
+        "uecl"
+      ],
+      "aliases": [
+        "HŠK Zrinjski Mostar",
+        "Zrinjski",
+        "ズリニスキ",
+        "兹林斯基"
+      ]
+    }
+  ]
+}

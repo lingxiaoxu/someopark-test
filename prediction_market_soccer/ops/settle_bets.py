@@ -1,19 +1,11 @@
-"""ops/settle_bets.py — the FROZEN bet ledger.
+"""Read legacy frozen picks and settle independent forward paper positions.
 
-A settled match's bet must reflect ONLY information available before its kickoff. The
-strength model is already point-in-time (``_pit_strength``), but the probability calibration
-the reports applied was GLOBAL — refit daily over ALL settled matches, including matches that
-occur AFTER a given one. Applying that calibration to a past match's pick is look-ahead, and
-it makes the historical bet log (and its cumulative P&L) drift from day to day.
+Historical settled_bet financial rows are preserved. The production settlement
+entry point only consumes paper entries/exits saved before the observed result;
+it never re-runs pricing, selection, sizing or smart-exit reconstruction.
 
-This module freezes each settled match's ``match_pick()`` output ONCE — priced with its own
-point-in-time strength AND a calibration fit only on matches BEFORE its kickoff — into the
-``settled_bet`` table. ``freeze_settled_bets()`` is append-only + idempotent: it writes only
-matches not already frozen, so running it every refresh never rewrites history. The reports
-read the frozen payload via ``frozen_pick()`` instead of recomputing, so the three views
-(Accuracy/PnL, PriceTrack, PnL report) are stable — "a bet, once placed, never changes".
-
-    python -m prediction_market_soccer.ops.settle_bets   →  freeze any newly-settled matches
+The historical pricing helpers below remain available to explicit research code,
+but are not called by settlement or the published immutable strategy book.
 """
 from __future__ import annotations
 
@@ -23,7 +15,7 @@ from datetime import datetime, timezone
 _FINISHED = ("FT", "AET", "PEN")
 
 
-def _pit_py(conn, cmap):
+def _pit_py(conn, cmap, issues=None):
     """Per settled match: {fid, kickoff, P=[p_home,p_draw,p_away], Y} priced by each match's
     OWN point-in-time strength. Computed ONCE and reused for every as-of calibration fit, so
     freezing N matches is O(N) strength builds, not O(N^2)."""
@@ -47,24 +39,50 @@ def _pit_py(conn, cmap):
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai) or not r["kickoff_ts"]:
             continue
-        _k = (r["kickoff_ts"][:10], _comp_of.get(r["league_id"]))
-        if _k not in _day_cache:
-            _day_cache[_k] = _pit_strength(conn, r["kickoff_ts"], _k[1])
-        mp = price_match(_day_cache[_k], hi, ai)
-        gh, ga = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
-        out.append({"fid": r["api_id"], "kickoff": r["kickoff_ts"],
-                    "P": [mp.p_home, mp.p_draw, mp.p_away],
-                    "Y": 0 if gh > ga else (1 if gh == ga else 2)})
+        try:
+            _k = (r["kickoff_ts"][:10], _comp_of.get(r["league_id"]))
+            if _k not in _day_cache:
+                _day_cache[_k] = _pit_strength(conn, r["kickoff_ts"], _k[1])
+            mp = price_match(_day_cache[_k], hi, ai)
+            gh, ga = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
+            from prediction_market_soccer.util.timing_provenance import result_availability
+            available = result_availability(conn, r["api_id"], gh, ga)
+            prediction_at = None
+            recorded_p = None
+            try:
+                journal = conn.execute("SELECT decision_at,payload FROM timing_decision_observation WHERE fixture_api_id=? AND track='pre' ORDER BY decision_at LIMIT 1", (r["api_id"],)).fetchone()
+                if journal:
+                    recorded_p = json.loads(journal["payload"]).get("raw_model")
+                    prediction_at = journal["decision_at"] if recorded_p else None
+            except Exception:
+                pass
+            out.append({"fid": r["api_id"], "kickoff": r["kickoff_ts"],
+                        "result_available_at": available,
+                        "prediction_observed_at": prediction_at,
+                        "availability_source": "observed_result" if available else "unverified_legacy",
+                        "P": ([recorded_p[s] for s in _SIDES] if recorded_p else [mp.p_home, mp.p_draw, mp.p_away]),
+                        "Y": 0 if gh > ga else (1 if gh == ga else 2)})
+        except Exception as exc:
+            if issues is not None:
+                issues.append({"code": "pit_pricing_unavailable", "fixture_id": r["api_id"]})
+            print(f"[settle_bets] PIT unavailable fixture={r['api_id']} ({type(exc).__name__})")
     return out
 
 
 def _pit_cal(records, as_of):
-    """Calibration fit ONLY on matches with kickoff strictly before ``as_of`` (needs >=3);
-    None otherwise (earliest matches → the raw, uncalibrated model — the honest state when
-    there was no calibration data yet)."""
+    """Forward calibration accepts only results actually observed before the decision.
+
+    An earlier kickoff does not prove that a match finished, or that its final score
+    was available. Legacy caches lacking observations are excluded, not guessed.
+    """
     from prediction_market_soccer.model.probability_calibration import fit_calibration
-    P = [r["P"] for r in records if r["kickoff"] < as_of]
-    Y = [r["Y"] for r in records if r["kickoff"] < as_of]
+    from prediction_market_soccer.util.timing_provenance import _dt
+    eligible = [r for r in records if r.get("result_available_at") and r.get("prediction_observed_at")
+                and _dt(r["prediction_observed_at"]) < _dt(r["kickoff"])
+                and _dt(r["kickoff"]) < _dt(as_of)
+                and _dt(r["result_available_at"]) <= _dt(as_of)]
+    P = [r["P"] for r in eligible]
+    Y = [r["Y"] for r in eligible]
     return fit_calibration(P, Y) if len(P) >= 3 else None
 
 
@@ -82,250 +100,169 @@ _SCAN_MAX_RELMIN = 170     # wall-clock ceiling for in-game ticks (covers ET; ma
 _MAX_ENTRY_MIN = 85        # don't ENTER with < ~5' runway (the 90' 3-way settles at 90')
 
 
-def _event_timelines(conn, fid, home_api):
-    """Cumulative (minute → score) and (minute → red count) timelines from fixture_event, so
-    the live model can be priced at ANY match minute (not just the 5 fixed milestones). Own
-    goals credit the other side; missed penalties ignored — SAME goal accounting as smart_exit."""
-    goals, reds = [], []
-    gh = ga = rh = ra = 0
-    for e in conn.execute(
-            "SELECT minute, team_api_id, type, detail FROM fixture_event "
-            "WHERE fixture_api_id=? AND type IN ('Goal','Card') ORDER BY minute, seq", (fid,)):
-        mn = e["minute"] or 0
-        if e["type"] == "Goal":
-            if (e["detail"] or "") == "Missed Penalty":
-                continue
-            if (e["team_api_id"] == home_api) ^ ((e["detail"] or "") == "Own Goal"):
-                gh += 1
-            else:
-                ga += 1
-            goals.append((mn, gh, ga))
-        elif (e["detail"] or "") == "Red Card":
-            if e["team_api_id"] == home_api:
-                rh += 1
-            else:
-                ra += 1
-            reds.append((mn, rh, ra))
-    return goals, reds
+def _event_timelines(conn, fid, home_api, *, away_api=None, event_revision=None):
+    """Reference adapter requiring an explicit complete, versioned event set."""
+    from prediction_market_soccer.util.match_timeline import normalize_events
+    if event_revision is None or not event_revision.get("complete") or away_api is None:
+        raise ValueError("complete event revision and both team identities required")
+    return normalize_events(event_revision["events"], home_api, away_api)
 
 
 def _state_at(timeline, mn, dims=2):
-    """The last cumulative (h, a) tuple in ``timeline`` at or before match minute ``mn`` (0,0
-    if none yet)."""
-    h = a = 0
-    for row in timeline:
-        if row[0] <= mn:
-            h, a = row[1], row[2]
-        else:
-            break
-    return h, a
+    raise ValueError("use match_timeline.timeline_state with an explicit target/cutoff")
 
 
-def _inplay_entry(conn, fx_row, hi, ai):
-    """Causal (non-hindsight) in-play relative-value entry, frozen alongside the pre-match bet.
-
-    Scans EVERY in-game price point in match-minute order — the Polymarket ``price_tick``
-    series (~13/match) where it exists, else our own 5 milestone snapshots, which for club
-    football is nearly always the live source (Polymarket Global lists 1 of these fixtures
-    against 164 in milestone_snapshot). At each, prices the model's LIVE fair 3-way from
-    ONLY the then-known state (minute, score reconstructed from fixture_event, red cards) with
-    the PIT pre-match lambdas, and takes the FIRST side whose live fair beats the then market
-    price by the in-play edge threshold (relative value — the market over-reacted). This is the
-    causal optimal entry (first tradable in time; you can't wait for a better price you don't
-    yet know is coming). Stake is EDGE-WEIGHTED via the SAME ¼-Kelly→envelope as the pre-match
-    ``decide()`` (so bigger in-play edges stake more, $0.2–$2). ``exit`` is the 盘中离场 smart-
-    exit from the entry minute. Returns the entry dict or None (no tradable in-play edge)."""
+def _forward_inplay_entry(conn, fx_row, hi, ai, decision_at):
+    """Actual observed clock/score/reds and quotes; never read post-match event history."""
     import math
-
     from prediction_market_soccer.config import CONFIG
     from prediction_market_soccer.model.inplay import live_match_prob
-    from prediction_market_soccer.ops.performance_report import _pit_strength
+    from prediction_market_soccer.ops.performance_report import _pit_strength, _row_comp
     from prediction_market_soccer.strategy.decision_model import _clip, _kelly_fraction
-    from prediction_market_soccer.strategy.smart_exit import (
-        _MILESTONE_MIN, _match_minute, smart_exit_cashout)
-    from prediction_market_soccer.util.pricing import pnl_cents, reg_score
-
-    if not fx_row["kickoff_ts"]:
-        return None
+    from prediction_market_soccer.util.timing_provenance import live_snapshots, current_state_matches, _dt
     cfg, risk = CONFIG.decision, CONFIG.risk
-    thresh = risk.min_net_edge                 # in-play edge bar (0.03; stricter than pre-match)
-    from prediction_market_soccer.ops.performance_report import _row_comp
-    sm_pit = _pit_strength(conn, fx_row["kickoff_ts"], _row_comp(fx_row))
-    lam_h, lam_a = sm_pit.pair_lambdas(hi, ai)
-    gh90, ga90 = reg_score(fx_row["raw_json"], fx_row["home_goals"], fx_row["away_goals"])
-    result = "home" if gh90 > ga90 else ("draw" if gh90 == ga90 else "away")
-    fid = fx_row["api_id"]
-    goals, reds = _event_timelines(conn, fid, fx_row["home_api_id"])
-    # POST-EVENT gate: only ENTER after a goal or red card has occurred — that is when the market
-    # OVER-REACTS (the classic in-play thesis), and it makes the entry genuinely independent of
-    # the pre-match bet. Entering on the opening ticks instead just re-bets the pre-match model-
-    # vs-market disagreement (validated: earliest→52%/+$8, min30→54%/+$23, postevent→65%/+$29).
-    event_mins = sorted({g[0] for g in goals} | {x[0] for x in reds})
-
-    # In-game price points keyed by MATCH minute → {side: price}. The 3 sides are captured
-    # together, so each minute carries a full 3-way quote.
-    by_min: dict = {}
-    for r in conn.execute(
-            "SELECT rel_min, side, price FROM price_tick WHERE fixture_api_id=? AND rel_min "
-            "BETWEEN 1 AND ? ORDER BY rel_min", (fid, _SCAN_MAX_RELMIN)):
-        by_min.setdefault(_match_minute(r["rel_min"]), {})[r["side"]] = r["price"]
-    if not by_min:
-        # CLUB EDITION fallback, mirroring smart_exit._milestone_ticks: price_tick comes
-        # from the Polymarket global history, which does not list club fixtures — it holds
-        # 1 match against 164 in milestone_snapshot. Without this the in-play track could
-        # never freeze an entry on any club match, which is exactly what the empty
-        # 0W-0L in-play record was: not "no edge appeared", but "no prices to look at".
-        # Coarser (5 points instead of ~13), so the entry lands on a milestone minute.
-        for r in conn.execute(
-                "SELECT milestone, poly_home_ask ph, poly_draw_ask pd, poly_away_ask pa, "
-                "       kalshi_home_ask kh, kalshi_draw_ask kd, kalshi_away_ask ka "
-                "FROM milestone_snapshot WHERE fixture_api_id=?", (fid,)):
-            mn = _MILESTONE_MIN.get(r["milestone"])
-            if mn is None:
-                continue
-            px = {s: (r[f"p{s[0]}"] if r[f"p{s[0]}"] is not None else r[f"k{s[0]}"])
-                  for s in _SIDES}
-            if all(v is not None for v in px.values()):
-                by_min[mn] = px
-
-    entry = None
-    for mn in sorted(by_min):                  # match-minute order → first tradable is causal
-        if mn < 1 or mn > _MAX_ENTRY_MIN:
+    sm = _pit_strength(conn, fx_row['kickoff_ts'], _row_comp(fx_row))
+    lh, la = sm.pair_lambdas(hi, ai)
+    for row in live_snapshots(conn, fx_row['api_id'], decision_at):
+        mn = row.get('elapsed')
+        if row['milestone'] == 'PRE' or mn is None or not (1 <= mn <= _MAX_ENTRY_MIN):
             continue
-        if not any(e <= mn for e in event_mins):   # no goal/red yet → not an in-play over-reaction
+        if not current_state_matches(conn,fx_row,row,decision_at):
             continue
-        sh, sa = _state_at(goals, mn)
-        rh, ra = _state_at(reds, mn)
-        lp = live_match_prob(lam_h, lam_a, mn, sh, sa, red_home=rh, red_away=ra)
-        lpp = {"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away}
-        px = by_min[mn]
+        sh, sa, rh, ra = (row.get(k) for k in ('home_goals','away_goals','reds_home','reds_away'))
+        if sh is None or sa is None or rh is None or ra is None:
+            continue
+        if not (sh + sa + rh + ra):
+            continue
+        lp = live_match_prob(lh, la, mn, sh, sa, red_home=rh, red_away=ra)
+        fair = dict(zip(_SIDES, (lp.p_home, lp.p_draw, lp.p_away)))
         best = None
-        for s in _SIDES:
-            ask = px.get(s)
-            if ask is None:
+        for side in _SIDES:
+            venue = 'poly' if row.get(f'poly_{side}_ask') is not None else 'kalshi'
+            ask = row.get(f'{venue}_{side}_ask')
+            if ask is None or not 0 < ask < 1:
                 continue
-            edge = lpp[s] - ask
-            if edge >= thresh and (best is None or edge > best[0]):
-                best = (edge, s, ask, mn, lpp[s])
+            edge = fair[side] - ask
+            if edge >= risk.min_net_edge and (best is None or edge > best[0]):
+                best = (edge, side, ask, venue)
         if best:
-            entry = best
-            break                              # first tradable in time = causal entry
-
-    if not entry:
-        return None
-    edge, s, ask, mn, fair = entry
-    won = (s == result)
-    entry_c = round(ask * 100, 1)
-    hold_pc = pnl_cents(entry_c, won)                  # per-contract hold-to-FT
-    # EDGE-WEIGHTED stake — SAME ¼-Kelly→envelope as the pre-match decide(), edge component only
-    # (in-play has no pre-match calibration/form confidence). Bigger relative-value edge → bigger
-    # stake, clipped to [$0.2, $2]; contracts then come from the shared sized_pnl_cents().
-    f_kelly = _kelly_fraction(fair, ask, risk.kelly_fraction)   # same ¼-Kelly cap as decide()
-    edge_comp = math.tanh(f_kelly / max(cfg.kelly_ref, 1e-6))
-    k = _clip(cfg.conf_w_edge * edge_comp, cfg.k_min, cfg.k_max)
-    stake = _clip(cfg.base_stake_usd * (1.0 + k - getattr(cfg, "conf_k_ref", 0.0)),
-                  cfg.min_stake_usd, cfg.max_stake_usd)
-    # 盘中离场: smart-exit from the entry minute onward (same cash-out logic as the pre-match bet).
-    sx = smart_exit_cashout(conn, sm_pit, fid, s, entry_c, hi, ai, fx_row["round"], won, entry_min=mn)
-    realized_pc = sx["pnl_c"] if sx else hold_pc       # per-contract realised (exit or hold)
-    return {"milestone": f"{mn}'", "entry_min": mn, "side": s, "entry_cents": entry_c,
-            "source": "poly", "edge": round(edge, 4), "result": result, "won": won,
-            "stake_usd": round(stake, 2), "hold_pnl_cents": hold_pc, "exit": sx,
-            "realized_pnl_cents": realized_pc}
+            edge, side, ask, venue = best
+            k = _clip(cfg.conf_w_edge * math.tanh(_kelly_fraction(fair[side], ask, risk.kelly_fraction) / max(cfg.kelly_ref, 1e-6)), cfg.k_min, cfg.k_max)
+            stake = _clip(cfg.base_stake_usd * (1+k-getattr(cfg,'conf_k_ref',0)), cfg.min_stake_usd, cfg.max_stake_usd)
+            return {'milestone': row['milestone'], 'entry_min': mn, 'side': side,
+                    'entry_cents': round(ask*100, 1), 'source': venue, 'edge': round(edge,4),
+                    'fair': fair[side], 'model':fair,'stake_usd': round(stake,2), 'decision_at': decision_at,
+                    'snapshot_observed_at': row['observed_at'], 'snapshot_ts': row['ts'],
+                    'state': {'elapsed': mn, 'home_goals': sh, 'away_goals': sa, 'reds_home': rh, 'reds_away': ra},
+                    'evidence_level': 'forward_observed_paper'}
+    return None
 
 
-def freeze_settled_bets(conn=None) -> int:
-    """Freeze every settled match not yet in ``settled_bet`` (append-only, idempotent).
-    Returns the number newly frozen. Safe to call every refresh — a no-op when nothing new
-    has settled."""
-    from prediction_market_soccer.ingest import store
-    from prediction_market_soccer.ingest.club_prior import load_prior
-    from prediction_market_soccer.model.squad_strength import build_strength_live
-    from prediction_market_soccer.ops.performance_report import match_pick
-    from prediction_market_soccer.strategy.decision_model import quotes_from_milestone_row
+def _inplay_entry(conn, fx_row, hi, ai, *, decision_at=None, candidate=None,
+                  decision_times=None, cutoff=None):
+    """Forward compatibility or explicit candidate research; no historical replay fallback.
 
-    conn = conn or store.init_db()
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    have = {r["fixture_api_id"] for r in conn.execute("SELECT fixture_api_id FROM settled_bet")}
-    # CLUB SCOPE GUARD (4th of the family): the frozen ledger records OUR live track
-    # record from launch (plan R8 — no retro-claiming a historical season). Without
-    # this, first run scanned 5,215 historical fixtures through PIT fits.
-    from prediction_market_soccer.config.leagues import active as _active
-    _lids = tuple(c.api_football_id for c in _active())
-    rows = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, round, "
-        "raw_json, league_id "
-        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
-        "AND league_id IN ({}) AND kickoff_ts >= datetime('now', '-14 days') "
-        "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED)), ",".join("?" * len(_lids))),
-        (*_FINISHED, *_lids)).fetchall()
-    todo = [r for r in rows if r["api_id"] not in have]
-    if not todo:
-        return 0
-    pre_px = {r["fixture_api_id"]: r for r in conn.execute(
-        "SELECT * FROM milestone_snapshot WHERE milestone='PRE'")}
-    # Cold-start short-circuit: a settled match with NO pre-match entry quotes has no
-    # bet to freeze (PRE stashes start with the live loop, ≤20min pre-kickoff). Without
-    # this, the expensive per-day PIT machinery ran for hundreds of historical rows
-    # that could never freeze anything (the 5th unscoped-history pin).
-    todo = [r for r in todo if r["api_id"] in pre_px]
-    if not todo:
-        return 0
-
-    sm = build_strength_live(conn, load_prior())         # overridden per-match by pit=True
-    records = _pit_py(conn, cmap)                         # PIT (P,Y) once, for the as-of fits
-    book = {r["api_id"]: r for r in conn.execute(
-        "SELECT f.api_id, AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
-        "FROM fixture f JOIN match_odds o ON o.fixture_api_id=f.api_id "
-        "AND o.bookmaker <> 'live_consensus' "   # pre-match book only
-        "WHERE f.status_short IN ({}) GROUP BY f.api_id".format(",".join("?" * len(_FINISHED))),
-        _FINISHED).fetchall()}
-    now = datetime.now(timezone.utc).isoformat()
-    n = 0
-    for r in todo:
-        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
-        if not (hi and ai):
+    Research returns status entered/no_edge/unavailable/invalid. A missing model,
+    quote, result or exit path is not a zero-return/hold financial record.
+    """
+    if decision_at is not None:
+        return _forward_inplay_entry(conn, fx_row, hi, ai, decision_at)
+    if candidate is None or decision_times is None or cutoff is None:
+        return {"status": "unavailable", "reason": "explicit_candidate_and_decision_scope_required"}
+    import math
+    from prediction_market_soccer.config import CONFIG
+    from prediction_market_soccer.model.inplay import live_match_prob
+    from prediction_market_soccer.strategy.decision_model import _clip, _kelly_fraction
+    from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
+    from prediction_market_soccer.util.research_inputs import epoch
+    fid = fx_row["api_id"]
+    times = list(decision_times)
+    if times != sorted(times, key=epoch) or len(set(map(epoch, times))) != len(times) or any(epoch(t) > epoch(cutoff) for t in times):
+        return {"status": "invalid", "reason": "invalid_decision_scope"}
+    if not times:
+        return {"status": "unavailable", "reason": "empty_decision_scope"}
+    try:
+        cfg, risk = candidate.parameters()
+    except ValueError as exc:
+        return {"status":"unavailable","reason":str(exc)}
+    for at in times:
+        state = candidate.state_at(fid, at)
+        features = candidate.features_at(fid, at)
+        quotes = candidate.quotes_at(fid, at)
+        for item in (state, features, quotes):
+            if item["status"] != "ok":
+                return {"status": item["status"], "reason": item["reason"], "target_at": at}
+        st, model = state["data"], features["data"]
+        from prediction_market_soccer.util.match_timeline import quote_state_consistent
+        if not all(quote_state_consistent(q, st, at) for q in quotes["data"].values()):
+            return {"status":"unavailable","reason":"quote_precedes_state_change"}
+        mn = st.get("elapsed")
+        if st.get("period") not in ("1H", "HT", "2H") or mn is None or not 1 <= mn <= _MAX_ENTRY_MIN:
             continue
-        cal = _pit_cal(records, r["kickoff_ts"]) if r["kickoff_ts"] else None
-        pr = pre_px.get(r["api_id"])
-        quotes = quotes_from_milestone_row(pr) if pr is not None else None
-        mr = match_pick(sm, cal, hi, ai, r, book.get(r["api_id"]), conn=conn,
-                        quotes=quotes, calib_confidence=_conf(cal), gate_open=True, pit=True)
-        if mr is None:
-            continue   # knockout after ET with no winner flag yet — not settleable
-        inplay = _inplay_entry(conn, r, hi, ai)     # causal in-play relative-value entry (or None)
-        conn.execute(
-            "INSERT OR IGNORE INTO settled_bet "
-            "(fixture_api_id, payload, inplay_json, cal_method, cal_param, cal_n, settled_at) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (r["api_id"], json.dumps(mr, ensure_ascii=False),
-             json.dumps(inplay, ensure_ascii=False) if inplay else None,
-             (cal or {}).get("method"), (cal or {}).get("param"), (cal or {}).get("n"), now))
-        n += 1
-        # commit per fixture: the first INSERT opens the write transaction and the next
-        # fixture's PIT pricing (_inplay_entry, smart_exit) runs INSIDE it — one commit at
-        # the end held the write lock for minutes and the live loop's own writes hit
-        # "database is locked" past the 60s busy timeout (12 times on 2026-09-02 02:24)
-        conn.commit()
-    conn.commit()
-    return n
+        if not sum(st[k] for k in ("home_goals", "away_goals", "reds_home", "reds_away")):
+            continue
+        lambdas = model.get("base_lambdas", [model.get("lambda_home"), model.get("lambda_away")])
+        if any(v is None or v <= 0 for v in lambdas):
+            return {"status": "invalid", "reason": "missing_model_lambdas"}
+        lp = live_match_prob(*lambdas, mn, st["home_goals"], st["away_goals"],
+                             red_home=st["reds_home"], red_away=st["reds_away"])
+        fair = dict(zip(_SIDES, (lp.p_home, lp.p_draw, lp.p_away)))
+        best = None
+        for side in _SIDES:
+            q = quotes["data"][side]
+            ask = q.get("ask") if candidate.manifest.get("require_observed_quotes") else q.get("price")
+            if ask is None or not 0 < ask < 1:
+                return {"status": "unavailable", "reason": "missing_entry_ask_or_reference"}
+            edge = fair[side] - ask
+            if edge >= risk.min_net_edge and (best is None or edge > best[0]):
+                best = (edge, side, ask)
+        if best is None:
+            continue
+        edge, side, ask = best
+        result = candidate.result_at(fid, cutoff)
+        if result["status"] != "ok" or result["data"].get("result") not in _SIDES:
+            return {"status": "unavailable", "reason": result["reason"] or "result_unknown"}
+        won = result["data"]["result"] == side
+        entry_c = round(ask * 100, 1)
+        hold = 100 - entry_c if won else -entry_c
+        k = _clip(cfg.conf_w_edge * math.tanh(_kelly_fraction(fair[side], ask, risk.kelly_fraction) / max(cfg.kelly_ref, 1e-6)), cfg.k_min, cfg.k_max)
+        stake = _clip(cfg.base_stake_usd * (1 + k - getattr(cfg, "conf_k_ref", 0)), cfg.min_stake_usd, cfg.max_stake_usd)
+        exit_result = smart_exit_cashout(None, None, fid, side, entry_c, hi, ai, fx_row["round"], won,
+                                          candidate=candidate, entry_at=at, until=cutoff, entry_min=mn)
+        if exit_result["status"] not in ("exited", "held_no_trigger"):
+            return {"status": exit_result["status"], "reason": exit_result["reason"], "entry_observed": True}
+        sx = exit_result if exit_result["status"] == "exited" else None
+        return {"status": "entered", "milestone": f"{mn}'", "entry_at": at, "entry_min": mn,
+                "side": side, "entry_cents": entry_c, "source": quotes["data"][side].get("venue"),
+                "selected_quote": quotes["data"][side], "edge": round(edge, 4), "won": won,
+                "result": result["data"]["result"], "stake_usd": round(stake, 2),
+                "hold_pnl_cents": hold, "exit": sx, "exit_status": exit_result["status"],
+                "realized_pnl_cents": sx["pnl_c"] if sx else hold, "provenance": quotes["provenance"]}
+    return {"status": "no_edge", "reason": None, "evaluated_targets": times}
 
 
-def frozen_pick(conn, fx_row, hi, ai, quotes=None, book_row=None):
-    """The FROZEN ``match_pick()`` decision for a settled fixture — never recomputed. Self-heals
-    if a just-settled match hasn't been frozen yet. Returns None for an unsettled fixture (the
-    caller falls back to a live argmax display)."""
-    def _read():
-        row = conn.execute("SELECT payload FROM settled_bet WHERE fixture_api_id=?",
-                           (fx_row["api_id"],)).fetchone()
-        return json.loads(row["payload"]) if row is not None else None
+from prediction_market_soccer.ops.maintenance_gate import writer
 
-    mr = _read()
-    if mr is not None:
-        return mr
-    freeze_settled_bets(conn)     # settled since the last freeze → freeze now, then read
-    return _read()
+
+@writer
+def freeze_settled_bets(conn=None, *, fixture_ids=None, issues=None) -> int:
+    """Settle only durable forward paper entries; never reconstruct a past trade.
+
+    The historical settled_bet table is a preserved compatibility source. New
+    completions live in paper_completion and are consumed by the immutable book.
+    """
+    if conn is None:
+        from prediction_market_soccer.ingest import store
+        conn = store.init_db()
+    from prediction_market_soccer.util.paper_store import settle
+    return settle(conn, fixture_ids=fixture_ids)
+
+
+def frozen_pick(conn, fx_row, hi, ai, quotes=None, book_row=None, *, self_heal=True):
+    """Read a preserved historical pick. The old self_heal argument is ignored."""
+    row = conn.execute("SELECT payload FROM settled_bet WHERE fixture_api_id=?",
+                       (fx_row['api_id'],)).fetchone()
+    return json.loads(row['payload']) if row is not None else None
 
 
 def frozen_inplay(conn, fixture_api_id):
@@ -339,71 +276,36 @@ def frozen_inplay(conn, fixture_api_id):
 
 
 def backfill_inplay(conn=None, *, dry_run: bool = True) -> dict:
-    """Fill ``inplay_json`` on rows frozen while the in-play scan had no prices to read.
-
-    ADDITIVE ONLY — touches rows where inplay_json IS NULL and never rewrites a placed
-    pre-match bet, so "a bet, once placed, never changes" still holds for every decision
-    already on the ledger. The NULLs are not "no edge was found": ``_inplay_entry`` scanned
-    only the Polymarket per-minute series, which lists 1 of these club fixtures against 164
-    in milestone_snapshot, so on nearly every match it had nothing to look at. The entries
-    written here are still causal — each prices the live fair from ONLY the then-known
-    minute/score/reds with that match's point-in-time lambdas, and takes the first side
-    that cleared the edge bar in time.
-
-    Returns {n_rows, n_filled, n_no_edge}; dry_run reports without writing.
-    """
-    from prediction_market_soccer.ingest import store
-
-    conn = conn or store.init_db()
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    rows = conn.execute(
-        "SELECT f.* FROM fixture f JOIN settled_bet s ON s.fixture_api_id = f.api_id "
-        "WHERE s.inplay_json IS NULL ORDER BY f.kickoff_ts").fetchall()
-    filled = no_edge = 0
-    for r in rows:
-        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
-        if not (hi and ai):
-            no_edge += 1
-            continue
-        try:
-            entry = _inplay_entry(conn, r, hi, ai)
-        except Exception as e:  # noqa: BLE001 — one bad match must not stop the backfill
-            print(f"  [skip] fixture {r['api_id']}: {type(e).__name__}: {e}")
-            no_edge += 1
-            continue
-        if entry is None:
-            no_edge += 1
-            continue
-        filled += 1
-        if not dry_run:
-            conn.execute("UPDATE settled_bet SET inplay_json=? WHERE fixture_api_id=? "
-                         "AND inplay_json IS NULL",
-                         (json.dumps(entry, ensure_ascii=False), r["api_id"]))
+    """Legacy diagnostic only. Historical financial backfill is permanently disabled."""
     if not dry_run:
-        conn.commit()
-    return {"n_rows": len(rows), "n_filled": filled, "n_no_edge": no_edge}
+        raise ValueError('Historical paper trades are frozen; in-play backfill cannot be applied')
+    if conn is None:
+        from prediction_market_soccer.ingest import store
+        conn = store.init_db()
+    n = conn.execute("SELECT COUNT(*) FROM settled_bet WHERE inplay_json IS NULL").fetchone()[0]
+    return {'missing': n, 'updated': 0, 'dry_run': True, 'frozen': True}
 
 
+@writer
 def main() -> None:
     import argparse
 
     from prediction_market_soccer.ingest import store
-    ap = argparse.ArgumentParser(description="freeze newly-settled bets; optionally backfill in-play")
+    ap = argparse.ArgumentParser(description="settle recorded forward paper positions")
     ap.add_argument("--backfill-inplay", action="store_true",
-                    help="fill inplay_json on already-frozen rows that were frozen with no price series")
-    ap.add_argument("--apply", action="store_true", help="actually write (default is a dry run)")
+                    help="diagnose preserved historical rows; does not create trades")
+    ap.add_argument("--apply", action="store_true", help="unsupported for frozen historical trades")
     args = ap.parse_args()
+    if args.backfill_inplay and args.apply:
+        ap.error("Historical paper trades are frozen; --apply is not allowed")
     conn = store.init_db()
     if args.backfill_inplay:
         res = backfill_inplay(conn, dry_run=not args.apply)
-        mode = "WROTE" if args.apply else "dry run"
-        print(f"in-play backfill ({mode}): {res['n_rows']} rows with no in-play entry → "
-              f"{res['n_filled']} filled, {res['n_no_edge']} genuinely had no tradable entry")
+        print(f"Preserved historical rows missing in-play data: {res['missing']}; no financial rows changed")
         return
     n = freeze_settled_bets(conn)
-    total = conn.execute("SELECT COUNT(*) FROM settled_bet").fetchone()[0]
-    print(f"settled_bet: froze {n} new match(es); {total} total frozen")
+    total = conn.execute("SELECT COUNT(*) FROM paper_completion").fetchone()[0]
+    print(f"paper_completion: settled {n} newly observed match(es); {total} terminal paper fixtures")
 
 
 if __name__ == "__main__":

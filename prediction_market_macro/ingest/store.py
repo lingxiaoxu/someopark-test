@@ -148,7 +148,8 @@ CREATE TABLE IF NOT EXISTS fills(
 
 CREATE TABLE IF NOT EXISTS marks(
   ts TEXT NOT NULL, decision_id INTEGER NOT NULL, ticker TEXT NOT NULL,
-  mid REAL, pnl_usd REAL, PRIMARY KEY(ts, decision_id, ticker));
+  mid REAL, pnl_usd REAL, quote_ts TEXT, mark_status TEXT,
+  PRIMARY KEY(ts, decision_id, ticker));
 
 CREATE TABLE IF NOT EXISTS shadow_exits(           -- PR-7 step 1 (#143): recorded, NEVER executed
   ts_utc TEXT NOT NULL, rule TEXT NOT NULL,        -- 'S2' = hold_edge <= 0
@@ -237,7 +238,8 @@ CREATE TABLE IF NOT EXISTS demo_orders(            -- §30 mirror: one row per p
   status TEXT NOT NULL,                            -- dryrun|intent|sent|filled|partial|
                                                    -- unfilled|skipped_halt|skipped_power|
                                                    -- skipped_gate|skipped_noheld
-  order_id TEXT, ts_sent TEXT, ts_terminal TEXT, note TEXT);
+  order_id TEXT, ts_sent TEXT, ts_terminal TEXT, note TEXT,
+  prod_price_basis TEXT NOT NULL DEFAULT 'legacy_yes_ask');
 
 CREATE TABLE IF NOT EXISTS demo_fills(             -- §30 actual demo executions (poll results)
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -327,6 +329,14 @@ def init_db(db_path: Path | str) -> sqlite3.Connection:
     conn = connect(db_path)
     conn.executescript(SCHEMA)
     # lightweight migrations (idempotent)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(marks)")}
+    for column in ("quote_ts", "mark_status"):
+        if column not in cols:
+            conn.execute(f"ALTER TABLE marks ADD COLUMN {column} TEXT")
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(demo_orders)")}
+    if "prod_price_basis" not in cols:
+        conn.execute("ALTER TABLE demo_orders ADD COLUMN prod_price_basis TEXT"
+                     " NOT NULL DEFAULT 'legacy_yes_ask'")
     cols = {r[1] for r in conn.execute("PRAGMA table_info(preds)")}
     if "inputs_json" not in cols:
         conn.execute("ALTER TABLE preds ADD COLUMN inputs_json TEXT")

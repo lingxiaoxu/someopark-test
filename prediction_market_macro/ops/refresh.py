@@ -32,6 +32,24 @@ def _alert(conn, level: str, source: str, msg: str) -> None:
     conn.commit()
 
 
+def _run_exit_steps(conn, s, md, step) -> None:
+    """Refresh held evidence even when broad discovery failed or omitted a close."""
+    from prediction_market_macro.ops import exits
+    from prediction_market_macro.ops.position_inputs import fresh_held_tickers
+    eligible: set[str] = set()
+
+    def refresh_inputs():
+        nonlocal eligible
+        eligible = fresh_held_tickers(conn, md)
+        return len(eligible)
+
+    step("held_exit_inputs", refresh_inputs)
+    # If step swallowed an exception above, the initial empty set still forbids
+    # cached exits. None would silently opt back into unrestricted eligibility.
+    step("s2_shadow", lambda: exits.shadow_run(conn, s, eligible_tickers=eligible))
+    step("exits", lambda: exits.run(conn, s, eligible_tickers=eligible))
+
+
 class RefreshBusy(RuntimeError):
     """Another holder already owns the single-instance lock."""
 
@@ -96,12 +114,14 @@ def _run(weekly: bool = False) -> dict:
             out = fn()
             results[name] = f"ok ({time.time()-t0:.1f}s)" + (f" {out}" if out is not None else "")
             print(f"  ✓ {name}: {results[name]}")
+            return True
         except Exception as e:                                   # noqa: BLE001
             results[name] = f"FAIL {e}"
             print(f"  ✗ {name}: {e}")
             # short reason in the alert (dashboards); full traceback to stdout/log
             print(traceback.format_exc())
             _alert(conn, "error", "refresh", f"{name}: {str(e)[:200]}")
+            return False
 
     print(f"[refresh] {datetime.now(timezone.utc).isoformat()} weekly={weekly}")
     # ── §8.0 step 1: ingest (incl. new-event auto-discovery) ─────────────
@@ -115,16 +135,13 @@ def _run(weekly: bool = False) -> dict:
     # business day earlier. Daily backfill here; the tick lands the day's row intraday.
     from prediction_market_macro.ingest import treasury
     step("treasury", lambda: treasury.pull(conn))
-    # AFTER fred_core (2026-08-13): the reconciler used to run before the day's
-    # pull, so a print that lands in the same morning's fetch (GASREGW arrives on
-    # FRED ~2 days after each Monday, at exactly this refresh's fred_core minute)
-    # drew one final false "POSTPONED?" the instant before it appeared. Checking
-    # actuals against the freshest data is also just the right order.
-    step("calendar_actuals", lambda: calendars.reconcile_actuals(conn))
     from prediction_market_macro.ingest import nowcast
     step("gdpnow", lambda: nowcast.pull_gdpnow(fred, conn))
     from prediction_market_macro.ingest import aaa_daily, eia
     step("aaa_daily", lambda: aaa_daily.fetch_daily(conn))
+    # Reconcile only after both source families have landed. AAA's actual is the
+    # same-date AAA_DAILY observation, not FRED's delayed weekly EIA proxy.
+    step("calendar_actuals", lambda: calendars.reconcile_actuals(conn))
     step("eia_storage", lambda: eia.pull_storage(conn))
     # ERCOT grid fundamentals (2026-08-30, SHADOW per §7-bis — no model reads the
     # table until a preregistered gate clears). Texas gas burn is the demand side of
@@ -184,15 +201,18 @@ def _run(weekly: bool = False) -> dict:
         from prediction_market_macro.research import param_argmin
         step("param_argmin", lambda: json.dumps(param_argmin.daily(conn, log=None))[:400])
         from prediction_market_macro.ops import predict_all
-        step("predict_all", lambda: predict_all.run(conn, s))
+        predicted = step("predict_all", lambda: predict_all.run(conn, s, fail_on_error=True))
         from prediction_market_macro.ops import decide_all
-        step("decide_all", lambda: decide_all.run(conn, s))
-        from prediction_market_macro.ops import exits
-        # PR-7 step 1 (#143) BEFORE the live exits: a position the live rules close this
-        # same cycle is gone from open_positions by the time exits.run returns, and S2 —
-        # which triggers at a looser threshold — must be seen on that last day too.
-        step("s2_shadow", lambda: exits.shadow_run(conn, s))
-        step("exits", lambda: exits.run(conn, s))
+        if predicted:
+            step("decide_all", lambda: decide_all.run(conn, s))
+            # Observe S2 before a live exit removes its held position.
+            _run_exit_steps(conn, s, md, step)
+        else:
+            # Successfully refreshed predictions remain stored, but a partially
+            # failed batch must not quietly trade the previous batch's predictions.
+            for name in ("decide_all", "held_exit_inputs", "s2_shadow", "exits"):
+                results[name] = "SKIPPED (predict_all failed)"
+                print(f"  - {name}: {results[name]}")
         # §30 mirror: sweep backstop + order poll + balance-sheet snapshot, then the
         # daily position/balance reconciliation (armed only; dark mode snapshots too)
         from prediction_market_macro.ops import trading_kalshi
@@ -339,7 +359,10 @@ def _run(weekly: bool = False) -> dict:
     out = {"ts": datetime.now(timezone.utc).isoformat(), "weekly": weekly, "steps": results}
     (s.output_dir / "refresh_last.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
     fails = [k for k, v in results.items() if v.startswith("FAIL")]
-    print(f"[refresh] done — {len(results)-len(fails)}/{len(results)} steps ok"
+    succeeded = sum(value.startswith("ok") for value in results.values())
+    skipped = sum(value.startswith("SKIPPED") for value in results.values())
+    print(f"[refresh] done — {succeeded}/{len(results)} steps ok"
+          + (f", skipped: {skipped}" if skipped else "")
           + (f", FAILED: {fails}" if fails else ""))
     return out
 

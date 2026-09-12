@@ -12,11 +12,13 @@ Prices use Decimal throughout (plan 01 §4.3 — never float for money).
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import requests
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.market_identity import content_hash
 from prediction_market_soccer.venues.base import OrderBook
 
 
@@ -98,47 +100,114 @@ class KalshiMarketData:
     unavailable: dict = {}
 
     def list_events(self, series_ticker: str, status: str = "open") -> list[dict]:
-        key = (series_ticker, status)
-        hit = KalshiMarketData._events_cache.get(key)
-        if hit is not None and (time.time() - hit[0]) < self._EVENTS_TTL_S:
-            return hit[1]
-        params = {"series_ticker": series_ticker, "status": status, "with_nested_markets": "true"}
-        try:
-            events = self._get("/events", params).get("events", [])
-        except requests.HTTPError as e:
-            # A rate-limited series must not take the whole scan down with it. During a
-            # busy window (21 live matches across 12 competitions) discovery walks ~80
-            # series, Kalshi starts refusing, and the exception propagated all the way
-            # out of find_opportunities — so the cycles with the MOST matches produced
-            # NO signals at all. One blind series is a gap; an aborted scan is a blackout.
-            if e.response is None or e.response.status_code != 429:
-                raise
-            KalshiMarketData.unavailable[series_ticker] = "rate limited (429)"
-            # Cache the miss too. Without this every fixture in the competition retried
-            # the same refused series, which is what turned one 429 into a storm.
-            KalshiMarketData._events_cache[key] = (time.time(), [])
-            return []
-        KalshiMarketData.unavailable.pop(series_ticker, None)
-        KalshiMarketData._events_cache[key] = (time.time(), events)
+        key=(self.base,series_ticker,status)
+        now=time.time()
+        hit=self._events_cache.get(key)
+        if hit and now-hit[0] < (self._EVENTS_TTL_S if hit[2]['complete'] else 15):
+            self.last_discovery_status=dict(hit[2])
+            return list(hit[1])
+        out,seen,cursors={},set(),set()
+        cursor=None; complete=False; issues=[]; pages=0
+        for page_no in range(32):
+            params={'series_ticker':series_ticker,'status':status,'with_nested_markets':'true','limit':200}
+            if cursor: params['cursor']=cursor
+            try:
+                result=self._get('/events',params)
+                pages+=1
+            except Exception as exc:
+                issues.append({'code':'request_failed','page':page_no,'error':type(exc).__name__})
+                break
+            for event in result.get('events') or []:
+                eid=event.get('event_ticker')
+                if not eid: continue
+                if eid in out and out[eid] != event:
+                    issues.append({'code':'conflicting_event','event_id':eid})
+                    out.pop(eid,None); seen.add(eid)
+                elif eid not in seen: out[eid]=event
+            cursor=result.get('cursor')
+            if not cursor:
+                complete=True
+                break
+            if cursor in cursors:
+                issues.append({'code':'repeated_cursor','page':page_no})
+                break
+            cursors.add(cursor)
+        if not complete and not issues: issues.append({'code':'truncated_listing'})
+        complete=complete and not issues
+        at=datetime.now(timezone.utc).isoformat()
+        info={'complete':complete,'state':'ok' if complete else 'partial','pages':pages,'issues':issues,
+              'last_attempt_at':at,'last_complete_at':at if complete else (hit[2].get('last_complete_at') if hit else None)}
+        if not complete:
+            self.unavailable[series_ticker]='incomplete event listing'
+            old={e['event_ticker']:e for e in (hit[1] if hit else []) if e['event_ticker'] not in seen}
+            old.update(out); out=old
+        else:
+            self.unavailable.pop(series_ticker,None)
+        events=list(out.values())
+        self._events_cache[key]=(now,events,info)
+        self.last_discovery_status=info
         return events
 
     def list_markets(self, **filters) -> list[dict]:
-        """Paginated market listing (cursor-followed)."""
-        out: list[dict] = []
-        cursor = None
-        while True:
+        """Bounded cursor listing; incomplete pages never masquerade as complete."""
+        out, cursors, cursor = [], set(), None
+        for _ in range(100):
             params = dict(filters, limit=1000)
             if cursor:
-                params["cursor"] = cursor
-            page = self._get("/markets", params)
-            out.extend(page.get("markets", []))
-            cursor = page.get("cursor")
+                params['cursor'] = cursor
+            page = self._get('/markets', params)
+            out.extend(page.get('markets') or [])
+            cursor = page.get('cursor')
             if not cursor:
                 return out
+            if cursor in cursors:
+                raise ValueError('repeated_market_cursor')
+            cursors.add(cursor)
+        raise ValueError('truncated_market_listing')
+
+    def get_orderbook_capture(self, ticker: str):
+        started=datetime.now(timezone.utc).isoformat()
+        payload=self._get(f'/markets/{ticker}/orderbook')
+        received=datetime.now(timezone.utc).isoformat()
+        return best_prices(payload,market_key=ticker),payload,started,received
+
+    def get_event_milestones_capture(self, event_ticker: str):
+        """One public GET for an exact event; no pagination or automatic retry.
+
+        This fallback is only used for an otherwise exact pair with a stale ticker
+        date. A cursor or malformed result remains incomplete. Successful captures
+        are reused for at most 60 seconds, retaining their real capture clocks.
+        """
+        cache = self.__dict__.setdefault('_milestone_captures', {})
+        now = time.time()
+        prior = cache.get(event_ticker)
+        if prior and 0 <= now - prior[0] <= 60:
+            self.last_milestone_requests = 0
+            return prior[1]
+        params = {'related_event_ticker': event_ticker, 'limit': 50}
+        started = datetime.now(timezone.utc).isoformat()
+        self.last_milestone_requests = 1
+        response = self._session.get(self.base + '/milestones', params=params,
+                                     timeout=self.timeout, allow_redirects=False)
+        received = datetime.now(timezone.utc).isoformat()
+        if (300 <= response.status_code < 400 or response.history
+                or not isinstance(response.url, str)
+                or response.url.split('?', 1)[0] != self.base + '/milestones'):
+            raise ValueError('milestone_redirect_refused')
+        response.raise_for_status()
+        raw = response.json()
+        complete = (isinstance(raw, dict) and isinstance(raw.get('milestones'), list)
+                    and raw.get('cursor') in ('', None))
+        capture = {'endpoint': self.base + '/milestones', 'params': params,
+                   'request_started_at': started, 'received_at': received,
+                   'raw': raw, 'raw_hash': content_hash(raw),
+                   'complete': complete, 'http_requests': 1}
+        if complete:
+            cache[event_ticker] = (now, capture)
+        return capture
 
     def get_orderbook(self, ticker: str) -> OrderBook:
-        payload = self._get(f"/markets/{ticker}/orderbook")
-        return best_prices(payload, market_key=ticker)
+        return self.get_orderbook_capture(ticker)[0]
 
     def candlesticks(self, series_ticker: str, ticker: str, start_ts: int, end_ts: int,
                      period_interval: int = 1) -> list[dict]:

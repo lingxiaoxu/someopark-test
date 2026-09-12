@@ -224,8 +224,11 @@ for R in "${ROOTS[@]}"; do
           next
         }
         if (!(name in bcnt)) { skip++; printf "MSG ✗ 备份中不存在，跳过: %s\n", name; next }
-        if (bcnt[name] != sc) { skip++; printf "MSG ✗ 文件数不符(%d vs %d)，跳过: %s\n", sc, bcnt[name], name; next }
-        if (bbyt[name] != sb) { skip++; printf "MSG ✗ 字节数不符，跳过: %s\n", name; next }
+        # ⊇ 语义(2026-09-11 与 clean_old_wf_windows.sh 同步修):备份是只增不减的
+        # 归档,本机被清理过的 run 目录会成为备份的真子集,"必须完全相等"会误判为
+        # 备份不完整而永远删不掉。判据改为备份不得少于本机。
+        if (bcnt[name] < sc) { skip++; printf "MSG ✗ 备份文件数少于本机(%d vs %d)，跳过: %s\n", sc, bcnt[name], name; next }
+        if (bbyt[name] < sb) { skip++; printf "MSG ✗ 备份字节数少于本机，跳过: %s\n", name; next }
         ok++; files+=sc; bytes+=sb
         print "DEL " path
       }

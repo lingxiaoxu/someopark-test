@@ -9,10 +9,9 @@
 //     to ONE of the 12 competitions, so a detected trigger carries `params.league`
 //     (and `params.clubs`) — the grounding loader uses that to inject one league's
 //     slice instead of all twelve, which is the difference between 8 KB and 300 KB.
-//  2. Club names are data, not prose: 399 clubs × (English | 中文 | 日本語) come from
-//     the SAME i18n namespace the UI renders (soccer.club.*), so a name the user sees
-//     on a card is a name chat understands. They are loaded lazily from disk rather
-//     than hand-copied, because hand-copying 1,200 surface forms cannot be kept honest.
+//  2. Club names are data, not prose: the reviewed identity catalog plus all five
+//     soccer.club locale maps are shared with the UI. A displayed name resolves to
+//     the same immutable club_id in chat, with collisions left unresolved.
 //
 // The 12 competition names ARE hand-curated (not read from soccer.league.*) on purpose:
 // several UI labels are unusable as free-text triggers — ja "CL"/"EL"/"ECL" and fr
@@ -22,6 +21,8 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { createClubIdentityIndex, foldClubName, normalizeClubName, soccerClubCatalog,
+  type ClubIdentityRecord } from '../../src/lib/soccerClubIdentity'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const appRoot = path.resolve(__dirname, '..', '..')
@@ -274,16 +275,14 @@ const CJK_RE = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/
 const hasCjk = (s: string) => CJK_RE.test(s)
 
 function normLatin(s: string): string {
-  return (s || '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // Dečić -> decic, Žilina -> zilina
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+  return foldClubName(s)
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
 }
 
 /** Every 1..4-word window of the message, so a multi-word club/league name matches on
  *  word boundaries in one pass instead of 1,200 substring scans. */
-function latinWindows(message: string, maxN = 4): Set<string> {
+function latinWindows(message: string, maxN = 7): Set<string> {
   const toks = normLatin(message).split(' ').filter(Boolean)
   const out = new Set<string>()
   for (let i = 0; i < toks.length; i++) {
@@ -293,8 +292,8 @@ function latinWindows(message: string, maxN = 4): Set<string> {
 }
 
 // ── club index (lazy, from the SAME i18n the UI renders) ─────────────────────
-// zh.json / ja.json carry soccer.club.<club_id> for all 399 clubs; the English name is
-// the club's own `name` in the exported data. Loaded on first use and re-read after a
+// All five locale files carry soccer.club.<club_id> for the 409 reviewed clubs.
+// Current export names extend the catalog for new explicit IDs. Re-read after a
 // TTL so a newly-promoted club (the Conference League long tail turns over) appears
 // without a server restart. Any read failure degrades to "no club triggers", never a throw.
 type ClubIndex = {
@@ -303,6 +302,7 @@ type ClubIndex = {
   weakLatin: Set<string>
   names: Map<string, { id: string; name: string; league?: string }>
   loadedAt: number
+  identity: ReturnType<typeof createClubIdentityIndex>
 }
 const CLUB_TTL_MS = 15 * 60 * 1000
 let _clubIndex: ClubIndex | null = null
@@ -324,6 +324,12 @@ function readJsonSync(file: string): any {
 function buildClubIndex(): ClubIndex {
   const idx: ClubIndex = {
     latin: new Map(), cjk: [], weakLatin: new Set(), names: new Map(), loadedAt: Date.now(),
+    identity: createClubIdentityIndex([]),
+  }
+  const records: ClubIdentityRecord[] = [...soccerClubCatalog];
+  for (const c of soccerClubCatalog) {
+    idx.names.set(c.club_id, { id: c.club_id, name: c.source_name,
+      league: c.competitions?.length === 1 ? c.competitions[0] : undefined });
   }
   // English names + league membership come from the exported style matrix (one row per
   // club in the whole system — the widest club roster we publish).
@@ -331,20 +337,26 @@ function buildClubIndex(): ClubIndex {
   for (const t of styles?.teams ?? []) {
     if (!t?.team_id || !t?.name) continue
     idx.names.set(t.team_id, { id: t.team_id, name: t.name, league: t.league })
-    addForm(idx, t.team_id, t.name)
+    records.push({ club_id: t.team_id, source_name: t.name })
   }
-  // 中文 / 日本語 names from the UI's own dictionary.
-  for (const lang of ['zh', 'ja']) {
+  // Every display language participates in identity recognition.
+  for (const lang of ['zh', 'en', 'ja', 'fr', 'es']) {
     const loc = readJsonSync(path.resolve(appRoot, 'src', 'i18n', 'locales', `${lang}.json`))
     for (const [id, name] of Object.entries<any>(loc?.soccer?.club ?? {})) {
-      if (typeof name === 'string' && name) addForm(idx, id, name)
+      if (typeof name === 'string' && name && idx.names.has(id))
+        records.push({ club_id: id, source_name: name })
     }
+  }
+  idx.identity = createClubIdentityIndex(records)
+  for (const record of records) {
+    for (const form of [record.club_id, record.source_name, ...(record.aliases || [])])
+      addForm(idx, record.club_id, form)
   }
   return idx
 }
 
 function addForm(idx: ClubIndex, id: string, raw: string) {
-  const form = raw.trim()
+  const form = normalizeClubName(raw)
   if (!form) return
   if (hasCjk(form)) {
     const weak = form.length <= 2 || EXTRA_WEAK_FORMS.has(form)
@@ -371,21 +383,8 @@ export function soccerClubMeta(id: string) { return clubIndex().names.get(id) ??
  *  named a club explicitly — so weak forms count here (no corroboration needed). */
 export function resolveSoccerClub(query: string): string[] {
   if (!query) return []
-  const idx = clubIndex()
-  const exact = idx.latin.get(normLatin(query))
-  if (exact?.length) return exact
-  if (idx.names.has(query)) return [query]                       // already a club_id
-  const hits = new Set<string>()
-  for (const { form, id } of idx.cjk) if (form === query) hits.add(id)
-  if (hits.size) return [...hits]
-  // Loose fallback: the query contains a known name or vice versa (e.g. "曼联队",
-  // "Man United" typed as "manchester united fc").
-  const q = normLatin(query)
-  if (q) for (const [key, ids] of idx.latin) {
-    if (key.length >= 4 && (key.includes(q) || q.includes(key))) ids.forEach((i) => hits.add(i))
-  }
-  for (const { form, id } of idx.cjk) if (form.length >= 2 && query.includes(form)) hits.add(id)
-  return [...hits]
+  const id = clubIndex().identity.resolve(query)
+  return id ? [id] : []
 }
 
 // ── detection ────────────────────────────────────────────────────────────────
@@ -404,12 +403,27 @@ function matchClubs(message: string, windows: Set<string>, corroborated: boolean
   const idx = clubIndex()
   const strong = new Set<string>()
   const weak = new Set<string>()
+  // Match full registered spans, longest first. A Liverpool Montevideo mention
+  // must not also select Liverpool merely because that shorter name is a prefix.
+  const latinMessage = ` ${normLatin(message)} `
+  const spans: { start: number; end: number; id: string; weak: boolean; script: string }[] = []
   for (const key of windows) {
     const ids = idx.latin.get(key)
-    if (ids) ids.forEach((id) => (idx.weakLatin.has(key) ? weak : strong).add(id))
+    if (ids?.length !== 1) continue
+    const needle = ` ${key} `
+    for (let start = latinMessage.indexOf(needle); start >= 0; start = latinMessage.indexOf(needle, start + 1))
+      spans.push({ start, end: start + needle.length, id: ids[0], weak: idx.weakLatin.has(key), script: 'latin' })
   }
+  const canonicalMessage = normalizeClubName(message)
   for (const { form, id, weak: isWeak } of idx.cjk) {
-    if (message.includes(form)) (isWeak ? weak : strong).add(id)
+    if (idx.identity.candidates(form).size !== 1) continue
+    for (let start = canonicalMessage.indexOf(form); start >= 0; start = canonicalMessage.indexOf(form, start + 1))
+      spans.push({ start, end: start + form.length, id, weak: isWeak, script: 'cjk' })
+  }
+  for (const hit of spans) {
+    if (spans.some((other) => other.script === hit.script && other.start <= hit.start && other.end >= hit.end
+      && other.end - other.start > hit.end - hit.start)) continue
+    (hit.weak ? weak : strong).add(hit.id)
   }
   // A weak form ("Nice", 汉堡) only counts once something else in the message says
   // football — a competition, a topic word, or an unambiguous club name.

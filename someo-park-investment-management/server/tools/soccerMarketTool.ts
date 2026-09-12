@@ -23,6 +23,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.resolve(__dirname, '..', '..', 'public', 'data', 'soccer')
 
 // view → file + what it holds. Mirrors predictionMarketTool's VIEWS.
+function snapshotMeta(data: any) {
+  return { as_of: data?.as_of, ts: data?.ts, source_as_of: data?.source_as_of,
+    data_status: data?.data_status, operations: data?.operations, sources: data?.sources,
+    scan_error: data?.scan_error }
+}
+
 const VIEWS: Record<string, { file: string; about: string }> = {
   season_odds:     { file: 'soccer_model.json',          about: 'the season board per competition: model p_champion / p_top_n (Europe places) / p_relegation / expected points+rank from the season Monte-Carlo, PLUS the tradable boards from season_odds.json (model¢ vs Kalshi¢ vs Polymarket¢ and our edge, per champion / top_n / relegation family). `odds_state` is "pending_draw" for a competition whose bracket is not drawn yet — every probability is then null, which means UNKNOWN, not 0%' },
   league_table:    { file: 'soccer_model.json',          about: 'the current standings (points / goal difference / goals for / played, and `zone` for zoned competitions like the Argentine Apertura); the live table the season Monte-Carlo starts from' },
@@ -37,12 +43,12 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   styles:          { file: 'team_styles.json',           about: 'the style taxonomy: 10 style codes (possession / direct / high-press / low-block / dominant-attack / clinical / high-volume / set-piece / balanced / contained); each club carries 1–2 styles plus raw metrics (possession, xG, directness). Descriptive scouting aid, not a prediction' },
   divergence:      { file: 'xv_matches.json',            about: 'per-match model-vs-market divergence: our 3-way against the de-vigged Kalshi / Polymarket / bookmaker line, with the biggest-disagreement side' },
   champion_divergence: { file: 'xv_champion.json',       about: 'season-champion model-vs-market divergence: p_champion against the Shin de-vigged Kalshi champion book, per competition' },
-  performance:     { file: 'performance_report.json',    about: 'the track record: Brier vs uniform (raw + calibrated), log-loss, favourite hit rate, trade-grade gate, the headline W-L / P&L in cents and units (decision / realized-with-smart-exit / hold-to-FT / argmax variants), and the most recent settled bets. For the full bet-by-bet series with a running cumulative curve use get_soccer_track_record instead' },
+  performance:     { file: 'performance_report.json',    about: 'the canonical full-model SMART TIMING ledger: pre-match plus in-play positions with recorded smart exits, position P&L before fees and three cumulative curves. The dashboard, price track and PnL PDF use identical records. Historical PIT evidence is disclosed separately; Kalshi demo fills are only an execution subset. Probability diagnostics are not strategy win rates. For every ledger row use get_soccer_track_record' },
   calibration:     { file: 'oos_report.json',            about: 'out-of-sample reliability: Brier + CI, log-loss, predicted vs observed draw and home rates, predicted vs observed goal totals — the directional health check' },
   backtest:        { file: 'backtest.json',              about: 'model vs market vs uniform Brier over every settled match, the trade-grade verdict, the blend curve, and the most recent settled matches with the model\'s pick and probability' },
   params:          { file: 'param_select_club.json',     about: 'the parameter selection: three candidate knob sets (the club default, the World Cup values, and a refit) scored out-of-sample on a held-out split, with the winner, whether it was adopted, and the per-competition Brier of the test split. A candidate is only adopted when it beats the incumbent out-of-sample, so `adopted: false` means the incumbent held — not that the search failed' },
   bracket:         { file: 'bracket.json',                about: 'the drawn knockout brackets: each cup round with its ties, both legs, aggregate score where a first leg has been played, and each side\'s probability of advancing. Only rounds that have actually been DRAWN appear — an undrawn round is absent rather than shown with placeholder teams' },
-  pricetrack:      { file: 'milestone_marks.json',       about: 'per-contract ¢ and probability at each match milestone (PRE / 15\' / 30\' / HT / 60\' / 75\' / FT), our pre-match pick and entry ¢, the mark-to-market and the smart-exit cash-out' },
+  pricetrack:      { file: 'milestone_marks.json',       about: 'the same canonical smart-timing strategy records as performance and the PnL PDF, enriched with observed market quotes at PRE / 15\' / 30\' / HT / 60\' / 75\' / FT. Quotes are per-contract cents; realized P&L and the PRE/in-play/combined cumulative totals are position cents. price_only_matches have no recorded strategy position and are outside the model ledger' },
   calibration_gate:{ file: 'calibration.json',           about: 'the calibration mapping actually applied: pooled temperature + draw boost, and the PER-COMPETITION gate (§3.5). A league with fewer than 30 settled matches is `cold_start` and falls back to the pooled mapping ("applies":"pooled")' },
   risk:            { file: 'risk_report.json',           about: 'pre-trade gates, venue balances (Kalshi demo/prod, Polymarket US), the $1 hard order cap, open exposure, API request budget, the calibration gate and the kill switch' },
   overview:        { file: 'frontend_overview.json',     about: 'system overview: headline gate state, calibration summary, the 12 competitions with team counts / matches remaining / current leader, the Kalshi series in play, and the model notes' },
@@ -91,6 +97,33 @@ function leagueSlice(data: any, league: string | null): any[] {
 
 const matchClub = (m: any, ids: Set<string>) =>
   inClub(ids, m?.home?.id, m?.away?.id, m?.home_id, m?.away_id)
+
+// Aggregate only recorded smart-timing position returns. Never substitute the
+// terminal winner or HOLD P&L, and never rewrite stored cumulative columns.
+export function smartTimingScopeSummary(records: any[]) {
+  const track = (key: string, eligible: (row: any) => boolean) => {
+    const legs = records.filter(eligible)
+    const values = legs.map((row) => row[key]).filter((v) => typeof v === 'number' && Number.isFinite(v))
+    const cents = values.reduce((sum, v) => sum + Math.round(v * 10), 0) / 10
+    return { n_legs: legs.length, unknown: legs.length - values.length, profit: values.filter((v) => v > 0).length,
+      loss: values.filter((v) => v < 0).length, flat: values.filter((v) => v === 0).length,
+      pnl_cents: values.length === legs.length ? cents : null, pnl_usd: values.length === legs.length ? cents / 100 : null }
+  }
+  const pre = track('realized_pnl_cents', (row) => !!row.bet)
+  const inplay = track('inplay_pnl_cents', (row) => !!row.inplay_side)
+  const cents = pre.pnl_cents == null || inplay.pnl_cents == null ? null : Math.round((pre.pnl_cents + inplay.pnl_cents) * 10) / 10
+  return { n_matches: records.length, n_legs: pre.n_legs + inplay.n_legs, pre, inplay,
+    combined: { n_legs: pre.n_legs + inplay.n_legs, profit: pre.profit + inplay.profit,
+      loss: pre.loss + inplay.loss, flat: pre.flat + inplay.flat, unknown: pre.unknown + inplay.unknown,
+      pnl_cents: cents, pnl_usd: cents == null ? null : cents / 100 } }
+}
+
+function ledgerMeta(data: any) {
+  const ledger = data.strategy_ledger
+  return { ledger_id: ledger?.ledger_id, ledger_as_of: ledger?.as_of,
+    full_ledger_summary: ledger?.summary, pnl_basis: ledger?.pnl_basis ?? data.pnl_basis,
+    cumulative_scope: 'Stored cumulative columns always refer to the full canonical ledger, including when rows are filtered.' }
+}
 
 // ── tool 1: the view reader (mirrors get_prediction_market) ──────────────────
 export const soccerMarketTool: AgentTool = {
@@ -157,14 +190,17 @@ export const soccerMarketTool: AgentTool = {
       const boards = await _load('season_odds.json')
       const byId = new Map(leagueSlice(boards, lg).map((l: any) => [l.league, l]))
       return {
-        meta: data.meta, scope,
+        ...snapshotMeta(data), meta: data.meta, scope,
         leagues: leagueSlice(data, lg).map((l: any) => ({
           league: l.league, name: l.name, zh: l.zh, kind: l.kind, odds_state: l.odds_state,
+          odds_family_states: l.odds_family_states, availability_reason: l.availability_reason,
+          coverage: l.coverage, odds_notes: l.odds_notes, odds_notes_i18n: l.odds_notes_i18n, source_as_of: l.source_as_of,
           top_n: l.top_n, releg_direct: l.releg_direct, n_remaining: l.n_remaining,
           model: (l.season_odds ?? []).filter((r: any) => inClub(ids, r.club_id)).slice(0, n),
           // venue boards: model¢ vs Kalshi¢ vs Poly¢ + edge, per family
           boards: (byId.get(l.league)?.boards ?? []).map((b: any) => ({
             family: b.family, label: b.label, kalshi_series: b.kalshi_series,
+            state: b.state, availability_reason: b.availability_reason,
             rows: (b.rows ?? []).filter((r: any) => inClub(ids, r.club_id)).slice(0, n),
           })),
         })),
@@ -173,7 +209,7 @@ export const soccerMarketTool: AgentTool = {
     if (view === 'league_table') {
       const n = budget(top, lg, 30, 10)
       return {
-        meta: data.meta, scope,
+        ...snapshotMeta(data), meta: data.meta, scope,
         leagues: leagueSlice(data, lg).map((l: any) => ({
           league: l.league, name: l.name, zh: l.zh, kind: l.kind, zones: l.zones,
           n_teams: l.n_teams, n_remaining: l.n_remaining,
@@ -190,7 +226,7 @@ export const soccerMarketTool: AgentTool = {
         }))
         .filter((l: any) => l.top_scorer.length)
       return {
-        meta: data.meta, scope, leagues: rows,
+        ...snapshotMeta(data), meta: data.meta, scope, leagues: rows,
         note: rows.length ? undefined : 'No top-scorer race for this scope — cup and Swiss-format competitions do not run one.',
       }
     }
@@ -201,53 +237,56 @@ export const soccerMarketTool: AgentTool = {
       let matches = (data.matches ?? []) as any[]
       if (lg) matches = matches.filter((m) => m.league === lg)
       if (ids.size) matches = matches.filter((m) => matchClub(m, ids))
-      return { as_of: data.as_of, note: data.note, scope, n_total: matches.length, matches: matches.slice(0, n) }
+      return { ...snapshotMeta(data), as_of: data.as_of, note: data.note, scope, n_total: matches.length, matches: matches.slice(0, n) }
     }
     if (view === 'schedule') {
       const n = budget(top, lg, 40, 15)
       let matches = (data.matches ?? []) as any[]
       if (lg) matches = matches.filter((m) => m.league === lg)
       if (ids.size) matches = matches.filter((m) => matchClub(m, ids))
-      return { as_of: data.as_of, window: data.window, scope, n_total: matches.length, matches: matches.slice(0, n) }
+      return { ...snapshotMeta(data), as_of: data.as_of, window: data.window, scope, n_total: matches.length, matches: matches.slice(0, n) }
     }
     if (view === 'inplay' || view === 'inplay_advance') {
       let matches = (data.matches ?? []) as any[]
       // inplay_live_advance.json rows carry no `league` field — filter those by club only.
-      if (lg && view === 'inplay') matches = matches.filter((m) => m.league === lg)
+      if (lg) matches = matches.filter((m) => m.league === lg)
       if (ids.size) matches = matches.filter((m) => matchClub(m, ids))
       if (!matches.length) {
-        return { ts: data.ts, n_live: 0, matches: [], scope,
-          message: view === 'inplay'
+        return { ...snapshotMeta(data), ts: data.ts, n_live: 0, matches: [], scope,
+          message: data.scan_error || !data.ts || Date.now() - Date.parse(data.ts) > 900000 || ['degraded', 'unavailable'].includes(data.data_status?.state)
+            ? 'The in-play snapshot is incomplete or unavailable; no reliable conclusion about live matches or opportunities can be drawn.'
+            : view === 'inplay'
             ? 'No match is live in this scope right now, so there are no in-play signals — they only exist while a match is being played. Use view="predictions" for upcoming fixtures and kickoff times.'
             : 'No two-legged / knockout tie is live in this scope right now, so there is no "who advances" in-play view. Upcoming ties carry an `advance` block in view="predictions".' }
       }
-      return { ts: data.ts, n_live: matches.length, scope, matches }
+      return { ...snapshotMeta(data), ts: data.ts, n_live: matches.length, scope, matches }
     }
     if (view === 'divergence') {
       const n = budget(top, lg, 20, 10)
       let matches = (data.matches ?? []) as any[]
       if (lg) matches = matches.filter((m) => m.league === lg)
       if (ids.size) matches = matches.filter((m) => matchClub(m, ids))
-      return { as_of: data.as_of, note: data.note, scope, n_total: matches.length, matches: matches.slice(0, n) }
+      return { ...snapshotMeta(data), as_of: data.as_of, note: data.note, scope, n_total: matches.length, matches: matches.slice(0, n) }
     }
     if (view === 'champion_divergence') {
       const n = budget(top, lg, 25, 8)
       return {
-        as_of: data.as_of, note: data.note, scope,
+        ...snapshotMeta(data), as_of: data.as_of, note: data.note, scope,
         leagues: leagueSlice(data, lg).map((l: any) => ({
           ...l, rows: (l.rows ?? []).filter((r: any) => inClub(ids, r.club_id)).slice(0, n),
         })),
       }
     }
     if (view === 'pricetrack') {
-      // milestone_marks rows carry no competition field, so `league` cannot narrow this
-      // view — say so rather than silently returning an unfiltered answer.
-      const n = budget(top, null, 15, 8)
+      if (!data.strategy_ledger?.records) return { ...snapshotMeta(data), message: 'The canonical smart-timing ledger is unavailable.' }
+      const n = budget(top, lg, 15, 8)
       let matches = (data.matches ?? []) as any[]
+      if (lg) matches = matches.filter((m) => (m.strategy_record?.league ?? m.league) === lg)
       if (ids.size) matches = matches.filter((m) => matchClub(m, ids))
-      return { as_of: data.as_of, milestones: data.milestones, note: data.note, scope,
-        league_filter_applied: lg ? false : undefined,
-        n_total: matches.length, matches: matches.slice(0, n) }
+      return { ...snapshotMeta(data), ...ledgerMeta(data), milestones: data.milestones, note: data.note, scope,
+        scope_summary: smartTimingScopeSummary(matches.map((m) => m.strategy_record).filter(Boolean)),
+        n_total: matches.length, matches: matches.slice(-n),
+        full_price_only_count: (data.price_only_matches ?? []).length }
     }
     if (view === 'backtest') {
       // The per-match settled list is 635 rows of noise next to the headline metrics.
@@ -271,10 +310,15 @@ export const soccerMarketTool: AgentTool = {
     // ── whole-system files: no league dimension, return as-is (bet log trimmed) ──
     if (view === 'performance') {
       const n = budget(top, lg, 15, 15)
-      let log = (data.bet_log ?? []) as any[]
+      if (!data.strategy_ledger?.records) return { ...snapshotMeta(data), message: 'The canonical smart-timing ledger is unavailable.' }
+      let log = data.strategy_ledger.records as any[]
+      if (lg) log = log.filter((b) => b.league === lg)
       if (ids.size) log = log.filter((b) => matchClub(b, ids))
-      // Newest bets first — the tail of the log is what a "how are we doing" answer needs.
-      return { ...data, scope, n_bets: log.length, bet_log: log.slice(-n).reverse() }
+      return { ...snapshotMeta(data), ...ledgerMeta(data), scope, scope_summary: smartTimingScopeSummary(log),
+        n_records: log.length, records: log.slice(-n), evidence_summary: data.evidence_summary,
+        probability_diagnostics: { brier: data.brier, calibrated_brier: data.calibrated_brier,
+          model_pred_accuracy: data.model_pred_accuracy, trade_grade: data.trade_grade },
+        demo_execution_is_subset: true }
     }
     return { ...data, scope }
   },
@@ -326,6 +370,8 @@ export const soccerClubTool: AgentTool = {
         .filter((b: any) => b.row)
       competitions.push({
         league: l.league, name: l.name, zh: l.zh, kind: l.kind, odds_state: l.odds_state,
+          odds_family_states: l.odds_family_states, availability_reason: l.availability_reason,
+          coverage: l.coverage, odds_notes: l.odds_notes, odds_notes_i18n: l.odds_notes_i18n, source_as_of: l.source_as_of,
         table_row: table ?? null, season_odds: odds ?? null,
         venue_boards: boardRows, top_scorer_candidates: scorers,
       })
@@ -466,14 +512,16 @@ export const soccerTrackRecordTool: AgentTool = {
   definition: {
     name: 'get_soccer_track_record',
     description:
-      'The Club Soccer betting track record as a TIME SERIES: every settled bet with its pick, ' +
-      'result, entry ¢, P&L and the running cumulative curve, plus a summary (W-L, units, cents, ' +
-      'ROI) and the trade-grade gate. Optional filters: club, since (YYYY-MM-DD), stage ' +
+      'The canonical Club Soccer SMART TIMING ledger, identical to Accuracy/PnL, Price Track and the PnL PDF: ' +
+      'every recorded PRE and in-play position with entry/exit quotes, stake, realized position P&L before fees ' +
+      'and the original PRE/in-play/combined cumulative columns. Summary counts profit/loss/flat from realized ' +
+      'returns, not terminal match winners. Demo fills are a separate execution subset. Optional filters: league, club, since (YYYY-MM-DD), stage ' +
       '("league" or "knockout"). Use for "how are our predictions doing", "are we profitable", ' +
       '"show the P&L curve".',
     input_schema: {
       type: 'object',
       properties: {
+        league: { type: 'string', description: 'Only this competition (league id or translated name).' },
         club: { type: 'string', description: 'Only bets on matches involving this club.' },
         stage: { type: 'string', description: 'Only this stage ("league" / "knockout" / a cup round name).' },
         since: { type: 'string', description: 'Only bets on/after this date (YYYY-MM-DD).' },
@@ -483,41 +531,30 @@ export const soccerTrackRecordTool: AgentTool = {
   },
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
-  async execute({ club, stage, since }) {
+  async execute({ club, league, stage, since }) {
     const perf = await _load('performance_report.json')
-    let log: any[] = perf?.bet_log ?? []
-    if (!log.length) return { message: 'No settled bets yet — the track record starts once matches settle.' }
+    let log: any[] = perf?.strategy_ledger?.records ?? []
+    if (!perf) return { data_status: { state: 'unavailable', issues: [{ code: 'source_unavailable' }] }, message: 'The performance snapshot could not be loaded.' }
+    if (!perf.strategy_ledger?.records) return { ...snapshotMeta(perf), message: 'The canonical smart-timing ledger is unavailable.' }
     const ids = clubIds(club)
     if (club && !ids.size) return { error: `Club "${club}" not found.` }
+    const lg = resolveLeague(league)
+    if (league && !lg) return { error: `Competition "${league}" not found.` }
+    if (lg) log = log.filter((b) => b.league === lg)
     if (ids.size) log = log.filter((b) => matchClub(b, ids))
-    if (stage) log = log.filter((b) => (b.stage ?? '').toLowerCase() === String(stage).toLowerCase())
-    if (since) log = log.filter((b) => (b.date ?? '') >= since)
-    if (!log.length) return { message: `No settled bets match that filter (club=${club}, stage=${stage}, since=${since}).` }
-
-    // Recompute the curve over the filtered slice — the stored cum_* columns are for
-    // the full log and would be wrong the moment anything is filtered out.
-    let cum = 0, cents = 0, wins = 0
-    const pnl_curve = log.map((b) => {
-      cum += b.pnl ?? 0; cents += b.pnl_cents ?? 0; wins += b.won ? 1 : 0
-      return { date: b.date, match: `${b.home} ${b.score} ${b.away}`, stage: b.stage,
-        pick: b.pick_team, result: b.result, won: !!b.won, entry_cents: b.entry_cents,
-        odds: b.dec_odds, pnl: b.pnl, pnl_cents: b.pnl_cents,
-        cum_pnl: Math.round(cum * 100) / 100, cum_pnl_cents: Math.round(cents * 10) / 10 }
-    })
-    const byStage: Record<string, any> = {}
-    for (const b of log) {
-      const s = (byStage[b.stage] ||= { bets: 0, wins: 0, pnl: 0 })
-      s.bets++; s.wins += b.won ? 1 : 0; s.pnl = Math.round((s.pnl + (b.pnl ?? 0)) * 100) / 100
+    if (stage) {
+      const requested = String(stage).toLowerCase()
+      log = log.filter((b) => requested === 'league'
+        ? ['group', 'league'].includes((b.stage ?? '').toLowerCase())
+        : (b.stage ?? '').toLowerCase() === requested)
     }
+    if (since) log = log.filter((b) => (b.date ?? '') >= since)
     return {
-      summary: {
-        bets: log.length, record: `${wins}W-${log.length - wins}L`,
-        pnl_units: Math.round(cum * 100) / 100, pnl_cents: Math.round(cents * 10) / 10,
-        roi: Math.round((cum / log.length) * 1000) / 1000,
-        since: log[0].date, trade_grade: perf?.trade_grade, avg_clv_cents: perf?.avg_clv_cents,
-      },
-      by_stage: byStage,
-      pnl_curve,
+      ...snapshotMeta(perf), ...ledgerMeta(perf),
+      scope: { club, league: lg, stage, since }, scope_summary: smartTimingScopeSummary(log),
+      evidence_summary: perf.evidence_summary,
+      records: log,
+      note: 'Use realized_pnl_cents for PRE and inplay_pnl_cents for in-play. Quote cents are per contract; P&L cents are for the recorded position. Legacy HOLD/argmax fields retained in each immutable source row are not the strategy return. Historical rows are not established as strict PIT. Demo account P&L does not represent this full model ledger.',
     }
   },
 }
@@ -536,7 +573,7 @@ const SOCCER_TYPE_TO_VIEW: Record<string, string> = {
   soccer_pricetrack: 'pricetrack', soccer_performance: 'performance',
   soccer_calibration: 'calibration', soccer_backtest: 'backtest', soccer_params: 'params',
   soccer_overview: 'overview', soccer_model_notes: 'overview', soccer_venues: 'risk',
-  soccer_pdfs: 'overview', soccer_bracket: 'bracket',
+  soccer_pdfs: 'performance', soccer_bracket: 'bracket',
   soccer_risk: 'risk', soccer_budget: 'risk', soccer_methodology: 'overview',
 }
 
@@ -559,18 +596,18 @@ export async function soccerContextForArtifacts(
     if (total >= _TOTAL_CAP) break
     try {
       const data = await soccerMarketTool.execute({ view, league, club })
-      if (!data || (data as any).error) continue
+      if (!data || (data as any).error) { blocks.push(`### view="${view}" — data unavailable; do not infer no matches or invent values.`); continue }
       let json = JSON.stringify(data)
       if (json.length > _PER_VIEW_CAP) json = json.slice(0, _PER_VIEW_CAP) + ' …[truncated]'
       const block = `### view="${view}" — ${VIEWS[view].about}\n${json}`
       blocks.push(block)
       total += block.length
-    } catch { /* one view failing must not cost the others their grounding */ }
+    } catch { blocks.push(`### view="${view}" — data unavailable; do not infer no matches.`) }
   }
   if (!blocks.length) return ''
   const scope = league ? ` (scoped to ${soccerLeagueDef(league)?.label ?? league})` : ''
-  return `## Club Soccer prediction-market data${scope} — authoritative; these are the live ` +
-    'numbers on the panel the user is looking at. Answer ONLY from them, do not invent figures, ' +
+  return `## Club Soccer prediction-market data${scope} — stored snapshots; these are the ` +
+    'numbers on the panel. Check source_as_of, as_of, data_status and operations before calling them current. A fresh browser fetch does not refresh the source. Missing model or quote data is unavailable, not no matches or no market. Champion odds must refer to winning the complete tournament, never substitute league-phase first place. Answer ONLY from the snapshots, do not invent figures, ' +
     'and say so when a value is absent (a null probability means UNKNOWN — e.g. a competition ' +
     'whose bracket is not drawn yet — never 0%).\n\n' + blocks.join('\n\n')
 }

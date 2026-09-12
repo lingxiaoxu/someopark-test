@@ -43,12 +43,46 @@ STATUS_FILE = LOGS / "disk_monitor_status.json"
 WATCH_DIR = CRYPTO_ROOT / "price_data"
 
 # ── thresholds (tune here) ───────────────────────────────────────────────────
-FREE_FLOOR_GB = 25.0          # warn: getting low
-FREE_CRITICAL_GB = 10.0       # critical: act now
-DAILY_GROWTH_WARN_GB = 2.0    # warn: growing >~3× the expected ~0.1–0.6 GB/day net
+FREE_FLOOR_GB = 60.0          # warn: getting low (raised 2026-09-11: at the
+                              # measured mlruns rate the old 25 GB floor left
+                              # under two days between first warning and dead
+                              # recorders)
+FREE_CRITICAL_GB = 25.0       # critical: act now
+DAILY_GROWTH_WARN_GB = 4.0    # warn above the ~2 GB/day mlruns baseline
 DAYS_TO_FULL_WARN = 45        # warn: at current rate, < this many days of headroom
 MIN_INTERVAL_FOR_RATE_S = 3600  # don't compute a rate from < 1h of elapsed time
 GB = 1024 ** 3
+
+# WHO is eating the disk. The 2026-09-11 exhaustion killed four recorders and
+# cost 12.9 h of irreplaceable 15-minute tape, and the first root-cause guess
+# (backups) was wrong — the actual driver was qlib-main/mlruns (+113.8 GB).
+# An alarm that only says "disk low" invites that same mis-attribution, so
+# each check also sizes the known growers and names the culprit. Sizing a
+# 20 GB tree is not free → cached, at most once per CULPRIT_INTERVAL_S.
+REPO_ROOT = CRYPTO_ROOT.parent
+CULPRITS = {
+    "mlruns": REPO_ROOT / "qlib-main" / "mlruns",
+    "crypto_backups": Path.home() / "crypto_data_backup",
+    "w8_tape": CRYPTO_ROOT / "price_data" / "kalshi" / "w8_complete_set",
+    "codex_backups": Path.home() / ".codex" / "backups",
+    "mlruns_root": REPO_ROOT / "mlruns",
+}
+CULPRIT_INTERVAL_S = 6 * 3600
+MLRUNS_WARN_GB = 60.0         # weekly cleanup keeps it ~25 GB; 60 means the
+                              # cleanup has been failing for weeks — say so
+
+
+def _du_gb(path: Path) -> float | None:
+    """Fast directory size via du -sk (a python walk over mlruns' hundreds of
+    thousands of files takes minutes; du takes seconds)."""
+    if not path.exists():
+        return None
+    try:
+        out = subprocess.run(["du", "-sk", str(path)], capture_output=True,
+                             text=True, timeout=600)
+        return int(out.stdout.split()[0]) * 1024 / GB
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
 
 
 def _dir_bytes(path: Path) -> int:
@@ -116,6 +150,32 @@ def check(*, now: float | None = None, force_alert: bool = False,
                       f"(< {DAYS_TO_FULL_WARN})")
         level = "warn" if level == "ok" else level
 
+    # name the culprit, don't just ring the bell
+    culprits = prev.get("culprits") or {}
+    if now - (culprits.get("ts") or 0) >= CULPRIT_INTERVAL_S or level != "ok":
+        sizes = {k: _du_gb(v) for k, v in CULPRITS.items()}
+        prev_sizes = (culprits.get("sizes") or {})
+        prev_ts = culprits.get("ts") or 0
+        rates = {}
+        if prev_ts and now - prev_ts >= MIN_INTERVAL_FOR_RATE_S:
+            for k, gb in sizes.items():
+                if gb is not None and prev_sizes.get(k) is not None:
+                    rates[k] = round((gb - prev_sizes[k])
+                                     / ((now - prev_ts) / 86400.0), 2)
+        culprits = {"ts": now, "sizes": {k: round(v, 2) for k, v in sizes.items()
+                                         if v is not None},
+                    "gb_per_day": rates}
+        ml = sizes.get("mlruns")
+        if ml is not None and ml > MLRUNS_WARN_GB:
+            alerts.append(f"mlruns at {ml:.0f} GB (> {MLRUNS_WARN_GB:.0f}) — "
+                          f"the weekly clean_old_mlruns has not been keeping up")
+            level = "warn" if level == "ok" else level
+        if rates:
+            top = max(rates, key=lambda k: rates[k])
+            if rates[top] > DAILY_GROWTH_WARN_GB:
+                alerts.append(f"fastest grower: {top} {rates[top]:+.1f} GB/day")
+                level = "warn" if level == "ok" else level
+
     status = {
         "ts": now,
         "iso": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now)),
@@ -128,6 +188,7 @@ def check(*, now: float | None = None, force_alert: bool = False,
         "hours_since_last": round(dt / 3600, 1) if dt else None,
         "level": level,
         "alerts": alerts,
+        "culprits": culprits,
     }
 
     LOGS.mkdir(parents=True, exist_ok=True)
@@ -137,7 +198,7 @@ def check(*, now: float | None = None, force_alert: bool = False,
     # persist state for the next rate computation
     STATE_FILE.write_text(json.dumps(
         {"ts": now, "disk_used_bytes": usage.used, "free_gb": free_gb,
-         "crypto_data_bytes": watch_bytes}))
+         "crypto_data_bytes": watch_bytes, "culprits": culprits}))
 
     if alerts or force_alert:
         title = f"crypto disk {level.upper()}"

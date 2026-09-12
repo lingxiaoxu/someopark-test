@@ -1,0 +1,18 @@
+{
+  "name": "publish",
+  "state": "ok",
+  "last_attempt_at": "2026-09-12T02:24:05.723575+00:00",
+  "last_success_at": "2026-09-12T03:04:36.936359+00:00",
+  "finished_at": "2026-09-12T03:04:36.936359+00:00",
+  "steps": [
+    {
+      "name": "refresh_build_deploy",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-12T02:24:05.727334+00:00",
+      "finished_at": "2026-09-12T03:04:36.935356+00:00"
+    }
+  ],
+  "last_success_input": null,
+  "last_activity_at": "2026-09-12T03:04:36.936362+00:00"
+}

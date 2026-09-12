@@ -39,9 +39,14 @@ Gate structure (§30.2, user: Brier series_gate is PAUSED for this path):
 from __future__ import annotations
 
 import json
+import math
 import os
 import urllib.request
 from datetime import datetime, timedelta, timezone
+
+from prediction_market_macro.util.quotes import (
+    MAX_QUOTE_AGE_SECONDS, quote_age_seconds, quote_status,
+)
 
 MIRROR_MULT = 100                 # paper $0.42 -> demo $42 (user-given constant)
 ORDER_TIMEOUT_MIN = 15            # non-terminal after this -> cancel + 'unfilled'
@@ -199,12 +204,46 @@ def _mirror_gate(conn, settings, series: str) -> str | None:
     return None
 
 
+def _mirror_window_gate(conn, fill, now: datetime | None = None) -> str | None:
+    """Revalidate the execution window after HTTP/SQLite waits, for buys and sells."""
+    from prediction_market_macro.config.registry import REGISTRY
+    now = now or datetime.now(timezone.utc)
+    decision = conn.execute("SELECT series,period FROM decisions WHERE id=?",
+                            (fill["decision_id"],)).fetchone()
+    spec = REGISTRY.get(decision["series"]) if decision else None
+    if spec is None:
+        return "execution_window: unknown decision series"
+    contract = conn.execute("SELECT status,close_time FROM contracts WHERE ticker=?",
+                            (fill["ticker"],)).fetchone()
+    if contract is None or contract["status"] != "active":
+        return "execution_window: market not active"
+    try:
+        close = datetime.fromisoformat(contract["close_time"].replace("Z", "+00:00"))
+        if close <= now:
+            return "execution_window: market closed"
+    except (AttributeError, TypeError, ValueError):
+        return "execution_window: unverified close time"
+    release = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
+                           (spec.calendar, decision["period"])).fetchone()
+    if release is not None:
+        try:
+            until = (datetime.fromisoformat(release["scheduled_ts"]) - now).total_seconds()
+        except (TypeError, ValueError):
+            return "execution_window: invalid release time"
+        if 0 <= until <= 600:
+            return "execution_window: freeze_window"
+    return None
+
+
 # ── positions & balance sheet (§30.4) ────────────────────────────────────────
 
-def demo_positions(conn) -> list[dict]:
+def demo_positions(conn, now: datetime | None = None) -> list[dict]:
     """Open demo positions = Σ demo_fills per (ticker, side), buys − sells, minus
     settled tickers. The exchange positions endpoint only RECONCILES this; it is
-    never a second book of record."""
+    never a second book of record. Unusable production quotes carry at cost and
+    expose their source time/status; a new snapshot cannot make an old book live.
+    """
+    now = now or datetime.now(timezone.utc)
     rows = conn.execute(
         "SELECT f.ticker, f.side,"
         " SUM(CASE WHEN f.action='buy' THEN f.count ELSE -f.count END) AS net,"
@@ -215,24 +254,39 @@ def demo_positions(conn) -> list[dict]:
         " GROUP BY f.ticker, f.side HAVING net > 0").fetchall()
     out = []
     for r in rows:
-        mark = _prod_mark(conn, r["ticker"], r["side"])
+        valuation = _prod_valuation(conn, r["ticker"], r["side"], now)
+        mark = valuation["mark"]
         avg_cost = r["buy_cost"] / r["buy_n"] if r["buy_n"] else 0.0
         out.append({"ticker": r["ticker"], "side": r["side"], "count": r["net"],
-                    "avg_cost": round(avg_cost, 4), "mark": mark,
+                    "avg_cost": round(avg_cost, 4), **valuation,
                     "cost": round(avg_cost * r["net"], 2),
                     "mtm": round((mark if mark is not None else avg_cost) * r["net"], 2)})
     return out
 
 
-def _prod_mark(conn, ticker: str, side: str) -> float | None:
-    """PRODUCTION-book mid for MTM (same source as paper marks). Demo-book marks
-    never enter equity (§30.4 口径 1)."""
-    r = conn.execute("SELECT yes_bid, yes_ask FROM quotes WHERE ticker=?"
+def _prod_valuation(conn, ticker: str, side: str, now: datetime) -> dict:
+    """Current production mark and the quote evidence used to accept or reject it."""
+    r = conn.execute("SELECT ts, yes_bid, yes_ask FROM quotes WHERE ticker=?"
                      " ORDER BY ts DESC LIMIT 1", (ticker,)).fetchone()
-    if r is None or r["yes_bid"] is None or r["yes_ask"] is None:
-        return None
-    mid = (r["yes_bid"] + r["yes_ask"]) / 2.0
-    return round(mid if side == "yes" else 1.0 - mid, 4)
+    status = quote_status(r, now)
+    age = quote_age_seconds(r, now)
+    mark = None
+    if status == "marked":
+        mid = (r["yes_bid"] + r["yes_ask"]) / 2.0
+        mark = round(mid if side == "yes" else 1.0 - mid, 4)
+    return {"mark": mark, "mark_status": status,
+            "quote_ts": r["ts"] if r is not None else None,
+            "quote_age_seconds": round(age, 1) if age is not None else None,
+            "quote_max_age_seconds": MAX_QUOTE_AGE_SECONDS}
+
+
+def _prod_mark(conn, ticker: str, side: str, now: datetime | None = None) -> float | None:
+    """Fresh, usable production midpoint, under the same policy as paper marks.
+
+    Demo-book quotes never enter equity. Missing, stale or illiquid production
+    books have no mark; demo_positions explicitly carries those legs at cost.
+    """
+    return _prod_valuation(conn, ticker, side, now or datetime.now(timezone.utc))["mark"]
 
 
 def _realized_and_fees(conn) -> tuple[float, float]:
@@ -275,8 +329,9 @@ def _reserved(conn) -> float:
 
 def snapshot_balance_sheet(conn, cash_exchange: float | None = None) -> dict:
     """One identity, two sources; drift beyond tolerance HALTS the mirror."""
-    now = datetime.now(timezone.utc).isoformat()
-    pos = demo_positions(conn)
+    asof = datetime.now(timezone.utc)
+    now = asof.isoformat()
+    pos = demo_positions(conn, now=asof)
     realized, fees = _realized_and_fees(conn)
     reserved = _reserved(conn)
     transfers = _transfers_net(conn)
@@ -323,17 +378,31 @@ def _exposure(pos: list[dict]) -> dict:
 
 # ── the mirror itself ────────────────────────────────────────────────────────
 
-def _prod_ask(ticker: str) -> float | None:
-    """Latency-component re-fetch: production ask at send time. SINGLE try, short
-    timeout — kalshi_md's paced 9-retry client would blow the inline budget."""
+def _prod_price(ticker: str, side: str, action: str) -> float | None:
+    """Executable production price for this side/action, in side-denominated dollars.
+
+    Kalshi returns bids for both outcomes: buying YES consumes the complement of
+    NO bids, buying NO consumes the complement of YES bids, and selling consumes
+    bids on the held side. The legacy implementation returned YES ask for all four
+    directions, so its historical NO observations cannot measure latency.
+    SINGLE try, short timeout — a paced retry client would blow the inline budget.
+    """
+    if side not in ("yes", "no") or action not in ("buy", "sell"):
+        raise ValueError(f"invalid production price direction: {action} {side}")
     url = (f"https://api.elections.kalshi.com/trade-api/v2/markets/{ticker}"
            f"/orderbook?depth=1")
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "someopark-macro"})
         with urllib.request.urlopen(req, timeout=PRODASK_TIMEOUT_S) as r:
             fp = (json.load(r).get("orderbook_fp") or {})
-        no = [(float(p), float(s)) for p, s in (fp.get("no_dollars") or [])]
-        return round(1.0 - max(no, key=lambda x: x[0])[0], 4) if no else None
+        book_side = ("no" if side == "yes" else "yes") if action == "buy" else side
+        levels = [(float(p), float(s)) for p, s in (fp.get(f"{book_side}_dollars") or [])]
+        bids = [p for p, size in levels
+                if math.isfinite(p) and math.isfinite(size) and 0 <= p <= 1 and size > 0]
+        if not bids:
+            return None
+        best = max(bids)
+        return round(1.0 - best if action == "buy" else best, 4)
     except Exception:                                            # noqa: BLE001
         return None
 
@@ -398,14 +467,18 @@ def _mirror_one(conn, fill_id: int) -> None:
             "action": action, "count_target": target, "count_filled": 0,
             "paper_ask": float(f["price"]), "prod_ask_at_send": None,
             "avg_price": None, "fee_usd": None, "status": "dryrun",
+            "prod_price_basis": "side_action_v1",
             "order_id": None, "ts_sent": now, "ts_terminal": None, "note": None}
 
     def write(row):
         conn.execute(
-            "INSERT INTO demo_orders VALUES(:fill_id,:decision_id,:client_order_id,"
+            "INSERT INTO demo_orders(fill_id, decision_id, client_order_id, ticker,"
+            " side, action, count_target, count_filled, paper_ask, prod_ask_at_send,"
+            " avg_price, fee_usd, status, order_id, ts_sent, ts_terminal, note,"
+            " prod_price_basis) VALUES(:fill_id,:decision_id,:client_order_id,"
             " :ticker,:side,:action,:count_target,:count_filled,:paper_ask,"
             " :prod_ask_at_send,:avg_price,:fee_usd,:status,:order_id,:ts_sent,"
-            " :ts_terminal,:note)", row)
+            " :ts_terminal,:note,:prod_price_basis)", row)
         conn.commit()
 
     if action == "sell":
@@ -419,9 +492,12 @@ def _mirror_one(conn, fill_id: int) -> None:
             return
         base["count_target"] = count
     is_armed = armed(conn)
-    base["prod_ask_at_send"] = _prod_ask(ticker)                 # latency component
+    # Keep the historical column name; prod_price_basis makes its corrected
+    # side/action semantics explicit without rewriting old observations.
+    base["prod_ask_at_send"] = _prod_price(ticker, side, action)
     if not is_armed:
-        est_px = base["prod_ask_at_send"] or base["paper_ask"]
+        est_px = (base["paper_ask"] if base["prod_ask_at_send"] is None
+                  else base["prod_ask_at_send"])
         from prediction_market_macro.strategy.edge import taker_fee
         base.update(status="dryrun", avg_price=None,
                     fee_usd=round(taker_fee(est_px, base["count_target"]), 2),
@@ -460,6 +536,17 @@ def _mirror_one(conn, fill_id: int) -> None:
     write(base)                                                  # intent BEFORE send
     from prediction_market_macro.exec.kalshi_exec import place_taker_order
     mode = _get_state(conn, "taker_mode") or "market_capped"     # arming canary sets
+    # The production book request and the intent commit may each have crossed a
+    # freeze/close boundary. Nothing that can wait belongs between this check and
+    # the transport call. Catch-up sync must obey the current window too.
+    why = ("mirror disarmed before send" if not armed(conn) else
+           _mirror_gate(conn, s, series) or _mirror_window_gate(conn, f))
+    if why:
+        conn.execute("UPDATE demo_orders SET status=?,ts_terminal=?,note=? WHERE fill_id=?",
+                     ("skipped_halt" if "halt" in why else "skipped_gate",
+                      datetime.now(timezone.utc).isoformat(), why, fill_id))
+        conn.commit()
+        return
     res = place_taker_order(
         conn, ticker=ticker, side=side, action=action, count=base["count_target"],
         ref_price_cents=max(1, min(99, round(base["paper_ask"] * 100))),

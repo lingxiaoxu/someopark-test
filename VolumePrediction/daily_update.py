@@ -170,6 +170,7 @@ def run(date: Optional[str] = None, fetch: bool = True,
     # 纯函数入口（不走 argparse），避免 SystemExit 继承 BaseException 崩主流程。
     rnn_ab = None
     blend_ab = None
+    rnn_candidates = None
     if not skip_adapters:
         try:
             from VolumePrediction import shadow_rnn
@@ -186,6 +187,12 @@ def run(date: Optional[str] = None, fetch: bool = True,
         except Exception as e:  # noqa: BLE001 — blend 影子失败绝不影响主流程
             log.error(f"shadow_blend failed (non-fatal): {e}")
             blend_ab = {"status": "error", "error": str(e)}
+        try:
+            from VolumePrediction.rnn_maintenance import run_candidate_shadows
+            rnn_candidates = run_candidate_shadows(service=svc)
+        except Exception as e:  # candidates never replace production from daily_update
+            log.error(f"RNN candidate observation failed (non-fatal): {e}")
+            rnn_candidates = {"status": "error", "error": str(e)}
 
     health = svc.ops.health()
     # 静止检测告警(2026-08-26 B'): 某服务层与前一日预测**逐位相同** = 已冻死。
@@ -215,7 +222,8 @@ def run(date: Optional[str] = None, fetch: bool = True,
     out = {"status": "ok", "asof": asof, "refresh": res,
            "adapters": adapters, "health": health,
            "wiring_shadow": wiring, "rnn_ab_shadow": rnn_ab,
-           "blend_ab_shadow": blend_ab, "ticker_aliases": aliases}
+           "blend_ab_shadow": blend_ab, "rnn_candidates": rnn_candidates,
+           "ticker_aliases": aliases}
     if any(v.get("status") == "error" for v in adapters.values()):
         out["status"] = "partial"
     log.info(f"daily_update done: {out['status']} asof={asof} "

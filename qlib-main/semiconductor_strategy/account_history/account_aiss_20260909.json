@@ -1,0 +1,60 @@
+{
+  "as_of": "2026-09-09",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": -11978.66,
+  "positions": {
+    "ARM": {
+      "shares": 66,
+      "avg_cost": 253.529008,
+      "entry_date": "2026-05-29"
+    },
+    "AMD": {
+      "shares": 540,
+      "avg_cost": 481.117303,
+      "entry_date": "2026-07-01"
+    },
+    "INTC": {
+      "shares": 523,
+      "avg_cost": 94.884726,
+      "entry_date": "2026-07-01"
+    },
+    "ADI": {
+      "shares": 155,
+      "avg_cost": 358.533935,
+      "entry_date": "2026-08-28"
+    },
+    "MCHP": {
+      "shares": 257,
+      "avg_cost": 72.39179,
+      "entry_date": "2026-08-28"
+    },
+    "TXN": {
+      "shares": 1161,
+      "avg_cost": 256.768338,
+      "entry_date": "2026-08-28"
+    },
+    "AMAT": {
+      "shares": 39,
+      "avg_cost": 441.85,
+      "entry_date": "2026-09-01"
+    },
+    "KLAC": {
+      "shares": 1643,
+      "avg_cost": 170.89,
+      "entry_date": "2026-09-01"
+    },
+    "LRCX": {
+      "shares": 181,
+      "avg_cost": 289.87,
+      "entry_date": "2026-09-01"
+    }
+  },
+  "cumulative_realized": 37244.98,
+  "cumulative_dividends": 992.71,
+  "cumulative_fees": 1298.98,
+  "equity": 1097444.07,
+  "liabilities": {},
+  "unrealized": 60505.38,
+  "position_value": 1109422.73
+}

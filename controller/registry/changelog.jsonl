@@ -3217,3 +3217,17 @@
 {"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPRAGTQPDQ", "kind": "pair", "key": "mtfs|L:US4581401001|S:US5732841060", "display": "INTC/MLM"}
 {"ts": "2026-09-05T12:29:54+00:00", "event": "register_node", "spid": "SPPR4EPBATH", "kind": "pair", "key": "mtfs|L:US7185461040|S:US8447411088", "display": "PSX/LUV"}
 {"ts": "2026-09-05T12:36:27+00:00", "event": "build_master", "total": 281, "cusip_hit": 281, "placeholder": 0}
+{"ts": "2026-09-09T12:45:05+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:45:42+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:45:57+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:46:23+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:47:16+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:49:16+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:51:16+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:53:02+00:00", "event": "register_security", "isin": "US4448591028", "ticker": "HUM", "cusip": "444859102"}
+{"ts": "2026-09-09T12:53:07+00:00", "event": "register_security", "isin": "US21036P1084", "ticker": "STZ", "cusip": "21036P108"}
+{"ts": "2026-09-09T12:53:09+00:00", "event": "build_master", "total": 283, "cusip_hit": 283, "placeholder": 0}
+{"ts": "2026-09-09T12:53:11+00:00", "event": "register_node", "spid": "SPPRQ34B8D1", "kind": "pair", "key": "mrpt|L:US8636671013|S:US7611521078", "display": "RMD/SYK"}
+{"ts": "2026-09-09T12:53:11+00:00", "event": "register_node", "spid": "SPPROQGF97J", "kind": "pair", "key": "mtfs|L:US4448591028|S:US21036P1084", "display": "HUM/STZ"}
+{"ts": "2026-09-10T12:47:22+00:00", "event": "build_master", "total": 283, "cusip_hit": 283, "placeholder": 0}
+{"ts": "2026-09-11T12:54:17+00:00", "event": "build_master", "total": 283, "cusip_hit": 283, "placeholder": 0}

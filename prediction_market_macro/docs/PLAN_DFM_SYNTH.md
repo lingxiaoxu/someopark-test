@@ -4048,7 +4048,8 @@ distinction can survive into the daily log.
 
 `weekly_synth_regen` runs inside `refresh.run()`, which takes a non-blocking flock on
 `data/output/refresh.lock` (`ebdf6a9`). At 50.7 min the Sunday 10:30Z weekly therefore holds
-that lock for most of an hour, and the 15-minute ticks landing in the window will log
+that lock for most of an hour, and ticks landing in the window (now started every minute
+outside event windows, updated 2026-09-10) will log
 `✗ daily_refresh: pid=… started=…` and `mark_late`, then be picked up by the next tick.
 That is the designed behaviour — refuse rather than queue — and it is contained, because
 only the three daily tasks route through `refresh.run()`. It is recorded here so the Sunday

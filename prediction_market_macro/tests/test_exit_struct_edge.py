@@ -31,6 +31,18 @@ TS = "2026-08-05T00:00:00+00:00"
 PMF = {0.05: 0.4, 0.15: 0.35, 0.25: 0.25}
 
 
+@pytest.fixture(autouse=True)
+def live_clock(monkeypatch):
+    # Live freshness guards must evaluate the historical fixture at its own instant.
+    from datetime import datetime
+    from prediction_market_macro.ops import exits
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.fromisoformat(TS)
+    monkeypatch.setattr(exits, "datetime", Clock)
+
+
 @pytest.fixture()
 def conn(tmp_path):
     return init_db(tmp_path / "t.db")
@@ -108,8 +120,8 @@ def _ladder_position(conn, legs, series="KXPCECORE", period="2026-09"):
             (cur.lastrowid, TS, ticker, side, price, 1, 0.01))
         conn.execute(
             "INSERT INTO contracts(ticker, event_ticker, series, period, floor_strike,"
-            " strike_type, close_time, first_seen_ts)"
-            " VALUES(?,?,?,?,?,?,?,?)",
+            " strike_type, close_time, status, first_seen_ts)"
+            " VALUES(?,?,?,?,?,?,?,'active',?)",
             (ticker, f"{series}-26SEP", series, period, strike, "greater",
              "2026-09-30T00:00:00+00:00", TS))
     conn.execute(

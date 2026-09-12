@@ -171,7 +171,8 @@ def squad_adjusted_ratings(sm, idx: dict[str, SquadSummary], weight: float):
 
 
 def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
-                        xg_form: bool = False, league: str | None = None):
+                        xg_form: bool = False, league: str | None = None,
+                        strict_inputs: bool = False):
     """The LIVE strength model: base ratings (prior + structural params) with the
     squad-strength AND recent-form blends applied (cfg.squad_blend_weight /
     cfg.form_blend_weight; 0 ⇒ off). Single entry point so every user-facing export
@@ -208,6 +209,8 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
         try:
             sm = squad_adjusted_ratings(sm, squad_index(conn, as_of=as_of), sw)
         except Exception as e:
+            if strict_inputs:
+                raise
             print(f"[build_strength_live] squad blend skipped: {type(e).__name__}: {e}")
     fw = getattr(cfg, "form_blend_weight", 0.0)
     if fw:
@@ -215,6 +218,8 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
             from prediction_market_soccer.model.form_strength import form_adjusted_ratings, form_index
             sm = form_adjusted_ratings(sm, form_index(conn, as_of=as_of), fw)
         except Exception as e:
+            if strict_inputs:
+                raise
             print(f"[build_strength_live] form blend skipped: {type(e).__name__}: {e}")
     xw = getattr(cfg, "xg_form_blend_weight", 0.0)
     if xg_form and xw:
@@ -222,6 +227,8 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
             from prediction_market_soccer.model.xg_form import xg_form_adjusted_ratings, xg_form_index
             sm = xg_form_adjusted_ratings(sm, xg_form_index(conn, as_of=as_of), xw)
         except Exception as e:
+            if strict_inputs:
+                raise
             print(f"[build_strength_live] xg-form blend skipped: {type(e).__name__}: {e}")
     cw = getattr(cfg, "fc_blend_weight", 0.0)
     if cw:
@@ -229,6 +236,8 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
             from prediction_market_soccer.model.fc_strength import fc_adjusted_ratings, fc_squad_index
             sm = fc_adjusted_ratings(sm, fc_squad_index(conn), cw)
         except Exception as e:
+            if strict_inputs:
+                raise
             print(f"[build_strength_live] fc blend skipped: {type(e).__name__}: {e}")
     # Alt-data λ adjustments (plan 19): attach LAST (ratings/blends already applied) so
     # pair_lambdas can apply the opponent-adjusted form / xGA multipliers. Only computed
@@ -242,6 +251,8 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
             # MUST pass as_of=kickoff; live callers pass None (= all data, correct).
             sm = _replace(sm, adj=altdata_index(conn, sm.ratings, as_of=as_of))
         except Exception as e:
+            if strict_inputs:
+                raise
             print(f"[build_strength_live] altdata adj skipped: {type(e).__name__}: {e}")
     return sm
 

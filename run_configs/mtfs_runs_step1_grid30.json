@@ -9,63 +9,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -75,63 +75,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -141,63 +141,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -207,63 +207,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -273,63 +273,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -339,63 +339,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -405,63 +405,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -471,63 +471,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -537,63 +537,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -603,63 +603,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -669,63 +669,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -735,63 +735,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -801,63 +801,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -867,63 +867,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -933,63 +933,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -999,63 +999,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1065,63 +1065,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1131,63 +1131,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1197,63 +1197,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1263,63 +1263,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1329,63 +1329,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1395,63 +1395,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1461,63 +1461,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1527,63 +1527,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1593,63 +1593,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1659,63 +1659,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1725,63 +1725,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1791,63 +1791,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1857,63 +1857,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1923,63 +1923,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -1989,63 +1989,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2055,63 +2055,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2121,63 +2121,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2187,63 +2187,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2253,63 +2253,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2319,63 +2319,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2385,63 +2385,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     },
@@ -2451,63 +2451,63 @@
       "pairs": [
         [
           "DELL",
-          "PNR"
-        ],
-        [
-          "DELL",
           "EIX"
         ],
         [
-          "HUM",
-          "ENPH"
-        ],
-        [
-          "HUM",
-          "PCG"
-        ],
-        [
-          "MU",
-          "DECK"
-        ],
-        [
-          "MU",
+          "DELL",
           "BLDR"
         ],
         [
-          "AMD",
-          "GNRC"
+          "HPE",
+          "DECK"
+        ],
+        [
+          "HPE",
+          "PCG"
         ],
         [
           "AMD",
+          "BSX"
+        ],
+        [
+          "AMD",
+          "SYK"
+        ],
+        [
+          "MU",
           "TPR"
         ],
         [
-          "VLO",
-          "TXT"
+          "MU",
+          "HRL"
         ],
         [
-          "VLO",
-          "MCD"
+          "HUM",
+          "AON"
         ],
         [
-          "PSX",
+          "HUM",
           "XYL"
         ],
         [
-          "PSX",
-          "LUV"
+          "INTC",
+          "ALGN"
         ],
         [
           "INTC",
-          "MLM"
+          "STZ"
         ],
         [
-          "INTC",
-          "ODFL"
+          "VLO",
+          "VRSK"
+        ],
+        [
+          "VLO",
+          "IDXX"
         ],
         [
           "NUE",
-          "SYK"
+          "MCD"
         ]
       ]
     }

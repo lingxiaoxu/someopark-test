@@ -203,19 +203,68 @@ def sync_to_db(conn) -> int:
 
 # scheduled-vs-actual reconciliation (§5-bis.4-4): which first print settles which cal
 _CAL_SID = {"BLS_CPI": "CPIAUCSL", "BLS_JOBS": "PAYEMS", "BEA_PCE": "PCEPILFE",
-            "DOL_CLAIMS": "ICSA", "FOMC": "DFEDTARU", "AAA_WEEKLY": "GASREGW"}
+            "DOL_CLAIMS": "ICSA", "FOMC": "DFEDTARU", "AAA_WEEKLY": "AAA_DAILY"}
+
+
+def _aaa_actual_ts(conn, period: str, now: datetime) -> str | None:
+    """First time we knew the AAA reading for this exact US-Eastern date.
+
+    AAA_DAILY.event_time is the reading's Eastern date; knowledge_time is the
+    scrape instant, not a claimed official publication time. It often precedes
+    the calendar's 09:00 ET estimate by four hours. A schedule-centered window
+    would miss that observation or accidentally borrow a neighbouring day's.
+    """
+    now = now.astimezone(UTC)
+    if period > now.astimezone(ET).date().isoformat():
+        return None
+    row = conn.execute(
+        "SELECT MIN(knowledge_time) m FROM fred_obs WHERE sid='AAA_DAILY'"
+        " AND event_time=? AND knowledge_time<=?", (period, now.isoformat())).fetchone()
+    return row["m"] if row else None
+
+
+def repair_aaa_actuals(conn, now: datetime | None = None, *, apply: bool = False) -> dict:
+    """Explicitly repair the legacy EIA-derived AAA actuals; preview by default.
+
+    Same-date AAA evidence is the only basis for a value. Unverifiable actuals
+    become NULL, including dates before collection began. Original alerts and
+    coverage states stay untouched, and no current reading backfills a past day.
+    """
+    now = now or datetime.now(UTC)
+    changes = []
+    for row in conn.execute(
+            "SELECT period, actual_ts FROM releases WHERE cal='AAA_WEEKLY' ORDER BY period"
+    ).fetchall():
+        actual = _aaa_actual_ts(conn, row["period"], now)
+        if row["actual_ts"] == actual:
+            continue
+        changes.append({"period": row["period"], "previous_actual_ts": row["actual_ts"],
+                        "actual_ts": actual,
+                        "evidence": "AAA_DAILY_same_date" if actual else "unverified"})
+    if apply:
+        with conn:
+            for change in changes:
+                conn.execute("UPDATE releases SET actual_ts=? WHERE cal='AAA_WEEKLY'"
+                             " AND period=?", (change["actual_ts"], change["period"]))
+    return {"applied": apply, "n_changed": len(changes), "changes": changes}
 
 
 def reconcile_actuals(conn, now: datetime | None = None) -> dict:
     """Fill releases.actual_ts from the label's first-print knowledge_time; releases
     >26h overdue with no print flip coverage to 'postponed' + alert (shutdown/delay
-    handling, §19-8 operational leg)."""
+    handling, §19-8 operational leg). Missing AAA readings are collector gaps,
+    not proof that publication was delayed: alert once per date, only within the
+    last week. Older unknown readings remain NULL without recurring alarm noise.
+    """
     from datetime import timezone as _tz
     now = now or datetime.now(_tz.utc)
     filled, postponed = 0, 0
+    # The AAA reading can already be known at the 05:00 ET refresh, before its
+    # estimated 09:00 ET schedule. Its exact date/knowledge guards live below.
     rows = conn.execute(
         "SELECT cal, period, scheduled_ts FROM releases WHERE actual_ts IS NULL"
-        " AND scheduled_ts < ?", ((now - timedelta(hours=2)).isoformat(),)).fetchall()
+        " AND (cal='AAA_WEEKLY' OR scheduled_ts < ?)",
+        ((now - timedelta(hours=2)).isoformat(),)).fetchall()
     for r in rows:
         sid = _CAL_SID.get(r["cal"])
         if sid is None:
@@ -229,16 +278,30 @@ def reconcile_actuals(conn, now: datetime | None = None) -> dict:
         # postponed branch below, and sync_to_db's `WHERE actual_ts IS NULL` froze the
         # bad scheduled_ts forever. -2h absorbs DST/rounding jitter while staying far
         # inside the 24h that would let a daily sid's previous print sneak in.
-        kt = conn.execute(
-            "SELECT MIN(knowledge_time) m FROM fred_obs WHERE sid=? AND"
-            " knowledge_time BETWEEN ? AND ?",
-            (sid, (sch - timedelta(hours=2)).isoformat(),
-             (sch + timedelta(days=3)).isoformat())).fetchone()
-        if kt and kt["m"]:
+        if r["cal"] == "AAA_WEEKLY":
+            actual = _aaa_actual_ts(conn, r["period"], now)
+        else:
+            kt = conn.execute(
+                "SELECT MIN(knowledge_time) m FROM fred_obs WHERE sid=? AND"
+                " knowledge_time BETWEEN ? AND ?",
+                (sid, (sch - timedelta(hours=2)).isoformat(),
+                 (sch + timedelta(days=3)).isoformat())).fetchone()
+            actual = kt["m"] if kt else None
+        if actual:
             conn.execute("UPDATE releases SET actual_ts=? WHERE cal=? AND period=?",
-                         (kt["m"], r["cal"], r["period"]))
+                         (actual, r["cal"], r["period"]))
             filled += 1
         elif (now - sch) > timedelta(hours=26):
+            if r["cal"] == "AAA_WEEKLY":
+                if now - sch > timedelta(days=7):
+                    continue   # historical gaps cannot be recovered by today's scrape
+                already_alerted = conn.execute(
+                    "SELECT 1 FROM alerts WHERE source='calendar' AND"
+                    " (message LIKE ? OR message LIKE ?) LIMIT 1",
+                    (f"POSTPONED? AAA_WEEKLY/{r['period']} %",
+                     f"MISSING AAA reading AAA_WEEKLY/{r['period']} %")).fetchone()
+                if already_alerted:
+                    continue
             # only the series bound to THIS calendar — period strings like
             # '2026-07' are shared across calendars and must not cross-flag
             from prediction_market_macro.config.registry import REGISTRY
@@ -249,11 +312,14 @@ def reconcile_actuals(conn, now: datetime | None = None) -> dict:
                     "UPDATE coverage SET state='postponed', updated_ts=? WHERE"
                     " series=? AND period=? AND state='scheduled'",
                     (now.isoformat(), spec.ticker, r["period"]))
+            msg = (f"MISSING AAA reading AAA_WEEKLY/{r['period']} scheduled"
+                   f" {r['scheduled_ts']}; no same-date AAA_DAILY observation after 26h"
+                   if r["cal"] == "AAA_WEEKLY" else
+                   f"POSTPONED? {r['cal']}/{r['period']} scheduled {r['scheduled_ts']}"
+                   f" but no first print within 26h")
             conn.execute(
                 "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                (now.isoformat(), "warn", "calendar",
-                 f"POSTPONED? {r['cal']}/{r['period']} scheduled {r['scheduled_ts']}"
-                 f" but no first print within 26h"))
+                (now.isoformat(), "warn", "calendar", msg))
             postponed += 1
     conn.commit()
     return {"actual_filled": filled, "postponed_flagged": postponed}
@@ -334,3 +400,28 @@ def refresh_from_web(conn) -> dict:
                      (now.isoformat(), "error", "calendar", f"SCHEDULE-DRIFT {msg}"))
     conn.commit()
     return {"checked": checked, "drifts": len(drifts)}
+
+
+def _main(argv: list[str] | None = None) -> None:
+    """Preview the targeted repair without initializing or migrating any tables."""
+    import argparse
+    import json
+    import sqlite3
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(description="Repair AAA calendar actuals from stored evidence")
+    parser.add_argument("command", choices=["repair-aaa-actuals"])
+    parser.add_argument("--db", required=True, type=Path)
+    parser.add_argument("--apply", action="store_true", help="write changes (default: read-only preview)")
+    args = parser.parse_args(argv)
+    mode = "rw" if args.apply else "ro"
+    conn = sqlite3.connect(f"{args.db.resolve().as_uri()}?mode={mode}", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        print(json.dumps(repair_aaa_actuals(conn, apply=args.apply), indent=2))
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    _main()

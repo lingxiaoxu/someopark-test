@@ -13,7 +13,7 @@
  *      country name because there are 48 of them and they are spelled one way; there
  *      are ~500 clubs here whose names differ per source and per language ("Inter" /
  *      "Internazionale" / "国际米兰"). Sources that carry only a name resolve through a
- *      name→id map built from the model, and a name that does not resolve is dropped
+ *      reviewed identity catalog, and a name that does not resolve is dropped
  *      rather than guessed — a wrong club on a popover is worse than a missing one.
  *
  *   2. Status is PER COMPETITION KIND. The World Cup has one ladder for everyone
@@ -24,6 +24,7 @@
  *      Premier League club "group stage" forever.
  */
 import { useEffect, useState } from 'react';
+import { resolveClubId, uniqueClubNameMap } from './soccerClubIdentity';
 
 import {
   getSoccerModel, getSoccerSquad, getSoccerStyles, getSoccerForm, getSoccerUpcoming,
@@ -95,6 +96,7 @@ function cupStatus(o: any, state: string | null): ClubStatus | null {
 }
 
 function statusFor(kind: string | null, o: any, state: string | null): ClubStatus | null {
+  if (state === 'incomplete_data' || state === 'champion_unavailable') return null;
   if (kind === 'swiss_ucl') return swissStatus(o, state);
   if (kind === 'cup_two_leg') return cupStatus(o, state);
   return leagueStatus(o);
@@ -108,7 +110,7 @@ function matchIds(rows: any[]): any[] {
   const out: any[] = [];
   for (const m of rows || []) {
     for (const side of [m?.home, m?.away]) {
-      if (side && typeof side === 'object') out.push(side.id ?? side.club_id ?? side.team_id);
+      if (side && typeof side === 'object') out.push(side);
       else if (typeof side === 'string') out.push(side);
     }
     if (m?.home_id) out.push(m.home_id);
@@ -146,12 +148,7 @@ const SOURCES: { get: () => Promise<any>; extract: (d: any) => Extract }[] = [
 export interface ClubData { index: ClubIndex; meta: ClubMetaMap; byName: Map<string, string>; }
 let _cache: Promise<ClubData> | null = null;
 
-/** Lowercased, accent-folded name → club_id, for sources that carry no id. */
-function nameKey(s: any): string {
-  return String(s ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
-}
-
-function buildMeta(meta: ClubMetaMap, byName: Map<string, string>, model: any): void {
+function buildMeta(meta: ClubMetaMap, model: any): void {
   for (const lg of model?.leagues ?? []) {
     const state = lg?.odds_state ?? null;
     for (const o of lg?.season_odds ?? []) {
@@ -163,7 +160,6 @@ function buildMeta(meta: ClubMetaMap, byName: Map<string, string>, model: any): 
         kind: lg?.kind ?? null,
         status: statusFor(lg?.kind ?? null, o, state),
       });
-      for (const n of [o?.name, o?.zh]) { const k = nameKey(n); if (k) byName.set(k, id); }
     }
   }
 }
@@ -171,25 +167,22 @@ function buildMeta(meta: ClubMetaMap, byName: Map<string, string>, model: any): 
 async function buildData(): Promise<ClubData> {
   const index: ClubIndex = new Map();
   const meta: ClubMetaMap = new Map();
-  const byName = new Map<string, string>();
+  const byName = uniqueClubNameMap();
 
   const results = await Promise.all(SOURCES.map(async (src) => {
     try { return { src, data: await src.get() }; }
     catch { return { src, data: null as any }; }
   }));
 
-  // Meta first: it also builds the name→id map the presence pass needs.
+  // Presence covers the whole reviewed registry, including clubs absent from a
+  // current season simulation. The simulation only supplies competition status.
   const model = results.find((r) => r.src.get === getSoccerModel)?.data;
-  buildMeta(meta, byName, model);
+  buildMeta(meta, model);
 
   const add = (raw: any, types: string[]) => {
     if (raw == null) return;
-    let id = typeof raw === 'string' ? raw : String(raw);
-    if (!meta.has(id)) {
-      const viaName = byName.get(nameKey(raw));
-      if (!viaName) return;        // unresolvable → dropped, never guessed
-      id = viaName;
-    }
+    const id = resolveClubId(raw);
+    if (!id) return;
     let set = index.get(id);
     if (!set) index.set(id, (set = new Set()));
     for (const t of types) set.add(t);

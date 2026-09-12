@@ -56,10 +56,8 @@ def _calendar_7d(conn) -> list[dict]:
 
 
 def _open_marks(conn) -> list[dict]:
-    return [dict(r) for r in conn.execute(
-        "SELECT m.ticker, m.mid, m.pnl_usd, d.series, d.period FROM marks m"
-        " JOIN decisions d ON d.id=m.decision_id WHERE m.ts="
-        " (SELECT MAX(ts) FROM marks) ORDER BY m.pnl_usd LIMIT 40")]
+    from prediction_market_macro.ops.frontend_export import current_mark_rows
+    return sorted(current_mark_rows(conn), key=lambda r: r["pnl_usd"] or 0)[:40]
 
 
 def _story_common(conn, settings, story: list, since: str) -> None:
@@ -82,12 +80,16 @@ def _story_common(conn, settings, story: list, since: str) -> None:
     marks = _open_marks(conn)
     section(story, "Open positions (latest marks)")
     if marks:
-        data = [[H("ticker"), H("series"), H("mid", "RIGHT"), H("uPnL $", "RIGHT")]]
+        n_unmarked = sum(m["mark_status"] != "marked" for m in marks)
+        story.append(bullet(f"{n_unmarked}/{len(marks)} legs cannot be valued from a fresh usable book. "
+                            "These legs carry entry cost and fees; their PnL is not a market valuation."))
+        data = [[H("ticker"), H("quote UTC / status"), H("mid", "RIGHT"), H("carry PnL $", "RIGHT")]]
         for mk in marks[:25]:
-            data.append([C(mk["ticker"]), C(mk["series"]),
-                         C(f"{(mk['mid'] or 0):.2f}", "RIGHT"),
+            quote = (mk.get("quote_ts") or "unavailable")[:16].replace("T", " ")
+            data.append([C(mk["ticker"]), C(f"{quote} / {mk['mark_status']}"),
+                         C(f"{mk['mid']:.2f}" if mk["mid"] is not None else "-", "RIGHT"),
                          C(money(mk["pnl_usd"] or 0.0), "RIGHT")])
-        story.append(make_table(data, [PAGE_W * w for w in (0.40, 0.24, 0.16, 0.20)]))
+        story.append(make_table(data, [PAGE_W * w for w in (0.36, 0.34, 0.10, 0.20)]))
     else:
         story.append(bullet("No open positions."))
 

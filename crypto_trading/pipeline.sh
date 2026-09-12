@@ -23,6 +23,8 @@
 #   brackets   TP/SL bracket watcher daemon (enforces armed stops; dry-run unless --live) [daemon]
 #   status     heartbeats + storage usage + last data timestamps
 #   test       pytest, no network
+#   w8watch    independent read-only bilateral observer (--loop 2)
+#   w8health   W8 heartbeat, inventory and paired/residual paper PnL
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,6 +64,8 @@ case "$MODE" in
   recheck)   exec "${PY[@]}" -m crypto_trading.crypto_strategies.research_archive_recheck "$@" ;;
   watchstatus) exec "${PY[@]}" -m crypto_trading.crypto_strategies.live_watch.status "$@" ;;
   w7health) exec "${PY[@]}" -m crypto_trading.ops.w7_health "$@" ;;
+  w8watch) exec "${PY[@]}" -m crypto_trading.crypto_strategies.live_watch.w8_complete_set "$@" ;;
+  w8health) exec "${PY[@]}" -m crypto_trading.ops.w8_health "$@" ;;
   daily)
     "${PY[@]}" -m crypto_trading.ops.backup_data --keep 5 || true    # protect recorded data FIRST
     "${PY[@]}" -m crypto_trading.ops.disk_monitor --quiet || true   # once/day = clean rate sample

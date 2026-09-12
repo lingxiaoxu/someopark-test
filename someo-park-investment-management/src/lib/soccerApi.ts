@@ -21,6 +21,14 @@ async function getSoccerJson<T = any>(file: string, bust = false): Promise<T> {
 
 // ── shared shapes (loose on purpose — the backend contract is the truth) ──────
 
+export type SoccerSnapshot = {
+  as_of?: string; ts?: string; source_as_of?: string | null;
+  data_status?: { state: 'ok' | 'degraded' | 'unavailable'; issues: { code: string; fixture_id?: number; league?: string }[] };
+};
+export type SoccerPricingStatus = { pricing_state?: 'ok' | 'unavailable'; unavailable_reason?: string; source_as_of?: string | null;
+  quote_status?: Record<string, 'ok' | 'not_listed' | 'unavailable' | 'not_requested'>; };
+export type SoccerOddsState = 'ok' | 'pending_draw' | 'pending_bracket' | 'incomplete_data' | 'champion_unavailable';
+
 export type SoccerLeagueKind = 'league' | 'league_playoffs' | 'swiss_ucl' | 'cup_two_leg';
 
 /** Backend-computed market-capability object per match (§3.0). The frontend reads
@@ -59,7 +67,9 @@ export type SoccerModelLeague = {
   top_n?: number; releg_direct?: number; releg_playoff?: number;
   /** 'ok' | 'pending_draw' | 'pending_bracket' — when not 'ok' every season-odds
    *  probability is null (unknown), which is NOT the same as 0%. */
-  odds_state?: 'ok' | 'pending_draw' | 'pending_bracket';
+  odds_state?: SoccerOddsState;
+  odds_family_states?: Record<string, string>;
+  availability_reason?: string | null; coverage?: any;
   zones?: string[] | null;
   table?: SoccerTableRow[];
   season_odds?: SoccerSeasonOddsRow[];
@@ -71,7 +81,7 @@ export type SoccerModelLeague = {
   }[];
 };
 
-export type SoccerModel = {
+export type SoccerModel = SoccerSnapshot & {
   meta?: { run_ts?: string; code_version?: string; n_sims?: number; model_notes?: string[] };
   leagues?: SoccerModelLeague[];
 };
@@ -82,11 +92,12 @@ export type SoccerBoardRow = {
   kalshi_c?: number | null; poly_c?: number | null; edge_vs_kalshi?: number | null;
 };
 
-export type SoccerSeasonOdds = {
+export type SoccerSeasonOdds = SoccerSnapshot & {
   as_of?: string; note?: string;
   leagues?: {
     league: string; name: string; zh?: string; kind: SoccerLeagueKind;
-    boards?: { family: string; label?: string; kalshi_series?: string | null; rows?: SoccerBoardRow[] }[];
+    state?: SoccerOddsState; odds_family_states?: Record<string, string>; availability_reason?: string | null; coverage?: any;
+    boards?: { state?: string; availability_reason?: string | null; family: string; label?: string; kalshi_series?: string | null; rows?: SoccerBoardRow[] }[];
   }[];
 };
 
@@ -106,7 +117,7 @@ export type SoccerDecision = {
   confidence_k?: number | null; knockout?: boolean;
 } | null;
 
-export type SoccerAdvanceBlock = {
+export type SoccerAdvanceBlock = SoccerPricingStatus & {
   model: { home: number; away: number; cents?: { home: number; away: number } } | null;
   kalshi?: SoccerVenueQuote;
   poly_us?: SoccerVenueQuote;
@@ -115,7 +126,7 @@ export type SoccerAdvanceBlock = {
   lock_arb?: any;
 } | null;
 
-export type SoccerUpcomingMatch = {
+export type SoccerUpcomingMatch = SoccerPricingStatus & {
   fixture_id?: number | string;
   league?: string; league_zh?: string;
   kickoff: string; et?: string | null; et_date?: string | null; round?: string;
@@ -139,7 +150,7 @@ export type SoccerUpcomingMatch = {
   advance?: SoccerAdvanceBlock;
 };
 
-export type SoccerUpcoming = {
+export type SoccerUpcoming = SoccerSnapshot & {
   as_of?: string; n?: number; note?: string;
   matches?: SoccerUpcomingMatch[];
   recent_finished?: {
@@ -150,8 +161,8 @@ export type SoccerUpcoming = {
   }[];
 };
 
-export type SoccerInplay = { ts?: string; n_live?: number; matches?: any[] };
-export type SoccerSchedule = { matches?: any[] };
+export type SoccerInplay = SoccerSnapshot & { ts?: string; n_live?: number; matches?: any[] };
+export type SoccerSchedule = SoccerSnapshot & { matches?: any[] };
 
 // ── fetchers ─────────────────────────────────────────────────────────────────
 export const getSoccerModel = () => getSoccerJson<SoccerModel>('soccer_model.json');
@@ -175,7 +186,7 @@ export const getSoccerBacktest = () => getSoccerJson<any>('backtest.json');
 // production never prices with). Its replacement selects per competition on a
 // time split — same card, honest source.
 export const getSoccerParams = () => getSoccerJson<any>('param_select_club.json');
-export const getSoccerRisk = () => getSoccerJson<any>('risk_report.json');
+export const getSoccerRisk = () => getSoccerJson<any>('risk_report.json', true);
 export const getSoccerOverview = () => getSoccerJson<any>('frontend_overview.json', true);
 
 /** Absolute URL for a server-relative soccer data file (e.g. the report PDFs). */

@@ -342,7 +342,7 @@ P(print=0.1) 可达 30%+,"Above 0.1%" 在 print=0.1 时结 NO。策略/评估层
 
 1. **物化应跑表**:`scheduler.materialize(horizon=30d)` 每天把未来 30 天所有 lane×series×period 的
    应跑任务写入 runs(由 calendars 推导)——"应该发生什么"先于"发生了什么"存在
-2. **执行器**:`scheduler.tick()`(cron 每 15min)领取 due 任务执行,写 done_ts;执行失败重试 2 次后标 late
+2. **执行器**:`jobs.tick`(launchd 每 60 秒唤起；事件窗持续轮询)领取 due 任务执行,写 done_ts；单实例锁防重复执行，失败标 late 供后续检查。到期 freeze 优先于慢请求；decide/reassess 在领取与逐项执行前检查 30 分钟宽限，超时直接记 MISSED，不补跑。
 3. **看门狗**:`scheduler.watchdog()`(cron 每小时,**独立进程**)扫描 `due_ts < now-30min 且 status=due|late`
    → 标 MISSED + 写 `ops/alerts.log` + 醒目进入日报头部;**决策类任务过窗只标 MISSED 绝不补跑**
    (迟到的决策=用了未来数据),快照/对账类任务允许 catch-up
@@ -355,7 +355,7 @@ P(print=0.1) 可达 30%+,"Above 0.1%" 在 print=0.1 时结 NO。策略/评估层
 
 **调度载体用 macOS launchd(照抄母版)**:WC 系统用 `com.someopark.prediction{refresh,live,matchtrigger}.plist`
 ——macro 同款三件:`com.someopark.macrorefresh.plist`(**每日凌晨 05:00 ET 全量重估,§8.0 主心骨**;
-周日加 --weekly)、`com.someopark.macrotick.plist`(15min tick,只在事件窗有活)、
+周日加 --weekly)、`com.someopark.macrotick.plist`(每 60 秒唤起，事件窗持续轮询到结束)、
 `com.someopark.macrowatchdog.plist`(每小时,独立进程,含 24h pred 新鲜度 SLA 核查)。
 plist 内 `bash -lc 'cd <repo> && set -a && source .env && source prediction_market/.env && set +a &&
 conda run -n someopark_run python -m prediction_market_macro.jobs.tick'` 的既有模式;

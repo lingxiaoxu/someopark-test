@@ -148,7 +148,7 @@
 | 19 | **`research/eval.py` 不存在** | ❌NOT DONE | 全仓库 grep `calibration_table`/`drift_check`/`edge_capture` 零命中;§9.5 指定的上线闸门评估器本体没写(唯一可执行闸门是 DFM 自己的 `dfm_bridge.gate_check`) | **§7-bis"上真钱之门"没有评估器**——前端校准面板显示的 Brier 对比来自 backtest 打分,但"何时可转真钱"的正式判定链路是空的;承重级 |
 | 20 | `research/backtest.py` 只做打分重放 | ⚠️PARTIAL | `replay_series`(133行)只算 −24h/−1h 的 Brier/CRPS;§9.4 要求的 scan/decide/PnL 全链路重放、roi/pnl_curve/calib_bins/edge_capture、DM检验/bootstrap CI/置换检验全部没有;`research/oos_eval.py`(§15 母版移植项)也不存在 | 回测答不了"这策略赚不赚钱",只答"预测准不准";统计显著性检验(§9.4"标配")完全缺失 |
 | 21 | 节奏管线只有 3/6 条 lane | ⚠️PARTIAL | `jobs/scheduler.py:42-43` 只有 release_day/fomc_week/weekly_close;daily_snapshot(KXWTI/美债/FX)、quarterly、annual_watch 三条 lane 未建,对应系列也未注册 | 日频/季频/年频市场整体缺席,与 §8.1 分道设计不符 |
-| 22 | 事件窗加密轮询未做 | ❌NOT DONE | 计划要求 T-2h 起 5 分钟快照、发布后 30 分钟快速轮询;实际 tick 固定 900s(plist StartInterval=900),`jobs/tick.py:21-22` 每次只拍一张;`scheduler.py:10` 文档字符串声称"tick 5分钟快照"与事实不符 | 发布窗口内的重定价 edge(§19-9 的 3 分钟重估)实际抓不到,文档还在撒谎 |
+| 22 | 事件窗加密轮询 | ✅已修（2026-09-10 更新） | 7/31 审计时为固定 900s；现为 launchd 每 60 秒唤起，事件窗完整驻留，T-2h 起 5 分钟快照、±10 分钟内 1 分钟快照 | 移除后来 840 秒驻留上限造成的空档；发布后先补 FRED 再重估，超时决策不补跑 |
 | 23 | Fed 声明文本抓取整条缺失 | ❌NOT DONE | 无任何声明文本摄取;`analysis/llm.py:88 fomc_statement_diff` 写好了但零调用者 | M3 的 statement_risk 腿空转;Fed 模型只有规则+市场两路,文本信号缺位 |
 | 24 | 日历硬编码不全 + `releases.actual_ts` 死字段 | ⚠️PARTIAL | `ingest/calendars.py:97-115` 缺 BEA_GDP/EIA_NG/EIA_PETRO/MARKET_DAYS,无 `refresh_from_web()` 校验;`actual_ts` 建了字段但没人写入 | 排期漂移/发布延期(postponed)侦测链路是死的——与 §22-18 的 postponed 状态未赋值同根 |
 | 25 | 标签双列 y_first/y_latest 未按规格建 | ⚠️PARTIAL | 标签用 `MIN(knowledge_time)` vintage 推导(能用),但 §5-bis.2 规格的双列没建;铁律2"y_first 必须与 Kalshi 结算对账,不符即停该系列"全仓库无此断言 | 标签 PIT 能用但对账保险丝缺失 |

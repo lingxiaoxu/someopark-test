@@ -32,6 +32,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.quote_evidence import (collect_qualified_sources, executable_price, qualify_quote)
+from prediction_market_soccer.util.market_identity import equivalent_contract
 from prediction_market_soccer.model.inplay_advance import LiveAdvanceProb, live_advance_prob
 from prediction_market_soccer.model.penalties import shootout_win_prob_detailed
 from prediction_market_soccer.strategy.cross_venue import evaluate_lock
@@ -66,16 +68,11 @@ _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 
 
 def _ask(q) -> float | None:
-    """Ask from a quote: {'ask','bid'} dict, or a plain float treated as the ask."""
-    if isinstance(q, dict):
-        return q.get("ask")
-    return q
+    return executable_price(q, 'buy')
 
 
 def _bid(q) -> float | None:
-    if isinstance(q, dict):
-        return q.get("bid", q.get("ask"))
-    return q
+    return executable_price(q, 'sell')
 
 
 @dataclass
@@ -359,11 +356,13 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
     from prediction_market_soccer.model.strength import build_strength
 
     conn = conn or store.init_db()
+    from prediction_market_soccer.model.strength_cache import composite_live_strength, model_for_fixture
     prior = load_prior()
-    sm = sm or build_strength(prior)
+    sm = sm or composite_live_strength(conn)
     theta = CONFIG.risk.min_net_edge if theta is None else theta
     quote_sources = quote_sources or {}
-    name = {t.team_id: t.name for t in prior.teams}
+    name = {r["canonical_team_id"]: r["name"] for r in conn.execute(
+        "SELECT m.canonical_team_id,t.name FROM team_meta m LEFT JOIN team t ON t.api_id=m.api_id WHERE m.canonical_team_id IS NOT NULL")}
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
@@ -379,9 +378,17 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
             ",".join("?" * len(_LIVE)), ",".join("?" * len(_lids))),
         (*_LIVE, *_lids)).fetchall()
     opps: list[Opportunity] = []
+    quotes_by_fixture = {}
     for fx in live:
+        if fx['status_short'] in ('INT','SUSP'):
+            continue
         hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
         if not (hi and ai):
+            print(f"[inplay] fixture {fx['api_id']}: missing_team_mapping")
+            continue
+        fixture_sm = model_for_fixture(sm, fx, hi, ai)
+        if fixture_sm is None:
+            print(f"[inplay] fixture {fx['api_id']}: missing_strength")
             continue
         if not _is_knockout(fx["round"]):
             continue   # the advance market exists only for knockout ties
@@ -389,12 +396,15 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
         minute = fx["elapsed"] or 0
         gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
         score = f"{gh}-{ga}"
-        lp, fair = live_fair_advance(conn, sm, fx)
+        lp, fair = live_fair_advance(conn, fixture_sm, fx)
         # The advance view is the WHO-ADVANCES product ONLY. Totals (OVER/UNDER 2.5) settle on
         # the 90' goals market, NOT on who advances, so they are deliberately NOT surfaced here
         # (they remain in the regulation / 3-way in-play view). So: no fair["over"/"under"], and
         # the totals tactics (dormant/finishing/late/formation) are dropped from the fan-out below.
-        quotes = {v: fn(fx["api_id"]) for v, fn in quote_sources.items()}
+        from prediction_market_soccer.config.leagues import by_api_id as quote_comp
+        expected_comp = quote_comp(fx['league_id'])
+        quotes = collect_qualified_sources(quote_sources, fx["api_id"], comp=expected_comp.key if expected_comp else None, allowed_kinds=('advance',), default_kind='advance')
+        quotes_by_fixture[fx["api_id"]] = quotes
 
         def _best_ask(side: str):
             xs = [_ask(q.get(side)) for q in quotes.values() if q and q.get(side) is not None]
@@ -410,7 +420,7 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
 
         # Event-driven context: pre-match favourite (explicit strength+form basis, Part 2),
         # the latest goal + red card, KO flag.
-        fav_side, fav_prob, fav_basis = _favourite_basis(conn, prior, sm, hi, ai)
+        fav_side, fav_prob, fav_basis = _favourite_basis(conn, prior, fixture_sm, hi, ai)
         last_goal_side, last_goal_min = _last_event(conn, fx, "Goal", hi, ai)
         # Score-consistency guard: a goal can be chalked off (VAR / offside / feed
         # correction) AFTER its event row was written — the event lingers but the
@@ -545,7 +555,8 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
                 buy_v = min(asks, key=asks.get)
                 sell_v = max(bids, key=bids.get)
                 if buy_v != sell_v:
-                    lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
+                    lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=equivalent_contract(
+                        ex[buy_v]["receipt"]["binding"], ex[sell_v]["receipt"]["binding"]),
                                          fee_cheap=fee, fee_expensive=fee)
                     if lock.tradable:
                         no_price, cost = 1 - bids[sell_v], asks[buy_v] + 1 - bids[sell_v]
@@ -562,7 +573,28 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
     # Rank: lock arb > relative value > tactic; by |edge|.
     rank = {"lock_arb": 0, "relative_value": 1, "tactic": 2}
     opps.sort(key=lambda o: (rank[o.kind], -(abs(o.edge) if o.edge is not None else 0)))
-    return [asdict(o) for o in opps]
+    rows = [asdict(o) for o in opps]
+    for row in rows:
+        qs = quotes_by_fixture.get(row['fixture_id'], {})
+        row['selected_quotes'] = []
+        if row['kind'] == 'lock_arb':
+            legs = [(row['reason_args']['buy_v'], 'buy'), (row['reason_args']['sell_v'], 'sell')]
+        elif row['market'] is not None and row['action'] in ('BUY','SELL'):
+            venue = row['reason_args'].get('venue', row['venue'])
+            legs = [(venue, row['action'].lower())]
+        else:
+            legs = []
+        for venue, action in legs:
+            q = (qs.get(venue) or {}).get(row['side'])
+            if not isinstance(q, dict):
+                continue
+            r = q.get('receipt') or {}
+            checked = qualify_quote(q, action, fixture_id=row['fixture_id'], side=row['side'],
+                                    market_kind=r.get('market_kind'), settlement_scope=r.get('settlement_scope'),
+                                    line=r.get('line'))
+            if checked['eligible']:
+                row['selected_quotes'].append(checked['selected'])
+    return rows
 
 
 if __name__ == "__main__":

@@ -34,6 +34,8 @@ The checks, and what each one would have caught:
                the tape IS the probe's eyes, and it is irreplaceable
   backup     — how old the newest archive is: the tape had exactly one copy
                for 15 days, and the 15M dataset was born inside that gap
+  diskmon    — the disk alarm's own liveness: it was silently dead for 61
+               days when the 2026-09-11 exhaustion killed four recorders
   disk       — headroom, because the recorders never stop
 """
 from __future__ import annotations
@@ -130,12 +132,24 @@ def check_errors(lookback_lines: int = 4000) -> dict:
             tail = fh.readlines()[-lookback_lines:]
     except OSError as e:
         return {"status": WARN, "detail": f"log unreadable: {e}"}
-    hits = [ln.strip()[:120] for ln in tail
-            if "Traceback" in ln or " ERROR " in ln]
-    if hits:
+    def _hits(lines):
+        return [ln.strip()[:120] for ln in lines
+                if "Traceback" in ln or " ERROR " in ln]
+
+    RECENT = 500                # ~1-2h of log at the runner's line rate
+    recent, older = _hits(tail[-RECENT:]), _hits(tail[:-RECENT])
+    if recent:
         return {"status": FAIL,
-                "detail": f"{len(hits)} error line(s) in last {lookback_lines}",
-                "sample": hits[:3]}
+                "detail": f"{len(recent)} error line(s) in last {RECENT}",
+                "sample": recent[:3]}
+    if older:
+        # An incident that has STOPPED producing errors is history, not an
+        # alarm: the 2026-09-11 ENOSPC tracebacks kept this check red for
+        # hours after the disk recovered and every cycle was clean again.
+        return {"status": WARN,
+                "detail": f"recent {RECENT} lines clean; {len(older)} older "
+                          f"error line(s) still in the last {lookback_lines}",
+                "sample": older[-2:]}
     return {"status": PASS, "detail": f"0 errors in last {lookback_lines} lines"}
 
 
@@ -360,6 +374,32 @@ def check_recorders(now: float) -> dict:
             "streams": rows}
 
 
+DISKMON_STATUS = ROOT / "logs" / "disk_monitor_status.json"
+DISKMON_MAX_AGE_H = 2.0        # launchd runs it every 30 min
+
+
+def check_diskmon(now: float) -> dict:
+    """The alarm's own liveness. The 2026-09-11 exhaustion killed four
+    recorders with no warning because disk_monitor had been silently not
+    running for 61 days — scheduled nowhere, watched by nobody. A monitor
+    for the monitor is the only fix that survives that failure mode."""
+    try:
+        st = json.loads(DISKMON_STATUS.read_text())
+        age_h = (now - st.get("ts", 0)) / 3600.0
+    except (OSError, json.JSONDecodeError) as e:
+        return {"status": FAIL, "detail": f"disk alarm status unreadable: {e}"}
+    if age_h > DISKMON_MAX_AGE_H:
+        return {"status": FAIL,
+                "detail": f"disk alarm silent {age_h:.1f}h (launchd "
+                          f"com.someopark.crypto.diskmon dead?)"}
+    level = st.get("level", "?")
+    detail = (f"alarm alive ({age_h*60:.0f}m ago), level {level}, "
+              f"free {st.get('free_gb')}G")
+    if st.get("alerts"):
+        detail += " | " + "; ".join(st["alerts"])[:120]
+    return {"status": PASS if level == "ok" else WARN, "detail": detail}
+
+
 BACKUP_DIR = Path.home() / "crypto_data_backup"
 BACKUP_MAX_AGE_H = 96.0        # the prior cadence was every 4-5 days
 
@@ -462,6 +502,7 @@ def run(now: float | None = None, contracts: int = 25) -> dict:
         "demo_pos": check_demo_positions(),
         "recorders": check_recorders(now),
         "backup": check_backup(now),
+        "diskmon": check_diskmon(now),
         "disk": check_disk(),
     }
     worst = FAIL if any(c["status"] == FAIL for c in checks.values()) else (

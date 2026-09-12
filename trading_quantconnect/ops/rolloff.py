@@ -328,6 +328,11 @@ QC_SYMBOL_ALIAS = {
     # 868 股会让 Q 少算 $111,260 = 129bp。故另加 assert_prices_sane 守卫(见
     # reconcile/official_close.py):把这类"映射到别的证券"从静默错价变成指名报错。
     "EGG": "RVTY",
+    # 2026-09-09 v32 建仓:订单 185/188 的 symbol.value/permtick 为 RMD/STZ,
+    # 完整 SID 分别是 "RESM R735QTJ8XC9X" / "CBRNA R735QTJ8XC9X",
+    # 与 portfolio 的 key 一致。身份由订单和完整 SID 核实,不是按股数猜测。
+    "RESM": "RMD",
+    "CBRNA": "STZ",
 }
 
 

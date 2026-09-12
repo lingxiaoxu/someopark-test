@@ -122,6 +122,7 @@ export function useMacroPoll<T>(fetchFn: () => Promise<T>, pollMs = 60000) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, setPollTick] = useState(0);
   const fnRef = useRef(fetchFn);
   fnRef.current = fetchFn;
 
@@ -133,7 +134,11 @@ export function useMacroPoll<T>(fetchFn: () => Promise<T>, pollMs = 60000) {
         .catch((e) => { if (!cancelled) setError(e.message); })
         .finally(() => { if (!cancelled) setLoading(false); });
     run();
-    const id = setInterval(run, pollMs);
+    const id = setInterval(() => {
+      // Quote validity ages even when requests hang or repeat the same error.
+      setPollTick(tick => tick + 1);
+      run();
+    }, pollMs);
     return () => { cancelled = true; clearInterval(id); };
   }, [pollMs]);
 

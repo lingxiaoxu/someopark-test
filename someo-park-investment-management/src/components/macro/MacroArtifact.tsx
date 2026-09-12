@@ -11,7 +11,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { getMacroJson, analyzeMacro, predSummary, macroFileUrl, getMacroHealth, getMacroPricetrack } from './macroApi';
-import type { MacroBoard, MacroDecision, MacroHealth, MacroLiveReplay, MacroPricetrack, MacroReplayLeg, MacroReportEntry } from './macroApi';
+import type { MacroBoard, MacroDecision, MacroHealth, MacroLiveReplay, MacroMark, MacroPricetrack, MacroReplayLeg, MacroReportEntry, MacroValuation } from './macroApi';
+import { markDisplayStatus } from './markPresentation';
 import {
   mono, fmt, pct, money, Loading, ErrorBox, KV, DataTable, Chip, TabButton, Generated,
   AiResult, useMacroPoll, type AiState,
@@ -53,6 +54,42 @@ const dt = (iso?: string | null) => {
   return isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 16).replace('T', ' ');
 };
 const shortSeries = (s: string) => s.replace(/^KX/, '');
+
+function ValuationNote({ valuation }: { valuation?: MacroValuation }) {
+  const { t } = useTranslation();
+  if (!valuation) return null;
+  const status = markDisplayStatus(valuation);
+  if (valuation.mark_status === 'marked' && status !== 'marked' && valuation.n_legs) {
+    return <div style={{ fontSize: 10, color: 'var(--warning)', margin: '6px 0', ...mono }}>
+      {t('macro.valuationExpired')}
+    </div>;
+  }
+  const unavailable = status !== 'marked';
+  const n = unavailable ? (valuation.n_unmarked || valuation.n_legs || 0) : 0;
+  return n ? <div style={{ fontSize: 10, color: 'var(--warning)', margin: '6px 0', ...mono }}>
+    {t('macro.valuationNote', { n, total: valuation.n_legs ?? n })}
+  </div> : null;
+}
+
+function MarkValue({ value, valuation }: { value?: number | null; valuation?: MacroValuation }) {
+  const { t } = useTranslation();
+  const status = markDisplayStatus(valuation);
+  return <span style={{ ...mono, color: status === 'marked'
+    ? (value ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' : 'var(--warning)' }}>
+    {status === 'marked' ? money(value) : <>{t('macro.markUnavailable')}
+      <span style={{ display: 'block', fontSize: 9 }}>{t(valuation?.mark_status === 'marked'
+        ? 'macro.lastRecordedValue' : 'macro.carryValue')}: {money(value)}</span></>}
+  </span>;
+}
+
+function QuoteStatus({ valuation }: { valuation?: MacroValuation }) {
+  const { t } = useTranslation();
+  const status = markDisplayStatus(valuation);
+  return <span style={{ ...mono, fontSize: 9, color: status === 'marked'
+    ? 'var(--text-muted)' : 'var(--warning)' }}>
+    {dt(valuation?.quote_ts)} UTC<br />{t(`macro.mark_${status}`)}
+  </span>;
+}
 
 const KIND_COLOR: Record<string, string> = {
   pass: 'var(--text-muted)',
@@ -393,7 +430,7 @@ function DecisionsView() {
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const total = (data?.decisions ?? []).length;
   const decisions: any[] = (data?.decisions ?? []).slice(0, DECISIONS_CAP);
-  const marks: any[] = data?.latest_marks ?? [];
+  const marks: MacroMark[] = data?.latest_marks ?? [];
   return (
     <div>
       <Generated ts={data?.generated_at} />
@@ -418,14 +455,16 @@ function DecisionsView() {
         </div>
       )}
       <SectionTitle>{t('macro.latestMarks')}</SectionTitle>
+      <ValuationNote valuation={data?.valuation} />
       {marks.length ? (
         <DataTable
-          cols={['#', t('macro.colTicker'), t('macro.colMid'), t('macro.colPnl')]}
+          cols={['#', t('macro.colTicker'), t('macro.quoteTime'), t('macro.colMid'), t('macro.colPnl')]}
           rows={marks.map((m) => [
             m.decision_id,
             <span style={{ ...mono, fontSize: 10 }}>{m.ticker}</span>,
-            fmt(m.mid, 3),
-            <span style={{ color: (m.pnl_usd ?? 0) >= 0 ? 'var(--success)' : 'var(--error)', ...mono }}>{money(m.pnl_usd)}</span>,
+            <QuoteStatus valuation={m} />,
+            markDisplayStatus(m) === 'marked' ? fmt(m.mid, 3) : '—',
+            <MarkValue value={m.pnl_usd} valuation={m} />,
           ])} />
       ) : (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>—</div>
@@ -456,9 +495,10 @@ function PerformanceView() {
       <Generated ts={data?.generated_at} />
       <KV rows={[
         [t('macro.bankroll'), <span style={mono}>{money(data?.bankroll_usd)}</span>],
-        [t('macro.unrealized'), <span style={{ ...mono, color: (data?.unrealized_usd ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(data?.unrealized_usd)}</span>],
+        [t('macro.unrealized'), <MarkValue value={data?.unrealized_usd} valuation={data?.valuation} />],
         [t('macro.mode'), <Chip color="var(--accent-primary)">{data?.mode ?? '—'}</Chip>],
       ]} />
+      <ValuationNote valuation={data?.valuation} />
       {comb && (
         <>
           <SectionTitle>{t('macro.trackRecord')}</SectionTitle>
@@ -497,7 +537,7 @@ function PerformanceView() {
               liveO && [
                 <span style={{ ...mono, color: 'var(--text-muted)' }}>{t('macro.trackOpen')}</span>,
                 liveO.n, '—', '—',
-                <span style={{ ...mono, color: (liveO.unrealized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(liveO.unrealized)}</span>,
+                <MarkValue value={liveO.unrealized} valuation={liveO.valuation} />,
                 '—',
               ],
             ].filter(Boolean) as any[]} />
@@ -530,6 +570,8 @@ function PerformanceView() {
       {track.length > 0 && (
         <>
           <SectionTitle>{t('macro.priceTrack')}</SectionTitle>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('macro.priceTrackFreshOnly')}</div>
+          <ValuationNote valuation={pt?.valuation} />
           <div style={{ width: '100%', height: 160 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={track} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
@@ -731,11 +773,12 @@ function BetsView() {
         {t('macro.betsOpen')} · {open.length} ·{' '}
         <span style={{ color: unreal >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(unreal)}</span>
       </SectionTitle>
+      <ValuationNote valuation={data?.valuation} />
       <div style={{ overflowX: 'auto' }}>
         <DataTable
           cols={[t('macro.wfEntryDay'), t('macro.colSeries'), t('macro.colPeriod'),
             t('macro.colAction'), t('macro.wfBetCol'), t('macro.colStaked'),
-            t('macro.colUnrealized')]}
+            t('macro.quoteTime'), t('macro.colUnrealized')]}
           rows={open.map((b) => [
             <span style={{ ...mono, fontSize: 10 }}>{String(b.ts ?? '').slice(5, 10)}</span>,
             <span style={mono}>{shortSeries(b.series)}</span>,
@@ -743,9 +786,8 @@ function BetsView() {
             <Chip color={kindColor(b.kind)}>{b.kind}</Chip>,
             <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(b.desc, 28)}</span>,
             money(b.size_usd),
-            b.unrealized != null
-              ? <span style={{ ...mono, color: b.unrealized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(b.unrealized)}</span>
-              : '—',
+            <QuoteStatus valuation={b.valuation} />,
+            <MarkValue value={b.unrealized} valuation={b.valuation} />,
           ])} />
       </div>
       <SectionTitle>{t('macro.betsUpcoming')}</SectionTitle>

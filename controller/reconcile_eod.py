@@ -14,6 +14,8 @@ controller/reconcile_eod.py — 日终对账(plan §五;M5)。
       该时点重算的残差 > SYNC_TOL_BP → breach,逐票列出,绝不静默。
       shares 错误任何 lag 都拟合不掉。PORTFOLIO 合计同查。
       官方 daily_close 对比降级为 close_drift 纯信息(漂移量)。
+      策略覆盖取当时结构快照的全部 strategy 节点,不由官方展示列决定;
+      策略/合计缺收盘或同步分钟价时明确 incomplete,不能由其余 ok 掩盖。
 
   官方三 json 对照 = 纯信息展示(official 值/日期、账本值、ratio_display、
   两口径日收益差)——**不参与任何判定**;两本账刻度不同属口径事实,
@@ -30,7 +32,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from controller.model import REPO
-from controller.registry import Registry, strategy_canonical_key
+from controller.registry import Registry
 from controller.prices import PriceFeed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +62,8 @@ _ANCHORS = {   # strategy -> (json relpath, equity column) —— 仅信息展�
              "sr_equity"),
     "aiss": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
              "aiss_equity"),
+    "aeus": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
+             "aeus_equity"),
     "bdc":  ("someo-park-investment-management/public/data/private_credit_bdc_performance.json",
              "bdc_equity"),
 }
@@ -180,12 +184,25 @@ def _candidate_dates() -> list[str]:
     return [f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in ds]
 
 
-def reconcile(date: str | None = None) -> dict:
+def _snapshot_strategies(snap: dict, reg: Registry) -> dict[str, str]:
+    """当时结构里的全部策略(name -> node_id),与官方展示列/今日注册策略解耦。"""
+    out = {}
+    for nid, node in snap["nodes"].items():
+        if node["kind"] != "strategy":
+            continue
+        key = reg.nodes.get(nid, {}).get("canonical_key", "")
+        name = (key[len("strategy:"):] if key.startswith("strategy:")
+                else str(node.get("attrs", {}).get("display_name")
+                         or reg.render(nid)).lower())
+        # 即使历史显示名重复,也不能覆盖掉一个待检查节点。
+        out[name if name not in out else nid] = nid
+    return out
+
+
+def reconcile(date: str | None = None, *, write_report: bool = True) -> dict:
+    """独立重算日终值;write_report=False 仍读取行情,但不写对账报告。"""
     reg = Registry()
     feed = PriceFeed(reg)
-    spid_to_st = {reg.spid_of("strategy", strategy_canonical_key(st),
-                              register_if_new=False): st for st in _ANCHORS}
-    st_to_spid = {v: k for k, v in spid_to_st.items()}
 
     # 目标日:指定日,否则最近一个"有 ≤16:00 收盘行"的 nav_stream 日期
     dates = [date] if date else _candidate_dates()[:5]
@@ -205,12 +222,14 @@ def reconcile(date: str | None = None) -> dict:
                         "and official jsons informational only)",
               "tolerance_bp": SYNC_TOL_BP,
               "tolerance_basis": "gross_exposure @ sync-lag minute bars",
-              "strategies": {}, "verdict": "baseline"}
+              "strategies": {}, "verdict": "incomplete",
+              "portfolio_check": {"status": "incomplete",
+                                  "note": "no synchronized portfolio close available"}}
     coverage = closes.pop("__coverage__", None)
     report["coverage"] = coverage
     if not target:
         report["note"] = "no nav_stream close rows yet"
-        _emit(report)
+        _emit(report, write_report=write_report)
         return report
     # 覆盖度闸门: 末笔离 16:00 太远 ⇒ 该日没有真正的收盘值,拒绝出判定。
     # 宁可 incomplete 也不要拿盘中值冒充收盘产出一个假 pass/breach。
@@ -219,7 +238,8 @@ def reconcile(date: str | None = None) -> dict:
         report["note"] = (f"nav_stream 末笔 {coverage['last_et']} 距 16:00 ET "
                           f"{coverage['gap_min']:.0f} 分钟(>{CLOSE_GAP_TOL_MIN}) "
                           f"—— 当日无收盘行(常驻循环盘中中断),不出判定")
-        _emit(report)
+        report["portfolio_check"]["note"] = report["note"]
+        _emit(report, write_report=write_report)
         return report
 
     # 盘中退役节点的化石行(当日平仓的 pair,末笔停在退役时刻、挂着旧 hash)
@@ -236,8 +256,12 @@ def reconcile(date: str | None = None) -> dict:
 
     # 当时结构快照(shares/cash 的 golden 定格)
     hashes = {v["hash"] for v in closes.values() if v.get("hash")}
+    missing_hashes = [reg.render(nid) for nid, row in closes.items()
+                      if not row.get("hash")]
     snap = None
-    if len(hashes) == 1:
+    if missing_hashes:
+        report["note"] = f"stream rows lack structure_hash: {sorted(missing_hashes)} — 重算跳过"
+    elif len(hashes) == 1:
         h = hashes.pop()
         sp = os.path.join(OUT_DIR, f"structure_snapshot_{h}.json")
         if os.path.exists(sp):
@@ -249,6 +273,17 @@ def reconcile(date: str | None = None) -> dict:
     else:
         report["note"] = "stream rows lack structure_hash (pre-upgrade rows) — 重算跳过"
 
+    if snap is None:
+        report["portfolio_check"]["note"] = report["note"]
+        _emit(report, write_report=write_report)
+        return report
+
+    st_to_spid = _snapshot_strategies(snap, reg)
+    portfolios = [nid for nid, node in snap["nodes"].items()
+                  if node["kind"] == "portfolio"]
+    pf = portfolios[0] if len(portfolios) == 1 else None
+    if not st_to_spid:
+        report["note"] = "snapshot has no strategy nodes — 无法验证策略覆盖"
     off = official_info()
     any_breach, comparable, any_skipped = False, False, False
     exp = cash_flat = None
@@ -256,8 +291,10 @@ def reconcile(date: str | None = None) -> dict:
     mins: dict[str, list] = {}
     if snap:
         exp, cash_flat = flatten_snapshot(snap)
-        leaves = sorted({leaf for st in _ANCHORS
-                         for leaf in exp(st_to_spid[st])})
+        # 价格集合覆盖全部策略与合计的实际叶子(包括组合直接持有的票)。
+        # _ANCHORS 只决定信息展示,不能限制独立对账的覆盖范围。
+        check_nodes = list(st_to_spid.values()) + portfolios
+        leaves = sorted({leaf for nid in check_nodes for leaf in exp(nid)})
         px = feed.daily_close(leaves, target)
         mins = feed.minute_closes(leaves, target)
 
@@ -277,8 +314,7 @@ def reconcile(date: str | None = None) -> dict:
     # 残差总和最小的那个。shares/cash 若错,不存在能拟合掉误差的 lag。
     sync_lag = None
     if snap:
-        spids = [st_to_spid[st] for st in _ANCHORS
-                 if closes.get(st_to_spid[st]) and st_to_spid[st] in snap["nodes"]]
+        spids = [nid for nid in st_to_spid.values() if closes.get(nid)]
         best = None
         for lag in range(LAG_SCAN_MIN + 1):
             tot, n = 0.0, 0
@@ -293,8 +329,12 @@ def reconcile(date: str | None = None) -> dict:
             sync_lag = best[1]
     report["price_lag_min"] = sync_lag
 
-    for st in _ANCHORS:
-        spid = st_to_spid[st]
+    def _missing_at(nid: str) -> list[str]:
+        cut = closes[nid]["epoch"] - (sync_lag or 0) * 60
+        return sorted(reg.render(leaf) for leaf in exp(nid)
+                      if _px_at(mins.get(leaf) or [], cut) is None)
+
+    for st, spid in st_to_spid.items():
         row: dict = {}
         ctl = closes.get(spid)
         if ctl:
@@ -306,9 +346,9 @@ def reconcile(date: str | None = None) -> dict:
                                   if sync_lag is not None else (None, None))
             if v_sync is None:
                 row["position_check"] = {
-                    "status": "skipped",
-                    "missing_minute_bars": sorted(
-                        reg.render(l) for l in holdings if not mins.get(l))}
+                    "status": "incomplete",
+                    "note": "missing minute bars at synchronized price time",
+                    "missing_minute_bars": _missing_at(spid)}
                 any_skipped = True
             else:
                 diff = ctl["value"] - v_sync
@@ -353,20 +393,25 @@ def reconcile(date: str | None = None) -> dict:
                                            if b_close else 0.0, 2),
                     "diff_bp_net": round(d_close / v_close * 1e4
                                          if v_close else 0.0, 2)}
-        # ② 官方 json 对照:纯信息(口径不同,不比对不判定)
-        info = {"source": off[st]["source"], "column": off[st]["column"],
-                "rows": off[st]["rows"],
+        else:
+            row["position_check"] = {"status": "incomplete",
+                                     "note": "strategy close row missing"}
+            any_skipped = True
+        # ② 官方 json 对照:纯信息(口径不同,不比对不判定)。新策略即使尚无
+        # 官方展示列,也照常参与持仓级判定,不能被展示配置挡掉。
+        anchor = off.get(st)
+        info = {"source": anchor["source"] if anchor else None,
+                "column": anchor["column"] if anchor else None,
+                "rows": anchor["rows"] if anchor else [],
                 "note": "different accounting basis — informational only"}
-        if off[st]["rows"] and ctl:
-            d_last, v_last = off[st]["rows"][-1]
+        if info["rows"] and ctl:
+            d_last, v_last = info["rows"][-1]
             info["ratio_display"] = round(ctl["value"] / v_last, 6) if v_last else None
         row["official_info"] = info
         report["strategies"][st] = row
 
     # PORTFOLIO 合计同查(同一 sync_lag)
     if snap and exp and sync_lag is not None:
-        root = snap["nodes"]
-        pf = next((nid for nid, n in root.items() if n["kind"] == "portfolio"), None)
         ctl_pf = closes.get(pf)
         if pf and ctl_pf:
             v_sync, gross_sync = _indep_at(pf, sync_lag)
@@ -384,21 +429,34 @@ def reconcile(date: str | None = None) -> dict:
                     "diff_bp_gross": round(diff_bp, 2)}
                 if abs(diff_bp) > SYNC_TOL_BP:
                     any_breach = True
+            else:
+                report["portfolio_check"] = {
+                    "status": "incomplete",
+                    "note": "missing minute bars at synchronized price time",
+                    "missing_minute_bars": _missing_at(pf)}
+        else:
+            report["portfolio_check"]["note"] = (
+                "snapshot must contain exactly one portfolio node" if not pf
+                else "portfolio close row missing")
+    else:
+        report["portfolio_check"]["note"] = "no synchronized price lag available"
 
-    if comparable:
-        report["verdict"] = ("breach" if any_breach
-                             else "partial" if any_skipped else "ok")
-    _emit(report)
+    # 缺策略/合计覆盖不能被其余策略的 ok 掩盖;已测出的 breach 仍优先报告。
+    complete = (bool(st_to_spid) and comparable and not any_skipped
+                and report["portfolio_check"]["status"] in ("ok", "breach"))
+    report["verdict"] = "breach" if any_breach else "ok" if complete else "incomplete"
+    _emit(report, write_report=write_report)
     return report
 
 
-def _emit(report: dict) -> None:
+def _emit(report: dict, *, write_report: bool = True) -> None:
     path = os.path.join(OUT_DIR, f"reconcile_{report['date']}.json")
-    tmp = path + ".tmp"
-    json.dump(report, open(tmp, "w"), indent=1)
-    os.replace(tmp, path)
+    if write_report:
+        tmp = path + ".tmp"
+        json.dump(report, open(tmp, "w"), indent=1)
+        os.replace(tmp, path)
     print(f"[reconcile] {report['date']} verdict={report['verdict']} "
-          f"-> {os.path.basename(path)}")
+          + (f"-> {os.path.basename(path)}" if write_report else "(dry-run; not written)"))
     for st, row in report.get("strategies", {}).items():
         pc = row.get("position_check")
         if pc and "diff_bp_gross" in pc:
@@ -409,12 +467,16 @@ def _emit(report: dict) -> None:
                   f"({pc['n_positions']} pos, cash {pc['cash']:,.0f}"
                   + (f", drift {drift:+.1f}bp" if drift is not None else "") + ")")
         elif pc:
-            print(f"  {st:5s} position check skipped: "
-                  f"{pc.get('missing_minute_bars')}")
+            print(f"  {st:5s} [{pc['status'].upper()}] {pc.get('note', '')} "
+                  f"{pc.get('missing_minute_bars', [])}")
         else:
             print(f"  {st:5s} baseline (no close/snapshot yet)")
     if "portfolio_check" in report:
         p = report["portfolio_check"]
+        if p["status"] == "incomplete":
+            print(f"  PORTF [INCOMPLETE] {p['note']} "
+                  f"{p.get('missing_minute_bars', [])}")
+            return
         print(f"  PORTF ctl={p['controller_close']:>13,.2f} "
               f"sync={p['independent_value']:>13,.2f} "
               f"resid={p['diff_bp_gross']:+.1f}bp [{p['status'].upper()}] "
@@ -426,5 +488,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(
         description="EOD position-level reconcile (M5, v4 time-synced)")
     ap.add_argument("--date", default=None)
+    ap.add_argument("--dry-run", action="store_true",
+                    help="read inputs and prices, print verdict without writing a report")
     a = ap.parse_args()
-    reconcile(a.date)
+    reconcile(a.date, write_report=not a.dry_run)

@@ -8,24 +8,24 @@
       "param_set": "default",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -36,8 +36,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -46,26 +66,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -74,24 +74,24 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -102,8 +102,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -112,26 +132,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -140,24 +140,24 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -168,8 +168,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -178,26 +198,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -206,24 +206,24 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -234,8 +234,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -244,26 +264,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -272,24 +272,24 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -300,8 +300,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -310,26 +330,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -338,24 +338,24 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -366,8 +366,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -376,26 +396,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -404,24 +404,24 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -432,8 +432,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -442,26 +462,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -470,24 +470,24 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -498,8 +498,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -508,26 +528,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -536,24 +536,24 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -564,8 +564,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -574,26 +594,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -602,24 +602,24 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -630,8 +630,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -640,26 +660,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -668,24 +668,24 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -696,8 +696,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -706,26 +726,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -734,24 +734,24 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -762,8 +762,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -772,26 +792,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -800,24 +800,24 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -828,8 +828,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -838,26 +858,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -866,24 +866,24 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -894,8 +894,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -904,26 +924,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -932,24 +932,24 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -960,8 +960,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -970,26 +990,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -998,24 +998,24 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1026,8 +1026,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1036,26 +1056,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1064,24 +1064,24 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1092,8 +1092,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1102,26 +1122,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1130,24 +1130,24 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1158,8 +1158,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1168,26 +1188,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1196,24 +1196,24 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1224,8 +1224,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1234,26 +1254,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1262,24 +1262,24 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1290,8 +1290,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1300,26 +1320,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1328,24 +1328,24 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1356,8 +1356,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1366,26 +1386,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1394,24 +1394,24 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1422,8 +1422,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1432,26 +1452,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1460,24 +1460,24 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1488,8 +1488,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1498,26 +1518,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1526,24 +1526,24 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1554,8 +1554,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1564,26 +1584,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1592,24 +1592,24 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1620,8 +1620,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1630,26 +1650,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1658,24 +1658,24 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1686,8 +1686,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1696,26 +1716,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1724,24 +1724,24 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1752,8 +1752,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1762,26 +1782,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1790,24 +1790,24 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1818,8 +1818,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1828,26 +1848,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1856,24 +1856,24 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1884,8 +1884,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1894,26 +1914,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1922,24 +1922,24 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -1950,8 +1950,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -1960,26 +1980,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -1988,24 +1988,24 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -2016,8 +2016,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -2026,26 +2046,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -2054,24 +2054,24 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -2082,8 +2082,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -2092,26 +2112,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -2120,24 +2120,24 @@
       "param_set": "vol_release",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -2148,8 +2148,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -2158,26 +2178,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -2186,24 +2186,24 @@
       "param_set": "vol_release_deep",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -2214,8 +2214,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -2224,26 +2244,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     },
@@ -2252,24 +2252,24 @@
       "param_set": "aggressive_vol_release",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
+        ],
+        [
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
           "STE"
         ],
         [
-          "AFL",
-          "PFG"
-        ],
-        [
           "PG",
           "SYY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "AKAM",
@@ -2280,8 +2280,28 @@
           "ROST"
         ],
         [
-          "AIZ",
-          "MS"
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AFL",
+          "PFG"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "TSN",
+          "WMT"
+        ],
+        [
+          "FTV",
+          "JBHT"
+        ],
+        [
+          "GPN",
+          "PAYX"
         ],
         [
           "COF",
@@ -2290,26 +2310,6 @@
         [
           "HWM",
           "IT"
-        ],
-        [
-          "ALGN",
-          "BMY"
-        ],
-        [
-          "CRM",
-          "PLTR"
-        ],
-        [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "RMD",
-          "SYK"
-        ],
-        [
-          "EMR",
-          "UPS"
         ]
       ]
     }

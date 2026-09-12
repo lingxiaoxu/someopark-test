@@ -57,6 +57,11 @@ def _clock_at(iso: str):
     return _Clock
 
 
+@pytest.fixture(autouse=True)
+def live_clock(monkeypatch):
+    monkeypatch.setattr(exits, "datetime", _clock_at(TS))
+
+
 @pytest.fixture()
 def conn(tmp_path):
     return init_db(str(tmp_path / "t.db"))
@@ -83,18 +88,19 @@ def _position(conn, *, lo_px=0.55, hi_px=0.70, bid=0.20, ask=0.22, hi_bid=0.78,
             " mode) VALUES(?,?,?,?,?,?,?, 'paper')", (did, ts, ticker, side, px, 1, 0.01))
         conn.execute(
             "INSERT OR IGNORE INTO contracts(ticker, event_ticker, series, period,"
-            " floor_strike, strike_type, close_time, first_seen_ts)"
-            " VALUES(?,?,?,?,?,?,?,?)",
+            " floor_strike, strike_type, close_time, status, first_seen_ts)"
+            " VALUES(?,?,?,?,?,?,?,'active',?)",
             (ticker, f"{series}-X", series, period, strike, "greater",
              "2026-09-30T00:00:00+00:00", ts))
+    quote_ts = exits.datetime.now(timezone.utc).isoformat()
     for ticker, b, a in (("T0.1", bid, ask), ("T0.2", hi_bid, hi_ask)):
         conn.execute(
             "INSERT OR REPLACE INTO quotes(ts, ticker, yes_bid, yes_ask, bid_depth,"
-            " ask_depth) VALUES(?,?,?,?,?,?)", (ts, ticker, b, a, depth, depth))
+            " ask_depth) VALUES(?,?,?,?,?,?)", (quote_ts, ticker, b, a, depth, depth))
     conn.execute(
         "INSERT OR REPLACE INTO preds(series, period, asof, ladder_json, dist_json,"
         " model_version, data_horizon, created_ts) VALUES(?,?,?,?,?,?,?,?)",
-        (series, period, ts, LADDER, "{}", "pce/0.1.0", ts, ts))
+        (series, period, quote_ts, LADDER, "{}", "pce/0.1.0", quote_ts, quote_ts))
     conn.commit()
     return did
 
@@ -170,7 +176,7 @@ def test_an_unsellable_book_is_not_a_trigger(conn):
 def test_the_freeze_window_blocks_the_shadow_too(conn):
     """10 minutes pre-release the live book may not trade, so neither may the shadow."""
     _position(conn, **REVERSED)
-    soon = datetime.now(timezone.utc) + timedelta(minutes=5)
+    soon = exits.datetime.now(timezone.utc) + timedelta(minutes=5)
     conn.execute("INSERT INTO releases(cal, period, scheduled_ts) VALUES(?,?,?)",
                  (CAL, "2026-09", soon.isoformat()))
     conn.commit()

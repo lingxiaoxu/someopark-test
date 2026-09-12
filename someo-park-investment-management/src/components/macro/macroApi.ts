@@ -33,9 +33,21 @@ export type MacroReportEntry = { name: string; url: string; mtime?: string; kind
 export type MacroReports = { generated_at?: string; reports?: MacroReportEntry[] };
 export const getMacroReports = () => getMacroJson<MacroReports>('macro_reports');
 
+export type MacroMarkStatus = 'marked' | 'stale' | 'missing' | 'illiquid' | 'unverified';
+export type MacroValuation = {
+  mark_status?: MacroMarkStatus; mark_ts?: string | null; quote_ts?: string | null;
+  quote_age_seconds?: number | null; quote_max_age_seconds?: number;
+  n_legs?: number; n_unmarked?: number; n_stale?: number; carrying_pnl_usd?: number;
+};
+export type MacroMark = MacroValuation & {
+  ts?: string | null; decision_id: number; ticker: string; mid?: number | null;
+  pnl_usd?: number | null;
+};
 export type MacroPricetrack = {
   generated_at?: string;
-  track?: { ts: string; pnl_usd: number; n_legs?: number }[];
+  valuation?: MacroValuation;
+  track?: { ts: string; pnl_usd: number | null; carrying_pnl_usd?: number;
+    quote_ts?: string | null; n_legs?: number; n_unmarked?: number }[];
 };
 export const getMacroPricetrack = () => getMacroJson<MacroPricetrack>('macro_pricetrack');
 

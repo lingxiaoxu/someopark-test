@@ -25,7 +25,8 @@ export const macroMarketDataTool: AgentTool = {
             'Data slice: macro_board (all series + next releases), macro_fed (FOMC), ' +
             'macro_inflation, macro_labor, macro_divergence, macro_decisions (positions), ' +
             'macro_performance, macro_calibration (OOS), macro_coverage (ops), macro_risk, ' +
-            'macro_walkforward (30d live PIT track record + three-line ML comparison).',
+            'macro_walkforward (30d live PIT track record + three-line ML comparison), ' +
+            'macro_livereplay (replay/live reconciliation and unexplained divergences).',
         },
       },
       required: ['view'],

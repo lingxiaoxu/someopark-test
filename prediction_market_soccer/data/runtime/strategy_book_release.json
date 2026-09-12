@@ -1,0 +1,44 @@
+{
+  "activated_at": "2026-09-10T18:05:38.185205+00:00",
+  "finished_at": "2026-09-10T18:05:39.865950+00:00",
+  "critical_seconds": 1.681,
+  "source_files": 13,
+  "book_version": {
+    "version_id": "00ffda382ea41f3e4fec8b19b45226b51db39e864afddb91a01753cb595c514e",
+    "model_version": "club-soccer-v1",
+    "method_version": "hybrid-smart-timing-v1",
+    "baseline_ledger_id": "6c01afe315c0d3f69759c3b096f548a117a6f9138dcf8a51f6d434272911fe51",
+    "baseline_count": 352,
+    "created_at": "2026-09-10T18:05:38.185205+00:00"
+  },
+  "ledger_id": "6c01afe315c0d3f69759c3b096f548a117a6f9138dcf8a51f6d434272911fe51",
+  "baseline_records": 352,
+  "baseline_legs": 607,
+  "historical_rows_unchanged": true,
+  "preserved_tables": {
+    "settled_bet": {
+      "count": 366,
+      "sha256": "ed2dcaef8c07a9f802b09886b169712e68dd4fe883b94c02e948e2073f9e18e5"
+    },
+    "legacy_paper_render": {
+      "count": 352,
+      "sha256": "153b06d1193307d9e197c8761e459c485f96ea6bdd84881c0eef464d0f7b053f"
+    },
+    "kalshi_mirror": {
+      "count": 132,
+      "sha256": "9086c1ffd0e7d144a7f9b1560cd749576472413fd27e718debd6a14791968868"
+    }
+  },
+  "paper_entries_at_activation": 0,
+  "manual_orders": 0,
+  "network_calls": 0,
+  "tests_in_production": false,
+  "artifacts": {
+    "prediction_market_soccer/data/output/performance_report.json": "4797a53a07b6d6446abeebc3057bf35b18bd4bd1395777df65c30130f414dd6c",
+    "prediction_market_soccer/data/output/milestone_marks.json": "ffdd0d54ae103aeef3723bdf95889dd22e62da1800207394a5a81cd8bcb1859a",
+    "prediction_market_soccer/data/output/performance_report.pdf": "8e4a7b77669a3ca205ea425963bf4d59e9bc3f8455696ac83f02a3e4d8391001",
+    "someo-park-investment-management/public/data/soccer/performance_report.json": "4797a53a07b6d6446abeebc3057bf35b18bd4bd1395777df65c30130f414dd6c",
+    "someo-park-investment-management/public/data/soccer/milestone_marks.json": "ffdd0d54ae103aeef3723bdf95889dd22e62da1800207394a5a81cd8bcb1859a",
+    "someo-park-investment-management/public/data/soccer/performance_report.pdf": "8e4a7b77669a3ca205ea425963bf4d59e9bc3f8455696ac83f02a3e4d8391001"
+  }
+}

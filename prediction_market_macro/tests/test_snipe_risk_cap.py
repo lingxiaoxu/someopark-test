@@ -19,6 +19,7 @@ book where `arb` has never fired — so it is written down (§25.22), not decide
 from __future__ import annotations
 
 import pytest
+from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.ingest.store import init_db
 from prediction_market_macro.ops import risk
@@ -36,6 +37,8 @@ def conn(tmp_path, monkeypatch):
     c.execute("INSERT INTO contracts(ticker, series, event_ticker, period, status,"
               " first_seen_ts) VALUES(?,?,?,?,'active','2026-08-01T00:00:00+00:00')",
               (LEG["ticker"], S, TOK, TOK))
+    c.execute("UPDATE contracts SET close_time=?",
+              ((datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),))
     c.commit()
     # The print is far from the 3.0 strike, so the BOUNDARY_FRAC guard does not fire.
     monkeypatch.setattr("prediction_market_macro.ops.pnl._realized_print",
@@ -46,6 +49,7 @@ def conn(tmp_path, monkeypatch):
                         lambda *a, **k: "yes")
     monkeypatch.setattr("prediction_market_macro.util.periods.kalshi_period_to_key",
                         lambda t: KEY)
+    monkeypatch.setattr("prediction_market_macro.ops.trading_kalshi.on_fill", lambda *args: None)
     return c
 
 

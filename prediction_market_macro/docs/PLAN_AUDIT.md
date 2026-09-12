@@ -14,7 +14,7 @@
 | 3 | **三源 ensemble**(log-pool,Bates-Granger 逆MSPE动态权重+trimmed守卫,shadow)+**isotonic 校准层**(Kelly 前,OOS pairs 拟合,identity 回退)+**MIDAS bridge nowcast**(GASREGW→CPI/ICSA→NFP/ICSA→U3,shadow)+source_scores 表 | ensemble.py, calibration.py, bridge.py |
 | 4 | 熵门(平坦分布→PASS)+**逐 strike edge_capture 记忆**(<0.4 且 n≥8 剔除,铁律5后半)+分歧门改用 devig 概率(§11 原口径) | decision.py, capture.py |
 | 5 | **Fed 声明抓取**(5 份真实声明入库)+statement_risk/news_flags 接电(event_flags 表→家族级闸门收紧)+BEA_GDP/EIA 日历+**releases.actual_ts 复活**(23条回填)+postponed 侦测+BLS 排期联网漂移检查 | fed_text.py, llm.py, calendars.py |
-| 6 | **事件窗加密轮询**:tick linger ≤840s,窗内 5 分钟快照、±10分钟 1 分钟,T+3m reassess 准时执行(§19-9 补上处理器) | tick.py |
+| 6 | **事件窗加密轮询**:7/31 实现为 linger ≤840s；2026-09-10 移除该上限，完整覆盖事件窗并每 60 秒唤起空闲 tick。窗内 5 分钟快照、±10 分钟内 1 分钟快照；T+3m reassess 前先补发布数据并检查执行期限 | tick.py |
 | 7 | **微观结构**:spread 宽→市场权重减半+sanity 回退 cost;favorite-longshot 修正(isotonic on (市场概率,结果));**ACI conformal 仓位节流** | conformal.py, ensemble.py |
 | 8 | **model/gdp.py**(GDPNow 锚+历史误差σ,实测 2026-Q3 4.95±1.30)+**nowcast_vintages 复活**(800 条真实 GDPNow vintage)+quarterly lane | gdp.py, nowcast.py |
 | 9 | 结算 **z 归因**(luck/gray/model_miss)+误差归因周聚类;**发现并修复 settle 重复结算 bug**(open_positions 未排除 settle_note,KXFED 重复7次;台账保持 append-only,读取端去重);pricetrack(tick 每次盯市+导出);**PDF 导出前端**(macro_reports/) | pnl.py, attribution.py, ledger.py |

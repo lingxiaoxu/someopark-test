@@ -1,92 +1,79 @@
-"""ops/settle_reports.py — the heavy on-settle reports, run OUT of the live loop's way.
-
-When a match settles, the bet ledger (performance_report), the OOS evaluation and the
-PnL PDF should refresh. They used to run INLINE in the live loop's settle branch, which
-was fine while they scored with the cached live model — but the honest point-in-time
-rework made them expensive (per-day walk-forward: ~140 strength fits each), and the
-loop holds a single-instance lock, so every settle wave froze the in-play card for the
-whole rebuild: 8-15 minute "cycles" in the log, 2,440 prior rebuilds in one day.
-
-The date-stamped prior cache (model/pit_strength.pit_prior) removed the rebuild grind;
-this module removes the BLOCKING. The live loop now spawns it detached and moves on —
-the reports land a few minutes later, the in-play card never stops. A lock file keeps
-it single-flight; a stale lock (>30 min) is treated as a crashed run and taken over.
-
-    python -m prediction_market_soccer.ops.settle_reports
-"""
+"""Publish completed paper finances promptly; keep research off this critical path."""
 from __future__ import annotations
 
-import json
-import os
-import time
 from dataclasses import asdict
-
 from prediction_market_soccer.config import CONFIG
-
-_LOCK = CONFIG.paths.output / ".settle_reports.lock"
-_STALE_S = 30 * 60
+from prediction_market_soccer.ops.run_status import RunStatus, atomic_bytes, atomic_json, publish_operations
 
 
-def _acquire() -> bool:
-    try:
-        if _LOCK.exists() and (time.time() - _LOCK.stat().st_mtime) < _STALE_S:
-            return False
-        _LOCK.write_text(str(os.getpid()), encoding="utf-8")
-        return True
-    except OSError:
-        return False
+from prediction_market_soccer.ops.maintenance_gate import writer
 
 
-def _write_both(name: str, doc) -> None:
-    payload = json.dumps(doc, ensure_ascii=False, indent=2)
-    for d in (CONFIG.paths.output, CONFIG.paths.frontend_data):
-        (d / name).write_text(payload, encoding="utf-8")
-
-
+@writer
 def main() -> None:
-    if not _acquire():
-        print("[settle_reports] another run is active — exiting")
+    from prediction_market_soccer.ops.proc_lock import acquire, release
+    # Shared with full refresh: two writers must not replace each other's report batch.
+    if not acquire("refresh_all"):
+        print("[settle_reports] a full/report refresh is active — pending results will retry")
         return
-    t0 = time.time()
+    from prediction_market_soccer.ingest import store
+    from prediction_market_soccer.ops.export_stage import ExportStage
+    conn = store.init_db()
+    status = RunStatus("settle_reports")
+    settled = conn.execute("SELECT COUNT(*) FROM fixture WHERE status_short IN ('FT','AET','PEN') "
+                           "AND home_goals IS NOT NULL").fetchone()[0]
     try:
-        from prediction_market_soccer.ingest import store
-        conn = store.init_db()
-
-        from prediction_market_soccer.ops import performance_report
-        rep = performance_report.build(conn)
-        _write_both("performance_report.json", asdict(rep))
-        print(f"[settle_reports] performance_report.json ({time.time() - t0:.0f}s)")
-
-        # PIT (P,Y) records the demo mirror's pre-match decision calibrates on — the same
-        # settle_bets._pit_py the ledger freezes with. Rebuilt here (post-settle, background)
-        # so the live loop never pays the ~140 strength fits inline.
+        with ExportStage() as stage:
+            from prediction_market_soccer.ops import (
+                settle_bets, performance_report, milestone_export, frontend_export)
+            from prediction_market_soccer.util.frozen_strategy_store import consume_completed_paper
+            status.step("settled_bet", lambda: settle_bets.freeze_settled_bets(conn))
+            if status.failed:
+                raise RuntimeError("Paper settlement failed; preserved the published financial group")
+            status.step("strategy_book_append", lambda: consume_completed_paper(conn))
+            if status.failed:
+                raise RuntimeError("Paper book append failed; preserved the published financial group")
+            reports = {}
+            def write(name, fn):
+                doc = fn()
+                atomic_json(CONFIG.paths.output / name, doc)
+                atomic_json(CONFIG.paths.frontend_data / name, doc)
+            def performance():
+                reports["performance"] = performance_report.build(conn, freeze=False)
+                return asdict(reports["performance"])
+            status.step("performance_report.json", lambda: write("performance_report.json", performance))
+            status.step("milestone_marks.json", lambda: write("milestone_marks.json", lambda: milestone_export.build(
+                conn, freeze=False, ledger=reports["performance"].strategy_ledger)))
+            def pdf():
+                report = reports["performance"]
+                path = CONFIG.paths.output / "performance_report.pdf"
+                performance_report.build_pdf(report, str(path))
+                atomic_bytes(CONFIG.paths.frontend_data / path.name, path.read_bytes())
+            status.step("performance_report.pdf", pdf)
+            status.step("frontend_overview.json", lambda: write("frontend_overview.json", lambda: frontend_export.build(conn)))
+            if status.failed:
+                raise RuntimeError("Report refresh failed; previous complete reports retained")
+            stage.promote()
+        status.finish(input_value=settled)
+        atomic_bytes(CONFIG.paths.output / ".settle_reports_watermark", str(settled).encode())
+        print(f"[settle_reports] complete on {settled} settled fixtures")
+        # Quote-history collection is bounded and independently observable. Its
+        # failure cannot undo the already-published financial group or watermark.
+        # Expensive backtest/OOS diagnostics belong to the full-refresh pipeline.
         try:
-            from prediction_market_soccer.exec.kalshi_mirror import build_pit_cache
-            print(f"[settle_reports] pit_records: {build_pit_cache(conn)} ({time.time() - t0:.0f}s)")
-        except Exception as e:  # noqa: BLE001
-            print(f"[settle_reports] pit cache skipped: {e}")
-
-        try:
-            from prediction_market_soccer.model import oos_eval
-            _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
-            print(f"[settle_reports] oos_report.json ({time.time() - t0:.0f}s)")
-        except Exception as e:  # noqa: BLE001
-            print(f"[settle_reports] oos skipped: {e}")
-
-        try:
-            import shutil
-            pdf = CONFIG.paths.output / "performance_report.pdf"
-            performance_report.build_pdf(rep, str(pdf))
-            shutil.copy(pdf, CONFIG.paths.frontend_data / "performance_report.pdf")
-            print(f"[settle_reports] performance_report.pdf ({time.time() - t0:.0f}s)")
-        except Exception as e:  # noqa: BLE001
-            print(f"[settle_reports] pdf skipped: {e}")
+            from prediction_market_soccer.ops.daily_collection import run as collect_daily
+            collection = RunStatus("settle_reports_collection")
+            collection.step("milestone_backfill", lambda: collect_daily(conn, limit=12), required=False)
+            collection.finish(input_value=settled)
+        except Exception as exc:
+            print(f"[settle_reports] optional history collection failed after financial publication: {exc}")
+    except BaseException as exc:
+        status.finish(error=exc)
+        raise
     finally:
-        try:
-            _LOCK.unlink()
-        except OSError:
-            pass
-    print(f"[settle_reports] done in {time.time() - t0:.0f}s")
+        conn.close()
+        publish_operations()
+        release("refresh_all")
 
 
 if __name__ == "__main__":

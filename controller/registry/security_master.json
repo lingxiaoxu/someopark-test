@@ -1138,6 +1138,23 @@
    }
   ]
  },
+ "US21036P1084": {
+  "asset_class": "equity",
+  "cik": "0000016918",
+  "cusip": "21036P108",
+  "figi": "BBG000J1QLT0",
+  "name": "Constellation Brands, Inc.",
+  "polygon_ticker": "STZ",
+  "registered_at": "2026-09-09T12:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-09",
+    "ticker": "STZ",
+    "to": null
+   }
+  ]
+ },
  "US21037T1097": {
   "asset_class": "equity",
   "cik": "0001868275",
@@ -2052,6 +2069,23 @@
    {
     "from": "2026-08-12",
     "ticker": "HWM",
+    "to": null
+   }
+  ]
+ },
+ "US4448591028": {
+  "asset_class": "equity",
+  "cik": "0000049071",
+  "cusip": "444859102",
+  "figi": "BBG000BLKK03",
+  "name": "Humana Inc.",
+  "polygon_ticker": "HUM",
+  "registered_at": "2026-09-09T12:53:02+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-09",
+    "ticker": "HUM",
     "to": null
    }
   ]
@@ -3114,7 +3148,7 @@
   "asset_class": "equity",
   "cik": "0001039684",
   "cusip": "682680103",
-  "figi": "BBG000BQHGR6",
+  "figi": "BBG000JBSHW1",
   "name": "Oneok, Inc.",
   "polygon_ticker": "OKE",
   "registered_at": "2026-08-12T06:53:13+00:00",

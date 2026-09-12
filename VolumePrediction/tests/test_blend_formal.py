@@ -115,8 +115,10 @@ def test_registry_blend_production_state():
     blend = data.get("blend")
     assert blend is not None, "blend 配置未 seed"
     assert blend["enabled"] is True
-    assert blend["rnn_version"] == "rnn_v6f32n_20260731"
-    assert (OUT / "registry" / "artifacts" / blend["rnn_version"]).exists()
+    artifact = OUT / "registry" / "artifacts" / blend["rnn_version"]
+    meta = json.loads((artifact / "meta.json").read_text())
+    assert meta["kind"] == "learned.rnn"
+    assert meta["version"] == blend["rnn_version"]
     assert blend.get("rnn_full_coverage") is True, \
         "生产覆盖度键丢失/被降级 —— 用户 2026-08-17 终判是 True"
 
@@ -150,6 +152,7 @@ def test_refresh_blend_e2e_sandbox(tmp_path, monkeypatch):
         day = pd.read_parquet(raw_days[-1])
         tk = day["ticker"].head(2000)
         return pd.DataFrame({
+            "date": prod_model_rnn._prev_trading_day(target),
             "ticker": tk, "pred_v": 15.0, "pred_V": float(np.exp(15.0)),
             "pred_eta": 0.05, "model_version": "rnn_fake",
             "trained_through": "2026-07-31"})
@@ -205,7 +208,7 @@ def test_refresh_blend_same_day_rerun_no_downgrade(tmp_path, monkeypatch):
     day = pd.read_parquet(sorted(real_raw.glob("grouped_*.parquet"))[-1])
     shadow = art / "shadow_rnn"
     shadow.mkdir(parents=True)
-    pd.DataFrame({"ticker": day["ticker"].head(1500), "pred_v": 15.0,
+    pd.DataFrame({"date": asof, "ticker": day["ticker"].head(1500), "pred_v": 15.0,
                   "pred_V": float(np.exp(15.0)), "pred_eta": 0.05,
                   "model_version": "rnn_fake",
                   "trained_through": "2026-07-31"}).to_parquet(

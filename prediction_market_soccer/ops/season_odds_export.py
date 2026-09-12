@@ -68,6 +68,11 @@ def build(conn=None) -> dict:
                          "ro16": "ro16", "ro8": "ro8", "ro4": "ro4", "finalist": "finalist"}
         boards = []
         for fam, label in fam_defs:
+            family_state = (lg.get("odds_family_states") or {}).get(fam)
+            if family_state and family_state != "ok":
+                boards.append({"family": fam, "label": label, "rows": [], "state": family_state,
+                               "availability_reason": lg.get("availability_reason") or family_state})
+                continue
             rows = []
             for so in lg.get("season_odds", []):
                 pmod = so.get({"champion": "p_champion", "top_n": "p_top_n",
@@ -89,15 +94,23 @@ def build(conn=None) -> dict:
             if any(r["model_pct"] > 0 for r in rows):
                 boards.append({"family": fam, "label": label,
                                "kalshi_series": comp.kalshi.get(fam_to_kalshi.get(fam) or "", ""),
-                               "rows": rows})
+                               "rows": rows, "state": "ok"})
         # A competition with no priceable board still gets an entry carrying WHY
         # (待抽签 / 待签表): dropping it made the league silently vanish from the
         # card, which reads as "missing data" rather than "not computable yet".
         leagues_out.append({"league": comp.key, "name": comp.name, "zh": comp.zh,
                             "kind": comp.kind, "boards": boards,
-                            "state": lg.get("odds_state", "ok")})
+                            "state": lg.get("odds_state", "ok"),
+                            **{k: lg.get(k) for k in ("odds_family_states", "availability_reason",
+                                                       "coverage", "source_as_of", "odds_notes", "odds_notes_i18n")}})
 
+    issues = [{"code": lg.get("availability_reason") or lg["state"], "league": lg["league"]}
+              for lg in leagues_out if lg["state"] != "ok"]
+    if not model_doc:
+        issues.append({"code": "model_unavailable"})
     return {
+        "source_as_of": (model_doc or {}).get("source_as_of") or ((model_doc or {}).get("meta") or {}).get("run_ts"),
+        "data_status": {"state": "unavailable" if not model_doc else "degraded" if issues else "ok", "issues": issues},
         "as_of": datetime.now(timezone.utc).isoformat(),
         "note_key": "notes.seasonOdds",
         "note": "model = season MC (league_season/ucl_phase); kalshi_c = settlement-aware "
@@ -110,9 +123,8 @@ def build(conn=None) -> dict:
 def main() -> None:
     doc = build()
     CONFIG.paths.ensure()
-    for d in (CONFIG.paths.output, CONFIG.paths.frontend_data):
-        (d / "season_odds.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1),
-                                            encoding="utf-8")
+    from prediction_market_soccer.ops.run_status import write_both
+    write_both("season_odds.json", doc)
     n = sum(len(l["boards"]) for l in doc["leagues"])
     print(f"season_odds.json written ({len(doc['leagues'])} leagues, {n} boards)")
 

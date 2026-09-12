@@ -234,6 +234,29 @@ CREATE TABLE IF NOT EXISTS settled_bet (
     cal_method TEXT, cal_param REAL, cal_n INTEGER,   -- the PIT calibration used (audit)
     settled_at TEXT NOT NULL                          -- when first frozen
 );
+-- Forward observation journal. Never assign historical first-seen timestamps to legacy rows.
+CREATE TABLE IF NOT EXISTS fixture_result_observation (
+    fixture_api_id INTEGER, observed_at TEXT, home_goals INTEGER, away_goals INTEGER,
+    status_short TEXT, PRIMARY KEY (fixture_api_id, observed_at)
+);
+CREATE TABLE IF NOT EXISTS milestone_observation (
+    fixture_api_id INTEGER, milestone TEXT, source TEXT, observed_at TEXT,
+    snapshot_json TEXT NOT NULL, provenance_json TEXT NOT NULL,
+    PRIMARY KEY (fixture_api_id, milestone, source)
+);
+CREATE TABLE IF NOT EXISTS timing_decision_observation (
+    fixture_api_id INTEGER, track TEXT, decision_at TEXT, payload TEXT NOT NULL,
+    PRIMARY KEY (fixture_api_id, track, decision_at)
+);
+CREATE TABLE IF NOT EXISTS legacy_paper_render (
+    fixture_api_id INTEGER PRIMARY KEY, identity_json TEXT NOT NULL,
+    artifact_as_of TEXT NOT NULL, archived_at TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL, payload TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS venue_fill_observation (
+    fill_id TEXT PRIMARY KEY, order_id TEXT NOT NULL, observed_at TEXT NOT NULL,
+    payload TEXT NOT NULL
+);
 -- ── venue order-book probe (ops/venue_liquidity.py) ─────────────────────────
 -- One row per (fixture, side, venue, kickoff-relative bucket): what the book looked
 -- like that far before kickoff. Exists because a single sample taken hours early was
@@ -328,7 +351,8 @@ _VENUE_SEED = [
 
 def connect() -> sqlite3.Connection:
     CONFIG.paths.ensure()
-    conn = sqlite3.connect(DB_PATH)
+    from prediction_market_soccer.util.source_history import ObservedConnection
+    conn = sqlite3.connect(DB_PATH, factory=ObservedConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")   # durable + concurrent reads (frontend)
     # WAL permits ONE writer at a time; without a busy timeout the second writer gets an
@@ -471,6 +495,18 @@ def upsert(conn: sqlite3.Connection, table: str, row: dict[str, Any], pk: list[s
         f"ON CONFLICT ({', '.join(pk)}) DO UPDATE SET {updates}"
     )
     conn.execute(sql, [row[c] for c in cols])
+    if table in _VERSIONED_TABLES:
+        from prediction_market_soccer.util.source_history import stage_version
+        # Capture the entire merged projection, not only a partial provider stub.
+        saved = conn.execute(f"SELECT * FROM {table} WHERE " + ' AND '.join(f'{k} IS ?' for k in pk),
+                             [row[k] for k in pk])
+        values = saved.fetchone()
+        if values is not None:
+            payload = dict(zip((d[0] for d in saved.description), values))
+            stage_version(conn, 'table:' + table, {k: row[k] for k in pk}, payload)
+    if table == "fixture":
+        from prediction_market_soccer.util.timing_provenance import record_fixture_result
+        record_fixture_result(conn, row)
 
 
 def upsert_many(conn: sqlite3.Connection, table: str, rows: Iterable[dict], pk: list[str]) -> int:
@@ -479,6 +515,14 @@ def upsert_many(conn: sqlite3.Connection, table: str, rows: Iterable[dict], pk: 
         upsert(conn, table, r, pk)
         n += 1
     return n
+
+
+# These mutable projections can enter a model or a market identity decision.
+# Current legacy values are not backdated: only actual new observations acquire
+# versions. Whole event sets are separately captured by soccer_ingest.
+_VERSIONED_TABLES = frozenset(('fixture', 'team', 'team_meta', 'club_registry', 'standing',
+    'squad', 'player_stat', 'fixture_stats', 'fixture_player_stats', 'lineup',
+    'match_odds', 'club_recent', 'nt_recent', 'tie', 'player'))
 
 
 # ── Watermarks (incremental gate) ────────────────────────────────────────────
@@ -508,15 +552,13 @@ def is_fresh(conn: sqlite3.Connection, resource: str, ttl_seconds: int) -> bool:
 # ── Raw snapshots + API accounting ───────────────────────────────────────────
 def write_raw_snapshot(conn: sqlite3.Connection, resource: str, params: dict | None, payload: Any) -> Path:
     ph = params_hash(params)
-    ts = utcnow().replace(":", "").replace("-", "").split(".")[0]
-    folder = RAW_DIR / resource
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{ts}_{ph}.json"
-    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    from prediction_market_soccer.util.source_history import write_content, stage_version
+    path = write_content(payload, root=RAW_DIR / 'objects_v1')
     conn.execute(
         "INSERT INTO raw_index (resource, params_hash, fetched_at, path) VALUES (?,?,?,?)",
         (resource, ph, utcnow(), str(path)),
     )
+    stage_version(conn, 'raw:' + resource, {'params_hash': ph}, payload, raw_ref=path)
     return path
 
 

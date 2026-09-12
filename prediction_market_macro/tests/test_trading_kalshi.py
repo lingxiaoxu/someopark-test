@@ -13,9 +13,11 @@ poisoned place_taker_order.
 from __future__ import annotations
 
 import json
-import re
-from datetime import datetime, timezone
+import ast
+import io
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -26,13 +28,20 @@ from prediction_market_macro.ops import trading_kalshi as tk
 @pytest.fixture()
 def conn(tmp_path, monkeypatch):
     c = init_db(tmp_path / "t.db")
-    # no network from any test: prod-ask re-fetch is stubbed, order transport poisoned
-    monkeypatch.setattr(tk, "_prod_ask", lambda ticker: 0.50)
+    # Exercise the real side/action parser, with HTTP faked and transport poisoned.
+    _stub_book(monkeypatch, {"yes_dollars": [["0.50", "100"]],
+                             "no_dollars": [["0.50", "100"]]})
     import prediction_market_macro.exec.kalshi_exec as kx
     def poisoned(*a, **k):
         raise AssertionError("exchange write attempted outside an armed test")
     monkeypatch.setattr(kx, "place_taker_order", poisoned)
     return c
+
+
+def _stub_book(monkeypatch, book):
+    def response(*args, **kwargs):
+        return io.BytesIO(json.dumps({"orderbook_fp": book}).encode())
+    monkeypatch.setattr(tk.urllib.request, "urlopen", response)
 
 
 def _paper_fill(conn, ticker="KXNATGASW-26AUG2117-T2.899", side="no", price=0.29,
@@ -47,6 +56,12 @@ def _paper_fill(conn, ticker="KXNATGASW-26AUG2117-T2.899", side="no", price=0.29
         " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
         (cur.lastrowid, datetime.now(timezone.utc).isoformat(), ticker, side, price,
          count, 0.02))
+    conn.execute(
+        "INSERT OR IGNORE INTO contracts(ticker,series,event_ticker,period,status,"
+        "close_time,first_seen_ts) VALUES(?,?,?,?,?,?,?)",
+        (ticker, ticker.split("-", 1)[0], ticker.rsplit("-", 1)[0], "26AUG21",
+         "active", (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+         datetime.now(timezone.utc).isoformat()))
     conn.commit()
     return f.lastrowid
 
@@ -64,18 +79,28 @@ def _demo_fill(conn, fill_id, ticker, side, action, price, count, fee=0.0):
 # ── the source pin: every fills door carries the inline hook ─────────────────
 
 def test_every_fills_door_calls_the_inline_mirror():
-    """`INSERT INTO fills` in production code must be followed by on_fill within a
-    few lines — a new door added without the hook silently reopens the latency gap
-    the inline design exists to close."""
+    """Each writer or its immediate wrapper mirrors after the structure commits;
+    source character distance is not a meaningful atomicity guarantee."""
     root = Path(__file__).resolve().parent.parent
     doors = []
     for p in root.rglob("*.py"):
         if "tests" in p.parts or p.name == "trading_kalshi.py":
             continue
-        src = p.read_text()
-        for m in re.finditer(r"INSERT INTO fills", src):
-            tail = src[m.start():m.start() + 600]
-            doors.append((str(p.relative_to(root)), "on_fill" in tail))
+        functions = [n for n in ast.walk(ast.parse(p.read_text()))
+                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        for fn in functions:
+            nodes = list(ast.walk(fn))
+            if not any(isinstance(n, ast.Constant) and isinstance(n.value, str)
+                       and "INSERT INTO fills" in n.value for n in nodes):
+                continue
+            has_hook = any(isinstance(n, ast.Attribute) and n.attr == "on_fill" for n in nodes)
+            if not has_hook:
+                has_hook = any(
+                    any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                        and n.func.id == fn.name for n in ast.walk(caller))
+                    and any(isinstance(n, ast.Attribute) and n.attr == "on_fill"
+                            for n in ast.walk(caller)) for caller in functions)
+            doors.append((f"{p.relative_to(root)}:{fn.name}", has_hook))
     assert doors, "no fills doors found — the scan itself broke"
     missing = [d for d, ok in doors if not ok]
     assert not missing, f"fills doors without inline mirror hook: {missing}"
@@ -92,6 +117,70 @@ def test_dark_mode_full_pipeline_no_exchange_write(conn):
     assert row["client_order_id"] == f"spm-m{fid}"
     assert row["paper_ask"] == pytest.approx(0.29)
     assert row["prod_ask_at_send"] == pytest.approx(0.50)   # latency component captured
+    assert row["prod_price_basis"] == "side_action_v1"
+
+
+@pytest.mark.parametrize("side,action,expected", [
+    ("yes", "buy", 0.73), ("no", "buy", 0.35),
+    ("yes", "sell", 0.65), ("no", "sell", 0.27),
+])
+def test_prod_price_four_directions_from_asymmetric_book(monkeypatch, side, action, expected):
+    # 8c spread: complementing YES ask gives NO bid, not the NO ask needed to buy.
+    _stub_book(monkeypatch, {"yes_dollars": [["0.65", "4"], ["0.55", "9"]],
+                             "no_dollars": [["0.17", "2"], ["0.27", "7"]]})
+    assert tk._prod_price("T", side, action) == pytest.approx(expected)
+
+
+def test_prod_price_ignores_zero_size_and_nonfinite_levels(monkeypatch):
+    _stub_book(monkeypatch, {"yes_dollars": [["0.99", "0"], ["0.90", "NaN"],
+                                             ["NaN", "2"], ["0.65", "3"]]})
+    assert tk._prod_price("T", "no", "buy") == pytest.approx(0.35)
+
+
+@pytest.mark.parametrize("side,action", [("yes", "buy"), ("no", "sell")])
+def test_prod_price_missing_required_side_stays_unknown(monkeypatch, side, action):
+    _stub_book(monkeypatch, {"yes_dollars": [["0.65", "4"]]})
+    assert tk._prod_price("T", side, action) is None
+
+
+@pytest.mark.parametrize("failure", [TimeoutError("slow book"), ValueError("bad json")])
+def test_prod_price_transport_or_payload_failure_is_unknown(monkeypatch, failure):
+    def failed(*args, **kwargs):
+        raise failure
+    monkeypatch.setattr(tk.urllib.request, "urlopen", failed)
+    assert tk._prod_price("T", "no", "buy") is None
+
+
+def test_dark_no_buy_uses_no_ask_for_reference_and_fee(conn, monkeypatch):
+    from prediction_market_macro.strategy.edge import taker_fee
+    _stub_book(monkeypatch, {"yes_dollars": [["0.65", "100"]],
+                             "no_dollars": [["0.27", "100"]]})
+    fid = _paper_fill(conn, side="no", price=0.34)
+    tk.on_fill(conn, fid)
+    row = conn.execute("SELECT * FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()
+    assert row["status"] == "dryrun"
+    assert row["paper_ask"] == pytest.approx(0.34)
+    assert row["prod_ask_at_send"] == pytest.approx(0.35)
+    assert row["fee_usd"] == taker_fee(0.35, 100)
+
+
+def test_dark_reference_missing_uses_paper_fee_without_fabricating_price(conn, monkeypatch):
+    from prediction_market_macro.strategy.edge import taker_fee
+    _stub_book(monkeypatch, {"no_dollars": [["0.27", "100"]]})
+    fid = _paper_fill(conn, side="no", price=0.34)
+    tk.on_fill(conn, fid)
+    row = conn.execute("SELECT * FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()
+    assert row["prod_ask_at_send"] is None
+    assert row["fee_usd"] == taker_fee(0.34, 100)
+
+
+def test_dark_zero_reference_does_not_fall_back_to_paper_fee(conn, monkeypatch):
+    _stub_book(monkeypatch, {"yes_dollars": [["1.00", "100"]]})
+    fid = _paper_fill(conn, side="no", price=0.34)
+    tk.on_fill(conn, fid)
+    row = conn.execute("SELECT * FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()
+    assert row["prod_ask_at_send"] == 0
+    assert row["fee_usd"] == 0
 
 
 def test_idempotent_across_inline_and_sweep(conn):
@@ -114,7 +203,9 @@ def test_watermark_blocks_retro_mirroring(conn):
     assert conn.execute("SELECT fill_id FROM demo_orders").fetchone()[0] == post
 
 
-def test_exit_clamps_to_held_and_never_shorts(conn):
+def test_exit_clamps_to_held_and_never_shorts(conn, monkeypatch):
+    _stub_book(monkeypatch, {"yes_dollars": [["0.65", "100"]],
+                             "no_dollars": [["0.27", "100"]]})
     tk._set_state(conn, "watermark", "0")
     # paper closes 1 (=100 demo) but demo only ever bought 40
     fid_open = _paper_fill(conn, side="no", kind="open")
@@ -124,6 +215,7 @@ def test_exit_clamps_to_held_and_never_shorts(conn):
     row = conn.execute("SELECT * FROM demo_orders WHERE fill_id=?", (fid_close,)).fetchone()
     assert row["action"] == "sell" and row["side"] == "no"
     assert row["count_target"] == 40                        # clamped, not 100
+    assert row["prod_ask_at_send"] == pytest.approx(0.27)  # sell NO hits NO bid
     # and with zero held (pre-arming open), the exit is an explicit no-op row
     fid2 = _paper_fill(conn, ticker="KXWTIW-26AUG2114-B79.50", side="close_yes",
                        kind="exit")
@@ -145,23 +237,102 @@ def _arm(conn, monkeypatch, cash=492.0, accept=True):
             else OrderResult("error", "rejected")
     monkeypatch.setattr(kx, "place_taker_order", fake_order)
     import prediction_market_macro.config.settings as st
-    real = st.load_settings()
-    class S:
-        trading_enabled = True
-        def __getattr__(self, k):
-            return getattr(real, k)
-    monkeypatch.setattr(st, "load_settings", lambda: S())
+    monkeypatch.setattr(st, "load_settings", lambda: SimpleNamespace(trading_enabled=True))
     monkeypatch.setenv("KALSHI_TRADING_ENABLED", "1")
     return calls
 
 
 def test_armed_sends_with_mult_and_records_intent_then_sent(conn, monkeypatch):
     calls = _arm(conn, monkeypatch)
+    _stub_book(monkeypatch, {"yes_dollars": [["0.65", "100"]],
+                             "no_dollars": [["0.27", "100"]]})
     fid = _paper_fill(conn, price=0.29, count=2)
     tk.on_fill(conn, fid)
     row = conn.execute("SELECT * FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()
     assert row["status"] == "sent" and row["order_id"] == "o1"
     assert calls[0]["count"] == 200 and calls[0]["ref_price_cents"] == 29
+    assert calls[0]["side"] == "no" and calls[0]["action"] == "buy"
+    assert row["prod_ask_at_send"] == pytest.approx(0.35)
+
+
+@pytest.mark.parametrize("boundary", ["freeze", "close", "inactive"])
+@pytest.mark.parametrize("side", ["no", "close_no"])
+def test_armed_mirror_rechecks_window_after_slow_production_book(conn, monkeypatch, boundary, side):
+    start = datetime(2026, 9, 10, 12, 19, 58, tzinfo=timezone.utc)
+    clock = [start]
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock[0]
+
+    monkeypatch.setattr(tk, "datetime", Clock)
+    calls = _arm(conn, monkeypatch)
+    fid = _paper_fill(conn, side=side, kind="exit" if side.startswith("close_") else "open")
+    ticker = conn.execute("SELECT ticker FROM fills WHERE id=?", (fid,)).fetchone()[0]
+    if side.startswith("close_"):
+        _demo_fill(conn, fid, ticker, "no", "buy", .29, 100)
+    close = start + (timedelta(seconds=2) if boundary == "close" else timedelta(days=1))
+    conn.execute("UPDATE contracts SET close_time=?", (close.isoformat(),))
+    if boundary == "freeze":
+        conn.execute("INSERT INTO releases(cal,period,scheduled_ts)"
+                     " VALUES('NG_WEEKLY','2026-08-21',?)",
+                     ((start + timedelta(minutes=10, seconds=2)).isoformat(),))
+    conn.commit()
+
+    def slow_book(*args):
+        clock[0] += timedelta(seconds=2)
+        if boundary == "inactive":
+            conn.execute("UPDATE contracts SET status='closed'")
+            conn.commit()
+        return .5
+
+    monkeypatch.setattr(tk, "_prod_price", slow_book)
+    tk.on_fill(conn, fid)
+    row = conn.execute("SELECT status,note FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()
+    assert row["status"] == "skipped_gate" and "execution_window" in row["note"]
+    assert calls == []
+
+
+def test_armed_mirror_checks_again_after_intent_commit(conn, monkeypatch):
+    start = datetime(2026, 9, 10, 12, 19, 58, tzinfo=timezone.utc)
+    clock = [start]
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock[0]
+
+    monkeypatch.setattr(tk, "datetime", Clock)
+    calls = _arm(conn, monkeypatch)
+    fid = _paper_fill(conn)
+    conn.execute("UPDATE contracts SET close_time=?", ((start + timedelta(days=1)).isoformat(),))
+    conn.execute("INSERT INTO releases(cal,period,scheduled_ts)"
+                 " VALUES('NG_WEEKLY','2026-08-21','2026-09-10T12:30:00+00:00')")
+    conn.commit()
+    original = tk._get_state
+
+    def after_intent(db, key):
+        if key == "taker_mode":
+            assert db.execute("SELECT status FROM demo_orders WHERE fill_id=?", (fid,)).fetchone()[0] == "intent"
+            clock[0] += timedelta(seconds=3)
+        return original(db, key)
+
+    monkeypatch.setattr(tk, "_get_state", after_intent)
+    tk.on_fill(conn, fid)
+    assert calls == []
+    assert conn.execute("SELECT status FROM demo_orders").fetchone()[0] == "skipped_gate"
+
+
+@pytest.mark.parametrize("close", [None, "bad", "2026-09-11T12:00:00"])
+def test_armed_mirror_refuses_unverified_close_metadata(conn, monkeypatch, close):
+    calls = _arm(conn, monkeypatch)
+    fid = _paper_fill(conn)
+    conn.execute("UPDATE contracts SET close_time=?", (close,))
+    conn.commit()
+    tk.on_fill(conn, fid)
+    assert calls == []
+    assert "unverified close" in conn.execute("SELECT note FROM demo_orders").fetchone()[0]
 
 
 def test_buying_power_scales_down_and_reserved_blocks_double_spend(conn, monkeypatch):
@@ -225,7 +396,7 @@ def test_accounting_identity_through_a_full_lifecycle(conn):
     tk._set_state(conn, "start_cash", "492.00")
     t = "KXNATGASW-26AUG2117-T2.899"
     conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
-                 ("2026-08-18T00:00:00", t, 0.05, 0.11, 100, 100))
+                 (datetime.now(timezone.utc).isoformat(), t, 0.05, 0.11, 100, 100))
     _demo_fill(conn, 1, t, "no", "buy", 0.29, 100, fee=1.50)
     s1 = tk.snapshot_balance_sheet(conn)
     assert s1["positions_cost"] == pytest.approx(29.0)
@@ -259,6 +430,65 @@ def test_positions_aggregation_matches_hand_derivation(conn):
     p1 = pos[(t1, "yes")]
     assert p1["count"] == 70 and p1["avg_cost"] == pytest.approx(0.35)
     assert pos[(t2, "no")]["count"] == 10
+
+
+@pytest.mark.parametrize("side,expected_mark", [("yes", .4), ("no", .6)])
+@pytest.mark.parametrize("age,status", [(0, "marked"), (1200, "marked"),
+                                       (1201, "stale"), (-1, "stale")])
+def test_demo_marks_share_paper_freshness_and_expose_quote_evidence(conn, side, expected_mark,
+                                                                 age, status):
+    now = datetime(2026, 9, 10, 5, tzinfo=timezone.utc)
+    qts = (now - timedelta(seconds=age)).isoformat()
+    _demo_fill(conn, 1, "T", side, "buy", .25, 10)
+    conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)", (qts, "T", .39, .41, 100, 100))
+    conn.commit()
+    p = tk.demo_positions(conn, now=now)[0]
+    assert p["quote_ts"] == qts and p["quote_age_seconds"] == age
+    assert p["quote_max_age_seconds"] == tk.MAX_QUOTE_AGE_SECONDS
+    assert p["mark_status"] == status
+    mark = expected_mark if status == "marked" else None
+    assert p["mark"] == mark and tk._prod_mark(conn, "T", side, now=now) == mark
+    assert p["mtm"] == pytest.approx(expected_mark * 10 if status == "marked" else 2.5)
+    assert p["cost"] == 2.5
+
+
+@pytest.mark.parametrize("book,status", [(None, "missing"), ((None, .5), "illiquid"),
+                                        ((.1, .9), "illiquid")])
+def test_demo_missing_or_illiquid_book_carries_cost_without_a_mark(conn, book, status):
+    now = datetime(2026, 9, 10, 5, tzinfo=timezone.utc)
+    _demo_fill(conn, 1, "T", "no", "buy", .25, 10)
+    if book is not None:
+        conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
+                     (now.isoformat(), "T", *book, 100, 100))
+        conn.commit()
+    p = tk.demo_positions(conn, now=now)[0]
+    assert p["mark_status"] == status and p["mark"] is None
+    assert p["mtm"] == p["cost"] == 2.5
+    if book is None:
+        assert p["quote_ts"] is None and p["quote_age_seconds"] is None
+
+
+def test_demo_quote_expiry_changes_only_new_balance_snapshot(conn, monkeypatch):
+    clock = {"now": datetime(2026, 9, 10, 5, tzinfo=timezone.utc)}
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock["now"]
+
+    monkeypatch.setattr(tk, "datetime", Clock)
+    _demo_fill(conn, 1, "T", "no", "buy", .25, 10)
+    conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
+                 (clock["now"].isoformat(), "T", .39, .41, 100, 100))
+    conn.commit()
+    before = tk.snapshot_balance_sheet(conn)
+    assert before["positions_mtm"] == 6.0
+    clock["now"] += timedelta(seconds=tk.MAX_QUOTE_AGE_SECONDS + 1)
+    after = tk.snapshot_balance_sheet(conn)
+    assert after["positions_mtm"] == after["positions_cost"] == 2.5
+    saved = conn.execute("SELECT * FROM demo_balance_sheet WHERE ts=?", (before["ts"],)).fetchone()
+    assert dict(saved) == before
+    assert conn.execute("SELECT COUNT(*) FROM demo_balance_sheet").fetchone()[0] == 2
 
 
 def test_armed_drift_beyond_tolerance_halts(conn, monkeypatch):

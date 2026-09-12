@@ -252,3 +252,6 @@ prediction_market_soccer/data/priors/clubelo_*.csv.frozen_api
 prediction_market_soccer/data/priors/clubelo_*.source
 prediction_market_soccer/data/priors/clubelo_*.provenance.json
 prediction_market_soccer/data/priors/.clubelo_web_unavailable_*
+/.soccer-isolated
+prediction_market_soccer/data/.soccer-isolated
+prediction_market_soccer/data/book_candidates/

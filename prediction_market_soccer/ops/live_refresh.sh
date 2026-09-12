@@ -10,7 +10,7 @@
 # Manual run:  bash prediction_market_soccer/ops/live_refresh.sh
 set -uo pipefail
 
-REPO="/Users/xuling/code/someopark-test"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Minimal-PATH safe (cron/launchd); do NOT source the shell profile.
 export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"

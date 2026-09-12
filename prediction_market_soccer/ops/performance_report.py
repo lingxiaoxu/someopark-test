@@ -1,28 +1,12 @@
-"""Performance & P&L report (plan 03 §9, 05 §5).
+"""Reports over the versioned immutable smart-timing strategy book.
 
-Honest reporting of what the system delivers. Because live trading is gated
-(no real positions beyond the demo test), realized P&L is ~0 by design; the
-report therefore leads with the metrics that DO measure value now:
-
-  1. **Prediction accuracy** on settled matches — Brier / Log-loss / hit-rate vs
-     the uniform baseline (is the model actually good?).
-  2. **Calibration P&L** — paper bet 1 unit on the model's pick at FAIR odds each
-     settled match; a calibrated model ≈ breaks even, an over-confident one loses
-     (measures over/under-confidence as money).
-  3. **Settled-signal P&L** — realized P&L of any recorded signals whose match has
-     finished (forward-looking framework; ~0 now under the discipline gate).
-  4. **Value snapshot** — current model-vs-market divergences + cross-venue state.
-  5. **Per-competition segmentation** (TRANSFORM_PLAN C-20) — the same five tracks cut
-     by competition, each carrying its §3.5 calibration-gate state. The World Cup was
-     one competition with one gate, so a pooled headline told the whole story; twelve
-     competitions do not share a verdict. A pooled +¢ can be one mature competition
-     carrying four that are still in cold start, and the reader has to be able to see
-     which is which before deciding what the number means.
-
-CLV (closing-line value, the true edge metric) accrues once signals record an
-entry price and the market closes — wired to fill going forward.
+Published history is stored as complete rendered records. Ordinary refreshes append
+sealed forward-paper results and never reconstruct old entries, exits, or P&L.
+Research pricing helpers remain available to explicit research callers only.
 """
 from __future__ import annotations
+
+from prediction_market_soccer.ops.maintenance_gate import writer
 
 import json
 from dataclasses import asdict, dataclass, field
@@ -90,9 +74,57 @@ class PerformanceReport:
     # competition appears even with zero settled matches, so "we have no record here yet"
     # and "this competition is losing" can never look like the same thing.
     by_league: list = field(default_factory=list)
+    as_of: str | None = None
+    source_as_of: str | None = None
+    data_status: dict = field(default_factory=dict)
+    pnl_basis: str = "paper_replay_gross_position_before_fees"
+    evidence_summary: dict = field(default_factory=dict)
+    demo_execution: dict = field(default_factory=dict)
+    strategy_ledger: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        from prediction_market_soccer.util.strategy_ledger import build_strategy_ledger,validate_strategy_ledger
+        if self.strategy_ledger:
+            validate_strategy_ledger(self.strategy_ledger)
+            if self.strategy_ledger['records'] != self.bet_log:
+                raise ValueError('The report and strategy ledger contain different records')
+        elif self.as_of:
+            self.strategy_ledger=build_strategy_ledger(self)
 
 
-def _settled(conn, sm=None):
+def _demo_coverage(conn, ledger):
+    """Actual fills are an execution subset, never the denominator of model returns."""
+    from collections import Counter
+    model={}
+    for row in ledger['records']:
+        if row.get('bet'): model[(row['fixture_id'],'pre')]=row.get('pick')
+        if row.get('inplay_side'): model[(row['fixture_id'],'inplay')]=row['inplay_side']
+    try:
+        rows=[dict(r) for r in conn.execute('SELECT fixture_api_id,track,side,status,fill_count FROM kalshi_mirror')]
+    except Exception:
+        return {'state':'unavailable','n_model_legs':len(model),'n_model_fixtures':len(ledger['records'])}
+    filled=[r for r in rows if (r['fill_count'] or 0)>0]
+    matches={(r['fixture_api_id'],r['track']) for r in filled
+             if model.get((r['fixture_api_id'],r['track']))==r['side']}
+    unmatched=[{'fixture_id':r['fixture_api_id'],'track':r['track'],'demo_side':r['side'],
+                'model_side':model.get((r['fixture_api_id'],r['track'])),
+                'reason':'side_mismatch' if (r['fixture_api_id'],r['track']) in model else 'no_model_leg'}
+               for r in filled if model.get((r['fixture_api_id'],r['track']))!=r['side']]
+    status_counts=dict.fromkeys(('open','pending','unfilled','error','skipped','settled','exited'),0)
+    status_counts.update(Counter(r['status'] for r in rows))
+    return {'state':'ok','n_model_legs':len(model),'n_model_fixtures':len(ledger['records']),
+            'n_demo_rows':len(rows),'n_filled_entries':len(filled),
+            'n_filled_model_legs':len(matches),'n_filled_unique_fixtures':len({r['fixture_api_id'] for r in filled}),
+            'n_filled_model_unique_fixtures':len({fid for fid,track in matches}),
+            'n_model_legs_without_demo_fill':len(model)-len(matches),
+            'n_filled_outside_model_or_side_mismatch':len(unmatched),
+            'matching_basis':'fixture_id_track_side','unmatched_filled_legs':unmatched,
+            'fill_coverage_ratio':len(matches)/len(model) if model else None,
+            'statuses':status_counts,
+            'unfilled_counted_as_loss':False}
+
+
+def _settled(conn, sm=None, issues=None):
     """RAW-model probs + outcomes for every settled match, used for the accuracy Brier.
 
     PIT + consistent with the bet log: each match is priced with its OWN point-in-time
@@ -114,7 +146,7 @@ def _settled(conn, sm=None):
     _comp_of = {c.api_football_id: c.key for c in _active()}
     _lids = tuple(_comp_of)
     rows = conn.execute(
-        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, round, raw_json, "
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, round, raw_json, "
         "league_id FROM fixture "
         "WHERE status_short IN ({}) AND home_goals IS NOT NULL "
         "AND league_id IN ({}) AND kickoff_ts >= datetime('now', '-60 days')".format(
@@ -126,19 +158,26 @@ def _settled(conn, sm=None):
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
+            if issues is not None:
+                issues.append({"code": "missing_team_mapping", "fixture_id": r["api_id"]})
             continue
-        _lg = _comp_of.get(r["league_id"])
-        _k = ((r["kickoff_ts"] or "")[:10], _lg)
-        if _k not in _pit_day_cache:
-            _pit_day_cache[_k] = _pit_strength(conn, r["kickoff_ts"], _lg) if r["kickoff_ts"] else sm
-        sm_pit = _pit_day_cache[_k]
-        # 90-min 3-way for both stages (knockout=False) — matches the bet/MTM model;
-        # host_neutral on a KO round drops the host's home-soil edge (neutral venue).
-        mp = price_match(sm_pit, hi, ai, knockout=False, host_neutral=is_knockout(r["round"], _lg))
-        # 90' regulation score (KO ET match settles the Tie market on the 90' result).
-        gh90, ga90 = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
-        outcome = 0 if gh90 > ga90 else (1 if gh90 == ga90 else 2)
-        out.append(([mp.p_home, mp.p_draw, mp.p_away], outcome))
+        try:
+            _lg = _comp_of.get(r["league_id"])
+            _k = ((r["kickoff_ts"] or "")[:10], _lg)
+            if _k not in _pit_day_cache:
+                _pit_day_cache[_k] = _pit_strength(conn, r["kickoff_ts"], _lg) if r["kickoff_ts"] else sm
+            sm_pit = _pit_day_cache[_k]
+            # 90-min 3-way for both stages (knockout=False) — matches the bet/MTM model;
+            # host_neutral on a KO round drops the host's home-soil edge (neutral venue).
+            mp = price_match(sm_pit, hi, ai, knockout=False, host_neutral=is_knockout(r["round"], _lg))
+            # 90' regulation score (KO ET match settles the Tie market on the 90' result).
+            gh90, ga90 = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
+            outcome = 0 if gh90 > ga90 else (1 if gh90 == ga90 else 2)
+            out.append(([mp.p_home, mp.p_draw, mp.p_away], outcome))
+        except Exception as exc:
+            if issues is not None:
+                issues.append({"code": "pit_pricing_unavailable", "fixture_id": r["api_id"]})
+            print(f"[performance] unavailable fixture={r['api_id']} ({type(exc).__name__})")
     return out
 
 
@@ -228,16 +267,20 @@ def _pit_strength(conn, as_of: str, league: str | None = None):
     # settle_bets, the accuracy Brier, the frontend backtest and the price-track all
     # replay the same 60-day window, and going per-league multiplied the number of
     # fits. Same-day matches of one comp resolve to one build (137 in a 60-day window).
-    ck = ((as_of or "")[:10], league)
+    from prediction_market_soccer.model.pit_strength import _db_identity, bucket_start
+    as_of = bucket_start(as_of)
+    from prediction_market_soccer.model.pit_strength import fc_input_fingerprint
+    fc_version = fc_input_fingerprint(conn)
+    ck = (_db_identity(conn), as_of, league, fc_version)
     if ck in _pit_model_cache:
         return _pit_model_cache[ck]
     # The prior must be the one that existed on the match's DATE, not tonight's file.
     # This cache was keyed on the league alone while the model memo above is keyed on
     # (date, league), so the model moved with the calendar and its anchor never did.
-    _pk = (ck[0], league)
+    _pk = (_db_identity(conn), as_of[:10], league, fc_version)
     if _pk not in _pit_prior_cache:
         from prediction_market_soccer.model.pit_strength import pit_prior
-        _pit_prior_cache[_pk] = (pit_prior(conn, league, ck[0]) if league
+        _pit_prior_cache[_pk] = (pit_prior(conn, league, as_of[:10]) if league
                                  else load_prior())
     cfg = CONFIG.model
     sm = build_strength_live(conn, _pit_prior_cache[_pk], cfg, as_of=as_of,
@@ -383,23 +426,13 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
             "motivation": motiv}
 
 
-def _bet_log(conn) -> list[dict]:
-    """Production bet history: every settled match since the opener, flat 1u on the
-    model's best value side vs the closing de-vig book, settled on the real result.
-
-    Returns chronological rows with our prediction, the bet, the actual result, and
-    running P&L — i.e. the live track record of the system as if it had been trading
-    from match 1 (no point-in-time / out-of-sample framing; this is the record).
-    """
+def _research_bet_log(conn) -> list[dict]:
+    """Legacy reconstruction for explicit research only; never used by a published report."""
     from prediction_market_soccer.ingest.club_prior import load_prior
-    from prediction_market_soccer.model.probability_calibration import load_calibration
-    from prediction_market_soccer.model.squad_strength import build_strength_live
 
     prior = load_prior()
     name = {t.team_id: t.name for t in prior.teams}
     zh = {t.team_id: t.zh for t in prior.teams}
-    sm = build_strength_live(conn, prior)
-    cal = load_calibration()
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
@@ -408,13 +441,11 @@ def _bet_log(conn) -> list[dict]:
     # cost we'd have paid. SELECT * so quotes_from_milestone_row sees every ask/devig column.
     pre_px = {r["fixture_api_id"]: r for r in conn.execute(
         "SELECT * FROM milestone_snapshot WHERE milestone='PRE'")}
+    try:
+        legacy_render = {r['fixture_api_id']:json.loads(r['payload']) for r in conn.execute('SELECT fixture_api_id,payload FROM legacy_paper_render')}
+    except Exception:
+        legacy_render = {}
 
-    # Model-quality → confidence: how far the calibrated Brier beats the uniform baseline
-    # (scales the stake). gate_open stays True for the RECORD (it shows the value picks);
-    # real-money execution is additionally gated in production.
-    _ub = (cal.get("uniform_brier") if cal else None) or (2.0 / 3.0)
-    _cb = cal.get("calibrated_brier") if cal else None
-    calib_conf = max(-1.0, min(1.0, (_ub - _cb) / _ub)) if (_cb is not None and _ub) else 0.0
     # T75 (last in-play milestone before FT) per fixture, for closing-line value (CLV).
     t75_px = {r["fixture_api_id"]: r for r in conn.execute(
         "SELECT fixture_api_id, poly_home_ask, poly_draw_ask, poly_away_ask, "
@@ -472,7 +503,7 @@ def _bet_log(conn) -> list[dict]:
         # The price-track reads the SAME frozen row → the two views reconcile by construction.
         pr = pre_px.get(r["api_id"])
         quotes = quotes_from_milestone_row(pr) if pr is not None else None
-        mr = frozen_pick(conn, r, hi, ai, quotes, book.get(r["api_id"]))
+        mr = frozen_pick(conn, r, hi, ai, quotes, book.get(r["api_id"]), self_heal=False)
         if mr is None:
             continue   # knockout level after ET with no winner flag yet — can't settle
         knockout = mr["stage"] == "knockout"
@@ -550,7 +581,7 @@ def _bet_log(conn) -> list[dict]:
             staked += stake
             wins += int(won)
             n_bets += 1
-            _de = _entry_c(pick)
+            _de = ((mr['ledger_entry_c'],mr['ledger_venue']) if mr.get('ledger_entry_c') is not None else _entry_c(pick))
             entry_cents, entry_source = (_de[0], _de[1]) if _de else (to_cents(cost), "book_devig")
             # Position-sized ¢ P&L: the bet stakes `stake` $ at the entry price, so it buys
             # contracts = stake / (entry_c/100). The POSITION's ¢ P&L is the per-contract ¢
@@ -566,14 +597,22 @@ def _bet_log(conn) -> list[dict]:
             clv_cents = _clv_c(pick, entry_cents)
             # REALISED cash-out: apply the validated smart-exit (sell the over-reaction)
             # to THIS bet — the realised ¢ is the cash-out PnL when it fired, else hold-to-FT.
-            smart_exit = None
+            legacy_row = legacy_render.get(r['api_id'])
+            smart_exit = mr.get('smart_exit') if legacy_row is None else legacy_row.get('smart_exit')
             try:
                 from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
-                if conn is not None and r["kickoff_ts"]:
+                if legacy_row is None and 'smart_exit' not in mr and conn is not None and r["kickoff_ts"]:
                     smart_exit = smart_exit_cashout(conn, _pit_strength(conn, r["kickoff_ts"], _row_comp(r)),
                                                     r["api_id"], pick, entry_cents, hi, ai, r["round"], won)
-            except Exception:
-                smart_exit = None
+            except Exception as exc:
+                raise ValueError('Research exit reconstruction is unavailable; explicit candidate required') from exc
+            if isinstance(smart_exit, dict) and 'status' in smart_exit:
+                if smart_exit['status'] == 'exited':
+                    smart_exit = {key:value for key,value in smart_exit.items() if key != 'status'}
+                elif smart_exit['status'] == 'held_no_trigger':
+                    smart_exit = None
+                else:
+                    raise ValueError('Unknown research exit cannot be settled as hold: ' + str(smart_exit.get('reason')))
             # Realised = the SAME $-sizing (sized_pnl_cents) on the per-contract cash-out move
             # (sold_c − entry_c) or the held-to-FT per-contract number when no cash-out fired.
             realized_unit = smart_exit["pnl_c"] if smart_exit else c_pnl_unit
@@ -627,6 +666,10 @@ def _bet_log(conn) -> list[dict]:
         combined_cum_c += combined_this
 
         log.append({
+            "fixture_id": r['api_id'],
+            "evidence_level": (mr.get('evidence_level') or ('posthoc_candlestick_paper' if pr is not None and pr['price_source']=='candlestick' else 'legacy_live_marked_paper')),
+            "pit_status": ('forward_recorded' if mr.get('evidence_level')=='forward_observed_paper' else ('posthoc_reconstruction' if pr is not None and pr['price_source']=='candlestick' else 'unverified_legacy')),
+            "fee_status": "not_deducted",
             "stage": "knockout" if knockout else "group",
             # Competition key on EVERY row (C-20): the cross-competition roll-up above is
             # only honest if the reader can split it back apart, and the frontend BetLog
@@ -807,413 +850,367 @@ def _by_league(log: list[dict], cal: dict | None) -> list[dict]:
     return out
 
 
-def build(conn=None) -> PerformanceReport:
+def _record_totals(records):
+    """Compatibility aggregates from immutable rows; never price or choose a trade."""
+    from decimal import Decimal
+    def total(key):
+        return float(sum((Decimal(str(row.get(key) or 0)) for row in records), Decimal(0)))
+
+    pre = [row for row in records if row.get('bet')]
+    inplay = [row for row in records if row.get('inplay_side')]
+    model = [row for row in records if row.get('model_won') is not None]
+    priced = [row for row in records if row.get('argmax_pnl_cents') is not None]
+    def win_loss(rows, key):
+        wins = sum(bool(row.get(key)) for row in rows)
+        return f'{wins}W-{len(rows)-wins}L'
+    def pnl_record(rows, key):
+        wins = sum((row.get(key) or 0) > 0 for row in rows)
+        losses = sum((row.get(key) or 0) < 0 for row in rows)
+        flats = sum(row.get(key) == 0 for row in rows)
+        return f'{wins}W-{losses}L-{flats}F'
+    return {
+        'n_decision_bets': len(pre), 'n_skipped': len(records)-len(pre),
+        'decision_staked_usd': total('stake_usd'), 'n_inplay': len(inplay),
+        'pnl_units': total('pnl'), 'pnl_record': win_loss(pre, 'won'),
+        'pnl_roi': total('pnl')/total('stake_usd') if total('stake_usd') else 0.0,
+        'bet_since': records[0].get('date', '') if records else '',
+        'pnl_cents_total': total('pnl_cents'),
+        'realized_pnl_cents_total': total('realized_pnl_cents'),
+        'realized_record': pnl_record(pre, 'realized_pnl_cents'),
+        'n_smart_sold': sum(bool(row.get('smart_exit')) for row in pre),
+        'hold_record': win_loss(pre, 'won'), 'hold_pnl_cents_total': total('pnl_cents'),
+        'inplay_record': pnl_record(inplay, 'inplay_pnl_cents'),
+        'inplay_pnl_cents_total': total('inplay_pnl_cents'),
+        'combined_pnl_cents_total': total('combined_pnl_cents'),
+        'model_pred_accuracy': sum(bool(row.get('model_won')) for row in model)/len(model) if model else 0.0,
+        'argmax_record': win_loss(priced, 'model_won'),
+        'argmax_accuracy_record': win_loss(model, 'model_won'),
+        'argmax_priced_n': len(priced), 'argmax_pnl_cents_total': total('argmax_pnl_cents'),
+        'avg_entry_cents': _mean([row['entry_cents'] for row in pre if row.get('entry_cents') is not None]),
+        'avg_clv_cents': _mean([row['clv_cents'] for row in pre if row.get('clv_cents') is not None]),
+    }
+
+
+def _bet_log(conn):
+    """Read the complete frozen rendered book. Missing baseline is never a replay trigger."""
+    from prediction_market_soccer.util.frozen_strategy_store import read_book
+    book = read_book(conn)
+    records = book['ledger']['records']
+    return records, _record_totals(records)
+
+
+def report_from_book(book, *, demo_execution=None, observed_at=None) -> PerformanceReport:
+    """Pure projection of a validated frozen book, including an inactive candidate.
+
+    No database, prices, calibration fitting, execution lookup, or publication. The
+    optional demo summary is a separate explicitly supplied execution subset.
+    """
+    from copy import deepcopy
+    from dataclasses import fields
+    from prediction_market_soccer.util.strategy_ledger import validate_strategy_ledger
+    ledger = deepcopy(validate_strategy_ledger(book['ledger']))
+    version = book['version']
+    if ledger.get('book_version', {}).get('version_id') != version['version_id']:
+        raise ValueError('Report book identity does not match its ledger')
+    records = ledger['records']
+    accepted = {field.name for field in fields(PerformanceReport)}
+    defaults = {'n_settled': 0, 'brier': None, 'brier_uniform': None, 'calibrated_brier': None,
+        'trade_grade': False, 'log_loss': None, 'favourite_hit_rate': None,
+        'calibration_pnl': None, 'calibration_pnl_per_bet': None, 'settled_signal_pnl': None,
+        'n_settled_signals': 0, 'notes': []}
+    data = {**defaults, **{key:deepcopy(value) for key,value in book['report_metadata'].items() if key in accepted}}
+    data.update(_record_totals(records))
+    data.update(bet_log=records, strategy_ledger=ledger, as_of=ledger['as_of'],
+                source_as_of=ledger['as_of'], data_status={'state': 'ok', 'issues': []})
+    data['evidence_summary'] = {**(data.get('evidence_summary') or {}),
+        'book_version': ledger['book_version'], 'baseline_source_as_of': version['base_as_of'],
+        'diagnostics_source_as_of': version['base_as_of'], 'historical_records_immutable': True,
+        'forward_rows_appended': len(records)-version['baseline_count']}
+    if observed_at is not None:
+        data['evidence_summary']['refresh_observed_at'] = observed_at
+    # Candidate/model returns never inherit unrelated demo P&L from old metadata.
+    data['demo_execution'] = deepcopy(demo_execution) if demo_execution is not None else {'state':'not_requested'}
+    original_gates = {row.get('league'):row.get('gate') for row in data.get('by_league', [])}
+    data['by_league'] = _by_league(records, None)
+    for row in data['by_league']:
+        if row['league'] in original_gates:
+            row['gate'] = original_gates[row['league']]
+    return PerformanceReport(**data)
+
+
+def build(conn=None, *, freeze=True) -> PerformanceReport:
+    """Read frozen rows; only explicit/default freeze=True may append sealed paper.
+
+    freeze=False is a read-only preview. It never settles, prices, consumes a new
+    completion, initializes a schema, or changes the book's active version.
+    """
+    import sqlite3
+    from datetime import datetime, timezone
     from prediction_market_soccer.ingest import store
-    from prediction_market_soccer.ingest.club_prior import load_prior
-    from prediction_market_soccer.model.strength import build_strength
-
-    conn = conn or store.init_db()
-    sm = build_strength(load_prior())
-    data = _settled(conn, sm)
-    notes = []          # English prose (used by the PDF)
-    notes_i18n = []     # {key, args} parallel to `notes`, for the 5-language frontend
-
-    if not data:
-        notes.append("no settled matches yet")
-        notes_i18n.append({"key": "noSettled", "args": {}})
-        nan = float('nan')
-        from prediction_market_soccer.model.probability_calibration import load_calibration as _lc
-        return PerformanceReport(
-            n_settled=0, brier=nan, brier_uniform=nan, calibrated_brier=None,
-            trade_grade=False, log_loss=nan, favourite_hit_rate=nan,
-            calibration_pnl=nan, calibration_pnl_per_bet=nan,
-            settled_signal_pnl=0.0, n_settled_signals=0,
-            bet_log=[], pnl_units=0.0, pnl_record="0W-0L", pnl_roi=0.0, bet_since="",
-            notes=notes,
-            notes_i18n=notes_i18n,
-            # Still emit the per-competition frame: with no record at all, the gate column
-            # IS the report — it says every competition is shut and why.
-            by_league=_by_league([], _lc()),
-        )
-
-    probs = [d[0] for d in data]
-    outcomes = [d[1] for d in data]
-    n = len(data)
-
-    # Calibration P&L: 1 unit on the model's pick at fair odds (price = model prob).
-    pnl, staked = 0.0, 0.0
-    hits = 0
-    for p, o in data:
-        pick = int(np.argmax(p))
-        price = p[pick]
-        staked += price
-        if pick == o:
-            pnl += 1.0 - price
-            hits += 1
+    from prediction_market_soccer.util.frozen_strategy_store import consume_completed_paper, read_book
+    from prediction_market_soccer.util.timing_provenance import demo_execution_summary
+    own = conn is None
+    if own:
+        if freeze:
+            conn = store.init_db()
         else:
-            pnl -= price
-
-    # Settled-signal P&L: recorded signals whose match has finished (framework).
-    sig_pnl, n_sig = 0.0, 0
+            conn = sqlite3.connect(f"file:{CONFIG.paths.data / 'soccer.db'}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
     try:
-        # (Single-match signals settle here once we record them per fixture; champion
-        # signals settle at tournament end. None tradable yet under the gate → 0.)
-        n_sig = conn.execute("SELECT COUNT(*) n FROM signal WHERE action='BUY'").fetchone()["n"]
-    except Exception:
-        pass
+        if freeze:
+            consume_completed_paper(conn)
+        book = read_book(conn)
+        demo = demo_execution_summary(conn)
+        demo['execution_scope'] = {'kind':'demo_execution_subset','pnl_covers':'closed_fills_only',
+                                  'model_pnl_replaced':False,'unfilled_counted_as_loss':False}
+        demo['coverage'] = _demo_coverage(conn, book['ledger'])
+        return report_from_book(book, demo_execution=demo, observed_at=datetime.now(timezone.utc).isoformat())
+    finally:
+        if own:
+            conn.close()
 
-    from prediction_market_soccer.model.probability_calibration import load_calibration
-    cal = load_calibration()
-    # The trade-grade gate is decided on the CALIBRATED Brier (post-hoc temperature/
-    # shrinkage), NOT the raw model — the raw model is over-confident on this tiny,
-    # draw-heavy sample, but calibration restores it below the uniform baseline.
-    calibrated_brier = cal.get("calibrated_brier") if cal else None
-    trade_grade = bool(cal and cal.get("trade_grade"))
-    if trade_grade:
-        notes.append(f"After calibration ({cal['method']} {cal['param']}) the model Brier is "
-                     f"{cal['calibrated_brier']} ≤ uniform {cal['uniform_brier']} — TRADE-GRADE (gate passes). "
-                     f"Raw model was over-confident ({cal['raw_brier']}).")
-        notes_i18n.append({"key": "calibTradeGrade", "args": {
-            "method": cal['method'], "param": cal['param'], "cal": cal['calibrated_brier'],
-            "uniform": cal['uniform_brier'], "raw": cal['raw_brier']}})
-    elif brier_score(probs, outcomes) > (2 / 3):
-        notes.append("model Brier WORSE than uniform and calibration does not recover it — "
-                     "not yet trade-grade (discipline gate blocks).")
-        notes_i18n.append({"key": "calibBlock", "args": {}})
-    # Production bet log: flat 1u on our model's best value side vs the closing book,
-    # every match since the opener. This is the track record we present (no OOS framing).
-    log, betmeta = _bet_log(conn)   # ALL settled matches; no-bet rows carry the argmax track only
-    n_bets = betmeta["n_bets"]
-    pnl_units = round(sum((b["pnl"] or 0.0) for b in log), 2)   # $ P&L at the decision-model stakes
-    wins = sum(1 for b in log if b.get("won"))
-    pnl_record = f"{wins}W-{n_bets - wins}L"
-    decision_staked = betmeta["staked_usd"] or 0.0
-    pnl_roi = round(pnl_units / decision_staked, 4) if decision_staked else 0.0
-    bet_since = log[0]["date"] if log else ""
-    model_pred_accuracy = round(betmeta["model_hits"] / betmeta["model_n"], 3) if betmeta["model_n"] else 0.0
-    argmax_record = betmeta["argmax_record"]                      # W-L over ALL settled (22)
-    argmax_pnl_cents_total = betmeta["argmax_pnl_cents_total"]    # ¢ P&L if we bet argmax every match
 
-    # Per-contract ¢ headline metrics (plan 18 §2.7).
-    _ent = [b["entry_cents"] for b in log if b.get("entry_cents") is not None]
-    pnl_cents_total = round(sum((b.get("pnl_cents") or 0.0) for b in log), 1)
-    avg_entry_cents = round(sum(_ent) / len(_ent), 1) if _ent else 0.0
-    _avail = sum(((100.0 - b["entry_cents"]) if b["won"] else b["entry_cents"])
-                 for b in log if b.get("entry_cents") is not None)
-    cents_capture_rate = round(pnl_cents_total / _avail, 4) if _avail else 0.0
-    _clv = [b["clv_cents"] for b in log if b.get("clv_cents") is not None]
-    avg_clv_cents = round(sum(_clv) / len(_clv), 1) if _clv else 0.0
+def preview_strategy_views(conn, book, destination, *, candidate_data=None):
+    """Render a supplied candidate snapshot outside both publication directories.
 
-    notes.append(f"Track record (decision model): value bet the most-underpriced side, "
-                 f"sized ${CONFIG.decision.min_stake_usd:.1f}–${CONFIG.decision.max_stake_usd:.1f} by "
-                 f"confidence, since {bet_since} — {pnl_record}, {pnl_units:+.2f}$ "
-                 f"({pnl_roi:+.1%} ROI) over {len(log)} bets; {betmeta['skipped']} settled "
-                 f"matches skipped (no tradable edge).")
-    notes_i18n.append({"key": "trackRecord", "args": {
-        "min": f"{CONFIG.decision.min_stake_usd:.1f}", "max": f"{CONFIG.decision.max_stake_usd:.1f}",
-        "since": bet_since, "record": pnl_record, "pnl": f"{pnl_units:+.2f}",
-        "roi": f"{pnl_roi*100:+.1f}", "bets": len(log), "skipped": betmeta['skipped']}})
-    _apn = betmeta.get("argmax_priced_n", betmeta["model_n"])
-    notes.append(f"Argmax track (reference): bet the most-likely side. Priced on "
-                 f"{_apn} of {betmeta['model_n']} settled matches — {argmax_record}, "
-                 f"{argmax_pnl_cents_total:+.0f}¢/contract. Separately, the model's pick was "
-                 f"right in {model_pred_accuracy:.1%} of all {betmeta['model_n']} resolvable "
-                 f"matches ({betmeta.get('argmax_accuracy_record', argmax_record)}) — a "
-                 f"model-quality figure, not a P&L one: the matches with no entry price "
-                 f"contribute to it and cannot contribute to the money.")
-    notes_i18n.append({"key": "argmaxTrack", "args": {
-        "n": _apn, "n_all": betmeta['model_n'], "record": argmax_record,
-        "acc_record": betmeta.get("argmax_accuracy_record", argmax_record),
-        "acc": f"{model_pred_accuracy*100:.1f}", "pnl": f"{argmax_pnl_cents_total:+.0f}"}})
-    notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
-    notes_i18n.append({"key": "calibPnlNote", "args": {}})
+    The caller provides a complete validated book; this never constructs a backtest,
+    registers/activates a version, appends paper records, or promotes live files.
+    """
+    from pathlib import Path
+    from prediction_market_soccer.ops import milestone_export
+    from prediction_market_soccer.ops.run_status import atomic_bytes
+    target = Path(destination).resolve()
+    protected = (CONFIG.paths.output.resolve(), CONFIG.paths.frontend_data.resolve())
+    if any(target == path or target.is_relative_to(path) or path.is_relative_to(target) for path in protected):
+        raise ValueError('Candidate preview requires a separate directory outside live artifacts')
+    explicit = book['version'].get('origin') == 'explicit_backtest'
+    if explicit and candidate_data is None:
+        raise ValueError('Candidate preview requires its explicit candidate price source')
+    if candidate_data is not None:
+        provenance = json.loads(book['version'].get('provenance_json') or '{}')
+        if provenance.get('run_id') != candidate_data.run_id:
+            raise ValueError('Candidate price run differs from the registered book')
+    target.mkdir(parents=True, exist_ok=False)
+    report = report_from_book(book)
+    marks = (milestone_export.from_candidate(report.strategy_ledger, candidate_data) if candidate_data is not None
+             else milestone_export.build(conn, freeze=False, ledger=report.strategy_ledger))
+    atomic_bytes(target/'performance_report.json', json.dumps(asdict(report), ensure_ascii=False, allow_nan=False).encode())
+    atomic_bytes(target/'milestone_marks.json', json.dumps(marks, ensure_ascii=False, allow_nan=False).encode())
+    build_pdf(report, str(target/'performance_report.pdf'))
+    validate_strategy_views(target, report.strategy_ledger)
+    return {'report':report, 'path':str(target), 'ledger_id':report.strategy_ledger['ledger_id']}
 
-    return PerformanceReport(
-        n_settled=n,
-        brier=round(brier_score(probs, outcomes), 4),
-        brier_uniform=round(brier_score([[1 / 3, 1 / 3, 1 / 3]] * n, outcomes), 4),
-        calibrated_brier=calibrated_brier,
-        trade_grade=trade_grade,
-        log_loss=round(log_loss(probs, outcomes), 4),
-        favourite_hit_rate=round(hits / n, 3),
-        calibration_pnl=round(pnl, 3),
-        calibration_pnl_per_bet=round(pnl / n, 4),
-        settled_signal_pnl=round(sig_pnl, 2),
-        n_settled_signals=n_sig,
-        bet_log=log,
-        pnl_units=pnl_units,
-        pnl_record=pnl_record,
-        pnl_roi=pnl_roi,
-        bet_since=bet_since,
-        notes=notes,
-        notes_i18n=notes_i18n,
-        pnl_cents_total=pnl_cents_total,
-        avg_entry_cents=avg_entry_cents,
-        cents_capture_rate=cents_capture_rate,
-        avg_clv_cents=avg_clv_cents,
-        model_pred_accuracy=model_pred_accuracy,
-        n_decision_bets=n_bets,
-        n_skipped=betmeta["skipped"],
-        decision_staked_usd=round(decision_staked, 2),
-        argmax_record=argmax_record,
-        argmax_accuracy_record=betmeta.get("argmax_accuracy_record", ""),
-        argmax_priced_n=betmeta.get("argmax_priced_n", 0),
-        argmax_pnl_cents_total=argmax_pnl_cents_total,
-        realized_record=betmeta["realized_record"],
-        realized_pnl_cents_total=betmeta["realized_pnl_cents_total"],
-        n_smart_sold=betmeta["n_smart_sold"],
-        hold_record=betmeta["hold_record"],
-        hold_pnl_cents_total=betmeta["hold_pnl_cents_total"],
-        inplay_record=betmeta["inplay_record"],
-        inplay_pnl_cents_total=betmeta["inplay_pnl_cents_total"],
-        n_inplay=betmeta["n_inplay"],
-        combined_pnl_cents_total=betmeta["combined_pnl_cents_total"],
-        by_league=_by_league(log, cal),
-    )
+
+def validate_strategy_views(directory, ledger):
+    """Require the same full financial sequence in JSON, price-track and PDF metadata."""
+    from pathlib import Path
+    import shutil
+    import subprocess
+    from prediction_market_soccer.util.strategy_ledger import validate_strategy_ledger
+    root = Path(directory)
+    expected = validate_strategy_ledger(ledger)
+    perf = json.loads((root/'performance_report.json').read_text())
+    marks = json.loads((root/'milestone_marks.json').read_text())
+    for artifact in (perf, marks):
+        if validate_strategy_ledger(artifact.get('strategy_ledger')) != expected:
+            raise ValueError('Strategy artifacts disagree on the full ledger')
+    if perf.get('bet_log') != expected['records'] or marks.get('records') != expected['records'] or [row.get('strategy_record') for row in marks.get('matches', [])] != expected['records']:
+        raise ValueError('Strategy artifact records/order/financial fields differ')
+    pdfinfo, pdftotext = shutil.which('pdfinfo'), shutil.which('pdftotext')
+    if not pdfinfo or not pdftotext:
+        raise ValueError('Canonical PDF verification requires Poppler pdfinfo and pdftotext')
+    info = subprocess.run([pdfinfo, str(root/'performance_report.pdf')], check=True, capture_output=True, text=True).stdout
+    metadata = {line.split(':',1)[0].strip():line.split(':',1)[1].strip() for line in info.splitlines() if ':' in line}
+    expected_subject = f"ledger_id={expected['ledger_id']}; as_of={expected['as_of']}"
+    if not metadata or metadata.get('Subject') != expected_subject or metadata.get('Keywords') != 'book_version_id='+str(expected.get('book_version',{}).get('version_id','')):
+        raise ValueError('PDF metadata belongs to a different strategy ledger')
+    # The PDF carries the canonical records hash, including prices, stakes, exits,
+    # all position amounts and three cumulatives; visible row IDs must be ordered.
+    text = subprocess.run([pdftotext, '-layout', str(root/'performance_report.pdf'), '-'], check=True, capture_output=True, text=True).stdout
+    import re
+    chunks = re.split(r'\n\s*\n', text)
+    cursor = 0
+    def signed(cents):
+        value=float(cents)/100
+        return ('+' if value>=0 else '-')+f'${abs(value):,.3f}'
+    for record in expected['records']:
+        index = text.find(str(record['fixture_id']), cursor)
+        if index < 0:
+            raise ValueError('PDF fixture sequence is incomplete or reordered')
+        cursor = index + len(str(record['fixture_id']))
+        blocks = [chunk for chunk in chunks if re.search(r'(?<!\d)'+str(record['fixture_id'])+r'(?!\d)', chunk)]
+        if len(blocks) != 1:
+            raise ValueError('PDF fixture financial block is ambiguous')
+        tokens = []
+        for ip in (False,True):
+            if not (record.get('inplay_side') if ip else record.get('bet')):
+                continue
+            tokens.append(f"${float(record['inplay_stake_usd' if ip else 'stake_usd']):,.3f}")
+            entry = record['inplay_entry_cents' if ip else 'entry_cents']
+            tokens.append(f'{float(entry):.1f}¢')
+            exit_ = record.get('inplay_exit' if ip else 'smart_exit')
+            won = record.get('inplay_won' if ip else 'won')
+            terminal = (100.0 if won is True else 0.0 if won is False else None) if ip else record.get('settle_cents')
+            terminal = exit_.get('sold_c') if exit_ else terminal
+            if terminal is not None:
+                tokens.append(f'{float(terminal):.1f}¢')
+            pnl = record.get('inplay_pnl_cents' if ip else 'realized_pnl_cents')
+            if pnl is not None:
+                tokens.append(signed(pnl))
+        tokens += [signed(record[key]) for key in ('pre_cum_pnl_cents','inplay_cum_pnl_cents','combined_cum_pnl_cents') if record.get(key) is not None]
+        compact = re.sub(r'\s+','',blocks[0])
+        if any(token not in compact for token in tokens):
+            raise ValueError('PDF row financial values differ from the canonical record: '+str(record['fixture_id']))
+    return {'ledger_id': expected['ledger_id'], 'as_of':expected['as_of'],
+            'n_records':len(expected['records']), 'pdf_pages':int(metadata['Pages'])}
 
 
 def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> str:
-    """Render the full System & Performance report in the house PDF style
-    (PnLReport.py look: CJK font, navy headers + gold rule, alt-row shading).
-
-    Embeds the complete system overview (interfaces / modes / schedule / I-O /
-    value) so this one document answers "what is this, how/when to run it, what
-    does it predict, and is it any good".
-    """
+    """Render only the shared smart-timing strategy snapshot; never recompute a trade."""
+    from html import escape
     from reportlab.lib.units import cm
     from reportlab.platypus import Paragraph, Spacer
-
     from prediction_market_soccer.ops import pdf_style as ps
-    from prediction_market_soccer.ops import system_overview as ov
+    from prediction_market_soccer.util.strategy_ledger import validate_strategy_ledger
 
-    story: list = []
-    ps.title_block(
-        story,
-        "俱乐部足球预测交易系统 — 系统总览 & 收益/准确度报告",
-        f"Kalshi + Polymarket | 12 项赛事 | someopark_run{('  |  as of ' + as_of) if as_of else ''}",
-    )
+    ledger=validate_strategy_ledger(rep.strategy_ledger)
+    if ledger['records'] != rep.bet_log:
+        raise ValueError('PDF records differ from the published strategy ledger')
+    records,summary=ledger['records'],ledger['summary']
+    story=[]
+    ps.title_block(story,'足球智能择时 — 统一策略账本',
+                   f"{summary['n_matches']} 场 · {summary['n_legs']} 笔策略腿 · 仓位毛收益 USD（未扣费用）")
+    story.append(Paragraph('账本时间：'+escape(ledger['as_of']),ps.note_style))
+    story.append(Paragraph('账本版本：'+ledger['ledger_id'],ps.S('ledger_version',fontSize=6.5,leading=9)))
+    story.append(Spacer(1,8))
+    story.append(Paragraph('准确度盈亏的智能择时视图、价格轨迹与本 PDF 读取同一份记录。报价单位为每张合约美分（¢，1 位小数）；下注金额、仓位收益和累计收益为美元（$，3 位小数）。',ps.note_style))
 
-    # Headline reflects the CURRENT system state (gate verdict), not a fixed stance.
-    headline, hl_color = _headline(rep)
-    story.append(Paragraph(headline,
-                           ps.S("hl", fontName=ps.FONT, fontSize=8, leading=12,
-                                textColor=(ps.C_POS if rep.trade_grade else ps.C_NEG))))
-    story.append(Spacer(1, 8))
+    def money(cents, signed=True):
+        if cents is None: return '—'
+        dollars=float(cents)/100
+        return f"{'+' if signed and dollars>=0 else '-'}${abs(dollars):,.3f}" if signed else f'${dollars:,.3f}'
 
-    # 一、接口(CLI 命令)
-    ps.section(story, "一、系统接口(CLI 命令)")
-    data = [[ps.H("类别"), ps.H("命令  python -m prediction_market_soccer.<x>"), ps.H("作用")]]
-    data += [[ps.C(a), ps.C(b), ps.C(c)] for a, b, c in ov.INTERFACES]
-    story.append(ps.make_table(data, [2.0 * cm, 6.3 * cm, 8.7 * cm]))
+    def cash(value):
+        return '—' if value is None else f'${float(value):,.3f}'
 
-    # 二、模式 & 闸门
-    ps.section(story, "二、模式 & 闸门")
-    story.append(ps.make_kv_table([(m, d) for m, d in ov.MODES], label_w=4.6 * cm, val_w=12.4 * cm))
+    def price(cents):
+        return '—' if cents is None else f'{float(cents):.1f}¢'
 
-    # 三、运行调度(何时 / 频率)
-    ps.section(story, "三、运行调度(何时运行 / 频率)")
-    data = [[ps.H("时机"), ps.H("跑什么"), ps.H("频率", "RIGHT")]]
-    data += [[ps.C(a), ps.C(b), ps.C(c, "RIGHT")] for a, b, c in ov.SCHEDULE]
-    story.append(ps.make_table(data, [4.0 * cm, 10.5 * cm, 2.5 * cm]))
+    def colored(cents):
+        if cents is None: return '—'
+        color='#1a7a4a' if cents>0 else ('#c0392b' if cents<0 else '#555555')
+        return f'<font color="{color}"><b>{money(cents)}</b></font>'
 
-    # 四、输入 / 输出(在哪里)
-    ps.section(story, "四、输入 / 输出(在哪里)")
-    story.append(Paragraph("输入", ps.body_style))
-    story.append(ps.make_kv_table([(a, b) for a, b in ov.INPUTS], label_w=4.6 * cm, val_w=12.4 * cm))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(f"输出  (全部在 {ov.OUTPUT_DIR})", ps.body_style))
-    story.append(ps.make_kv_table([(a, b) for a, b in ov.OUTPUTS], label_w=8.4 * cm, val_w=8.6 * cm))
+    ps.section(story,'策略结果（按每笔仓位的已实现毛收益判断盈利、亏损或持平）')
+    totals=[[ps.H('策略'),ps.H('笔数'),ps.H('盈利 / 亏损 / 持平'),ps.H('未知'),ps.H('仓位毛收益 USD','RIGHT')]]
+    for key,label in [('pre','赛前择时'),('inplay','赛中择时'),('combined','全部策略腿')]:
+        v=summary[key]
+        totals.append([ps.C(label),ps.C(str(v['n'])),ps.C(f"{v['profit']} / {v['loss']} / {v['flat']}"),
+                       ps.C(str(v['unknown'])),ps.C(colored(v['pnl_cents']),'RIGHT')])
+    story.append(ps.make_table(totals,[3*cm,1.3*cm,5*cm,1.3*cm,6.4*cm]))
 
-    # 五、价值主张
-    ps.section(story, "五、给用户带来的价值 + 怎么看到")
-    for v in ov.VALUE:
-        story.append(ps.bullet(v))
+    def leg_text(row, inplay=False):
+        entered=bool(row.get('inplay_side')) if inplay else bool(row.get('bet'))
+        if not entered: return '<font color="#777777">无已记录下注</font>'
+        label=row.get('inplay_side_team') if inplay else row.get('pick_team')
+        label=label or (row.get('inplay_side') if inplay else row.get('pick')) or '—'
+        stake=row.get('inplay_stake_usd') if inplay else row.get('stake_usd')
+        entry=row.get('inplay_entry_cents') if inplay else row.get('entry_cents')
+        milestone=row.get('inplay_milestone') if inplay else 'PRE'
+        exit_=row.get('inplay_exit') if inplay else row.get('smart_exit')
+        won=row.get('inplay_won') if inplay else row.get('won')
+        pnl=row.get('inplay_pnl_cents') if inplay else row.get('realized_pnl_cents')
+        if exit_:
+            ending=f"{escape(str(exit_.get('sold_min','—')))}′ 卖出 {price(exit_.get('sold_c'))}"
+        else:
+            ending='结算赢' if won is True else ('结算输' if won is False else '结算未知')
+            settlement=(100.0 if won is True else (0.0 if won is False else None)) if inplay else row.get('settle_cents')
+            ending+=' '+price(settlement)
+        return (f"<b>{escape(str(label))}</b> · {escape(str(milestone or '—'))}<br/>"
+                f"金额 {cash(stake)} · 入场 {price(entry)}<br/>{ending}<br/>毛收益 {colored(pnl)}")
 
-    # 六、预测准确度(已结算场次)
-    ps.section(story, "六、预测准确度(已结算场次)")
-    if rep.n_settled:
-        grade = "PASS(已校准,优于均匀)" if rep.trade_grade else "BLOCK(劣于均匀,纪律闸门拦截)"
-        cal_row = (f"{rep.calibrated_brier}  ≤ 均匀基线 {rep.brier_uniform}"
-                   if rep.calibrated_brier is not None else "尚未拟合校准")
-        acc = [
-            ("已结算场次", f"{rep.n_settled}"),
-            ("Brier 原始(越低越好)", f"{rep.brier}  vs 均匀基线 {rep.brier_uniform}"),
-            ("Brier 校准后", cal_row),
-            ("Log-loss", f"{rep.log_loss}"),
-            ("热门命中率", f"{rep.favourite_hit_rate:.0%}"),
-            ("交易等级", grade),
-        ]
-        story.append(ps.make_kv_table(acc, label_w=8.4 * cm, val_w=8.6 * cm))
+    ps.section(story,'逐场记录（与智能择时及价格轨迹相同顺序）')
+    table=[[ps.H('日期 / ID'),ps.H('比赛'),ps.H('赛前下注 / 退出 / 收益'),ps.H('赛中下注 / 退出 / 收益'),
+            ps.H('赛前累计 USD','RIGHT'),ps.H('赛中累计 USD','RIGHT'),ps.H('合计累计 USD','RIGHT')]]
+    for row in records:
+        matchup=f"{escape(str(row.get('home','—')))}<br/>{escape(str(row.get('score','—')))}<br/>{escape(str(row.get('away','—')))}"
+        table.append([ps.C(f"{escape(str(row.get('date',''))[5:])}<br/>{row['fixture_id']}"),ps.C(matchup),
+                      ps.C(leg_text(row)),ps.C(leg_text(row,True)),
+                      ps.C(colored(row.get('pre_cum_pnl_cents')),'RIGHT'),
+                      ps.C(colored(row.get('inplay_cum_pnl_cents')),'RIGHT'),
+                      ps.C(colored(row.get('combined_cum_pnl_cents')),'RIGHT')])
+    if records:
+        story.append(ps.make_table(table,[1.55*cm,3.0*cm,3.45*cm,3.45*cm,1.85*cm,1.85*cm,1.85*cm]))
     else:
-        story.append(Paragraph("尚无已结算场次。", ps.note_style))
-
-    # 七、实盘战绩 — 真实策略 = 决策 + 智能择时现金出(持有到 FT / argmax 作参考)
-    ps.section(story, f"七、实盘战绩(真实口径:决策选边 + 超调止盈现金出;持有/argmax 作参考,自 {rep.bet_since or '—'} 起)")
-    if rep.bet_log:
-        def _col(v: float, text: str) -> str:
-            c = "#1a7a4a" if v >= 0 else "#c0392b"
-            return f'<font color="{c}"><b>{text}</b></font>'
-
-        # Unified format across the 3 modes: 标签 {W-L} · 累计 {¢}/张 · {场景}
-        story.append(Paragraph(
-            f"<b>实现(决策 + 智能择时现金出)</b> {rep.realized_record} · 累计 {rep.realized_pnl_cents_total:+.0f}¢/张 · "
-            f"{rep.n_decision_bets} 注 · {rep.n_smart_sold} 现金出",
-            ps.body_style))
-        story.append(Paragraph(
-            f"持有到 FT(参考) {rep.hold_record} · 累计 {rep.hold_pnl_cents_total:+.0f}¢/张 · "
-            f"{rep.n_decision_bets} 注 · {rep.n_skipped} 跳过(无边际)",
-            ps.body_style))
-        story.append(Paragraph(
-            f"<b>盘中入场(相对价值,同一 $ 计算)</b> {rep.inplay_record} · 累计 {rep.inplay_pnl_cents_total:+.0f}¢ · "
-            f"{rep.n_inplay} 注 &nbsp;→&nbsp; <b>合计(实现 + 盘中)</b> {rep.combined_pnl_cents_total:+.0f}¢",
-            ps.body_style))
-        story.append(Paragraph(
-            f"argmax 口径(参考) {rep.argmax_record} · 累计 {rep.argmax_pnl_cents_total:+.0f}¢/张 · "
-            f"{len(rep.bet_log)} 场 · 准确率 {rep.model_pred_accuracy:+.0%}",
-            ps.body_style))
-        story.append(Paragraph(
-            f"平均入场 {rep.avg_entry_cents:.0f}¢ · 价格空间捕获率 {rep.cents_capture_rate:+.0%} · 平均 CLV {rep.avg_clv_cents:+.0f}¢",
-            ps.note_style))
-        # Pre-match stream (下注→赛前Cum) MIRRORED by the in-play stream (盘中下注→盘中Cum),
-        # both $-sized identically, then 合计Cum — the SAME layout as the frontend BetLog (三视图统一).
-        data = [[ps.H("日期"), ps.H("对阵"), ps.H("下注边"), ps.H("金额", "RIGHT"), ps.H("离场"),
-                 ps.H("入场¢", "RIGHT"), ps.H("实现¢", "RIGHT"), ps.H("赛前Cum", "RIGHT"),
-                 ps.H("盘中(边·离场·实现¢)"), ps.H("盘中Cum", "RIGHT"), ps.H("合计Cum", "RIGHT")]]
-
-        def _exit_txt(se, won):
-            if se:
-                return _col(se["pnl_c"], f'{se["sold_min"]}′卖{se["sold_c"]:.0f}¢')
-            return _col(1 if won else -1, "结算赢" if won else "结算输")
-
-        for b in rep.bet_log:
-            bet = b.get("bet", True)
-            ec = f'{b["entry_cents"]:.0f}' if b.get("entry_cents") is not None else "—"
-            se = b.get("smart_exit")
-            rpc = b.get("realized_pnl_cents")
-            pcum = b.get("pre_cum_pnl_cents")
-            if not bet:
-                exit_txt = '<font color="#888">—</font>'
-            else:
-                exit_txt = _exit_txt(se, b["won"])
-            # 盘中 stream: 边·离场·实现¢ folded into one cell (width), Cum kept separate.
-            if b.get("inplay_side"):
-                ip_res = _exit_txt(b.get("inplay_exit"), b.get("inplay_won"))
-                ipc = b.get("inplay_pnl_cents")
-                ip_txt = (f'{b.get("inplay_side_team")} {b.get("inplay_milestone")} · {ip_res}'
-                          + (f' · {_col(ipc, f"{ipc:+.0f}")}' if ipc is not None else ''))
-                ipcum = b.get("inplay_cum_pnl_cents")
-            else:
-                ip_txt = '<font color="#888">—</font>'
-                ipcum = b.get("inplay_cum_pnl_cents")
-            ccum = b.get("combined_cum_pnl_cents")
-            data.append([
-                ps.C(b["date"][5:]),
-                ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
-                ps.C(b["pick_team"] if bet else '<font color="#888">不下注</font>'),
-                ps.C(f'${b["stake_usd"]:.2f}' if bet else '<font color="#888">$0</font>', "RIGHT"),
-                ps.C(exit_txt),
-                ps.C(ec if bet else "—", "RIGHT"),
-                ps.C(_col(rpc if rpc is not None else 0, f'{rpc:+.0f}') if (bet and rpc is not None) else "—", "RIGHT"),
-                ps.C(_col(pcum if pcum is not None else 0, f'{pcum:+.0f}') if pcum is not None else "—", "RIGHT"),
-                ps.C(ip_txt),
-                ps.C(_col(ipcum if ipcum is not None else 0, f'{ipcum:+.0f}') if ipcum is not None else "—", "RIGHT"),
-                ps.C(_col(ccum if ccum is not None else 0, f'{ccum:+.0f}') if ccum is not None else "—", "RIGHT"),
-            ])
-        story.append(ps.make_table(data, [1.15 * cm, 3.0 * cm, 1.5 * cm, 1.0 * cm, 1.7 * cm,
-                                          1.0 * cm, 1.0 * cm, 1.1 * cm, 3.2 * cm, 1.1 * cm, 1.1 * cm]))
-
-    # 八、分赛事战绩 & 每赛事校准闸门(§3.5)
-    ps.section(story, "八、分赛事战绩 & 闸门(§3.5 每赛事独立校准;闸门关着的赛事只出研究信号)")
-    if rep.by_league:
-        def _c(v, text: str) -> str:
-            return f'<font color="{"#1a7a4a" if v >= 0 else "#c0392b"}"><b>{text}</b></font>'
-
-        _GATE_ZH = {"OPEN": ("闸门开", "#1a7a4a"), "COLD-START": ("冷启动", "#b8860b"),
-                    "BLOCKED": ("拦截", "#c0392b"), "NO-FIT": ("无自有样本", "#888888")}
-        data = [[ps.H("赛事"), ps.H("场次", "RIGHT"), ps.H("下注", "RIGHT"), ps.H("实现W-L"),
-                 ps.H("实现¢", "RIGHT"), ps.H("盘中¢", "RIGHT"), ps.H("合计¢", "RIGHT"),
-                 ps.H("平均CLV", "RIGHT"), ps.H("校准 n", "RIGHT"), ps.H("闸门")]]
-        for L in rep.by_league:
-            g = L["gate"]
-            head = g["status"].split(" ")[0].rstrip("(")
-            label, colour = _GATE_ZH.get(head, (g["status"], "#888888"))
-            # Cold start is the one state where the count IS the message (n/30).
-            if head == "COLD-START":
-                label = f'{label} {g["n_calibration"] or 0}/{g["min_n"]}'
-            data.append([
-                ps.C(f'{L["zh"]} {L["name"]}'),
-                ps.C(str(L["n_settled"]), "RIGHT"),
-                ps.C(str(L["n_bets"]), "RIGHT"),
-                ps.C(L["realized_record"]),
-                ps.C(_c(L["realized_pnl_cents"], f'{L["realized_pnl_cents"]:+.0f}'), "RIGHT"),
-                ps.C(_c(L["inplay_pnl_cents"], f'{L["inplay_pnl_cents"]:+.0f}'), "RIGHT"),
-                ps.C(_c(L["combined_pnl_cents"], f'{L["combined_pnl_cents"]:+.0f}'), "RIGHT"),
-                ps.C(f'{L["avg_clv_cents"]:+.0f}' if L["n_clv"] else "—", "RIGHT"),
-                ps.C(str(g["n_calibration"] or 0), "RIGHT"),
-                ps.C(f'<font color="{colour}"><b>{label}</b></font>'),
-            ])
-        story.append(ps.make_table(data, [3.3 * cm, 1.1 * cm, 1.1 * cm, 1.7 * cm, 1.3 * cm,
-                                          1.3 * cm, 1.3 * cm, 1.4 * cm, 1.3 * cm, 2.2 * cm]))
-        n_open = sum(1 for L in rep.by_league if L["gate"]["gate_open"])
-        story.append(Paragraph(
-            f'{n_open}/{len(rep.by_league)} 项赛事闸门已开(自有样本 ≥ '
-            f'{rep.by_league[0]["gate"]["min_n"]} 场且校准后 Brier ≤ 均匀基线);'
-            "其余仍用池化校准定价、不出交易信号(§3.5)。",
-            ps.note_style))
-
-    # 九、校准 P&L(纸面,公允赔率诊断)
-    ps.section(story, "九、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")
-    if rep.n_settled:
-        story.append(ps.make_kv_table([
-            ("总校准 P&L(1u/场)", ps.money(rep.calibration_pnl, unit="u")),
-            ("每场均值", ps.money(rep.calibration_pnl_per_bet, unit="u")),
-            ("已结算信号 P&L(真钱框架)", ps.money(rep.settled_signal_pnl)),
-            ("已记录 BUY 信号数", f"{rep.n_settled_signals}"),
-        ], label_w=8.4 * cm, val_w=8.6 * cm))
-
-    # 十、说明
-    ps.section(story, "十、说明")
-    for i, n in enumerate(rep.notes, 1):
-        story.append(ps.note_item(f"{i}.", n))
-
-    ps.new_doc(output_path).build(story)
+        story.append(Paragraph('尚无已记录策略下注。',ps.note_style))
+    doc=ps.new_doc(output_path)
+    doc.title='足球智能择时 — 统一策略账本'
+    doc.subject=f"ledger_id={ledger['ledger_id']}; as_of={ledger['as_of']}"
+    doc.keywords='book_version_id='+str(ledger.get('book_version',{}).get('version_id',''))
+    doc.build(story)
     return output_path
 
 
+@writer
+def publish_strategy_views(conn, *, report=None):
+    """Publish one report/price-track/PDF group; caller holds the refresh_all lock.
+
+    A supplied report is an existing snapshot and is never recalculated. This helper
+    owns its ExportStage and must not be called from inside another staged refresh.
+    """
+    from prediction_market_soccer.ops.export_stage import ExportStage
+    from prediction_market_soccer.ops.run_status import write_both,atomic_bytes
+    from prediction_market_soccer.ops import milestone_export
+    from prediction_market_soccer.util.strategy_ledger import validate_strategy_ledger
+    with ExportStage() as stage:
+        rep=report if report is not None else build(conn)
+        ledger=validate_strategy_ledger(rep.strategy_ledger)
+        from prediction_market_soccer.util.frozen_strategy_store import read_book
+        if ledger != read_book(conn)['ledger']:
+            raise ValueError('Only the active frozen book can be published; use the explicit version workflow to replace it')
+        write_both('performance_report.json',asdict(rep))
+        marks=milestone_export.build(conn,freeze=False,ledger=ledger)
+        if validate_strategy_ledger(marks.get('strategy_ledger')) != ledger:
+            raise ValueError('Price track does not contain this report strategy ledger')
+        write_both('milestone_marks.json',marks)
+        pdf=CONFIG.paths.output/'performance_report.pdf'
+        build_pdf(rep,str(pdf))
+        atomic_bytes(CONFIG.paths.frontend_data/pdf.name,pdf.read_bytes())
+        for directory in (CONFIG.paths.output, CONFIG.paths.frontend_data):
+            validate_strategy_views(directory, ledger)
+        stage.promote()
+    return rep
+
+
+@writer
 def main() -> None:
     import argparse
-
-    ap = argparse.ArgumentParser(description="Performance & P&L report")
-    ap.add_argument("--pdf", action="store_true", help="also render a styled PDF")
-    ap.add_argument("--as-of", default="", help="as-of date label for the PDF header")
-    args = ap.parse_args()
-
-    rep = build()
-    CONFIG.paths.ensure()
-    (CONFIG.paths.output / "performance_report.json").write_text(
-        json.dumps(asdict(rep), ensure_ascii=False, indent=2), encoding="utf-8")
-    print("PERFORMANCE & P&L REPORT")
-    print(f"  settled matches      : {rep.n_settled}")
-    if rep.n_settled:
-        print(f"  accuracy Brier       : {rep.brier}  (uniform {rep.brier_uniform})  log-loss {rep.log_loss}")
-        print(f"  favourite hit-rate   : {rep.favourite_hit_rate:.0%}")
-        print(f"  calibration P&L      : {rep.calibration_pnl:+.2f}u total ({rep.calibration_pnl_per_bet:+.3f}u/bet, paper)")
-        print(f"  settled-signal P&L   : {rep.settled_signal_pnl:+.2f}  ({rep.n_settled_signals} BUY signals recorded)")
-    if rep.by_league:
-        n_open = sum(1 for L in rep.by_league if L["gate"]["gate_open"])
-        print(f"  per-competition      : {n_open}/{len(rep.by_league)} gates open")
-        for L in rep.by_league:
-            print(f"    {L['league']:<13} n={L['n_settled']:<4} bets={L['n_bets']:<4} "
-                  f"{L['realized_record']:<9} realized={L['realized_pnl_cents']:+8.0f}¢ "
-                  f"inplay={L['inplay_pnl_cents']:+8.0f}¢ combined={L['combined_pnl_cents']:+8.0f}¢ "
-                  f"| gate {L['gate']['status']}")
-    for nnote in rep.notes:
-        print(f"  • {nnote}")
-
-    if args.pdf:
-        path = build_pdf(rep, str(CONFIG.paths.output / "performance_report.pdf"), as_of=args.as_of)
-        print(f"  PDF written          : {path}")
+    from prediction_market_soccer.ingest import store
+    from prediction_market_soccer.ops.proc_lock import acquire,release
+    ap=argparse.ArgumentParser(description='Publish the unified smart-timing report, price track and PDF')
+    ap.add_argument('--pdf',action='store_true',help='Compatibility flag: the unified PDF is always published')
+    ap.add_argument('--as-of',default='',help='Compatibility flag: all views use the actual ledger timestamp')
+    ap.parse_args()
+    if not acquire('refresh_all'):
+        print('[performance] a full/report refresh is active — no artifacts published')
+        return
+    conn=None
+    try:
+        conn=store.init_db()
+        rep=publish_strategy_views(conn)
+        ledger=rep.strategy_ledger
+        print('SMART-TIMING STRATEGY REPORT')
+        print(f"  ledger: {ledger['ledger_id']}  as_of: {ledger['as_of']}")
+        print(f"  matches: {ledger['summary']['n_matches']}  strategy legs: {ledger['summary']['n_legs']}")
+        for key in ('pre','inplay','combined'):
+            row=ledger['summary'][key]
+            pnl=f"${row['pnl_usd']:+.3f}" if row['pnl_usd'] is not None else 'unavailable'
+            print(f"  {key}: {row['profit']} profit / {row['loss']} loss / {row['flat']} flat; gross {pnl}")
+        print('  Published performance_report.json, milestone_marks.json and performance_report.pdf to both directories')
+    finally:
+        if conn is not None: conn.close()
+        release('refresh_all')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

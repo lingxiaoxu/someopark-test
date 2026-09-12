@@ -1,6 +1,7 @@
 """live_watch safety tests — the properties that must never regress:
 ships disarmed, dry-run never submits, kill switch trips and stays tripped."""
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -915,3 +916,36 @@ def test_w7_main_cell_latches_and_kills_independently():
     st2 = {"windows_primary": W([+5 + spread[i % 4] for i in range(60)]),
            "windows_main": W([-20 + 15 * spread[i % 4] for i in range(60)])}
     assert w7.evidence_kill(st2) is True and "MAIN" in st2["killed_reason"]
+
+def test_runner_survives_a_missing_experimental_strategy():
+    """W1-W7 are the product; an experiment must never be able to kill them.
+    W8 lives in untracked files but was wired into this tracked launcher as a
+    module-scope import, so deleting the experiment (git clean, fresh clone,
+    retiring it) would have stopped every probe. Verified in a SUBPROCESS so
+    the check cannot disturb this session's module table."""
+    import subprocess
+    import sys
+    import textwrap
+
+    probe = textwrap.dedent("""
+        import sys
+
+        class BlockW8:
+            def find_spec(self, name, path=None, target=None):
+                if name.endswith("w8_complete_set"):
+                    raise ImportError("w8 deliberately absent")
+                return None
+
+        sys.meta_path.insert(0, BlockW8())
+        from crypto_trading.crypto_strategies.live_watch import runner
+        assert set(runner.STRATS) >= {"w1", "w2", "w3", "w4", "w5", "w6", "w7"}
+        assert "w8" not in runner.STRATS and "w8" not in runner.CADENCE_S
+        print("OK", len(runner.STRATS))
+    """)
+    import os
+    repo = Path(__file__).resolve().parents[2]
+    env = {**os.environ, "PYTHONPATH": str(repo)}
+    r = subprocess.run([sys.executable, "-c", probe], capture_output=True,
+                       text=True, timeout=120, cwd=str(repo), env=env)
+    assert r.returncode == 0, f"runner died without w8:\n{r.stderr[-2000:]}"
+    assert r.stdout.startswith("OK 7")

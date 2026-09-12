@@ -46,22 +46,28 @@ def generate_inplay_signals(conn=None, sm=None) -> list[dict]:
     from prediction_market_soccer.model.strength import build_strength
 
     conn = conn or store.init_db()
-    sm = sm or build_strength(load_prior())
+    from prediction_market_soccer.model.strength_cache import composite_live_strength, model_for_fixture
+    sm = sm or composite_live_strength(conn)
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     live = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed "
+        "SELECT api_id, league_id, home_api_id, away_api_id, home_goals, away_goals, elapsed "
         "FROM fixture WHERE status_short IN ({})".format(",".join("?" * len(_LIVE))), _LIVE).fetchall()
     out: list[dict] = []
     for fx in live:
         hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
         if not (hi and ai):
+            log.warning("fixture %s: missing_team_mapping", fx["api_id"])
+            continue
+        fixture_sm = model_for_fixture(sm, fx, hi, ai)
+        if fixture_sm is None:
+            log.warning("fixture %s: missing_strength", fx["api_id"])
             continue
         minute = fx["elapsed"] or 0
         gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
         rh, ra = _red_counts(conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"])
-        lam_h, lam_a = sm.pair_lambdas(hi, ai)
+        lam_h, lam_a = fixture_sm.pair_lambdas(hi, ai)
         lp = live_match_prob(lam_h, lam_a, minute, gh, ga, red_home=rh, red_away=ra)
 
         actions = [draw_trade_signal(lp)]
@@ -83,7 +89,8 @@ def poll_once(conn=None, *, ingest: bool = True) -> dict:
     from prediction_market_soccer.ingest import store
 
     conn = conn or store.init_db()
-    n_live = 0
+    n_live = conn.execute(
+        "SELECT COUNT(*) FROM fixture WHERE status_short IN ({})".format(",".join("?" * len(_LIVE))), _LIVE).fetchone()[0]
     if ingest:
         try:
             from prediction_market_soccer.ingest.api_football import ApiFootball
@@ -115,113 +122,70 @@ def poll_once(conn=None, *, ingest: bool = True) -> dict:
 
 
 def _live_quote_sources(conn) -> dict:
-    """Per-match live market-quote functions per venue.
-
-    Kalshi single-match (KXWCGAME) 3-way is live and wired. Polymarket US/Global
-    single-match plug in here when their markets populate.
-    """
-    sources: dict = {}
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    try:
-        # CLUB EDITION: one KalshiDiscovery PER COMPETITION with live/imminent fixtures
-        # (series tickers are per-league, §2.2); accessors route by the fixture's league_id.
-        from prediction_market_soccer.config.leagues import active
-        from prediction_market_soccer.venues.kalshi.discovery import KalshiDiscovery
-        lid_to_key = {c.api_football_id: c.key for c in active()}
-        # ISO-T bounds, NOT datetime('now',...): kickoff_ts is ISO-8601 TEXT with a 'T'
-        # separator while datetime() emits a SPACE — and 'T' > ' ' in a text compare, so
-        # a same-day kickoff always failed the upper bound and live_lids came back EMPTY
-        # for any afternoon fixture. That is why Kalshi in-play quotes appeared on late
-        # kickoffs (now+6h rolls past midnight, the date digits differ, the compare goes
-        # right by accident) and vanished on everything else — measured live on Lecce v
-        # Roma with the market open and active on the venue. The kickoff_ts-is-TEXT trap
-        # has now bitten twice; every short-window compare must use ISO-T bounds.
-        live_lids = {r["league_id"] for r in conn.execute(
-            "SELECT DISTINCT league_id FROM fixture "
-            "WHERE kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-6 hours') "
-            "AND kickoff_ts <= strftime('%Y-%m-%dT%H:%M:%S','now','+6 hours')")}
-        ds: dict[int, KalshiDiscovery] = {}
-        for lid in live_lids:
-            key = lid_to_key.get(lid)
-            if not key:
-                continue
+    """One capture per fixture/source/cycle, retaining explicit contract scope."""
+    from prediction_market_soccer.config.leagues import active, caps_for
+    from prediction_market_soccer.ingest.soccer_ingest import leg_of
+    from prediction_market_soccer.util.market_identity import fixture_identity
+    from prediction_market_soccer.venues.kalshi.discovery import KalshiDiscovery
+    from prediction_market_soccer.venues.polymarket_us.discovery import PolymarketUSDiscovery
+    from zoneinfo import ZoneInfo
+    comps={c.api_football_id:c for c in active()}
+    cmap={r['api_id']:r['canonical_team_id'] for r in conn.execute('SELECT api_id,canonical_team_id FROM team_meta')}
+    kd={}
+    try: pd=PolymarketUSDiscovery(conn=conn)
+    except Exception as exc:
+        log.warning('Polymarket US discovery unavailable: %s',type(exc).__name__)
+        pd=None
+    sources={}
+    def create(venue,kind):
+        cache={}; statuses={}
+        def fetch(fid):
+            if fid in cache: return cache[fid]
+            fx=conn.execute('SELECT * FROM fixture WHERE api_id=?',(fid,)).fetchone()
+            result={}
             try:
-                d = KalshiDiscovery(key)
-                d.match_index()    # warm the 3-way event→market cache once per poll
-                d.totals_index()
-                d.advance_index()  # advance cache (caps.advance fixtures only have entries)
-                ds[lid] = d
-            except Exception as e:  # noqa: BLE001 — one comp's venue outage ≠ all comps
-                log.warning("Kalshi discovery %s unavailable: %s", key, e)
-
-        def _resolve(fixture_id: int):
-            fx = conn.execute("SELECT league_id, home_api_id, away_api_id FROM fixture WHERE api_id=?",
-                              (fixture_id,)).fetchone()
-            if not fx:
-                return None, None, None
-            d = ds.get(fx["league_id"])
-            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
-            return d, hi, ai
-
-        def kalshi_q(fixture_id: int) -> dict:
-            d, hi, ai = _resolve(fixture_id)
-            return (d.match_quotes(hi, ai) or {}) if (d and hi and ai) else {}
-
-        def kalshi_totals_q(fixture_id: int) -> dict:
-            d, hi, ai = _resolve(fixture_id)
-            return (d.totals_quotes(hi, ai) or {}) if (d and hi and ai) else {}
-
-        def kalshi_advance_q(fixture_id: int) -> dict:
-            d, hi, ai = _resolve(fixture_id)
-            return (d.advance_quotes(hi, ai) or {}) if (d and hi and ai) else {}
-
-        def kalshi_corners_q(fixture_id: int) -> dict:
-            d, hi, ai = _resolve(fixture_id)
-            return (d.corners_quotes(hi, ai) or {}) if (d and hi and ai) else {}
-
-        if ds:
-            sources["kalshi"] = kalshi_q
-            sources["kalshi_totals"] = kalshi_totals_q
-            sources["kalshi_advance"] = kalshi_advance_q
-            sources["kalshi_corners"] = kalshi_corners_q
-    except Exception as e:
-        log.warning("Kalshi match quotes unavailable: %s", e)
-
-    try:
-        from datetime import datetime
-        from zoneinfo import ZoneInfo
-
-        from prediction_market_soccer.venues.polymarket_us.discovery import PolymarketUSDiscovery
-        ud = PolymarketUSDiscovery()
-        ud.code_map()   # warm once
-
-        def _et_date(fixture_id: int):
-            fx = conn.execute("SELECT home_api_id, away_api_id, kickoff_ts FROM fixture WHERE api_id=?",
-                              (fixture_id,)).fetchone()
-            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
-            if not (hi and ai and fx["kickoff_ts"]):
-                return None, None, None
-            et = datetime.fromisoformat(fx["kickoff_ts"]).astimezone(ZoneInfo("America/New_York")).date().isoformat()
-            return hi, ai, et
-
-        def us_q(fixture_id: int) -> dict:
-            hi, ai, et = _et_date(fixture_id)
-            return (ud.match_quotes(hi, ai, et) or {}) if et else {}
-
-        def us_totals_q(fixture_id: int) -> dict:
-            hi, ai, et = _et_date(fixture_id)
-            return (ud.totals_quotes(hi, ai, et) or {}) if et else {}
-
-        def us_advance_q(fixture_id: int) -> dict:
-            hi, ai, et = _et_date(fixture_id)
-            return (ud.advance_quotes(hi, ai, et) or {}) if et else {}
-
-        sources["poly_us"] = us_q
-        sources["poly_us_totals"] = us_totals_q
-        sources["poly_us_advance"] = us_advance_q
-    except Exception as e:
-        log.warning("Polymarket US match quotes unavailable: %s", e)
+                if fx is None or fx['league_id'] not in comps:
+                    statuses[fid]={'state':'unavailable','reason':'unknown_fixture'}
+                    return {}
+                comp=comps[fx['league_id']]
+                hi,ai=cmap.get(fx['home_api_id']),cmap.get(fx['away_api_id'])
+                leg,_=leg_of(conn,fid)
+                tie=conn.execute('SELECT tie_key FROM tie WHERE leg1_fixture_id=? OR leg2_fixture_id=?',(fid,fid)).fetchone()
+                f=fixture_identity({**dict(fx),'leg':leg,'tie_id':tie['tie_key'] if tie else None},hi,ai,comp.key)
+                # Preserve the observed phase for schedule validation in every source.
+                f['status_short'] = fx['status_short']
+                if kind=='advance':
+                    leg,_=leg_of(conn,fid)
+                    if not caps_for(comp.key,fx['round'],leg=leg).advance:
+                        statuses[fid]={'state':'not_requested','reason':'unsupported_market'}
+                        cache[fid]={}; return {}
+                if venue=='kalshi':
+                    if comp.key not in kd: kd[comp.key]=KalshiDiscovery(comp.key,conn=conn)
+                    d=kd[comp.key]
+                    result=getattr(d,kind+'_quotes')(hi,ai,fixture=f) or {}
+                    source_status=d.discovery_status
+                else:
+                    if pd is None: return {}
+                    et=datetime.fromisoformat(f['kickoff_ts']).astimezone(ZoneInfo('America/New_York')).date().isoformat()
+                    result=getattr(pd,kind+'_quotes')(hi,ai,et,fixture=f,comp_key=comp.key) or {}
+                    source_status=pd.discovery_status
+                statuses[fid]={'state':'ok' if result else 'unavailable','discovery':source_status}
+                if venue=='poly_us' and kind=='advance':
+                    statuses[fid]={'state':'not_requested','reason':'unsupported_market'}
+            except Exception as exc:
+                statuses[fid]={'state':'unavailable','reason':'request_failed','error':type(exc).__name__}
+                log.warning('quote %s/%s fixture %s: %s',venue,kind,fid,type(exc).__name__)
+            cache[fid]=result
+            return result
+        fetch.market_kind=kind
+        fetch.settlement_scope='advance' if kind=='advance' else 'regulation'
+        fetch.status=lambda fid: statuses.get(fid,{'state':'not_requested'})
+        return fetch
+    for venue in ('kalshi','poly_us'):
+        for kind in ('match','totals','advance','corners'):
+            if venue=='poly_us' and kind=='corners': continue
+            name=venue+('' if kind=='match' else '_'+kind)
+            sources[name]=create(venue,kind)
     return sources
 
 

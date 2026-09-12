@@ -14,9 +14,9 @@ For each of the next N not-started fixtures this produces a fully-enriched row:
     buy cheapest ask + sell highest bid across the two TRADABLE venues).
 
 Read-only: market data only, NEVER places an order. Kalshi market data is public;
-Polymarket US uses the PMUS read credentials. A venue that has not yet listed a
-given match returns ``None`` for that match — the fetch is REAL, not stubbed; the
-field is absent only when the venue genuinely has no market yet.
+Polymarket US uses the PMUS read credentials. A missing quote can mean no matching event, incomplete discovery, an identity
+rejection or an unavailable book. Per-fixture diagnostics retain that distinction;
+absence alone does not establish that the venue has not listed the match.
 
     python -m prediction_market_soccer.ops.upcoming_export [--limit 6] [--no-venues]
     → data/output/upcoming.json
@@ -24,11 +24,14 @@ field is absent only when the venue genuinely has no market yet.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from prediction_market_soccer.config import CONFIG
 from prediction_market_soccer.util.pricing import quote_to_cents
+from prediction_market_soccer.util.market_identity import fixture_identity, equivalent_contract
+from prediction_market_soccer.util.quote_evidence import qualify_quote, qualified_quotes, select_quote, collect_receipts, diagnose_quotes
 
 ET = ZoneInfo("America/New_York")
 _FEE = 0.01            # per-contract execution fee estimate (matches inplay_arb)
@@ -139,7 +142,8 @@ def _best_buy_edge(model: dict, venue_q: dict | None, venue: str, theta: float) 
     from prediction_market_soccer.strategy.edge import compute_edge
     best = None
     for side in ("home", "draw", "away"):
-        ask = (venue_q.get(side) or {}).get("ask")
+        eligible = qualify_quote(venue_q.get(side), "buy", side=side)
+        ask = eligible["selected"]["price"] if eligible["eligible"] else None
         if ask is None:
             continue
         e = compute_edge(model[side], float(ask), fee=_FEE, theta=theta)
@@ -153,6 +157,8 @@ def _decision_quotes(kalshi_q, poly_q, k_devig, p_devig):
     """{side: SideQuote} for decision_model.decide — cheapest executable ask per side
     across venues + that side's de-vig (same selection the bet log uses on PRE rows)."""
     from prediction_market_soccer.strategy.decision_model import SideQuote
+    kalshi_q = qualified_quotes(kalshi_q)
+    poly_q = qualified_quotes(poly_q)
     q = {}
     for s in ("home", "draw", "away"):
         cands = []
@@ -196,8 +202,9 @@ def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_con
         return {"bet": False, "side": None, "stake_usd": 0.0,
                 "net_edge": d.net_edge, "confidence_k": d.confidence_k, "knockout": knockout}
     ask = dq[d.side].ask
+    selected = select_quote({'kalshi': kalshi_q, 'poly_us': poly_q}, d.side, 'buy', venue_order=[d.venue])
     cnt = _cap_count(ask)
-    return {"bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
+    return {"selected_quote": selected, "bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
             "model_prob": d.model_prob, "net_edge": d.net_edge, "stake_usd": d.stake_usd,
             "count": cnt, "capped_notional_usd": round(cnt * ask, 2),
             "confidence_k": d.confidence_k, "knockout": knockout}
@@ -208,6 +215,8 @@ def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
     if not (kalshi_q and poly_q):
         return None
     from prediction_market_soccer.strategy.cross_venue import evaluate_lock
+    kalshi_q = qualified_quotes(kalshi_q, market_kind='match', settlement_scope='regulation')
+    poly_q = qualified_quotes(poly_q, market_kind='match', settlement_scope='regulation')
     best = None
     for side in ("home", "draw", "away"):
         legs = {"kalshi": kalshi_q.get(side), "poly_us": poly_q.get(side)}
@@ -219,12 +228,18 @@ def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
         sell_v = max(bids, key=bids.get)
         if buy_v == sell_v:
             continue
-        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
+        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=equivalent_contract((legs[buy_v] or {}).get('receipt',{}).get('binding'), (legs[sell_v] or {}).get('receipt',{}).get('binding')),
                              fee_cheap=_FEE, fee_expensive=_FEE)
         if best is None or lock.net_lock > best["net_lock"]:
             best = {"side": side, "buy_venue": buy_v, "sell_venue": sell_v,
                     "buy_ask": round(asks[buy_v], 4), "sell_bid": round(bids[sell_v], 4),
-                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable)}
+                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable),
+                    "selected_quotes": [qualify_quote(legs[buy_v], 'buy', side=side,
+                        market_kind=legs[buy_v]['receipt']['market_kind'],
+                        settlement_scope=legs[buy_v]['receipt']['settlement_scope'])['selected'],
+                        qualify_quote(legs[sell_v], 'sell', side=side,
+                        market_kind=legs[sell_v]['receipt']['market_kind'],
+                        settlement_scope=legs[sell_v]['receipt']['settlement_scope'])['selected']]}
     return best
 
 
@@ -275,7 +290,8 @@ def _best_buy_edge_2way(model: dict, venue_q: dict | None, venue: str, theta: fl
     from prediction_market_soccer.strategy.edge import compute_edge
     best = None
     for side in _ADV_SIDES:
-        ask = (venue_q.get(side) or {}).get("ask")
+        eligible = qualify_quote(venue_q.get(side), "buy", side=side, market_kind="advance", settlement_scope="advance")
+        ask = eligible["selected"]["price"] if eligible["eligible"] else None
         if ask is None:
             continue
         e = compute_edge(model[side], float(ask), fee=_FEE, theta=theta)
@@ -294,6 +310,8 @@ def _decision_for_2way(model_adv, kalshi_a, poly_a, k_devig_a, p_devig_a, form_r
     if not (kalshi_a or poly_a):
         return None
     from prediction_market_soccer.strategy.decision_model import SideQuote, decide
+    kalshi_a = qualified_quotes(kalshi_a, market_kind='advance', settlement_scope='advance')
+    poly_a = qualified_quotes(poly_a, market_kind='advance', settlement_scope='advance')
     dq = {"draw": SideQuote()}
     for s in _ADV_SIDES:
         cands = []
@@ -315,8 +333,10 @@ def _decision_for_2way(model_adv, kalshi_a, poly_a, k_devig_a, p_devig_a, form_r
         return {"bet": False, "side": None, "stake_usd": 0.0, "net_edge": d.net_edge,
                 "confidence_k": d.confidence_k, "knockout": True, "advance": True}
     ask = dq[d.side].ask
+    selected = select_quote({'kalshi': kalshi_a, 'poly_us': poly_a}, d.side, 'buy',
+                            venue_order=[d.venue], market_kind='advance', settlement_scope='advance')
     cnt = _cap_count(ask)
-    return {"bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
+    return {"selected_quote": selected, "bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
             "model_prob": d.model_prob, "net_edge": d.net_edge, "stake_usd": d.stake_usd,
             "count": cnt, "capped_notional_usd": round(cnt * ask, 2),
             "confidence_k": d.confidence_k, "knockout": True, "advance": True}
@@ -327,6 +347,8 @@ def _lock_arb_2way(kalshi_a: dict | None, poly_a: dict | None) -> dict | None:
     if not (kalshi_a and poly_a):
         return None
     from prediction_market_soccer.strategy.cross_venue import evaluate_lock
+    kalshi_a = qualified_quotes(kalshi_a, market_kind='advance', settlement_scope='advance')
+    poly_a = qualified_quotes(poly_a, market_kind='advance', settlement_scope='advance')
     best = None
     for side in _ADV_SIDES:
         legs = {"kalshi": kalshi_a.get(side), "poly_us": poly_a.get(side)}
@@ -338,12 +360,18 @@ def _lock_arb_2way(kalshi_a: dict | None, poly_a: dict | None) -> dict | None:
         sell_v = max(bids, key=bids.get)
         if buy_v == sell_v:
             continue
-        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
+        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=equivalent_contract((legs[buy_v] or {}).get('receipt',{}).get('binding'), (legs[sell_v] or {}).get('receipt',{}).get('binding')),
                              fee_cheap=_FEE, fee_expensive=_FEE)
         if best is None or lock.net_lock > best["net_lock"]:
             best = {"side": side, "buy_venue": buy_v, "sell_venue": sell_v,
                     "buy_ask": round(asks[buy_v], 4), "sell_bid": round(bids[sell_v], 4),
-                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable)}
+                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable),
+                    "selected_quotes": [qualify_quote(legs[buy_v], 'buy', side=side,
+                        market_kind=legs[buy_v]['receipt']['market_kind'],
+                        settlement_scope=legs[buy_v]['receipt']['settlement_scope'])['selected'],
+                        qualify_quote(legs[sell_v], 'sell', side=side,
+                        market_kind=legs[sell_v]['receipt']['market_kind'],
+                        settlement_scope=legs[sell_v]['receipt']['settlement_scope'])['selected']]}
     return best
 
 
@@ -352,7 +380,7 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q, kalshi_a=None, po
     not already stored). Captures the live Kalshi/Poly 3-way ask/bid AND the 2-way
     advance ask/bid (knockout) as the pre-match entry — so the price-track can mark the
     knockout 2-way entry ¢."""
-    if not kickoff_ts:
+    if not kickoff_ts or not any((kalshi_q, poly_q, kalshi_a, poly_a)):
         return
     from datetime import timedelta
     try:
@@ -362,19 +390,22 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q, kalshi_a=None, po
     now = datetime.now(timezone.utc)
     if not (now <= ko <= now + timedelta(minutes=20)):
         return
+    from prediction_market_soccer.util.paper_store import observe_pre
+    observe_pre(conn, fixture_id, now.isoformat(), kalshi_q, poly_q)
     if conn.execute("SELECT 1 FROM milestone_snapshot WHERE fixture_api_id=? AND milestone='PRE'",
                     (fixture_id,)).fetchone():
         return
 
     def ab(q, side):
+        from prediction_market_soccer.util.quote_evidence import executable_price
         s = ((q or {}).get(side) or {})
-        return s.get("ask"), s.get("bid")
+        return executable_price(s, 'buy'), executable_price(s, 'sell')
 
     kh, khb = ab(kalshi_q, "home"); kd, kdb = ab(kalshi_q, "draw"); ka, kab = ab(kalshi_q, "away")
     ph, phb = ab(poly_q, "home"); pd_, pdb = ab(poly_q, "draw"); pa, pab = ab(poly_q, "away")
     akh, akhb = ab(kalshi_a, "home"); aka, akab = ab(kalshi_a, "away")   # advance (no draw)
     aph, aphb = ab(poly_a, "home"); apa, apab = ab(poly_a, "away")
-    conn.execute(
+    inserted = conn.execute(
         # PRE is captured pre-kickoff (status NS) → the score is 0-0 by definition.
         # Store it explicitly so the price-track view shows "0-0", not "?-?" (null score):
         # backfill won't heal it once a live/settlement FT row trips its incremental skip.
@@ -388,6 +419,9 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q, kalshi_a=None, po
         (fixture_id, "PRE", now.isoformat(), 0, "NS", 0, 0,
          kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab,
          akh, akhb, aka, akab, aph, aphb, apa, apab, "live"))
+    if inserted.rowcount:
+        from prediction_market_soccer.util.timing_provenance import record_live_milestone
+        record_live_milestone(conn, fixture_id, "PRE")
     conn.commit()
 
 
@@ -443,7 +477,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
     out: list[dict] = []
     for comp in active():
         _ph = ",".join("?" * len(_UPCOMING))
-        _q = ("SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json "
+        _q = ("SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json, updated_at "
               f"FROM fixture WHERE league_id=? AND season=? AND status_short IN ({_ph}) "
               "AND kickoff_ts IS NOT NULL AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-3 hours') ")
         _args: list = [comp.api_football_id, comp.season, *_UPCOMING]
@@ -464,52 +498,52 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
             sm = cached_strength(conn, comp.key)
         except Exception as e:  # noqa: BLE001 — one comp's model failing must not blank the rest
             print(f"[warn] strength model {comp.key}: {e}")
-            continue
+            sm = None
 
         kd = pd_ = None
         if with_venues:
             try:
                 from prediction_market_soccer.venues.kalshi.discovery import KalshiDiscovery
-                kd = KalshiDiscovery(comp.key)
+                kd = KalshiDiscovery(comp.key, conn=conn)
             except Exception as e:
                 print(f"[warn] Kalshi discovery {comp.key}: {e}")
             try:
                 from prediction_market_soccer.venues.polymarket_us.discovery import PolymarketUSDiscovery
-                pd_ = PolymarketUSDiscovery()
+                pd_ = PolymarketUSDiscovery(conn=conn)
             except Exception as e:
                 print(f"[warn] Polymarket US discovery unavailable: {e}")
 
         out.extend(_build_comp_rows(
             conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fidx, book,
             theta, _calib_conf, gate_open_for(_cal, comp.key), caps_for, caps_dict,
-            stage_of, leg_of, price_match, calibration_for(_cal, comp.key)))
+            stage_of, leg_of, price_match, calibration_for(_cal, comp.key), with_venues=with_venues))
     out.sort(key=lambda r: r.get("kickoff") or "")
     return out
 
 
-def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fidx,
+def _quote_status_snapshot(discovery, family, *, fallback_state='unavailable', error=None):
+    """Freeze a fixture result before another family/fixture mutates the client."""
+    method = getattr(discovery, 'quote_status_for', None)
+    detail = deepcopy(method(family)) if callable(method) else {}
+    if error is not None:
+        return {'state':'unavailable','reason':'request_failed','error':type(error).__name__}
+    return detail or {'state':fallback_state,
+        'reason':'not_requested' if fallback_state=='not_requested' else 'diagnostic_unavailable'}
+
+
+def _price_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fidx,
                      book, theta, _calib_conf, _gate_open, caps_for, caps_dict,
-                     stage_of, leg_of, price_match, _comp_cal=None) -> list[dict]:
+                     stage_of, leg_of, price_match, _comp_cal=None, *, with_venues=True) -> list[dict]:
     out: list[dict] = []
     for f in fixtures:
         hi, ai = cmap.get(f["home_api_id"]), cmap.get(f["away_api_id"])
         stage = stage_of(comp.key, f["round"])
-        if not (hi in sm.ratings and ai in sm.ratings):
-            # Undetermined KO slot ("Winner of tie X") → tentative placeholder row.
-            tent = _tentative_pairing(f["raw_json"]) if stage.value != "league" else None
-            if tent:
-                out.append({
-                    "fixture_id": f["api_id"], "league": comp.key, "league_zh": comp.zh,
-                    "kickoff": f["kickoff_ts"], "et": _et_human(f["kickoff_ts"]),
-                    "et_date": _et_date(f["kickoff_ts"]), "round": f["round"] or "",
-                    "status": f["status_short"] or "", "tentative": True,
-                    "home": {"id": None, "name": tent[0], "zh": tent[0]},
-                    "away": {"id": None, "name": tent[1], "zh": tent[1]},
-                    "caps": caps_dict(caps_for(comp.key, f["round"]), stage),
-                    "model": None, "book_devig": None, "kalshi": None, "poly_us": None,
-                    "edge": {"vs_book": None, "vs_kalshi": None, "vs_poly_us": None, "best": None},
-                    "lock_arb": None, "advance": None,
-                })
+        if sm is None or not (hi and ai and hi in sm.ratings and ai in sm.ratings):
+            from prediction_market_soccer.ops.export_status import fixture_unavailable
+            row = fixture_unavailable(f, comp, cmap, name_of, zh_of,
+                "missing_team_mapping" if not (hi and ai) else "missing_strength", with_venues=with_venues)
+            row.update(et=_et_human(f["kickoff_ts"]), et_date=_et_date(f["kickoff_ts"]))
+            out.append(row)
             continue
         from prediction_market_soccer.util.pricing import model_cents
         leg, agg = leg_of(conn, f["api_id"])
@@ -532,6 +566,10 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
         book_devig = ({"home": round(bd["bh"], 4), "draw": round(bd["bd"], 4), "away": round(bd["ba"], 4)}
                       if bd else None)
 
+        tie = conn.execute('SELECT tie_key FROM tie WHERE leg1_fixture_id=? OR leg2_fixture_id=?',(f['api_id'],f['api_id'])).fetchone()
+        quote_fixture = fixture_identity({**dict(f), "season": comp.season, 'leg':leg, 'tie_id':tie['tie_key'] if tie else None}, hi, ai, comp.key)
+        # Current phase is quote context, not part of the stable contract identity.
+        quote_fixture['status_short'] = f['status_short']
         kalshi_q = poly_q = None
         # Track FAILURES separately from "this venue has no quote". The PRE row written
         # below is the price the frozen ledger AND the demo mirror both settle the
@@ -539,35 +577,62 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
         # A row stamped while every venue call was erroring would freeze "there was no
         # market price at kickoff" as a permanent fact about the match.
         q_tried = q_failed = 0
+        quote_status = {v: "unavailable" if with_venues else "not_requested"
+                        for v in ("kalshi", "poly_us")}
+        quote_status_details = {v:_quote_status_snapshot(None, 'match', fallback_state=quote_status[v])
+                                for v in quote_status}
+        discovery_status = {'kalshi':None, 'poly_us':None}
+        discovery_receipts = []
         if kd is not None:
             q_tried += 1
             try:
-                kalshi_q = kd.match_quotes(hi, ai)
+                kalshi_q = kd.match_quotes(hi, ai, fixture=quote_fixture)
+                quote_status["kalshi"] = "ok" if qualified_quotes(kalshi_q, fixture_id=f["api_id"]) else "unavailable"
+                quote_status_details['kalshi'] = _quote_status_snapshot(kd, 'match', fallback_state=quote_status['kalshi'])
+                discovery_receipts.append({'provider':'kalshi','family':'match','discovery_status':deepcopy(getattr(kd,'discovery_status',None))})
+                discovery_status['kalshi'] = {'match':deepcopy(quote_status_details['kalshi'].get('catalog',{}))}
             except Exception as e:
                 q_failed += 1
+                quote_status_details['kalshi'] = _quote_status_snapshot(kd, 'match', error=e)
                 print(f"[warn] Kalshi quote {hi} vs {ai}: {e}")
         if pd_ is not None and et_date:
             q_tried += 1
             try:
-                poly_q = pd_.match_quotes(hi, ai, et_date)
+                poly_q = pd_.match_quotes(hi, ai, et_date, fixture=quote_fixture, comp_key=comp.key)
+                quote_status["poly_us"] = "ok" if qualified_quotes(poly_q, fixture_id=f["api_id"]) else "unavailable"
+                quote_status_details['poly_us'] = _quote_status_snapshot(pd_, 'match', fallback_state=quote_status['poly_us'])
+                discovery_receipts.append({'provider':'poly_us','family':'match','discovery_status':deepcopy(getattr(pd_,'discovery_status',None))})
+                discovery_status['poly_us'] = deepcopy(quote_status_details['poly_us'].get('catalog',{}))
             except Exception as e:
                 q_failed += 1
+                quote_status_details['poly_us'] = _quote_status_snapshot(pd_, 'match', error=e)
                 print(f"[warn] PolyUS quote {hi} vs {ai}: {e}")
 
-        k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
         # Knockout 2-way advance quotes (fetched once here so the PRE stash can store them
         # AND the advance block below can reuse them — no double fetch).
         kalshi_a = poly_a = None
+        advance_quote_status = {v: "unavailable" if with_venues else "not_requested"
+                                for v in ("kalshi", "poly_us")}
+        advance_quote_status_details = {v:_quote_status_snapshot(None, 'advance', fallback_state=advance_quote_status[v])
+                                        for v in advance_quote_status}
         if ko:
             if kd is not None:
                 try:
-                    kalshi_a = kd.advance_quotes(hi, ai)
+                    kalshi_a = kd.advance_quotes(hi, ai, fixture=quote_fixture)
+                    advance_quote_status["kalshi"] = "ok" if qualified_quotes(kalshi_a, fixture_id=f["api_id"], market_kind="advance", settlement_scope="advance") else "unavailable"
+                    advance_quote_status_details['kalshi'] = _quote_status_snapshot(kd, 'advance', fallback_state=advance_quote_status['kalshi'])
+                    discovery_receipts.append({'provider':'kalshi','family':'advance','discovery_status':deepcopy(getattr(kd,'discovery_status',None))})
                 except Exception as e:
+                    advance_quote_status_details['kalshi'] = _quote_status_snapshot(kd, 'advance', error=e)
                     print(f"[warn] Kalshi advance {hi} vs {ai}: {e}")
             if pd_ is not None and et_date:
                 try:
-                    poly_a = pd_.advance_quotes(hi, ai, et_date)
+                    poly_a = pd_.advance_quotes(hi, ai, et_date, fixture=quote_fixture, comp_key=comp.key)
+                    advance_quote_status["poly_us"] = "not_requested" if (getattr(pd_,"quote_status",{}) or {}).get("reason")=="unsupported_market" else ("ok" if poly_a else "unavailable")
+                    advance_quote_status_details['poly_us'] = _quote_status_snapshot(pd_, 'advance', fallback_state=advance_quote_status['poly_us'])
+                    discovery_receipts.append({'provider':'poly_us','family':'advance','discovery_status':deepcopy(getattr(pd_,'discovery_status',None))})
                 except Exception as e:
+                    advance_quote_status_details['poly_us'] = _quote_status_snapshot(pd_, 'advance', error=e)
                     print(f"[warn] PolyUS advance {hi} vs {ai}: {e}")
         # Stash a PRE milestone snapshot once the match is within ~20 min of kickoff,
         # so an in-progress match has a real pre-match entry ¢ before it settles (the
@@ -581,6 +646,15 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
             print(f"[warn] PRE stash deferred for {f['api_id']}: all {q_tried} venue quote call(s) failed")
         else:
             _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q, kalshi_a, poly_a)
+
+        quote_receipts = collect_receipts([kalshi_q, poly_q, kalshi_a, poly_a])
+        # Only qualified directions feed model/edge/hedge consumers. Raw captures
+        # above are delivered to observe_pre without losing source evidence.
+        kalshi_q=qualified_quotes(kalshi_q,fixture_id=f['api_id'])
+        poly_q=qualified_quotes(poly_q,fixture_id=f['api_id'])
+        kalshi_a=qualified_quotes(kalshi_a,fixture_id=f['api_id'],market_kind='advance',settlement_scope='advance')
+        poly_a=qualified_quotes(poly_a,fixture_id=f['api_id'],market_kind='advance',settlement_scope='advance')
+        k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
 
         def _edge_vs(devig_probs):
             if not devig_probs:
@@ -637,6 +711,9 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
                 decision_adv = _decision_for_2way(model_adv, kalshi_a, poly_a, ka_devig, pa_devig,
                                                   form_row, _calib_conf, _gate_open)
                 adv = {
+                    "pricing_state": "ok", "quote_status": advance_quote_status,
+                    "quote_status_details": advance_quote_status_details,
+                    "quote_diagnostics": diagnose_quotes([r for r in quote_receipts if r['market_kind']=='advance']),
                     "model": model_adv,
                     "kalshi": {**_quote_to_cents_2way(kalshi_a), "devig": ka_devig} if kalshi_a else None,
                     "poly_us": {**_quote_to_cents_2way(poly_a), "devig": pa_devig} if poly_a else None,
@@ -656,7 +733,11 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
             "status": f["status_short"] or "",
             "home": {"id": hi, "name": name_of.get(hi, hi), "zh": zh_of.get(hi, "")},
             "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
-            "model": model,
+            "model": model, "pricing_state": "ok", "quote_status": quote_status, "quote_receipts": quote_receipts,
+            "quote_diagnostics": diagnose_quotes(quote_receipts),
+            "discovery_status": discovery_status, "quote_status_details": quote_status_details,
+            "discovery_receipts": discovery_receipts,
+            "source_as_of": f["updated_at"] if "updated_at" in f.keys() else None,
             "knockout": ko,
             "caps": caps_dict(cp, stage, agg=agg),   # §3.0 frontend contract
             "motivation": None,   # club motivation ships weight-0 (plan §2.2)
@@ -682,6 +763,22 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
     return out
 
 
+def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, *args, **kwargs):
+    """A bad fixture must not abort publication of the rest of the calendar."""
+    from prediction_market_soccer.ops.export_status import fixture_unavailable
+    out = []
+    for fixture in fixtures:
+        try:
+            out.extend(_price_comp_rows(conn, comp, [fixture], sm, kd, pd_, cmap,
+                                        name_of, zh_of, *args, **kwargs))
+        except Exception as exc:
+            print(f"[upcoming] unavailable fixture={fixture['api_id']} ({type(exc).__name__})")
+            row = fixture_unavailable(fixture, comp, cmap, name_of, zh_of, "pricing_failed")
+            row.update(et=_et_human(fixture["kickoff_ts"]), et_date=_et_date(fixture["kickoff_ts"]))
+            out.append(row)
+    return out
+
+
 def main() -> None:
     import argparse
 
@@ -692,17 +789,20 @@ def main() -> None:
 
     rows = build(limit=args.limit, with_venues=not args.no_venues)
     CONFIG.paths.ensure()
+    from prediction_market_soccer.ops.export_status import data_status, source_as_of
     payload = {
+        "source_as_of": source_as_of(rows), "data_status": data_status(rows),
         "as_of": datetime.now(timezone.utc).isoformat(),
         "n": len(rows),
         "note_key": "notes.upcoming",
         "note": "Real Kalshi (public) + Polymarket US (read creds) single-match quotes; "
-                "venue=null only when that venue has not listed the match yet. "
+                "quote_status distinguishes unlisted, unavailable and unrequested venue data. "
                 "Read-only — no orders. Edge/lock are fee-aware (fee=0.01) and theta-gated.",
         "matches": rows,
     }
     out = CONFIG.paths.output / "upcoming.json"
-    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    from prediction_market_soccer.ops.run_status import atomic_json
+    atomic_json(out, payload)
     print(f"upcoming.json written → {out}  ({len(rows)} matches)")
     for m in rows:
         kq = "Kalshi✓" if m["kalshi"] else "Kalshi—"

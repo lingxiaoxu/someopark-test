@@ -14,6 +14,8 @@ from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.ops.ledger import open_positions
 from prediction_market_macro.strategy.edge import WIDE_SPREAD, two_sided
+from prediction_market_macro.util.quotes import quote_status
+from prediction_market_macro.util.execution import serialized_execution
 
 
 def _dist_mu_sigma(dist: dict) -> tuple[float, float] | None:
@@ -197,11 +199,17 @@ def mark_all(conn) -> int:
     unmarked, and the count is written to `alerts` so an illiquid book can never quietly
     disappear from the reported exposure.
     """
-    now = datetime.now(timezone.utc).isoformat()
+    asof = datetime.now(timezone.utc)
+    now = asof.isoformat()
     n = unmarked = 0
     for pos in open_positions(conn):
         for f in pos["fills"]:
-            mid = _mid(conn, f["ticker"])
+            q = conn.execute(
+                "SELECT ts, yes_bid, yes_ask FROM quotes WHERE ticker=?"
+                " ORDER BY ts DESC LIMIT 1", (f["ticker"],)).fetchone()
+            status = quote_status(q, asof)
+            mid = ((q["yes_bid"] + q["yes_ask"]) / 2
+                   if status == "marked" else None)
             if mid is None:
                 # no reliable two-sided market — carry at entry, charge only the fee
                 pnl, unmarked = -(f["fee_usd"] or 0.0), unmarked + 1
@@ -209,15 +217,16 @@ def mark_all(conn) -> int:
                 val = mid if f["side"] == "yes" else 1 - mid
                 pnl = (val - f["price"]) * f["count"] - f["fee_usd"]
             conn.execute(
-                "INSERT OR REPLACE INTO marks(ts, decision_id, ticker, mid, pnl_usd)"
-                " VALUES(?,?,?,?,?)",
-                (now, pos["id"], f["ticker"], mid, round(pnl, 4)))
+                "INSERT OR REPLACE INTO marks(ts, decision_id, ticker, mid, pnl_usd,"
+                " quote_ts, mark_status) VALUES(?,?,?,?,?,?,?)",
+                (now, pos["id"], f["ticker"], mid, round(pnl, 4),
+                 q["ts"] if q is not None else None, status))
             n += 1
     if unmarked:
         msg = (f"{unmarked}/{n} open legs carried at cost — book wider than"
-               f" {WIDE_SPREAD:.2f} or one-sided; unrealized PnL excludes them")
-        # mark_all runs from jobs.tick every 900s, so an illiquid book that persists for
-        # a day used to write ~96 byte-identical rows and bury the alert feed (which is
+               f" {WIDE_SPREAD:.2f}, one-sided, missing or stale; unrealized PnL excludes them")
+        # mark_all runs in ordinary 15-minute maintenance, faster in event windows.
+        # An illiquid book used to write ~96 byte-identical rows/day and bury the alert feed (which is
         # what made a normal disclosure look like an outage). Dedupe on the message text
         # within 24h: any CHANGE in the counts changes the text and fires immediately,
         # and an unchanged condition still re-asserts itself once a day rather than going
@@ -235,6 +244,7 @@ def mark_all(conn) -> int:
     return n
 
 
+@serialized_execution
 def settle_pass(conn) -> int:
     """For open positions whose every leg is settled: write a settle_note decision row
     with realized PnL (yes→result=='yes' pays 1)."""

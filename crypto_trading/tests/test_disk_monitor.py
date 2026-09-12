@@ -39,7 +39,10 @@ def test_ok_state_no_alert(sandbox, monkeypatch):
 
 def test_low_free_space_warns(sandbox, monkeypatch):
     _, fired = sandbox
-    s = run(monkeypatch, free_gb=20, now=1000.0, fired=fired)
+    # floors raised 2026-09-11: at the measured mlruns rate the old 25 GB
+    # warning left under two days before dead recorders — 40 GB is now the
+    # "getting low" band and 20 GB is already critical
+    s = run(monkeypatch, free_gb=40, now=1000.0, fired=fired)
     assert s["level"] == "warn" and fired and "low free space" in s["alerts"][0]
 
 
@@ -53,9 +56,10 @@ def test_growth_rate_computed_and_flagged(sandbox, monkeypatch):
     _, fired = sandbox
     # first run seeds state at used=700GB
     run(monkeypatch, free_gb=200, used_gb=700.0, now=0.0, fired=fired)
-    # 1 day later, used grew 3 GB → 3 GB/day > 2.0 ceiling → alert
-    s = run(monkeypatch, free_gb=197, used_gb=703.0, now=86400.0, fired=fired)
-    assert s["growth_gb_per_day"] == pytest.approx(3.0, abs=0.01)
+    # 1 day later, used grew 6 GB → 6 GB/day > 4.0 ceiling (raised over the
+    # ~2 GB/day mlruns baseline, 2026-09-11) → alert
+    s = run(monkeypatch, free_gb=194, used_gb=706.0, now=86400.0, fired=fired)
+    assert s["growth_gb_per_day"] == pytest.approx(6.0, abs=0.01)
     assert any("fast growth" in a for a in s["alerts"]) and s["level"] == "critical"
 
 

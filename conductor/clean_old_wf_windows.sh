@@ -185,11 +185,18 @@ for W in walk_forward walk_forward_mtfs; do
     fi
     s_cnt="${src_line#*|}"; s_cnt="${s_cnt%%|*}"; s_byt="${src_line##*|}"
     b_cnt="${bak_line#*|}"; b_cnt="${b_cnt%%|*}"; b_byt="${bak_line##*|}"
-    if [[ "$s_cnt" != "$b_cnt" ]]; then
-      log "  ✗ 备份文件数不符($s_cnt vs $b_cnt)，跳过不删: $bn"; n_skip=$((n_skip+1)); continue
+    # ⊇ 语义（2026-09-11 修）：备份是**只增不减**的归档，本机清过 charts 后必然
+    # 成为备份的真子集（实测 18 个窗口:本机 75/81 个文件 vs 备份 219/276 个，
+    # 全部是备份里留着的历史 charts PNG）。原来的"必须完全相等"会把这些安全的
+    # 窗口误判为"备份不完整"而保留，越清 charts 越删不掉。
+    # 正确判据 = 备份 ⊇ 本机：备份的文件数与字节数都不得少于本机。
+    # 逐文件级别的 ⊇ 校验（每个本机文件在备份中存在且同尺寸）见 §审计脚本；
+    # 这里用聚合量做快速闸门，与 backup_to_external.sh 的校验语义一致。
+    if [[ "$b_cnt" -lt "$s_cnt" ]]; then
+      log "  ✗ 备份文件数少于本机($s_cnt vs $b_cnt)，跳过不删: $bn"; n_skip=$((n_skip+1)); continue
     fi
-    if [[ "$s_byt" != "$b_byt" ]]; then
-      log "  ✗ 备份字节数不符($s_byt vs $b_byt)，跳过不删: $bn"; n_skip=$((n_skip+1)); continue
+    if [[ "$b_byt" -lt "$s_byt" ]]; then
+      log "  ✗ 备份字节数少于本机($s_byt vs $b_byt)，跳过不删: $bn"; n_skip=$((n_skip+1)); continue
     fi
 
     n_ok=$((n_ok+1))

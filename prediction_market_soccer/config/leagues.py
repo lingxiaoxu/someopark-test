@@ -95,7 +95,7 @@ _UEFA_RULES = _rules(
     (r"League (Stage|Phase)\b", Stage.LEAGUE),
     (r"Qualifying|Preliminary|Play-?offs?", Stage.CUP_TWO_LEG),
     (r"Knockout Round Play-?offs?", Stage.CUP_TWO_LEG),
-    (r"Round of 16|Quarter-?finals?|Semi-?finals?", Stage.CUP_TWO_LEG),
+    (r"Round of (16|32)|Quarter-?finals?|Semi-?finals?", Stage.CUP_TWO_LEG),
     (r"^Final$", Stage.CUP_SINGLE),
 )
 

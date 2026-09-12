@@ -235,7 +235,8 @@ router.post('/', async (req: Request, res: Response) => {
         const ctx = await soccerContextForArtifacts(soccerHits.map(a => a.type), scope)
         if (ctx) chatSystem += '\n\n' + ctx
       } catch (e) {
-        console.error('soccer grounding failed (continuing without it):', e)
+        console.error('soccer grounding failed:', e)
+        chatSystem += '\n\nClub soccer data is unavailable. State that the current status could not be verified; do not infer no matches or invent prices or performance.'
       }
     }
 

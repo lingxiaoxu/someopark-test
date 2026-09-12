@@ -28,7 +28,7 @@ frontend_export.run → public/data/macro_*.json（NaN 防御、生产模型过�
 前端（Firebase 静态托管；/data 在构建时打包 → 每日 06:30 世界杯管线 build+deploy 顺车上站）
 ```
 
-**定时任务（launchd）**：`macrotick` 每 15 分钟（盘口/K 线/事件窗加密轮询）；`macrorefresh`
+**定时任务（launchd）**：`macrotick` 每 60 秒唤起（单实例；事件窗持续加密轮询到结束）；`macrorefresh`
 每日 05:00（全链 ingest→predict→decide→export→日报 PDF）；`macroweekly` 周日 06:30
 （`refresh --weekly`：另加回测/eval/归因/**WF sweep→标准 30d run→ML 选注器→周报→再导出**）；
 `macrowatchdog` 每小时（SLA 漏报侦测）。
@@ -100,7 +100,7 @@ frontend_export.run → public/data/macro_*.json（NaN 防御、生产模型过�
 - **生成**：`frontend_export.run_extended` bets 段——open_bets 来自 `ledger.open_positions`
   （+ 逐决策最新 marks）；stances 遍历活跃合约中 `-0.5 ≤ 距结算 ≤ 7.5 天` 的期数，各取台账
   最新一行（open/argmax/arb/snipe/pass）；upcoming 来自 registry 日历 ≤14 天。
-- **更新**：每次 refresh（每日 05:00 + tick 15 分钟重估后的导出）；性质 = 生产实时。
+- **更新**：每日 05:00 refresh、到期任务及持仓维护后导出；tick 每 60 秒唤起，持仓维护通常每 15 分钟、事件窗内每分钟。性质 = 生产实时。
 - **读法要点**：这一页是"行动指示"，看板是"全景"。PASS 不是失败——它是闸门在工作
   （13/13 系列模型落后市场时，多数正确动作就是不下）。
 - **chat**：`macro_bets` 已注册（关键词：今日下注/下什么/接下来的 bet/current bets …），

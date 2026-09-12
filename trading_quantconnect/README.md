@@ -52,6 +52,23 @@ K = 锚点场次对账报告里**判过的** D_usd,零 QC API、不要求账户�
 "只冻一次 + L/S 队列空 + 锚点场次三段全 ok(equity 可 baseline)",`--session`
 指定锚点(默认取最新一份三段全 ok 的报告)。
 
+## 历史补算与估值时点检查
+
+后端补算按 session 读取 `account_history`，当前账户只有 `as_of` 完全相同时
+才可使用。BDC 没有日账户档案时，按正式 OPEN/DRIP 流水重放截至该日的累计
+股息，并与覆盖账户核验流水完整性；不会提供虚构的历史 equity。缺同日账本
+或正式 EOD 继续 pending，不用后一天数据或前一天净值补行。
+
+QC 官方 Q 仍为现金加逐票股数乘未复权官方收盘价。原始交叉差超过 5bp 时，
+后端补取预先确定的 NYSE 收盘前两分钟 bar，记录 `valuation_time_bridge`
+的逐票价格桥与剩余差。精确分钟缺价、参考时点后成交、现金变动无法核实或
+剩余差超 5bp 均不放行。此桥不计入净值归因，不改变冻结 K；K 的历史台阶
+仍来自原定镜像滞后、滑点和挂载记录，缺整份交易日报告也会明确阻断。
+
+本地 M5 从历史结构快照枚举全部策略，独立检查含 AEUS 的六策略及组合合计。
+缺策略、合计、收盘行或价格时明确 incomplete。仓库根目录可用
+`python -m controller.reconcile_eod --date YYYY-MM-DD --dry-run` 预演；不写报告。
+
 ## 常用命令
 
 ```bash
@@ -62,7 +79,7 @@ conda run -n someopark_run python -m reconcile.qc_reconcile --settle --session Y
 # K 试算 / 冻结
 conda run -n someopark_run python ops/rolloff.py --measure   # 只读
 conda run -n someopark_run python ops/rolloff.py --freeze    # 一次性,闸门把关
-# 测试(121 项)
+# 测试
 conda run -n someopark_run python -m pytest tests/ -q
 ```
 

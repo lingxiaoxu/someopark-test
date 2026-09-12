@@ -499,7 +499,14 @@ def main() -> None:
     try:
         with lock:
             conn = init_db(s.db_path)
-            out = run(conn, end=end, store=not a.no_store)
+            try:
+                out = run(conn, end=end, store=not a.no_store)
+                if not a.no_store:
+                    from prediction_market_macro.ops.frontend_export import export_live_replay
+                    export_live_replay(conn, s)
+                    print("[live_replay] published macro_livereplay.json")
+            finally:
+                conn.close()
     except RefreshBusy as e:
         print(f"[live_replay] another replay is already running ({e}) — skipping")
         return

@@ -62,18 +62,31 @@ def _code_version() -> str:
 
 
 def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
-                  champ_cents: dict | None = None, conn=None) -> dict:
+                  champ_cents: dict | None = None, conn=None,
+                  save_cache: bool = True, fetch_markets: bool = True) -> dict:
     from prediction_market_soccer.ingest import store
     conn = conn or store.init_db()
     seed = seed if seed is not None else CONFIG.model.random_seed
     champ_cents = champ_cents or {}
 
     leagues_out = []
+    issues = []
+    def unavailable(comp, reason):
+        issues.append({"code": reason, "league": comp.key})
+        leagues_out.append({"league": comp.key, "name": comp.name, "zh": comp.zh,
+                           "kind": comp.kind, "n_teams": 0, "n_remaining": None,
+                           "table": [], "season_odds": [], "matches": [], "top_scorer": [],
+                           "odds_state": "incomplete_data", "availability_reason": reason,
+                           "odds_family_states": {f: "unavailable" for f in (
+                               "champion", "top_n", "relegation", "last", "qual_direct", "qual_playoff",
+                               "ro16", "ro8", "ro4", "finalist")},
+                           "data_status": {"state": "unavailable", "issues": [{"code": reason}]}})
     for comp in active():
         try:
             prior = load_prior(comp.key)
         except Exception as e:  # noqa: BLE001 — a missing prior must not kill the run
             print(f"[run_model:{comp.key}] prior unavailable ({e}) — skipped")
+            unavailable(comp, "prior_unavailable")
             continue
         name_of = {t.club_id: t.name for t in prior.teams}
         zh_of = {t.club_id: (t.zh or "") for t in prior.teams}
@@ -82,43 +95,42 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
         for r in conn.execute("SELECT club_id, logo FROM club_registry WHERE comp=?", (comp.key,)):
             logo[r["club_id"]] = r["logo"]
 
-        sm = build_strength_live(conn, prior, league=comp.key, xg_form=True)
+        try:
+            sm = build_strength_live(conn, prior, league=comp.key, xg_form=True)
+        except Exception as e:
+            print(f"[run_model:{comp.key}] strength unavailable: {e}")
+            unavailable(comp, "strength_unavailable")
+            continue
         try:
             from prediction_market_soccer.model.strength_cache import save_model
-            save_model(sm, comp.key, conn)   # live exports load this instead of refitting
+            if save_cache:
+                save_model(sm, comp.key, conn)   # live exports load this instead of refitting
         except Exception as e:  # noqa: BLE001
             print(f"[run_model:{comp.key}] ratings cache save failed: {e}")
-        sim = simulate_season(conn, comp.key, sm, n_sims=n_sims, seed=seed)
+        swiss = None
+        if comp.kind == "swiss_ucl":
+            from prediction_market_soccer.model.swiss_champion import simulate_swiss
+            try:
+                swiss = simulate_swiss(conn, comp.key, sm, n_sims=n_sims, seed=seed)
+            except Exception as e:
+                print(f"[run_model:{comp.key}] Swiss model unavailable: {e}")
+                unavailable(comp, "swiss_simulation_failed")
+                continue
+            sim = swiss.sim
+        else:
+            sim = simulate_season(conn, comp.key, sm, n_sims=n_sims, seed=seed)
 
         # Reset per competition — the KO branch fills this, the league branch does not,
         # and a value left over from the previous comp would publish one cup's ladder
         # against another competition's clubs.
-        ladder: dict[str, dict] = {}
-        # KO/pre-draw guard: a CUP is never crowned by a table. `cup_two_leg`
-        # (Libertadores/Sudamericana) plays a group phase whose standings ARE
-        # populated, so the "has a live table" test used to pass and the group
-        # leader was published as champion at ~100% — even after being knocked
-        # out (Botafogo 1.0 while eliminated in the R16). A cup's champion odds
-        # come from the KO-tree sim (ucl_phase) whenever a KO bracket exists;
-        # a swiss/league comp still falls back to the table sim.
+        ladder: dict[str, dict] = swiss.ladder if swiss else {}
+        # A cup champion is decided by knockout matches. Swiss competitions have
+        # already run the complete league-to-final engine above; a domestic league
+        # can use its final table, and the non-Swiss cup keeps its existing KO path.
         table_alive = sim.n_remaining > 0 or any(
             (t.get("played") or 0) > 0 for t in sim.table_now)
-        # A SWISS competition (UCL/UEL/UECL) is a league phase followed by a
-        # knockout, so which engine is right depends on where the season stands —
-        # it must not be pinned to either. Before the draw there is no field and
-        # no fixtures: nothing to simulate. Once the draw lands, the 36-club
-        # league phase IS a table and league_season already prices its rank cuts
-        # (p_qual_direct / p_qual_playoff). Only when that phase is over and a
-        # bracket exists does the KO tree take over. The test is the data itself
-        # — league-phase fixtures on the calendar — not the date.
-        swiss_league_phase = (
-            comp.kind == "swiss_ucl"
-            and sim.n_remaining > 0
-            and len(sim.club_ids) <= comp.n_teams * 1.2)   # the drawn field, not the qualifying superset
-        season_valid = (
-            table_alive and comp.kind != "cup_two_leg"
-            and (comp.kind != "swiss_ucl" or swiss_league_phase))
-        if not season_valid:
+        season_valid = table_alive and comp.kind not in ("cup_two_leg", "swiss_ucl")
+        if not season_valid and swiss is None:
             try:
                 from prediction_market_soccer.model.ucl_phase import ko_ladder
                 _lad = ko_ladder(conn, comp.key, sm) or {}
@@ -146,7 +158,7 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
         try:
             from prediction_market_soccer.venues.champion_prices import (
                 _norm_person, topscorer_cents)
-            _ts_cents = topscorer_cents(comp.key)
+            _ts_cents = topscorer_cents(comp.key) if fetch_markets else {}
         except Exception as e:  # noqa: BLE001 — a missing market must not sink the board
             print(f"[run_model:{comp.key}] top-scorer market skipped ({type(e).__name__}: {e})")
             from prediction_market_soccer.venues.champion_prices import _norm_person
@@ -157,10 +169,20 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
         # "—/待抽签" instead of a confident zero for all 153 clubs.
         odds_state = ("ok" if sim.p_champion else
                       ("pending_draw" if comp.kind == "swiss_ucl" else "pending_bracket"))
-        _unknown = not sim.p_champion
+        family_states = (swiss.states if swiss else {
+            f: ("ok" if values else "unavailable") for f, values in (
+                ("champion", sim.p_champion), ("top_n", sim.p_top_n),
+                ("relegation", sim.p_relegation), ("last", sim.p_last),
+                ("qual_direct", sim.p_qual_direct), ("qual_playoff", sim.p_qual_playoff),
+                *((f, ladder.get(f)) for f in ("ro16", "ro8", "ro4", "finalist")))})
+        reason = swiss.reason if swiss else (None if sim.p_champion else "knockout_bracket_unavailable")
+        if swiss and reason:
+            odds_state = "pending_draw" if reason == "league_phase_draw_unavailable" else "incomplete_data"
+        if reason:
+            issues.append({"code": reason, "league": comp.key})
 
         def _p(d, cid):
-            return None if _unknown else (d.get(cid, 0.0) if d else 0.0)
+            return d.get(cid, 0.0) if d else None
 
         season_odds = []
         for cid in sim.club_ids:
@@ -178,7 +200,7 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
                    ("ro16", "ro8", "ro4", "finalist")},
                 "e_points": sim.e_points.get(cid),
                 "e_rank": sim.e_rank.get(cid),
-                "rating": round(sm.ratings.get(cid, 0.0), 4),
+                "rating": round(sm.ratings[cid], 4) if cid in sm.ratings else None,
                 "kalshi_champ_c": (cents.get(cid) or {}).get("kalshi_c"),
                 "poly_champ_c": (cents.get(cid) or {}).get("poly_c"),
             })
@@ -226,6 +248,17 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
                      if _norm_person(r["name"]) in _ts_cents else None)}
                 for r in top_scorer_board(conn, comp.key, n_sims=50_000, seed=seed)],
             "odds_state": odds_state,
+            "odds_family_states": family_states,
+            "availability_reason": reason,
+            "coverage": swiss.coverage if swiss else None,
+            "source_as_of": swiss.source_as_of if swiss else conn.execute(
+                "SELECT MAX(updated_at) FROM fixture WHERE league_id=? AND season=?",
+                (comp.api_football_id, comp.season)).fetchone()[0],
+            "odds_notes": swiss.notes if swiss else [],
+            "odds_notes_i18n": [{"key": k, "args": {}} for k in (
+                "swissRules", "swissDraw", "swissPens", "swissUncertainty")] if swiss else [],
+            "data_status": {"state": "degraded" if reason else "ok",
+                            "issues": [{"code": reason}] if reason else []},
             # zoned competitions (Argentina Apertura/Clausura = two 15-club zones,
             # top 8 of EACH advance): the frontend groups the table by this and the
             # league-wide p_top_n/e_rank are NOT meaningful across zones.
@@ -238,11 +271,14 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
               + (f"{_tp:.1%}" if _tp is not None else f"— ({odds_state})"))
 
     return {
+        "source_as_of": max((lg.get("source_as_of") or "" for lg in leagues_out), default="") or None,
+        "data_status": {"state": "degraded" if issues else "ok", "issues": issues},
         "meta": {
             "run_ts": datetime.now(timezone.utc).isoformat(),
             "code_version": _code_version(),
             "n_sims": n_sims,
             "model_notes": MODEL_NOTES,
+            "data_status": {"state": "degraded" if issues else "ok", "issues": issues},
         },
         "leagues": leagues_out,
     }

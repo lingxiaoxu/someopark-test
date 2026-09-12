@@ -142,7 +142,8 @@ def _path(comp_key: str) -> Path:
     return _PRIORS / f"clubs_{comp_key}.json"
 
 
-def load_prior(league: str | None = None, *, suffix: str = "", out_dir: Path | None = None) -> ClubPriorSnapshot:
+def load_prior(league: str | None = None, *, suffix: str = "", out_dir: Path | None = None,
+               validate_roster: bool = True) -> ClubPriorSnapshot:
     """Load one competition's club prior; ``league=None`` loads the merged all-comps
     snapshot (clubs_all.json — cross-league Elo ranks, used by confidence tiers).
 
@@ -161,17 +162,17 @@ def load_prior(league: str | None = None, *, suffix: str = "", out_dir: Path | N
     snap = ClubPriorSnapshot(
         prior_id=raw["prior_id"], source=raw["source"], as_of=raw["as_of"],
         is_stale=bool(raw.get("is_stale", True)), league=raw.get("league", "all"), teams=teams)
-    _validate(snap)
+    _validate(snap, validate_roster=validate_roster)
     return snap
 
 
-def _validate(snap: ClubPriorSnapshot) -> None:
+def _validate(snap: ClubPriorSnapshot, *, validate_roster: bool = True) -> None:
     errors = []
     ids = [t.club_id for t in snap.teams]
     if len(set(ids)) != len(ids):
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         errors.append(f"duplicate club_ids: {dupes}")
-    if snap.league != "all":
+    if validate_roster and snap.league != "all":
         comp = get(snap.league)
         if comp.kind == "league" and len(snap.teams) != comp.n_teams:
             errors.append(f"{snap.league}: expected {comp.n_teams} clubs, got {len(snap.teams)}")
@@ -243,7 +244,20 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
     cache = _PRIORS / f"clubelo_{as_of}.csv"
     src = W._read_source(as_of)
     if cache.exists() and src != "api_frozen":
-        return list(csv.DictReader(io.StringIO(cache.read_text(encoding="utf-8"))))
+        rows = list(csv.DictReader(io.StringIO(cache.read_text(encoding="utf-8"))))
+        # A newly appearing country-page slug must also heal days already cached.
+        # This changes labels only; historical Elo values remain exactly as stored.
+        daily = W.load_daily(as_of) or []
+        if daily and src in ("web", "web_history", "web_stale"):
+            old_map = W.load_name_map()
+            nm = W.reconcile_name_map(daily, old_map)
+            if nm != old_map:
+                W.save_name_map(nm)
+            corrected = W.relabel_cached_rows(rows, daily, nm)
+            if corrected != rows:
+                W.write_csv(corrected, as_of, source=src)
+            rows = corrected
+        return rows
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     errors: list[str] = []
@@ -271,7 +285,8 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
                 nm = W.load_name_map()
                 if not nm:
                     nm = W.build_name_map(site_rows, histories=W.load_histories())
-                    W.save_name_map(nm)
+                nm = W.reconcile_name_map(site_rows, nm)
+                W.save_name_map(nm)
                 rows = W.to_api_rows(site_rows, as_of, name_map=nm, histories=W.load_histories())
                 W.write_csv(rows, as_of, source="web")
                 try:
@@ -291,9 +306,14 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
     # 3. a past date → the stored histories
     if as_of < today:
         hist = W.load_histories()
-        if hist:
-            rows, prov = W.reconstruct_date(as_of, histories=hist, name_map=W.load_name_map(),
-                                            frozen_api_rows=W._api_fillers_for(as_of), table_rows=W.load_daily(as_of))
+        daily = W.load_daily(as_of) or []
+        if hist or daily:
+            old_map = W.load_name_map()
+            nm = W.reconcile_name_map(daily, old_map)
+            if nm != old_map:
+                W.save_name_map(nm)
+            rows, prov = W.reconstruct_date(as_of, histories=hist, name_map=nm,
+                                            frozen_api_rows=W._api_fillers_for(as_of), table_rows=daily)
             if rows:
                 W.write_csv(rows, as_of, source="web_history")
                 W._write_json(_PRIORS / f"clubelo_{as_of}.provenance.json", prov)
@@ -311,7 +331,7 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
     if rows is not None:
         prev_api = W.latest_api_rows()
         if prev_api is not None and prev_api[0] != as_of and W.is_frozen(rows, prev_api[1]):
-            stale = _latest_web_csv()
+            stale = _latest_web_csv(as_of=as_of)
             if stale is not None:
                 print(f"[club_prior] API snapshot for {as_of} is FROZEN (identical to its {prev_api[0]} snapshot); "
                       f"using the latest website-derived file ({stale[0]}) instead")
@@ -324,7 +344,7 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
         return rows
     # 5. last resorts: the latest website-derived file, else the flagged frozen cache —
     #    stale Elo (rank-correlated 0.94 with the truth) beats no Elo anchor at all
-    stale = _latest_web_csv()
+    stale = _latest_web_csv(as_of=as_of)
     if stale is not None:
         print(f"[club_prior] {as_of}: website and API both unavailable ({'; '.join(errors)}) — "
               f"using the latest website-derived file ({stale[0]})")
@@ -335,10 +355,10 @@ def _fetch_clubelo(as_of: str) -> list[dict]:
     raise RuntimeError("ClubElo unavailable: " + "; ".join(errors))
 
 
-def _latest_web_csv(max_back_days: int = 14) -> tuple[str, list[dict]] | None:
+def _latest_web_csv(max_back_days: int = 14, *, as_of: str | None = None) -> tuple[str, list[dict]] | None:
     """The most recent clubelo_<date>.csv whose provenance is the website."""
     from prediction_market_soccer.ingest import clubelo_web as W
-    d = datetime.now(timezone.utc)
+    d = datetime.fromisoformat(as_of[:10]).replace(tzinfo=timezone.utc) if as_of else datetime.now(timezone.utc)
     for k in range(0, max_back_days + 1):
         ds = (d - timedelta(days=k)).strftime("%Y-%m-%d")
         if W._read_source(ds) in ("web", "web_history", "web_stale"):
@@ -443,7 +463,7 @@ def _match_elo(elo_rows: list[dict], registry_rows: list[dict],
 
 
 
-def _current_table(conn, comp, season, as_of: str) -> dict:
+def _current_table(conn, comp, season, as_of: str, *, point_in_time: bool = False) -> dict:
     """{team_api_id: {points, played}} for the CURRENT season as it stood at ``as_of``.
 
     The `standing` table is a snapshot of NOW and carries no history, so a prior built
@@ -457,9 +477,11 @@ def _current_table(conn, comp, season, as_of: str) -> dict:
     actually finished by then — the only source that can answer the question. For today
     the official `standing` feed is used unchanged, because it is authoritative (it
     carries points deductions and administrative rulings that fixtures cannot show).
+    Explicit point-in-time builds always use fixtures before the supplied UTC day,
+    including when that day is today: today's current table is not a midnight snapshot.
     """
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if not as_of or as_of >= today:
+    if not point_in_time and (not as_of or as_of >= today):
         return {r["team_api_id"]: dict(r) for r in conn.execute(
             "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
             (comp.api_football_id, (season or comp.season)))}
@@ -481,13 +503,87 @@ def _current_table(conn, comp, season, as_of: str) -> dict:
             d["played"] += 1
     return out
 
+def roster_for(conn, comp: Competition | str, season: int | None = None) -> dict[str, dict]:
+    """Read identities from the competition registry and its saved season fixtures.
+
+    Match participants are identities, not strength observations: a stored fixture
+    does not permit its result or today's rating to enter a historical prior. An
+    explicit older season uses that season's participants, because club_registry
+    has no season column and also contains today's promoted/relegated clubs.
+    """
+    from prediction_market_soccer.ingest.soccer_ingest import canonical_club_id
+    comp = get(comp) if isinstance(comp, str) else comp
+    season = comp.season if season is None else season
+    registry = {r["api_team_id"]: dict(r) for r in conn.execute(
+        "SELECT club_id, comp, api_team_id, name, zh, logo FROM club_registry WHERE comp=?",
+        (comp.key,))}
+    out = {r["club_id"]: dict(r) for r in registry.values()} if season == comp.season else {}
+    teams = {r["api_id"]: dict(r) for r in conn.execute("SELECT api_id, name, logo FROM team")}
+    for fx in conn.execute(
+        "SELECT home_api_id, away_api_id, raw_json FROM fixture WHERE league_id=? AND season=?",
+        (comp.api_football_id, season)):
+        try:
+            raw_teams = (json.loads(fx["raw_json"] or "{}") or {}).get("teams") or {}
+        except (ValueError, TypeError):
+            raw_teams = {}
+        for side in ("home", "away"):
+            tid = fx[f"{side}_api_id"]
+            if tid is None:
+                continue
+            existing = registry.get(tid) or {}
+            team = teams.get(tid) or raw_teams.get(side) or {}
+            name = existing.get("name") or team.get("name") or ""
+            cid = canonical_club_id(conn, tid, name)
+            out.setdefault(cid, {"club_id": cid, "comp": comp.key, "api_team_id": tid,
+                "name": name or cid, "zh": existing.get("zh") or "", "logo": team.get("logo")})
+    return dict(sorted(out.items()))
+
+
 def build_all(conn, *, as_of: str | None = None, season: int | None = None,
-              suffix: str = "", out_dir: Path | None = None) -> dict:
+              suffix: str = "", out_dir: Path | None = None,
+              point_in_time: bool = False) -> dict:
+    """Build using one observed database view; live ingest cannot change it mid-run."""
+    if point_in_time:
+        return _build_all_impl(conn, as_of=as_of, season=season, suffix=suffix,
+                               out_dir=out_dir, point_in_time=True)
+    from prediction_market_soccer.util import source_history as history
+    if conn.in_transaction:
+        raise ValueError('Prior build requires a completed ingest transaction')
+    # Capture a coherent SQLite read snapshot, then expose only the committed
+    # observations to the model. Every table in the view has a full baseline.
+    conn.execute('BEGIN IMMEDIATE')
+    try:
+        revisions = history.capture_current_sources(conn)
+        conn.commit()
+        history.finalize_versions(conn, revisions)
+    except BaseException:
+        conn.rollback()
+        raise
+    cutoff = history.now_iso()
+    view, manifest = history.project_asof(conn, cutoff,
+        required_tables=('fixture', 'team', 'club_registry', 'standing'))
+    try:
+        return _build_all_impl(view, as_of=as_of, season=season, suffix=suffix,
+            out_dir=out_dir, point_in_time=False, observation_conn=conn, input_manifest=manifest)
+    finally:
+        view.close()
+
+
+def _build_all_impl(conn, *, as_of=None, season=None, suffix='', out_dir=None,
+                    point_in_time=False, observation_conn=None, input_manifest=None):
     """Build clubs_<comp>.json for every enabled comp + merged clubs_all.json.
 
     Requires: sync_teams + sync_standings(season) + sync_standings(season-1)
-    already ingested. Zero API-Football calls here; one ClubElo CSV fetch."""
+    already ingested. Zero API-Football calls here; one ClubElo CSV fetch.
+    ``point_in_time`` means the start of the supplied UTC day, rather than a live
+    build stamped with that date. It excludes live standings/markets and uses only
+    earlier ClubElo days, whose within-day publication time is not guaranteed.
+    """
     as_of = as_of or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if point_in_time:
+        as_of = datetime.fromisoformat(as_of[:10]).date().isoformat()
+    elo_as_of = ((datetime.fromisoformat(as_of) - timedelta(days=1)).date().isoformat()
+                 if point_in_time else as_of)
     # out_dir: where the (suffixed) files go — the production priors dir by default; the
     # point-in-time builds of a NON-production database (the test suite's in-memory
     # stores) are routed to a temp dir so they can never overwrite live files.
@@ -495,17 +591,16 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     if out_dir:
         out_dir.mkdir(parents=True, exist_ok=True)
     try:
-        elo_rows = _fetch_clubelo(as_of)
+        elo_rows = _fetch_clubelo(elo_as_of)
     except Exception as e:
         print(f"[club_prior] ClubElo unavailable ({e}) — building without Elo anchor")
         elo_rows = []
 
     all_clubs: list[dict] = []
+    market_inputs = {}
     summary = {}
     for comp in active():
-        regs = [dict(r) for r in conn.execute(
-            "SELECT club_id, comp, api_team_id, name, zh, logo FROM club_registry WHERE comp=?",
-            (comp.key,))]
+        regs = list(roster_for(conn, comp, season).values())
         if not regs:
             print(f"[club_prior] {comp.key}: no clubs in registry — skipped (ingest static first)")
             continue
@@ -515,7 +610,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
             "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
             (comp.api_football_id, (season or comp.season) - 1))}
         # current standings (mid-season comps: BRA/ARG already half-played)
-        cur = _current_table(conn, comp, season, as_of)
+        cur = _current_table(conn, comp, season, as_of, point_in_time=point_in_time)
 
         clubs = []
         for rr in regs:
@@ -581,7 +676,8 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
         # the prior falls back on the two anchors that ARE historical (last season's table,
         # and ClubElo, which the API does serve per date). This also makes a backtest
         # reproducible: rebuilding the same as_of tomorrow now yields the same prior.
-        mkt = _market_champion_probs(comp.key) if _is_today(as_of) else {}
+        mkt = _market_champion_probs(comp.key) if not point_in_time and _is_today(as_of) else {}
+        market_inputs[comp.key] = mkt
         mkt_z: dict[str, float] = {}
         if len(mkt) >= 4:
             import math as _m
@@ -623,12 +719,18 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
                 anchor = 0.75 * anchor + 0.25 * mkt_ppr
                 c["market_p_champion"] = round(mkt.get(c["club_id"], 0.0), 5)
             c["anchor_points"] = round(anchor, 4)
+            c["anchor_source"] = ("elo+table" if c["elo"] is not None and real_table else
+                                  "elo" if c["elo"] is not None else "table" if real_table else "default")
+            if mz is not None:
+                c["anchor_source"] += "+market"
             c.pop("_cur_ppr", None)
 
         doc = {
             "prior_id": f"clubs_{comp.key}{suffix}_{as_of}",
-            "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
+            "source": ("historical fixture table + prior-season standings + earlier ClubElo"
+                       if point_in_time else "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)"),
             "as_of": as_of, "is_stale": True, "league": comp.key,
+            "point_in_time": point_in_time, "elo_as_of": elo_as_of,
             "notes": [
                 "anchor_points = expected points-per-round; 0.5*Elo-implied + 0.5*table ppr;",
                 "promoted clubs default 0.75x league mean; SA comps use CURRENT-season table",
@@ -683,6 +785,8 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     # filed under another competition. Lend it across, on the domestic ppr scale.
     domestic: dict[str, float] = {}
     for comp in active():
+        if comp.key not in summary:
+            continue
         if comp.kind not in ("league", "league_playoffs"):
             continue
         dp = _p(comp.key + suffix)
@@ -693,6 +797,8 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
                 domestic[c["club_id"]] = c["anchor_points"]
 
     for comp in active():
+        if comp.key not in summary:
+            continue
         p = _p(comp.key + suffix)
         if not p.exists():
             continue
@@ -725,6 +831,8 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     # files on every loaned club. Rebuilt from the files as they finally stand.
     _best_final: dict[str, dict] = {}
     for comp in active():
+        if comp.key not in summary:
+            continue
         fp = _p(comp.key + suffix)
         if not fp.exists():
             continue
@@ -746,6 +854,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     merged = {
         "prior_id": f"clubs_all{suffix}_{as_of}", "source": "merged per-comp priors",
         "as_of": as_of, "is_stale": True, "league": "all",
+        "point_in_time": point_in_time, "elo_as_of": elo_as_of,
         "clubs": list(_best_final.values()),
         # WC-compat projection: copied consumers read {"teams":[{"team","fifa_rank"}]}
         "teams": [{"team": c["name"], "fifa_rank": c.get("elo_rank") or 999}
@@ -753,6 +862,29 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
     }
     ((out_dir or _PRIORS) / f"clubs_all{suffix}.json").write_text(
         json.dumps(merged, ensure_ascii=False, indent=1), encoding="utf-8")
+    if not point_in_time:
+        from prediction_market_soccer.util import source_history as history
+        captured = history.now_iso()
+        target_conn = observation_conn
+        if target_conn is None:
+            raise ValueError('Observed live prior requires its explicit observation store')
+        dependencies = input_manifest
+        revisions = [history.stage_version(target_conn, 'file:clubelo', elo_as_of, elo_rows, captured_at=captured,
+                                            raw_ref=history.write_content(elo_rows))]
+        market_revision = history.stage_version(target_conn, 'derived:champion_anchor', as_of, market_inputs,
+                                                captured_at=captured, raw_ref=history.write_content(market_inputs))
+        revisions.append(market_revision)
+        for key in [*summary, 'all']:
+            path = _p(key + suffix)
+            if path.exists():
+                doc = json.loads(path.read_text(encoding='utf-8'))
+                revisions.append(history.stage_version(target_conn, 'derived:prior', key,
+                    {'prior': doc, 'dependencies': dependencies, 'clubelo_revision': revisions[0],
+                     'champion_anchor_revision': market_revision,
+                     'builder_sha256': history.hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+                    captured_at=captured, raw_ref=history.write_content(doc)))
+        target_conn.commit()
+        history.finalize_versions(target_conn, revisions)
     print("[club_prior] built:", json.dumps(summary, ensure_ascii=False))
     return summary
 

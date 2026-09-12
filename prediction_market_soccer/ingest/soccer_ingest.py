@@ -22,9 +22,10 @@ Run: conda run -n someopark_run python -m prediction_market_soccer.ingest.soccer
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import time as _time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from prediction_market_soccer.config import CONFIG
 from prediction_market_soccer.config.leagues import Competition, Stage, active, by_api_id, stage_of
@@ -73,8 +74,7 @@ def _team_stub_rows(item: dict) -> list[dict]:
     for side in ("home", "away"):
         t = item["teams"][side]
         rows.append({
-            "api_id": t["id"], "name": t.get("name"), "code": None, "country": None,
-            "founded": None, "national": 0, "logo": t.get("logo"),
+            "api_id": t["id"], "name": t.get("name"), "national": 0, "logo": t.get("logo"),
             "raw_json": store.json.dumps(t, ensure_ascii=False), "updated_at": store.utcnow(),
         })
     return rows
@@ -98,29 +98,105 @@ def _event_rows(fixture_id: int, events: list) -> list[dict]:
     return rows
 
 
-def _upsert_club_registry(conn, comp: Competition, api_id: int, name: str, logo: str | None) -> str:
-    cid = club_id_of(name)
-    store.upsert(conn, "club_registry", {
-        "club_id": cid, "comp": comp.key, "api_team_id": api_id, "name": name,
-        "zh": None, "kalshi_code": None, "kalshi_name": None, "poly_code": None,
-        "logo": logo, "valid_from": store.utcnow()[:10], "valid_to": None,
-        "updated_at": store.utcnow(),
-    }, pk=["club_id", "comp"])
+def canonical_club_id(conn, api_id: int, name: str | None = None) -> str:
+    """Resolve identity by the provider ID; a changed display name cannot rename a club."""
+    ids = {r[0] for r in conn.execute(
+        "SELECT club_id FROM club_registry WHERE api_team_id=?", (api_id,))}
+    meta = conn.execute("SELECT canonical_team_id FROM team_meta WHERE api_id=?", (api_id,)).fetchone()
+    if meta and meta[0]:
+        ids.add(meta[0])
+    if len(ids) > 1:
+        raise ValueError(f"conflicting canonical identities for API team {api_id}: {sorted(ids)}")
+    cid = next(iter(ids)) if ids else club_id_of(name or "") or f"api_team_{api_id}"
+    conflict = conn.execute(
+        "SELECT api_team_id FROM club_registry WHERE club_id=? AND api_team_id<>? LIMIT 1",
+        (cid, api_id)).fetchone()
+    if not conflict:
+        conflict = conn.execute(
+            "SELECT api_id FROM team_meta WHERE canonical_team_id=? AND api_id<>? LIMIT 1",
+            (cid, api_id)).fetchone()
+    if conflict:
+        raise ValueError(f"club identity {cid!r} belongs to API team {conflict[0]}, not {api_id}")
     return cid
+
+
+def _upsert_known(conn, table: str, row: dict, pk: list[str]) -> None:
+    """A fixture stub or partial provider response cannot erase richer stored fields."""
+    store.upsert(conn, table, {k: v for k, v in row.items() if v is not None and v != ""}, pk=pk)
+
+
+def _upsert_club_registry(conn, comp: Competition, api_id: int, name: str, logo: str | None) -> str:
+    cid = canonical_club_id(conn, api_id, name)
+    existing = conn.execute("SELECT 1 FROM club_registry WHERE club_id=? AND comp=?",
+                            (cid, comp.key)).fetchone()
+    row = {
+        "club_id": cid, "comp": comp.key, "api_team_id": api_id, "name": name,
+        "logo": logo,
+        "updated_at": store.utcnow(),
+    }
+    if not existing:
+        # Observation date, not a retrospectively invented roster announcement date.
+        row["valid_from"] = store.utcnow()[:10]
+    _upsert_known(conn, "club_registry", row, pk=["club_id", "comp"])
+    store.upsert(conn, "team_meta", {"api_id": api_id, "canonical_team_id": cid,
+                                    "updated_at": store.utcnow()}, pk=["api_id"])
+    return cid
+
+
+def _store_fixture_teams(conn, item: dict) -> None:
+    comp = by_api_id(item["league"]["id"])
+    for tr in _team_stub_rows(item):
+        _upsert_known(conn, "team", tr, pk=["api_id"])
+        if comp and comp.enabled and item["league"]["season"] == comp.season:
+            _upsert_club_registry(conn, comp, tr["api_id"], tr.get("name") or "", tr.get("logo"))
+
+
+def reconcile_fixture_clubs(conn, comp: Competition | None = None) -> int:
+    """Heal current-season participant identities from stored fixtures, with zero API calls.
+
+    Called even when fixture/teams watermarks are fresh. Prior construction can then
+    include a newly drawn European entrant before the weekly teams refresh is due.
+    Historical-season memberships are read by club_prior.roster_for, not added here.
+    """
+    n = 0
+    for cp in ([comp] if comp else active()):
+        teams = {r["api_id"]: dict(r) for r in conn.execute("SELECT api_id,name,logo FROM team")}
+        participants = {}
+        for fx in conn.execute(
+            "SELECT home_api_id, away_api_id, raw_json FROM fixture WHERE league_id=? AND season=?",
+            (cp.api_football_id, cp.season)):
+            try:
+                raw_teams = (store.json.loads(fx["raw_json"] or "{}") or {}).get("teams") or {}
+            except (ValueError, TypeError):
+                raw_teams = {}
+            for side in ("home", "away"):
+                tid = fx[f"{side}_api_id"]
+                if tid is not None:
+                    raw = raw_teams.get(side) or {}
+                    known = teams.get(tid) or {}
+                    participants[tid] = {"api_id": tid, "name": known.get("name") or raw.get("name"),
+                                         "logo": known.get("logo") or raw.get("logo")}
+        for r in participants.values():
+            _upsert_known(conn, "team", {**r, "updated_at": store.utcnow()}, pk=["api_id"])
+            _upsert_club_registry(conn, cp, r["api_id"], r["name"] or "", r["logo"])
+            n += 1
+    conn.commit()
+    return n
 
 
 # ── syncs (all per-competition, watermark key = "<resource>:<comp>") ──────────
 def sync_fixtures(api: ApiFootball, conn, comp: Competition, *, force: bool = False) -> int:
-    wm = f"fixtures:{comp.key}"
+    reconcile_fixture_clubs(conn, comp)
+    wm = f"fixtures:{comp.key}:{comp.season}"
     if not force and store.is_fresh(conn, wm, CONFIG.soccer.ttl_fixtures):
         print(f"[fixtures:{comp.key}] fresh — skipped (0 requests)")
         return 0
     items = api.fixtures(league=comp.api_football_id, season=comp.season)
     for it in items:
         store.upsert(conn, "fixture", _fixture_row(it), pk=["api_id"])
-        for tr in _team_stub_rows(it):
-            store.upsert(conn, "team", tr, pk=["api_id"])
+        _store_fixture_teams(conn, it)
     store.set_watermark(conn, wm, note=f"{len(items)} fixtures")
+    store.set_watermark(conn, f"fixtures:{comp.key}", note=f"s{comp.season}: {len(items)} fixtures")
     conn.commit()
     rounds = sorted({(it["league"].get("round") or "") for it in items})
     unknown = [r for r in rounds if stage_of(comp.key, r) == Stage.UNKNOWN]
@@ -130,25 +206,25 @@ def sync_fixtures(api: ApiFootball, conn, comp: Competition, *, force: bool = Fa
 
 
 def sync_teams(api: ApiFootball, conn, comp: Competition, *, force: bool = False) -> int:
-    wm = f"teams:{comp.key}"
+    reconcile_fixture_clubs(conn, comp)
+    wm = f"teams:{comp.key}:{comp.season}"
     if not force and store.is_fresh(conn, wm, CONFIG.soccer.ttl_static):
         print(f"[teams:{comp.key}] fresh — skipped (0 requests)")
         return 0
     items = api.teams(league=comp.api_football_id, season=comp.season)
+    if not items:
+        raise RuntimeError(f"teams:{comp.key}: provider returned an empty roster; previous data retained")
     for it in items:
         t, v = it["team"], it.get("venue") or {}
-        store.upsert(conn, "team", {
+        _upsert_known(conn, "team", {
             "api_id": t["id"], "name": t.get("name"), "code": t.get("code"),
             "country": t.get("country"), "founded": t.get("founded"),
             "national": 1 if t.get("national") else 0, "logo": t.get("logo"),
             "raw_json": store.json.dumps(it, ensure_ascii=False), "updated_at": store.utcnow(),
         }, pk=["api_id"])
-        cid = _upsert_club_registry(conn, comp, t["id"], t.get("name", ""), t.get("logo"))
-        store.upsert(conn, "team_meta", {
-            "api_id": t["id"], "group_code": None, "fifa_rank": None,
-            "canonical_team_id": cid, "updated_at": store.utcnow(),
-        }, pk=["api_id"])
+        _upsert_club_registry(conn, comp, t["id"], t.get("name", ""), t.get("logo"))
     store.set_watermark(conn, wm, note=f"{len(items)} teams")
+    store.set_watermark(conn, f"teams:{comp.key}", note=f"s{comp.season}: {len(items)} teams")
     conn.commit()
     print(f"[teams:{comp.key}] upserted {len(items)} clubs into team/club_registry")
     return len(items)
@@ -168,6 +244,12 @@ def sync_standings(api: ApiFootball, conn, comp: Competition, *, force: bool = F
         for group in groups:
             for entry in group:
                 team = entry.get("team") or {}
+                if team.get("id") is None:
+                    continue
+                _upsert_known(conn, "team", {"api_id": team["id"], "name": team.get("name"),
+                    "logo": team.get("logo"), "updated_at": store.utcnow()}, pk=["api_id"])
+                if season == comp.season:
+                    _upsert_club_registry(conn, comp, team["id"], team.get("name") or "", team.get("logo"))
                 allrec = entry.get("all") or {}
                 gc = entry.get("group")
                 store.upsert(conn, "standing", {
@@ -180,6 +262,10 @@ def sync_standings(api: ApiFootball, conn, comp: Competition, *, force: bool = F
                     "updated_at": store.utcnow(),
                 }, pk=["league_id", "season", "team_api_id"])
                 n += 1
+    if not n and comp.kind == "league" and conn.execute(
+        "SELECT 1 FROM standing WHERE league_id=? AND season=? LIMIT 1",
+        (comp.api_football_id, season)).fetchone():
+        raise RuntimeError(f"standings:{comp.key} s{season}: empty response; previous table retained")
     store.set_watermark(conn, wm, note=f"{n} rows")
     conn.commit()
     print(f"[standings:{comp.key} s{season}] upserted {n} rows")
@@ -189,8 +275,16 @@ def sync_standings(api: ApiFootball, conn, comp: Competition, *, force: bool = F
 def _store_detailed(conn, item: dict) -> None:
     fid = item["fixture"]["id"]
     store.upsert(conn, "fixture", _fixture_row(item), pk=["api_id"])
-    events = item.get("events") or []
-    store.upsert_many(conn, "fixture_event", _event_rows(fid, events), pk=["fixture_api_id", "seq"])
+    _store_fixture_teams(conn, item)
+    # An omitted events field is not evidence of an empty complete event set.
+    if 'events' in item and isinstance(item['events'], list):
+        from prediction_market_soccer.util.source_history import stage_version
+        events = _event_rows(fid, item['events'])
+        stage_version(conn, 'fixture_event_set', fid, events, complete=True)
+        # Update the CURRENT projection as a set so removed/reordered VAR events
+        # do not linger. All prior sets remain immutable in source_history.
+        conn.execute('DELETE FROM fixture_event WHERE fixture_api_id=?', (fid,))
+        store.upsert_many(conn, "fixture_event", events, pk=["fixture_api_id", "seq"])
 
 
 def _our_league_ids() -> set[int]:
@@ -687,6 +781,9 @@ def sync_predictions(api: ApiFootball, conn, *, limit: int = 5, force: bool = Fa
 _ODDS_BACKOFF_AFTER = 40
 _ODDS_PROBE_LIMIT = 2          # fixtures per probe once backed off
 _ODDS_PROBE_EVERY_H = 24.0
+_ODDS_FIXTURE_COOLDOWN_S = 6 * 3600
+_ODDS_ERROR_COOLDOWN_S = 10 * 60
+_ODDS_SELECTION_VERSION = "odds:selection:v2"
 
 
 def _odds_lane_state(conn) -> tuple[int, str | None]:
@@ -710,21 +807,27 @@ def _set_odds_lane_state(conn, streak: int) -> None:
 
 def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
               include_settled: bool = True) -> int:
-    """Pre-match bookmaker odds. Backs off to a daily probe once the endpoint has proved
-    empty, instead of re-proving it every run.
+    """Probe current-season fixtures in the provider's useful odds window.
 
-    API-Football returns NOTHING for these club competitions: measured 690 calls with
-    sum(results_count) = 0 and not one pre-match row ever stored, ~390 calls a day spent
-    re-establishing the same fact. The fixture query can never go quiet on its own either,
-    because "has odds" is exactly what never becomes true. So the lane now remembers its
-    own emptiness and keeps a small daily probe — enough to light up on its own the day the
-    provider starts covering these leagues, and visible in the log either way rather than
-    silently burning budget."""
+    Prefer upcoming matches (next seven days), optionally checking finishes from the
+    last day. Untried fixtures precede previously probed ones, whose own cooldown
+    prevents empty results from consuming every refresh. Provider errors are not
+    evidence of missing odds coverage. The global empty-lane daily budget remains.
+    """
+    now = datetime.now(timezone.utc)
     streak, last_probe = _odds_lane_state(conn)
+    if not conn.execute("SELECT 1 FROM watermark WHERE resource=?", (_ODDS_SELECTION_VERSION,)).fetchone():
+        # The former lane sampled ancient finished fixtures. Its accumulated empty
+        # streak is not evidence about the new current-season window. Migrate once;
+        # provider day/month budgets and per-fixture cooldowns still apply normally.
+        store.set_watermark(conn, _ODDS_SELECTION_VERSION,
+                            note=f"current-season window; retired legacy empty streak {streak}")
+        _set_odds_lane_state(conn, 0)
+        streak, last_probe = 0, None
     if streak >= _ODDS_BACKOFF_AFTER and not force:
         if last_probe:
             try:
-                age_h = (datetime.now(timezone.utc)
+                age_h = (now
                          - datetime.fromisoformat(last_probe)).total_seconds() / 3600.0
             except ValueError:
                 age_h = _ODDS_PROBE_EVERY_H
@@ -732,35 +835,62 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
                 return 0
         print(f"[odds] lane empty for {streak} consecutive pulls — daily probe only "
               f"({_ODDS_PROBE_LIMIT} fixtures). Pass force=True to sweep in full.")
-        limit = _ODDS_PROBE_LIMIT
-    statuses = "('NS','FT','AET','PEN')" if include_settled else "('NS')"
-    lids = _our_league_ids()
+        limit = min(limit, _ODDS_PROBE_LIMIT)
+    comps = active()
+    if not comps or limit <= 0:
+        return 0
+    comp_filter = " OR ".join("(f.league_id=? AND f.season=?)" for _ in comps)
+    recent = " OR (f.status_short IN ('FT','AET','PEN') AND julianday(f.kickoff_ts) BETWEEN julianday(?) AND julianday(?))" if include_settled else ""
+    args = [v for cp in comps for v in (cp.api_football_id, cp.season)]
+    args += [now.isoformat(), (now + timedelta(days=7)).isoformat()]
+    if include_settled:
+        args += [(now - timedelta(days=1)).isoformat(), now.isoformat()]
+    args += [now.isoformat()]
     rows = conn.execute(
-        f"SELECT api_id FROM fixture WHERE status_short IN {statuses} "
-        "AND league_id IN ({}) "
+        "SELECT f.api_id, w.resource, w.last_synced_at, w.note FROM fixture f "
+        "LEFT JOIN watermark w ON w.resource='odds:fixture:' || f.api_id "
+        f"WHERE ({comp_filter}) AND ((f.status_short='NS' "
+        f"AND julianday(f.kickoff_ts) BETWEEN julianday(?) AND julianday(?)){recent}) "
         # A fixture counts as "has odds" only if a REAL bookmaker row exists: the
         # in-play `live_consensus` row (written by the live loop) would otherwise
         # permanently block the pre-match odds pull for that fixture — and it is
         # useless as a pre-match reference (it was captured at 4-1 up).
-        "AND api_id NOT IN (SELECT fixture_api_id FROM match_odds "
+        "AND f.api_id NOT IN (SELECT fixture_api_id FROM match_odds "
         "                   WHERE bookmaker <> 'live_consensus') "
-        "ORDER BY kickoff_ts LIMIT ?".format(",".join("?" * len(lids))),
-        tuple(lids) + (limit,)).fetchall()
-    pulled = stored = 0
+        "ORDER BY (f.status_short<>'NS'), COALESCE(w.last_synced_at, ''), "
+        "ABS(julianday(f.kickoff_ts)-julianday(?)), f.api_id", args).fetchall()
+    rows = [r for r in rows if force or not r["resource"] or not store.is_fresh(
+        conn, r["resource"], _ODDS_ERROR_COOLDOWN_S if (r["note"] or "").startswith("error:")
+        else _ODDS_FIXTURE_COOLDOWN_S)][:limit]
+    pulled = stored = failed = 0
     for r in rows:
         fid = r["api_id"]
+        before = stored
         try:
             res = api.odds(fid)
         except BudgetExceededError as e:
             print(f"[odds] stopping early: {e}")
+            if not pulled:
+                raise
             break
+        except Exception as e:
+            failed += 1
+            store.set_watermark(conn, f"odds:fixture:{fid}", note=f"error:{type(e).__name__}")
+            print(f"[odds] fixture {fid}: request failed ({type(e).__name__}); coverage unknown")
+            continue
         for entry in res:
             for bk in entry.get("bookmakers", []):
+                if not bk.get("name") or bk["name"] == "live_consensus":
+                    continue
                 mw = next((b for b in bk.get("bets", []) if b.get("name") == "Match Winner"), None)
                 if not mw:
                     continue
-                vals = {v["value"]: float(v["odd"]) for v in mw.get("values", []) if v.get("odd")}
-                if not {"Home", "Draw", "Away"} <= set(vals):
+                try:
+                    vals = {v["value"]: float(v["odd"]) for v in mw.get("values", []) if v.get("odd")}
+                except (TypeError, ValueError, KeyError):
+                    continue
+                if not {"Home", "Draw", "Away"} <= set(vals) or not all(
+                    math.isfinite(vals[k]) and vals[k] > 1 for k in ("Home", "Draw", "Away")):
                     continue
                 inv = {k: 1.0 / vals[k] for k in ("Home", "Draw", "Away")}
                 s = sum(inv.values())
@@ -771,6 +901,7 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
                     "fetched_at": store.utcnow(),
                 }, pk=["fixture_api_id", "bookmaker"])
                 stored += 1
+        store.set_watermark(conn, f"odds:fixture:{fid}", note=f"bookmaker_rows:{stored-before}")
         pulled += 1
     conn.commit()
     # Count what was actually STORED, not just queried: API-Football answers
@@ -781,8 +912,11 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
     if pulled:
         _set_odds_lane_state(conn, 0 if stored else streak + pulled)
     print(f"[odds] queried {pulled} fixtures → stored {stored} bookmaker rows"
+          + (f"; {failed} request(s) failed" if failed else "")
           + ("  (no pre-match odds coverage for these fixtures; "
-             f"empty streak {streak + pulled})" if not stored else ""))
+             f"empty streak {streak + pulled})" if not stored and pulled else ""))
+    if failed and not pulled:
+        raise RuntimeError(f"odds: all {failed} attempted provider requests failed; coverage unknown")
     return stored
 
 

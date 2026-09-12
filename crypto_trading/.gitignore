@@ -9,3 +9,6 @@ logs/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# W8's reproducible replay is maintained alongside its live kernel and tests.
+!crypto_strategies/event_binary/research_complete_set.py

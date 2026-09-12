@@ -20,7 +20,8 @@ Design — a SECOND WRITER for the SAME series, not a new series:
     are supposed to agree, and disagreement is a fact worth a red flag, not a silent pick.
 
 Refresh pulls the current and previous month (cheap; backfills any gap); the tick calls
-`pull_if_due` every fire so the day's curve lands within ~15 minutes of Treasury posting.
+`pull_if_due` in its 15-minute auxiliary maintenance cycle, independent of the minute
+executor wake-up, so the day's curve lands within ~15 minutes of Treasury posting.
 """
 from __future__ import annotations
 

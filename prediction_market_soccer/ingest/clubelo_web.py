@@ -46,6 +46,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import re
 import shutil
 import time
@@ -60,7 +61,7 @@ from prediction_market_soccer.config import CONFIG
 
 BASE = "https://clubelo.com"
 PRIORS = CONFIG.paths.priors            # module-level so tests can point it at a tmp dir
-BACKUP = Path.home() / "clubelo_web_backup"
+BACKUP = Path(os.environ.get("CLUBELO_BACKUP_DIR") or (Path.home() / "clubelo_web_backup"))
 
 
 class _P:
@@ -448,6 +449,59 @@ def build_name_map(site_rows: list[dict], *, histories: dict[str, list[dict]] | 
         if api is not None:
             taken.add(api)
         out[slug] = {"api": api, "site": site_name, "country_api": cc_api, "method": method}
+    return out
+
+
+def reconcile_name_map(site_rows: list[dict], name_map: dict | None = None) -> dict:
+    """Extend an audited map for newly appearing slugs using exact, same-country names.
+
+    Existing resolved entries are retained. Daily discovery never promotes a fuzzy
+    guess, or lets an identically named club in another country claim an API name.
+    A site rename may share an old mapping only when its old slug is absent today.
+    """
+    out = dict(load_name_map() if name_map is None else name_map)
+    api_names, _ = _api_reference()
+    exact: dict[tuple[str, str], list[str]] = {}
+    for name, info in api_names.items():
+        exact.setdefault((info["country"], norm_name(name)), []).append(name)
+    active_slugs = {r["slug"] for r in site_rows}
+    claimed = {m.get("api") for slug, m in out.items() if slug in active_slugs and m.get("api")}
+    for r in site_rows:
+        slug, name = r["slug"], r["name"]
+        if (out.get(slug) or {}).get("api"):
+            continue
+        cc = SITE_TO_API_CODE.get(r.get("site_cc") or "", r.get("site_cc") or "")
+        match = None
+        for label in (MANUAL_SITE_TO_API.get(name), name, slug):
+            candidates = exact.get((cc, norm_name(label or "")), [])
+            if len(candidates) == 1 and candidates[0] not in claimed:
+                match = candidates[0]
+                break
+        out[slug] = {"api": match, "site": name, "country_api": cc,
+                     "method": "daily_exact_country" if match else None}
+        if match:
+            claimed.add(match)
+    return out
+
+
+def relabel_cached_rows(rows: list[dict], site_rows: list[dict], name_map: dict) -> list[dict]:
+    """Repair new-slug labels in a cached day without changing its historic ratings."""
+    names = {}
+    for r in site_rows:
+        m = name_map.get(r["slug"]) or {}
+        if not m.get("api"):
+            continue
+        cc = SITE_TO_API_CODE.get(r.get("site_cc") or "", r.get("site_cc") or "")
+        names[(f"{r['name']} ({cc})", cc)] = m["api"]
+    existing = {r["Club"] for r in rows}
+    out = []
+    for r in rows:
+        corrected = names.get((r["Club"], r.get("Country")))
+        if corrected and corrected not in existing:
+            out.append({**r, "Club": corrected})
+            existing.add(corrected)
+        else:
+            out.append(r)
     return out
 
 
@@ -915,8 +969,13 @@ def _api_fillers_for(ds: str) -> list[dict] | None:
     f = _api_file(ds)
     if f is not None:
         return list(csv.DictReader(f.open(encoding="utf-8")))
-    latest = latest_api_rows()
-    return latest[1] if latest else None
+    dates = sorted({p.name[8:18] for p in PRIORS.glob("clubelo_????-??-??.csv*")
+                    if p.name[8:18] <= ds}, reverse=True)
+    for date in dates:
+        candidate = _api_file(date)
+        if candidate is not None:
+            return list(csv.DictReader(candidate.open(encoding="utf-8")))
+    return None
 
 
 def rebuild_frozen_period(start: str, end: str) -> dict:

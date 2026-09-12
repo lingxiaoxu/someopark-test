@@ -103,6 +103,10 @@ def _has_open_snipe(conn, series: str, period: str) -> bool:
     return any(d["kind"] == "snipe" for d in open_decisions(conn, series, period))
 
 
+from prediction_market_macro.util.execution import serialized_execution
+
+
+@serialized_execution
 def run_for(conn, series: str, period_key: str) -> int:
     """Called from the tick reassess task (T+3m, quotes just densified).
     Returns snipes opened."""
@@ -151,7 +155,7 @@ def run_for(conn, series: str, period_key: str) -> int:
                           f" 09:00Z refresh, ~20.5h after the T+3m look")
         return 0
     legs = _legs_meta(conn, series, kalshi_tok)
-    now = datetime.now(timezone.utc).isoformat()
+    from prediction_market_macro.ops import ledger
     n = 0
     total_usd = 0.0
     for l in legs:
@@ -202,27 +206,36 @@ def run_for(conn, series: str, period_key: str) -> int:
         if _risk.check(conn, series, period_key, stake) is not None:
             continue
         note = f"SNIPE {l['ticker'].rsplit('-', 1)[-1]}:{side} print={y} net={net:.3f}"
-        cur = conn.execute(
-            "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
-            " ask, net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (now, series, period_key,
-             json.dumps({"kind": "snipe", "desc": note,
-                         "legs": [{"ticker": l["ticker"], "side": side,
-                                   "price": price}]}),
-             "snipe", 1.0, price, round(net, 4), stake,
-             json.dumps({"print": y, "net": net, "count": count}),
-             "snipe/1.0", "{}", note))
+        try:
+            with ledger.atomic_structure(conn, before_write=lambda:
+                    ledger.ensure_live_entry_window(conn, series, period_key, [l["ticker"]])):
+                now = datetime.now(timezone.utc).isoformat()
+                cur = conn.execute(
+                    "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
+                    " ask, net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (now, series, period_key,
+                     json.dumps({"kind": "snipe", "desc": note,
+                                 "legs": [{"ticker": l["ticker"], "side": side,
+                                           "price": price}]}),
+                     "snipe", 1.0, price, round(net, 4), stake,
+                     json.dumps({"print": y, "net": net, "count": count}),
+                     "snipe/1.0", "{}", note))
+                curf = conn.execute(
+                    "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
+                    " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+                    (cur.lastrowid, now, l["ticker"], side, price, count,
+                     taker_fee(price, count)))
+                fill_id = curf.lastrowid
+                conn.execute(
+                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                    (now, "info", "snipe", f"{series}/{period_key}: {note} x{count}"))
+        except ledger.EntryWindowClosed as exc:
+            _alert_once(conn, f"SNIPE-WINDOW-CLOSED {series}/{period_key}: {exc}")
+            break
+        conn.commit()
         from prediction_market_macro.ops import trading_kalshi
-        curf = conn.execute(
-            "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
-            " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-            (cur.lastrowid, now, l["ticker"], side, price, count,
-             taker_fee(price, count)))
-        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
-        conn.execute(
-            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-            (now, "info", "snipe", f"{series}/{period_key}: {note} x{count}"))
+        trading_kalshi.on_fill(conn, fill_id)
         total_usd += price * count
         n += 1
         if total_usd >= MAX_SNIPE_USD:

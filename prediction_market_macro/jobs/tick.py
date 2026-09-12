@@ -1,18 +1,21 @@
-"""jobs/tick.py — the 15-min executor of materialised runs (PLAN §8.2-2) + the
+"""jobs/tick.py — the minute executor of materialised runs (PLAN §8.2-2) + the
 event-window densifier (§8.1: T-2h 5-min snapshots, ±10min 1-min fast polling).
 
-launchd fires every 900s. Outside event windows one pass suffices. When a release
-window is live ([T-2h, T+30min] for any registered calendar), the process LINGERS
-(≤840s, always ending before the next launchd fire) and:
+launchd restarts an idle tick every 60s. A tick lock excludes manual duplicates.
+When a release window is live ([T-2h, T+30min]), one process remains for the
+WHOLE window; ending after 840s used to leave a 15-minute gap before relaunch.
+The event loop:
   * snapshots the affected series every 5 min (1 min inside ±10 min of the release)
   * claims newly-due runs mid-linger — so the T+3m reassess task executes ON TIME
-    with fresh post-release quotes instead of waiting for the next 15-min fire.
+    with fresh post-release quotes rather than waiting for a separate launchd invocation.
 
     conda run -n someopark_run python -m prediction_market_macro.jobs.tick
 """
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import time as _time
 from datetime import datetime, timedelta, timezone
 
@@ -21,6 +24,7 @@ from prediction_market_macro.config.settings import load_settings
 from prediction_market_macro.ingest.kalshi_md import KalshiMD
 from prediction_market_macro.ingest.store import init_db
 from prediction_market_macro.jobs import scheduler
+from prediction_market_macro.util.execution import execution_lock
 
 
 def _export_frontend(conn, s) -> None:
@@ -79,21 +83,51 @@ def _top_up_stale_quotes(conn, md, now: datetime) -> dict:
     return refreshed
 
 
+def _require_critical_refresh_success(result) -> None:
+    """A recent completed refresh can still have failed its trading steps."""
+    steps = result.get("steps") if isinstance(result, dict) else None
+    if not isinstance(steps, dict):
+        return                         # older timestamp-only stamps remain compatible
+    failed = [name for name in ("predict_all", "decide_all", "exits")
+              if str(steps.get(name, "")).startswith("FAIL")]
+    if failed:
+        raise RuntimeError("critical refresh steps failed: " + ", ".join(failed))
+
+
 def _exec_task(conn, s, md, r) -> str:
     task, series = r["task"], r["series"]
     from prediction_market_macro.ops import decide_all, exits, pnl, predict_all
     if task in ("arm", "snapshot", "reassess", "decide"):
         if series in REGISTRY:
-            md.snapshot_series(series)
+            _drain_freezes(conn)
+            try:
+                md.snapshot_series(series)
+            finally:
+                _drain_freezes(conn)
     if task in ("arm", "decide", "reassess"):
         # decide_all scans ALL series; give it fresh quotes for all of them, not just
         # this run's. See _top_up_stale_quotes.
         topped = _top_up_stale_quotes(conn, md, datetime.now(timezone.utc))
         if topped:
             print(f"  quote top-up: {topped}")
-        predict_all.run(conn, s)
-        decide_all.run(conn, s)
-        exits.run(conn, s)
+        _drain_freezes(conn)
+        try:
+            predict_all.run(conn, s, fail_on_error=True)
+        finally:
+            _drain_freezes(conn)
+        with execution_lock(conn):
+            # Another short ledger pass may have owned the lock while this task's
+            # window elapsed. Re-check after acquisition, not only before waiting.
+            if scheduler.expire_if_overdue(conn, r):
+                return "expired before decision"
+            decide_all.run(conn, s)
+        from prediction_market_macro.ops.position_inputs import fresh_held_tickers
+        _drain_freezes(conn)
+        eligible = fresh_held_tickers(conn, md, before_each=lambda: _drain_freezes(conn))
+        _drain_freezes(conn)
+        exits.shadow_run(conn, s, eligible_tickers=eligible)
+        exits.run(conn, s, eligible_tickers=eligible)
+        pnl.mark_all(conn)
         # §30 mirror backstop: inline on_fill hooks fire inside decide/exits; this
         # sweep catches anything they missed and advances order polling + the
         # balance-sheet snapshot. Best-effort like the export below.
@@ -109,7 +143,10 @@ def _exec_task(conn, s, md, r) -> str:
         # §24-B: the print is public by T+3m — snipe legs whose settlement is
         # already determined but still mispriced
         from prediction_market_macro.strategy import snipe
-        ns = snipe.run_for(conn, series, r["period"])
+        with execution_lock(conn):
+            if scheduler.expire_if_overdue(conn, r):
+                return "expired before reassessment"
+            ns = snipe.run_for(conn, series, r["period"])
         if ns:
             return f"snipes={ns}"
     if task == "freeze":
@@ -123,9 +160,13 @@ def _exec_task(conn, s, md, r) -> str:
     if task in ("daily_refresh", "health", "pred_freshness"):
         last = s.output_dir / "refresh_last.json"
         if last.exists():
-            ts = json.loads(last.read_text()).get("ts")
+            previous = json.loads(last.read_text())
+            ts = previous.get("ts")
             if ts and datetime.now(timezone.utc) - datetime.fromisoformat(ts) \
                     < timedelta(hours=20):
+                # Surface the failed refresh without launching its entire ingestion
+                # again every minute. The regular next refresh can replace this stamp.
+                _require_critical_refresh_success(previous)
                 return "covered_by_daily_refresh"
         from prediction_market_macro.ops import refresh
         # The stamp above is written only by refresh's LAST line, so between 09:00:05
@@ -135,7 +176,8 @@ def _exec_task(conn, s, md, r) -> str:
         # refresh.run() holds an flock and refuses; leaving the run 'late' means the next
         # tick re-checks, by which time the stamp is fresh -> covered_by_daily_refresh.
         # If instead the 05:00 job never fired, the lock is free and this really does run.
-        refresh.run()                                    # raises RefreshBusy -> mark_late
+        result = refresh.run()                           # raises RefreshBusy -> mark_late
+        _require_critical_refresh_success(result)
         return "ran_full_refresh"
     return "ok"
 
@@ -167,11 +209,33 @@ def _active_windows(conn, now: datetime) -> list[tuple[str, datetime]]:
     return out
 
 
+def _drain_freezes(conn) -> int:
+    """Cheap clock-only tasks must not wait behind orderbook/FRED requests."""
+    due = scheduler.claim_due(conn, tasks=("freeze",))
+    for r in due:
+        scheduler.set_coverage(conn, r["series"], r["period"], "frozen")
+        scheduler.mark_done(conn, r["id"], "ok")
+        print(f"  ✓ {r['lane']}/{r['series']}/{r['period']}/freeze: ok")
+    return len(due)
+
+
 def _drain_due(conn, s, md) -> int:
     due = scheduler.claim_due(conn)
     for r in due:
+        _drain_freezes(conn)
+        # A freeze may already have been handled above, or the watchdog may have
+        # expired this row while an earlier task was doing network work.
+        status = conn.execute("SELECT status FROM runs WHERE id=?", (r["id"],)).fetchone()
+        if status is None or status["status"] not in {"due", "late"}:
+            continue
+        if scheduler.expire_if_overdue(conn, r):
+            continue
         try:
             note = _exec_task(conn, s, md, r)
+            status = conn.execute("SELECT status FROM runs WHERE id=?", (r["id"],)).fetchone()
+            if status["status"] == "MISSED":
+                print(f"  ! {r['task']}: {note}")
+                continue
             scheduler.mark_done(conn, r["id"], note)
             print(f"  ✓ {r['lane']}/{r['series']}/{r['period']}/{r['task']}: {note}")
         except Exception as e:                                   # noqa: BLE001
@@ -180,31 +244,38 @@ def _drain_due(conn, s, md) -> int:
     return len(due)
 
 
-def linger(conn, s, md, max_sec: float = 840.0, poll_sec: float = 20.0) -> int:
-    """Densified event-window loop; returns snapshots taken. Always ends before the
-    next launchd fire so tick processes never pile up."""
-    t_end = _time.monotonic() + max_sec
+def linger(conn, s, md, max_sec: float | None = None, poll_sec: float = 20.0,
+           state: dict | None = None) -> int:
+    """Cover the full release window; max_sec is an explicit test/manual bound."""
+    t_end = None if max_sec is None else _time.monotonic() + max_sec
+    state = state if state is not None else _load_tick_state(s)
     last_snap: dict[str, float] = {}
     pulled: set = set()
     snaps = 0
-    while _time.monotonic() < t_end:
+    while t_end is None or _time.monotonic() < t_end:
         now = datetime.now(timezone.utc)
         wins = _active_windows(conn, now)
         if not wins:
             break
+        _drain_freezes(conn)
         for series, sch in wins:
             iv = snap_interval((now - sch).total_seconds())
             if iv is None:
                 continue
             if _time.monotonic() - last_snap.get(series, -1e9) >= iv:
                 try:
+                    _drain_freezes(conn)
                     md.snapshot_series(series)
                     snaps += 1
                     last_snap[series] = _time.monotonic()
                 except Exception as e:                           # noqa: BLE001
                     print(f"  ! densified snapshot {series}: {e}")
+                finally:
+                    _drain_freezes(conn)
+        now = datetime.now(timezone.utc)
         _post_release_fred_pulls(conn, s, wins, now, pulled)
         _drain_due(conn, s, md)          # T+3m reassess executes the minute it's due
+        _maintenance(conn, s, md, state, event_window=True)
         _time.sleep(poll_sec)
     return snaps
 
@@ -230,32 +301,96 @@ def due_fred_pulls(dt_since_release_sec: float, done: set, key: tuple) -> list[i
 
 
 def _post_release_fred_pulls(conn, s, wins, now, pulled: set) -> None:
+    from prediction_market_macro.ingest.fred import CORE_SIDS, FredPIT
+    # A CPI calendar has four series, but only two underlying FRED releases. Pull
+    # each affected source once per threshold rather than reloading all 17 sources
+    # up to eight times while the T+3m reassessment waits in this same thread.
     for series, sch in wins:
+        sid = REGISTRY[series].fred_first_release
+        if sid not in CORE_SIDS:
+            continue
         dt = (now - sch).total_seconds()
-        for thr in due_fred_pulls(dt, pulled, (series, sch.isoformat())):
-            pulled.add(((series, sch.isoformat()), thr))
+        key = (sid, sch.isoformat())
+        for thr in due_fred_pulls(dt, pulled, key):
+            pulled.add((key, thr))
             try:
-                from prediction_market_macro.ingest.fred import FredPIT
-                got = FredPIT(s.fred_api_key, conn).pull_core()
-                print(f"  fred post-release pull +{thr}s ({series}): "
-                      f"{sum(got.values()) if isinstance(got, dict) else got} rows")
+                _drain_freezes(conn)
+                got = FredPIT(s.fred_api_key, conn).pull(sid)
+                _drain_freezes(conn)
+                print(f"  fred post-release pull +{thr}s ({sid}): {got} rows")
             except Exception as e:                               # noqa: BLE001
-                print(f"  ! fred post-release pull +{thr}s ({series}): {e}")
+                print(f"  ! fred post-release pull +{thr}s ({sid}): {e}")
+            finally:
+                _drain_freezes(conn)
 
 
 def main():
     s = load_settings()
-    conn = init_db(s.db_path)
-    md = KalshiMD(conn)
-    now = datetime.now(timezone.utc)
-    print(f"[tick] {now.isoformat()}")
-    _drain_due(conn, s, md)
-    # intraday price track (§15 mother port): mark open positions every fire
+    from prediction_market_macro.ops.refresh import RefreshBusy, _single_instance
     try:
-        from prediction_market_macro.ops import pnl
-        pnl.mark_all(conn)
-    except Exception as e:                                       # noqa: BLE001
-        print(f"  ! mark_all: {e}")
+        with _single_instance(s.output_dir, "tick.lock"):
+            conn = init_db(s.db_path)
+            try:
+                md = KalshiMD(conn)
+                md.on_progress = lambda: _drain_freezes(conn)
+                now = datetime.now(timezone.utc)
+                print(f"[tick] {now.isoformat()}")
+                state = _load_tick_state(s)
+                if _active_windows(conn, datetime.now(timezone.utc)):
+                    n = linger(conn, s, md, state=state)
+                    print(f"[tick] event-window linger done, densified snapshots={n}")
+                else:
+                    _drain_due(conn, s, md)
+                    _maintenance(conn, s, md, state)
+            finally:
+                conn.close()
+    except RefreshBusy:
+        print("[tick] another tick holds the lock — skipping")
+
+
+def _load_tick_state(s) -> dict:
+    try:
+        state = json.loads((s.output_dir / "tick_state.json").read_text())
+        return state if isinstance(state, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_tick_state(s, state) -> None:
+    fd, path = tempfile.mkstemp(prefix=".tick_state-", dir=s.output_dir)
+    try:
+        with os.fdopen(fd, "w") as out:
+            json.dump(state, out)
+        os.replace(path, s.output_dir / "tick_state.json")
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+def _due(state, key, now, seconds):
+    try:
+        age = (now - datetime.fromisoformat(state[key])).total_seconds()
+        return age < 0 or age >= seconds
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+def _maintenance(conn, s, md, state, *, event_window=False) -> None:
+    """The minute scheduler does not turn every minute into a full ingestion run.
+
+    Ordinary held-book maintenance is 15 minutes, accelerated to one minute during
+    release windows. Persistent timestamps keep this cadence across launchd starts.
+    """
+    now = datetime.now(timezone.utc)
+    if _due(state, "positions", now, 60 if event_window else 900):
+        try:
+            _maintain_positions(conn, s, md)
+        except Exception as exc:
+            print(f"  ! position maintenance: {exc}")
+        state["positions"] = now.isoformat()
+        _save_tick_state(s, state)
+    if not _due(state, "aux", now, 900):
+        return
     # (A) same-day Treasury curve — lands the day's DGS2/5/10/30 within ~15 min of
     # Treasury posting instead of FRED's next-business-day copy (ingest/treasury.py).
     try:
@@ -272,9 +407,39 @@ def main():
         _repull_late_futures(conn, s, now)
     except Exception as e:                                       # noqa: BLE001
         print(f"  ! futures re-pull: {e}")
-    if _active_windows(conn, now):
-        n = linger(conn, s, md)
-        print(f"[tick] event-window linger done, densified snapshots={n}")
+    state["aux"] = now.isoformat()
+    _save_tick_state(s, state)
+
+
+def _maintain_positions(conn, s, md) -> None:
+    """Refresh held legs before applying the existing paper exit/mark policies."""
+    from prediction_market_macro.ops import exits, ledger, pnl, predict_all, trading_kalshi
+    positions = ledger.open_positions(conn)
+    if not positions:
+        return
+    tickers = {f["ticker"] for p in positions for f in p["fills"]}
+    result = md.snapshot_tickers(tickers, before_each=lambda: _drain_freezes(conn))
+    if result["failed"]:
+        print(f"  ! held quote refresh: {result['failed']}")
+    _drain_freezes(conn)
+    try:
+        predict_all.run(conn, s, only_series={p["series"] for p in positions},
+                        update_coverage=False, fail_on_error=True)
+        # A failed metadata/quote request must not turn a still-recent cached book
+        # into an exit. A multi-leg position needs every leg refreshed this cycle.
+        eligible = set(result["refreshed"])
+        exits.shadow_run(conn, s, eligible_tickers=eligible)
+        exits.run(conn, s, eligible_tickers=eligible)
+    finally:
+        # Even if a model/exit fails, publish missing/stale marks honestly.
+        pnl.mark_all(conn)
+        try:
+            trading_kalshi.sync(conn)
+        except Exception as exc:
+            print(f"  ! trading_kalshi.sync: {exc}")
+        _export_frontend(conn, s)
+    print(f"[positions] {datetime.now(timezone.utc).isoformat()}"
+          f" refreshed={len(result['refreshed'])} failed={len(result['failed'])}")
 
 
 _FUT_ROOTS_WATCHED = ("CL", "NG", "RB", "GC")

@@ -84,6 +84,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import time
@@ -97,6 +98,7 @@ from inventory_source import (LEDGER_ACCOUNT_FILES, PAIR_STRATEGIES,  # noqa: E4
                               SourceError, stable_read)
 from ops import rolloff                                              # noqa: E402
 from reconcile import official_close                                 # noqa: E402
+from reconcile import ledger_history                                 # noqa: E402
 
 REPO = _PKG.parent
 STATE_DIR = _PKG / "state"
@@ -126,6 +128,8 @@ REBAL_TOL_BP = 3.0         # 有成交日:全部可归因项扣完后的残差
 # 5bp 仍远小于这道闸门当初要抓的东西(payload 陈价 48.5bp),股数错、少一只票、
 # 现金错这类结构性错误量级都远超 5bp,照样拦得住。
 CROSS_TOL_BP = 5.0
+# 9/11:原始差额超限时,允许用 9/4 已实测确定的固定分钟参考价解释时点桥。
+# 不扫描择优、不放宽 5bp、不修改官方 Q/K;完整逐票证据和剩余差额随报告留存。
 
 LOG_WINDOW = 250        # live/logs/read 单次窗口硬上限(QC 端拒绝更大的请求)
 MAX_LOG_WINDOWS = 8     # 最多回扫 2000 行;扫穿了宁可报错也不假装"未应用"
@@ -367,14 +371,20 @@ def k_effective(frozen: dict, upto_session: str, include_upto: bool = False
     k = float(frozen["k_equity"])
     f_sess = str(frozen["measured_on"])
     n_steps, missing = 0, []
-    if not REPORT_DIR.exists():
-        return k, 0, []
-    for p in sorted(REPORT_DIR.glob("qc_reconcile_*.json")):
-        s = p.stem.replace("qc_reconcile_", "")
+    try:
+        import pandas_market_calendars as mcal
+    except ImportError as e:
+        raise SourceError("缺 NYSE 日历,无法验证冻结后归因台阶是否连续") from e
+    sessions = mcal.get_calendar("NYSE").schedule(start_date=f_sess,
+                                                   end_date=upto_session).index
+    # 从交易日历枚举,不能只 glob 已存在报告:整份报告缺失也必须报缺台阶。
+    for d in sessions:
+        s = d.strftime("%Y-%m-%d")
         in_range = (f_sess < s <= upto_session) if include_upto else \
                    (f_sess < s < upto_session)
         if not in_range:
             continue
+        p = report_path(s)
         a = (((_load(p) or {}).get("equity_check") or {})
              .get("attribution") or {})
         lag = (a.get("rebalance_mirror_lag") or {}).get("usd")
@@ -514,7 +524,7 @@ def fills_of_session(orders: list[dict], session: str, et_tz) -> list[dict]:
                 continue
             ts = ev.get("time")
             if ts is None:
-                continue
+                raise SourceError("非零成交事件缺 time,无法验证成交所属日期及估值时点")
             when = datetime.fromtimestamp(float(ts), tz=timezone.utc
                                           ).astimezone(et_tz)
             if when.strftime("%Y-%m-%d") != session:
@@ -751,16 +761,47 @@ def _corroborated(fn: str, session: str, close, et) -> tuple[bool, str]:
 
 
 def _ledger_accounts(session: str) -> tuple[dict, list[str]]:
-    """五本 account json(须 as_of == session,否则该策略列进 stale)。"""
-    acc, stale = {}, []
-    for st, rel in LEDGER_ACCOUNT_FILES.items():
-        if st == "aeus" and not (REPO / rel).exists():
-            continue        # go-live(9/1)前预期缺席,不入对账也不报 stale
-        d = stable_read(REPO / rel)
-        if str(d.get("as_of")) != session:
-            stale.append(f"{st}:as_of={d.get('as_of')}")
-        acc[st] = d
-    return acc, stale
+    """按 session 读取正式账户存档;当前账户只可用于同一 as_of 日期。"""
+    return ledger_history.load_ledger_accounts(session, repo=REPO,
+                                               account_files=LEDGER_ACCOUNT_FILES)
+
+
+def _reference_book_guard(session: str, qc: dict, fills: list[dict], bar_start: str) -> dict:
+    """固定分钟估值只能用于该分钟已经形成、现金可核实的同一本收盘簿。"""
+    cutoff = datetime.fromisoformat(bar_start)
+    for f in fills:
+        try:
+            at = datetime.fromisoformat(f["at_et"])
+            if at >= cutoff:
+                raise SourceError("参考分钟开始后仍有成交,不能用收盘股数验证较早估值")
+        except (KeyError, ValueError, TypeError):
+            raise SourceError("成交缺有效时点,不能证明固定分钟时的持仓已形成") from None
+    previous = _load(report_path(prev_trading_session(session))) or {}
+    prev_qc = (previous.get("close_snapshot") or {}).get("qc") or previous.get("qc") or {}
+    if (prev_qc.get("cash") is None or not qc.get("deploy_id")
+            or qc["deploy_id"] != prev_qc.get("deploy_id")):
+        raise SourceError("缺相邻交易日同部署现金存档,不能验证分钟参考簿")
+    def number(value):
+        try:
+            n = float(value)
+            if isinstance(value, bool) or not math.isfinite(n):
+                raise ValueError("non-finite")
+            return n
+        except (ValueError, TypeError, OverflowError):
+            raise SourceError("现金/成交金额缺有限数值,不能验证分钟参考簿") from None
+    try:
+        nonfill = number(number(qc["cash"]) - number(prev_qc["cash"]) +
+                         sum(number(f["qty"]) * number(f["fill_px"]) +
+                             number(f.get("fee") if f.get("fee") is not None else 0)
+                             for f in fills))
+    except KeyError:
+        raise SourceError("成交金额字段缺失,不能验证分钟参考簿") from None
+    if abs(nonfill) > 0.01:
+        raise SourceError(f"存在非成交现金变动 {nonfill:+,.2f},其入账时点未知,"
+                          "不能用收盘现金验证较早分钟估值")
+    return {"previous_session": previous.get("session") or prev_trading_session(session),
+            "nonfill_cash_usd": round(nonfill, 6),
+            "all_fills_before_reference": True, "same_deployment": True}
 
 
 def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
@@ -814,27 +855,51 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
     Q = cash + sum(int(s) * closes[rolloff._canon(t)]
                    for t, s in shares.items())
 
-    # QC 自报净值降级为**独立交叉校验**:同一个收盘、两条互不相干的路径
-    # (QC 引擎自己的 TotalPortfolioValue vs 我们用 Polygon 收盘价逐票复算)。
-    # 对不上说明股数、现金或收盘价至少有一样是错的 —— 那时不出裁决,而不是
-    # 挑一个信。这才是原先 quiet_gap 想干却干不了的事:它比的是同一份 payload
-    # 的两个字段,一陈一新,量到的是价格陈旧度,不是账户静不静。
+    # QC 自报净值是独立交叉校验,但它停在收盘前的分钟估值(official_close 文首
+    # 9/4 实测),不能把最后两分钟/收盘竞价行情当成错账。先保留原始检查;
+    # 仅超限时补固定分钟的逐票桥,剩余差仍须通过同一个 5bp 闸门。
     gross = float(qc["gross"])
     q_rep = qc.get("equity_reported")
     cross = None if q_rep is None else Q - float(q_rep)
     if cross is not None and gross > 0:
         cross_bp = abs(cross) / gross * 1e4
         if cross_bp > CROSS_TOL_BP:
-            return {"status": "pending", "session": session,
-                    "qc_equity_Q": round(Q, 2),
-                    "qc_equity_reported": round(float(q_rep), 2),
-                    "cross_check_usd": round(cross, 2),
-                    "cross_check_bp": round(cross_bp, 2),
-                    "note": f"官方收盘价复算的 Q({Q:,.2f})与 QC 自报净值"
-                            f"({float(q_rep):,.2f})差 {cross:+,.2f}"
-                            f"({cross_bp:.2f}bp > {CROSS_TOL_BP}bp)—— 两条独立"
-                            f"路径对不上,股数/现金/收盘价至少有一样是错的,"
-                            f"不出裁决"}
+            try:
+                ref = official_close.qc_reference_prices(
+                    session, [rolloff._canon(t) for t in shares])
+                book = _reference_book_guard(session, qc, fills, ref["bar_start_et"])
+                px = ref["prices"]
+                official_close.assert_prices_sane(closes, px, lambda t: t)
+                legs = [{"qc_symbol": t, "ticker": rolloff._canon(t), "shares": int(s),
+                         "official_close": closes[rolloff._canon(t)],
+                         "reference_close": px[rolloff._canon(t)],
+                         "close_minus_reference_usd": round(
+                             int(s) * (closes[rolloff._canon(t)] -
+                                       px[rolloff._canon(t)]), 6)}
+                        for t, s in sorted(shares.items())]
+                q_ref = cash + sum(int(s) * px[rolloff._canon(t)]
+                                   for t, s in shares.items())
+                remaining = q_ref - float(q_rep)
+                remaining_bp = abs(remaining) / gross * 1e4
+                bridge = {k: v for k, v in ref.items() if k != "prices"}
+                bridge.update(status="verified" if remaining_bp <= CROSS_TOL_BP else "mismatch",
+                              book_check=book,
+                              reference_equity=round(q_ref, 6),
+                              close_minus_reference_usd=round(Q - q_ref, 6),
+                              remaining_usd=round(remaining, 6),
+                              remaining_bp=round(remaining_bp, 6),
+                              tolerance_bp=CROSS_TOL_BP, n_tickers=len(legs), per_ticker=legs)
+            except SourceError as e:
+                bridge = {"status": "unavailable", "note": str(e)}
+            row["valuation_time_bridge"] = bridge
+            if bridge["status"] != "verified":
+                row.update(status="pending", qc_equity_Q=round(Q, 2),
+                           qc_equity_reported=round(float(q_rep), 2),
+                           cross_check_usd=round(cross, 2), cross_check_bp=round(cross_bp, 2),
+                           note=f"两条独立估值路径原始差 {cross:+,.2f}"
+                                f"({cross_bp:.2f}bp > {CROSS_TOL_BP}bp),固定分钟时点桥"
+                                f"未验证通过(见 valuation_time_bridge),不出裁决")
+                return row
     P = sum(off.values())
     D = P - Q
     row.update(official_date=d_off,
@@ -873,11 +938,19 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
                                   "n_tickers": len(res),
                                   "unpriced": sorted(unpriced)}
 
-    acc, stale = _ledger_accounts(session)
-    row["ledger_equity"] = {st: round(float(a.get("equity") or 0.0), 2)
-                            for st, a in acc.items()}
-    if stale:
-        row["ledger_stale"] = stale
+    acc, missing = _ledger_accounts(session)
+    row["ledger_equity"] = {st: round(float(a["equity"]), 2)
+                            for st, a in acc.items() if a.get("equity") is not None}
+    row["ledger_sources"] = {st: a["_reconcile_source"] for st, a in acc.items()
+                              if a.get("_reconcile_source")}
+    missing_required = [m for m in missing if m.split(":", 1)[0] in off]
+    missing_required += [f"{st}:dated dividend account missing" for st in off if st not in acc
+                         and not any(m.startswith(f"{st}:") for m in missing_required)]
+    if missing_required:
+        row.update(status="pending", ledger_missing=missing_required,
+                   note="缺本交易日的正式账本/累计股息,不能拿其他日期的数据做归因: "
+                        + "; ".join(missing_required))
+        return row
 
     prev = prev_report(session)
     if prev is None:
@@ -1296,7 +1369,7 @@ def _verdict(rep: dict) -> str:
 
 
 def settle(session: str | None = None, dry: bool = False) -> dict:
-    """次日补算 equity 段:QC 侧用收盘存档,本地侧用此刻(才齐)的数据。
+    """补算 equity 段:QC 用收盘存档,本地账本按 session 取历史数据。
 
     这趟**一行 QC API 都不调**,连客户端都不创建 —— 因此在结构上不可能推
     target、不可能下单。它只碰 equity 段,holdings/target 两段原样保留(那两段
@@ -1321,11 +1394,18 @@ def settle(session: str | None = None, dry: bool = False) -> dict:
               f"({prior_eq['status']}) — 幂等跳过")
         return rep
 
-    import exporter as exp
-    from inventory_source import read_snapshot
     try:
-        snap = read_snapshot()
-        built = exp.compose(snap)["built"]
+        boot = rep.get("bootstrap") or {}
+        if (boot.get("known") is True and boot.get("transition") is False
+                and boot.get("legacy_remaining") == 0 and boot.get("scaled_remaining") == 0):
+            # 当天现场已经证明 L/S 为零。次日的 inventory 与本场次无关,
+            # 不能用它重新解释历史队列,也不应让它的更新半窗阻断历史补算。
+            snap, built = {}, {"legacy_alive": {}, "scaled_alive": {}}
+        else:
+            import exporter as exp
+            from inventory_source import read_snapshot
+            snap = read_snapshot()
+            built = exp.compose(snap)["built"]
     except SourceError as e:
         fresh = {"status": "pending", "session": session,
                  "note": f"持仓文件读不出来: {e} —— 过渡期未镜像盈亏算不了"}

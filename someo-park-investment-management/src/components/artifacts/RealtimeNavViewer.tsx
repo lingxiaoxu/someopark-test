@@ -7,6 +7,12 @@ import {
 import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import { API_BASE, apiHeaders } from '../../lib/api';
+import {
+  ADDITIVE, MULTIPLICATIVE, OFFICIAL_KEY, buildRealtimeNavPanel, capitalPresentation,
+  dayPercent, formatNavMoney, formatNavPercent, holdingsPresentation,
+  officialAnchor as panelOfficialAnchor, previousByName,
+  type Holding, type NavNode, type NavLatest, type Cohort, type MirrorState,
+} from '../../../shared/realtimeNav';
 
 // 实时净值看板(controller M7)。数据:controller/output 经 /api/controller-nav。
 // UI 借鉴 StrategyPerformanceViewer(同配色/布局语言);历史日频看官方 viewer,
@@ -62,59 +68,12 @@ const ET_HM = new Intl.DateTimeFormat('en-GB', {
 const ET_HMS = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
-interface Holding { id: string; name: string; shares: number; value: number }
-interface NavNode {
-  node_id: string; display_name: string; kind: string; value: number;
-  parent_id?: string | null; positions_as_of?: string | null; corp_action?: boolean;
-  holdings?: Holding[] | null; day_return?: number | null;
-}
-interface NavLatest {
-  ts: string; structure_hash: string; stale: boolean; market: string;
-  feed_delay_min: number | null; missing: string[]; nodes: NavNode[];
-  last_rebuild_ts?: string | null; structure_diff?: string[];
-  corp_actions?: Record<string, string>; rebuild_error?: string | null;
-  rebuild_error_age_s?: number | null;
-}
-// 官方口径映射(与 reconcile_eod._ANCHORS 一致;display_name → official key)
-const OFFICIAL_KEY: Record<string, string> = {
-  MRPT: 'mrpt', MTFS: 'mtfs', SSRS: 'ssrs', AISS: 'aiss', AEUS: 'aeus', BDC: 'bdc',
-};
-// 账本口径 → 官方口径是**两族**变换(2026-08-19 逐日实测确认),股数只有一族该缩放:
-//   乘性族 SSRS/AISS/BDC —— official = ledger × k(AISS k=2.68155435 连续 55 天、
-//     SSRS k=0.9950436 连续 71 天、BDC k=1)。k 同时作用于金额**和股数**:官方那本
-//     账真的持有 ledger×k 股(KLAC 账本 1,678 → 官方 4,500),所以显示股数必须乘 k,
-//     否则 shares × price ≠ 同一行显示的金额 —— 这正是本次修的病。
-//   加性族 MRPT/MTFS —— official = ledger − C(C 恒定到 $0.01,105 天),且官方日 P&L
-//     与账本日 P&L 逐美元相等 ⇒ 敞口 1:1。**股数绝不能缩放**:MTFS 的 k(t) 实测在
-//     0.32–0.50 之间漂,按它缩放会让面板一手不交易也天天变股数,并把真实敞口低报
-//     2.6 倍、与已发布的 P&L 序列自相矛盾。它们的显示口径另案处理(加一行资金基准差)。
-const MULTIPLICATIVE = new Set(['SSRS', 'AISS', 'AEUS', 'BDC']);
-const ADDITIVE = new Set(['MRPT', 'MTFS']);
-// pairs 的 QC 镜像倍数按**开仓时刻**归队(2026-08-19 三队列),服务端已按
-// (pair, open_date) 解析好,前端只取现成倍数,不在这里重实现队列判定。
-interface Cohort { cohort: string; m: number }
-interface MirrorState {
-  scalars: Record<string, number>;
-  capital_base?: Record<string, number>;          // 加性族 C:official = ledger − C
-  cohorts?: Record<string, Record<string, Cohort>>;
-  scaled_frozen?: boolean;
-  rolloff?: {
-    frozen_at: string; measured_on: string; k_equity: number;
-    qc_equity?: number; panel_official_total?: number;
-  } | null;
-}
 const COHORT_COLOR: Record<string, string> = {
   L: '#b45309', S: '#7c3aed', F: '#16a34a',
 };
 const COHORTS = ['L', 'S', 'F'] as const;
-// QC exporter 用 Python int(round(x)) = banker 舍入到偶数;JS Math.round 是 half-up,
-// 恰好 .5 时会与 QC 差 1 股。共用常数就要共用舍入,否则"面板=QC"不成立。
-const bankersRound = (x: number) => {
-  const f = Math.floor(x), d = x - f;
-  return d > 0.5 ? f + 1 : d < 0.5 ? f : (f % 2 === 0 ? f : f + 1);
-};
 const usd = (v: number) =>
-  `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  `${v < 0 ? '−' : ''}$${formatNavMoney(Math.abs(v))}`;
 
 // A2 + K 行——把"展开项加总 ≠ 卡片主数字"这件事画出来。
 // 加性族 MRPT/MTFS:账本口径 → −C 落官方,附 K 三队列;乘性族 SSRS/AISS/BDC
@@ -135,34 +94,9 @@ function waterfall(s: NavNode, kids: NavNode[],
                    cohorts: Record<string, Cohort> | undefined,
                    mirror: MirrorState | null, t: (k: string, o?: any) => string,
                    mul?: { k: number }) {
-  const st = OFFICIAL_KEY[s.display_name];
-  const C = mirror?.capital_base?.[st];
-  // 乘性族(mul 给定 k)整段用**官方口径**(×k)——与上方展开行显示的金额同刻度,
-  // 底行直接等于卡片主数字;加性族 scale=1(账本口径),经 −C 落到官方。
-  const scale = mul ? mul.k : 1;
-  // 多空拆腿:逐腿按符号归边,绝不 net。kid 无 holdings 时退回 kid.value 归边;
-  // 无 kids(SSRS/BDC 直接持股)取策略节点自己的 holdings。
-  let Lmv = 0, Smv = 0;
-  const addLeg = (v: number) => { if (v >= 0) Lmv += v; else Smv += -v; };
-  if (kids.length) {
-    for (const k of kids) {
-      const hs = k.holdings || [];
-      if (hs.length === 0) { addLeg(k.value * scale); continue; }
-      for (const h of hs) addLeg(h.value * scale);
-    }
-  } else {
-    for (const h of s.holdings || []) addLeg(h.value * scale);
-  }
-  const E = s.value * scale;                    // add: 账本 equity;mul: 官方净值
-  const shortDue = 0.02 * Smv;                  // 102% 抵押中超出卖出所得的 2%
-  const restrictedCash = 1.02 * Smv;            // PB 扣押的空头抵押
-  const marginLoan = Math.max(0, Lmv + shortDue - E);
-  const freeCash = Math.max(0, E - Lmv - shortDue);
-  const gross = Lmv + Smv;
-  // 乘性族 official = ledger×k ⇒ gross 与 E 同乘 k,杠杆两口径恒等
-  const levLedger = E > 0 ? gross / E : null;
-  const levOfficial = mul ? levLedger
-    : (C !== undefined && E - C > 0 ? gross / (E - C) : null);
+  const { C, Lmv, Smv, E, restrictedCash, marginLoan, freeCash,
+    gross, levLedger, levOfficial, byCohort, unknown, gap } =
+    capitalPresentation(s, kids, cohorts, mirror, mul);
   const row = (label: string, v: number | null, opt?: {
     bold?: boolean; color?: string; top?: string; title?: string }) => (
     <div style={{ fontSize: 10.5, display: 'flex', justifyContent: 'space-between',
@@ -173,20 +107,6 @@ function waterfall(s: NavNode, kids: NavNode[],
       <span>{v === null ? '—' : usd(v)}</span>
     </div>
   );
-  // QC 未镜像的持仓市值:逐腿 (账本股数 − QC 股数) × 现价,按队列分档
-  const byCohort: Record<string, number> = { L: 0, S: 0, F: 0 };
-  let unknown = false;
-  for (const k of kids) {
-    const mul = cohorts?.[k.display_name];
-    if (!mul) { unknown = true; continue; }
-    for (const h of k.holdings || []) {
-      if (!h.shares) continue;
-      const px = h.value / h.shares;
-      const qcSh = mul.m === 0 ? 0 : bankersRound(h.shares * mul.m);
-      byCohort[mul.cohort] += (h.shares - qcSh) * px;
-    }
-  }
-  const gap = byCohort.L + byCohort.S + byCohort.F;
   return (
     <div style={{ marginTop: 3 }}>
       {row(t('realtimeNav.wfLong'), Lmv, { top: '1px solid #111' })}
@@ -335,15 +255,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
 
   // 开盘锚(plan §4.3 吻合契约):日内 % 基准 = 前一交易日 controller 收盘
   // (16:00 ET 截断,与官方 EOD 同时点);无昨收(首日)才退回当日首笔,如实标注。
-  const prevByName = useMemo(() => {
-    const m: Record<string, number> = {};
-    if (!prevClose?.values || !latest) return m;
-    for (const n of latest.nodes) {
-      const v = prevClose.values[n.node_id];
-      if (v !== undefined) m[n.display_name] = v;
-    }
-    return m;
-  }, [prevClose, latest]);
+  const prevByName = useMemo(() => previousByName(latest, prevClose), [prevClose, latest]);
   const anchored = Object.keys(prevByName).length > 0;
 
   const chart = useMemo(() => {
@@ -442,47 +354,11 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     return { data, names: [...wanted], lim, offSum };
   }, [chartStream, freq, strategies, prevByName, official, mirror]);
 
-  // 日内 %:优先用后端发布的 day_return(跨结构变化已链式衔接,记账台阶已剔除);
-  // 老数据无此字段时退回客户端基准计算
-  const dayPct = (name: string, value: number) => {
-    const node = (latest?.nodes || []).find(n => n.display_name === name);
-    if (node && node.day_return !== undefined && node.day_return !== null) {
-      return node.day_return * 100;
-    }
-    const base = prevByName[name]
-      ?? (streamRows.find(r => r.display_name === name)?.value as number | undefined);
-    return base ? (value / base - 1) * 100 : null;
-  };
-  // 官方口径换算(主展示口径,plan §4.3.3:与 StrategyPerformanceViewer 同刻度)
-  // 账本口径与官方口径持仓相同 → 日内收益同源;绝对值 = 官方 EOD × (1+r)。
-  // 闭市/无日内基准时 r=0(= 官方 EOD 本身,与官方曲线严格一致)。
-  // A3(2026-08-19):加性族 MRPT/MTFS 走**加法**,不能套百分比。official = ledger − C
-  //   是恒等式,官方日 P&L 与账本日 P&L 逐美元相等 ⇒ live = ledger_live − C。
-  //   旧式 off.value×(1+账本涨跌%) 把账本的百分比乘在小 2.65 倍的官方本金上,等于把
-  //   当天的美元盈亏也缩小 2.65 倍 —— 8/19 实测 MTFS 主数字多报 $38,292($334,727 vs
-  //   $296,435),且与展开项加总(见 waterfall)自相矛盾。EOD 重锚才盖住,日内一直错。
-  //   C 取不到就返回 null(不静默退回错公式):卡片退到账本口径并把"官方锚定"标红。
-  // A5(2026-08-20):乘性族同样**直接套恒等式** live = ledger × k,不再用
-  //   off.value×(1+日内%)。旧式在两处出错:
-  //   (1) 官方 EOD 每天只在 09:40 pipeline 跑完后前移一天,而 day_return 每天 ET 零点
-  //       归零 —— 收盘到次日 09:40 这一段 (1+0) 把主数字钉死在**前天**的 EOD 上。
-  //       8/20 00:49 实测:AISS 报 $2,909,113,真值 ledger 1,050,563.84 × 2.68155435
-  //       = $2,817,144,单腿多报 $91,969,头部合计多报 $81,263。
-  //   (2) 下面展开行的 scale 取 oa.live/s.value,旧式下 = 2.7691 ≠ k = 2.68155,
-  //       而股数是按 k 换算的 ⇒ 股数 × 现价 ≠ 显示金额(用户早先提的自相矛盾)。
-  //       改成恒等式后 scale 恒等于 k,两者天然一致。
-  //   实测依据:day_return 与原始账本比在乘性族上逐日相等(8/18、8/19 差 0.0000pp,
-  //   记账台阶只有 MTFS 有),所以 ledger×k 是恒等式而非近似。k 取不到返回 null。
-  const officialAnchor = (name: string, value: number) => {
-    const off = official?.[OFFICIAL_KEY[name]];
-    if (!off) return null;
-    if (ADDITIVE.has(name)) {
-      const C = mirror?.capital_base?.[OFFICIAL_KEY[name]];
-      return typeof C === 'number' ? { ...off, live: value - C } : null;
-    }
-    const k = mirror?.scalars?.[OFFICIAL_KEY[name]];
-    return typeof k === 'number' && k > 0 ? { ...off, live: value * k } : null;
-  };
+  // 展示规则与聊天 NAV 共用，保留面板原有的基准与回退行为。
+  const dayPct = (name: string, value: number) =>
+    dayPercent(name, value, latest, prevByName, streamRows);
+  const officialAnchor = (name: string, value: number) =>
+    panelOfficialAnchor(name, value, official, mirror);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={t('realtimeNav.errNotRunning', { err: error })} />;
@@ -499,19 +375,13 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     : reconcile?.verdict === 'ok' ? '#16a34a'
     : reconcile?.verdict === 'partial' ? '#b45309' : '#999';
 
-  // 心跳闸门(2026-08-14):常驻循环 1 分钟一跳,闭市也跳(平移续写)——所以
-  // tick 年龄是与行情无关的存活信号。8/13 循环被一次 DNS 失败打挂后,面板仍把
-  // 11 小时前的死数据标成"实时",要用户自己发现 —— 陈旧必须自己喊出来。
-  const feedAgeS = Math.max(0, (Date.now() - new Date(latest.ts).getTime()) / 1000);
-  const feedDead = feedAgeS > 600;
-  const feedLagging = feedAgeS > 180;
-  const ageTxt = feedAgeS >= 3600 ? `${Math.floor(feedAgeS / 3600)}h${Math.floor((feedAgeS % 3600) / 60)}m`
-    : `${Math.floor(feedAgeS / 60)}m`;
-  // 行情延迟如实标注(2026-08-14):订阅是 15 分钟延迟行情,feed_delay_min 一直
-  // 如实在报却从没进过 UI ——"实时 · {tick 时刻}"把新鲜度多报了 15 分钟。
-  // 主时间戳改为**价格时点**(ts − delay),延迟量写明;心跳仍看 tick 时刻。
-  const delayMin = latest.feed_delay_min ?? 0;
-  const priceTs = new Date(new Date(latest.ts).getTime() - delayMin * 60000);
+  const panel = buildRealtimeNavPanel({ latest, official, mirror, prevClose,
+    streamRows, reconcile, nowMs: Date.now() });
+  const feedDead = panel.feed.dead;
+  const feedLagging = panel.feed.lagging;
+  const ageTxt = panel.feed.ageText;
+  const delayMin = panel.feed.delayMin;
+  const priceTs = new Date(panel.feed.priceTs);
 
   return (
     <div className="h-full flex flex-col gap-3 p-1 overflow-auto">
@@ -531,56 +401,39 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                     time: ET_HMS.format(new Date(latest.ts)) })}
           </div>
           {(() => {
-            // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):
-            // Σ 各策略官方 EOD × (1+日内收益);官方数据不可用才退回账本合计。
-            const parts = strategies.map(s => officialAnchor(s.display_name, s.value));
-            const allOfficial = parts.length > 0 && parts.every(Boolean);
-            const main = allOfficial
-              ? parts.reduce((a, p) => a + p!.live, 0)
-              : portfolio?.value ?? 0;
-            // % 与 $ 同权重:官方口径合计的日内变化(账本权重的 PF day_return
-            // 会因两口径策略权重不同而对不上主数字)
-            const offSum = allOfficial ? parts.reduce((a, p) => a + p!.value, 0) : 0;
-            const pct = allOfficial && offSum
-              ? (main / offSum - 1) * 100
-              : portfolio ? dayPct('PORTFOLIO', portfolio.value) : null;
-            // Quality check 汇总(用户令:不显示账本明细,只报各 check 是否通过)
-            // 双引擎对拍:nav_latest 只在两引擎逐节点对拍通过后才发布,能读到即通过
-            const rec = reconcile?.verdict;
+            const pct = panel.portfolio.day_return_pct;
+            const states = panel.quality.states;
             const qc: { label: string, state: 'pass' | 'fail' | 'pending' }[] = [
-              { label: t('realtimeNav.qcDual'), state: 'pass' },
+              { label: t('realtimeNav.qcDual'), state: states.dual_engine_match },
               // 心跳:循环 1m 一跳(闭市平移也跳),超时=进程已死或卡住
               { label: feedDead ? t('realtimeNav.qcHeartbeatDead', { age: ageTxt })
                   : t('realtimeNav.qcHeartbeat'),
-                state: feedDead ? 'fail' : feedLagging ? 'pending' : 'pass' },
-              { label: t('realtimeNav.qcFresh'), state: latest.stale ? 'fail' : 'pass' },
+                state: states.heartbeat },
+              { label: t('realtimeNav.qcFresh'), state: states.price_fresh },
               { label: latest.missing?.length
                   ? t('realtimeNav.qcQuotesMissing', { n: latest.missing.length })
                   : t('realtimeNav.qcQuotes'),
-                state: latest.missing?.length ? 'fail' : 'pass' },
+                state: states.full_book_quotes },
               { label: reconStale ? t('realtimeNav.qcReconStale', { n: reconAge })
                   : t('realtimeNav.qcRecon'),
-                state: rec === 'breach' ? 'fail'
-                  : reconStale ? 'pending'
-                  : rec === 'ok' ? 'pass' : 'pending' },
-              { label: t('realtimeNav.qcAnchor'), state: allOfficial ? 'pass' : 'fail' },
+                state: states.reconcile },
+              { label: t('realtimeNav.qcAnchor'), state: states.official_anchor },
               // 持仓文件半更新窗(inventory→account 约 1 分钟)是每日常规:
               // 短窗琥珀"同步中",超 10 分钟才是真异常升级红色
               { label: t('realtimeNav.qcStruct'),
-                state: !latest.rebuild_error ? 'pass'
-                  : (latest.rebuild_error_age_s ?? 0) < 600 ? 'pending' : 'fail' },
+                state: states.structure_sync },
             ];
-            const allPass = qc.every(c => c.state === 'pass');
-            const anyFail = qc.some(c => c.state === 'fail');
+            const allPass = panel.quality.allPass;
+            const anyFail = panel.quality.anyFail;
             return (
               <>
                 <div style={{ fontSize: 30, fontWeight: 800 }}
                   title={t('realtimeNav.mainTitle')}>
-                  ${main.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${panel.portfolio.display_value}
                   {pct !== null && (
                     <span style={{ fontSize: 15, marginLeft: 10,
                       color: pct >= 0 ? '#16a34a' : '#e11d48' }}>
-                      {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%{' '}
+                      {formatNavPercent(pct)}{' '}
                       {anchored && prevClose?.date
                         ? t('realtimeNav.vsPrevClose', { date: `${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` })
                         : t('realtimeNav.intraday')}
@@ -664,12 +517,8 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 10 }}
         className="shrink-0">
         {strategies.map(s => {
-          // 日内 % 与卡片主数字同口径(与顶部组合卡的算法一致):官方口径下加性族的 %
-          // 天然是账本 % 的 ~2.65 倍(内生杠杆),已发布的 performance 曲线就是这个刻度。
-          // 乘性族两者恒等,所以统一成一个公式没有副作用。
-          const oaPct = officialAnchor(s.display_name, s.value);
-          const pct = oaPct && oaPct.value ? (oaPct.live / oaPct.value - 1) * 100
-            : dayPct(s.display_name, s.value);
+          const display = panel.strategies.find(card => card.node_id === s.node_id)!;
+          const pct = display.day_return_pct;
           const kids = childrenOf(s.node_id);
           const open = expanded.has(s.node_id);
           return (
@@ -698,12 +547,12 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                           ? 'realtimeNav.cardOfficialTitleAdd'
                           : 'realtimeNav.cardOfficialTitle', { date: oa.date })
                         : t('realtimeNav.cardNoOfficial')}>
-                      ${(oa ? oa.live : s.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${display.display_value}
                     </div>
                     <div style={{ fontSize: 10.5 }}>
                       {pct !== null && (
                         <span style={{ color: pct >= 0 ? '#16a34a' : '#e11d48', fontWeight: 700 }}>
-                          {pct >= 0 ? '+' : ''}{pct.toFixed(2)}% {t('realtimeNav.intraday')}
+                          {formatNavPercent(pct)} {t('realtimeNav.intraday')}
                         </span>
                       )}
                       <span style={{ color: '#999', marginLeft: 6 }}>
@@ -730,14 +579,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 const cohorts = additive
                   ? mirror?.cohorts?.[OFFICIAL_KEY[s.display_name]] : undefined;
                 const leafRow = (h: Holding, indent: boolean, mul?: Cohort) => {
-                  const sh = (typeof kf === 'number' && kf > 0)
-                    ? bankersRound(h.shares * kf) : h.shares;
-                  // A4:加性族显示"账本股数 → QC 股数",QC 侧用与 exporter 同一套
-                  // banker 舍入;L 队列恒 0 股(go-live 冻结,有机退场中)。
-                  // 乘性族(全额缩放镜像 ×k)无队列:QC 股数 = 显示股数本身
-                  // (面板已按 ×k+banker 舍入换算),标签把镜像关系显式画出来。
-                  const qc = mul ? (mul.m === 0 ? 0 : bankersRound(h.shares * mul.m))
-                    : (scalable && !missingK ? sh : null);
+                  const displayHolding = holdingsPresentation(h, s, official, mirror, mul);
+                  const sh = displayHolding.shares;
+                  const qc = displayHolding.qc_shares;
                   return (
                   <div key={h.id} style={{ fontSize: 10, display: 'flex',
                     justifyContent: 'space-between', padding: '2px 0',
@@ -772,7 +616,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                         </span>
                       )}
                     </span>
-                    <span>${(h.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span>${displayHolding.display_value}</span>
                   </div>
                   );
                 };

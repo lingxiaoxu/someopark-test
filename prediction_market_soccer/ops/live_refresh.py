@@ -7,9 +7,9 @@ JSON to BOTH the canonical output dir AND the frontend's public/data dir, which 
 local Express server serves over the Cloudflare tunnel — so the live site refreshes
 WITHOUT a Firebase redeploy (the frontend polls inplay_live.json every 30s).
 
-Match window = any fixture kicked off in the last ~3h or starting in the next ~5min
+Match window = any fixture kicked off in the last ~3h or starting in the next ~25min
 (covers 90' + stoppage + half-time + a pre-kickoff warm-up). Outside it: 1 DB query,
-no API calls, no writes.
+no fixture API calls; the health heartbeat and pending report retries remain active.
 
     python -m prediction_market_soccer.ops.live_refresh            # one shot
     python -m prediction_market_soccer.ops.live_refresh --loop 60  # foreground loop (dev)
@@ -23,6 +23,8 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.ops.run_status import (RunStatus, atomic_bytes, read_status, write_both, publish_operations)
+from prediction_market_soccer.ops.maintenance_gate import writer
 
 
 # In-progress statuses (API-Football). A fixture sitting in one of these in OUR DB hasn't been
@@ -31,7 +33,7 @@ _LIVE_STATUS = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 
 
 def _in_match_window(conn) -> bool:
-    """True if any fixture is plausibly live now (kicked off ≤3h ago … +5min ahead), OR our DB
+    """True if any fixture is plausibly live now (kicked off ≤3h ago … +25min ahead), OR our DB
     still holds an in-progress match that hasn't been finalized.
 
     The second clause matters for knockout ties: extra time + a penalty shootout can push the
@@ -45,7 +47,7 @@ def _in_match_window(conn) -> bool:
     lph = ",".join("?" * len(lids))
     now = datetime.now(timezone.utc)
     lo = (now - timedelta(hours=3)).isoformat()
-    hi = (now + timedelta(minutes=5)).isoformat()
+    hi = (now + timedelta(minutes=25)).isoformat()
     if conn.execute(
         f"SELECT COUNT(*) n FROM fixture WHERE league_id IN ({lph}) AND kickoff_ts BETWEEN ? AND ?",
         (*lids, lo, hi)).fetchone()["n"]:
@@ -61,9 +63,7 @@ def _in_match_window(conn) -> bool:
 
 def _write_both(name: str, doc) -> None:
     """Write an export to the canonical output dir AND the served public/data dir."""
-    payload = json.dumps(doc, ensure_ascii=False, indent=2)
-    for d in (CONFIG.paths.output, CONFIG.paths.frontend_data):
-        (d / name).write_text(payload, encoding="utf-8")
+    write_both(name, doc)
 
 
 
@@ -271,7 +271,15 @@ def _capture_milestones(conn, inplay: dict) -> int:  # noqa: C901
             gh, ga = (int(x) for x in str(m.get("score", "0-0")).split("-"))
         except Exception:
             gh, ga = None, None
+        try:
+            rh, ra = (int(x) for x in str(m.get("reds")).split("-"))
+            if rh < 0 or ra < 0:
+                raise ValueError("Invalid observed red-card count")
+        except (TypeError, ValueError):
+            rh, ra = None, None  # Missing observed state must never become an invented 0-0.
         model = m.get("model") or {}
+        if not model or m.get("pricing_state") == "unavailable":
+            continue  # do not permanently freeze an unavailable model as a valid milestone
         prices = m.get("prices") or {}
         kq, pq = prices.get("kalshi") or {}, prices.get("poly_us") or {}
         blind = inplay.get("venue_blind") or {}
@@ -305,42 +313,29 @@ def _capture_milestones(conn, inplay: dict) -> int:  # noqa: C901
                 continue
             kh, khb = ab(kq, "home"); kd, kdb = ab(kq, "draw"); ka, kab = ab(kq, "away")
             ph, phb = ab(pq, "home"); pd_, pdb = ab(pq, "draw"); pa, pab = ab(pq, "away")
-            conn.execute(
+            inserted = conn.execute(
                 "INSERT OR IGNORE INTO milestone_snapshot "
                 "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
                 " p_model_home, p_model_draw, p_model_away, "
                 " kalshi_home_ask, kalshi_home_bid, kalshi_draw_ask, kalshi_draw_bid, kalshi_away_ask, kalshi_away_bid, "
                 " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
-                " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
+                " reds_home, reds_away, price_source) VALUES (?,?,?,?,?,?,?, ?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?)",
                 (fid, code, datetime.now(timezone.utc).isoformat(), minute, st, gh, ga,
                  model.get("home"), model.get("draw"), model.get("away"),
-                 kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, "live"))
-            n += 1
+                 kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, rh, ra, "live"))
+            if inserted.rowcount:
+                from prediction_market_soccer.util.timing_provenance import record_live_milestone
+                record_live_milestone(conn, fid, code)
+                n += 1
     if n:
         conn.commit()
     return n
 
 
-def _maybe_backfill_milestones(conn) -> bool:
-    """Backfill PRE→FT price tracks for any SETTLED match still missing its FT
-    milestone row, retrying each cycle until the venue's price history is available.
-
-    Decoupled from the champion watermark on purpose: a just-finished match can lag
-    in Polymarket's catalog for a while, so a single on-settle attempt often finds
-    nothing. This cheap DB guard (only runs when a settled match lacks an FT row)
-    keeps retrying until the history shows up, then naturally goes quiet.
-    """
-    missing = conn.execute(
-        "SELECT COUNT(*) n FROM fixture f "
-        "WHERE f.status_short IN ('FT','AET','PEN') AND f.home_goals IS NOT NULL "
-        "AND NOT EXISTS (SELECT 1 FROM milestone_snapshot m "
-        "                WHERE m.fixture_api_id=f.api_id AND m.milestone='FT')"
-    ).fetchone()["n"]
-    if not missing:
-        return False
-    from prediction_market_soccer.ops import backfill_milestones
-    backfill_milestones.backfill(conn)
-    return True
+def _maybe_backfill_milestones(conn) -> dict:
+    """Retry individual missing targets inside the bounded daily collection scope."""
+    from prediction_market_soccer.ops.daily_collection import run
+    return run(conn)
 
 
 
@@ -382,77 +377,70 @@ def _maybe_refresh_risk(conn) -> None:
     _write_both("risk_report.json", asdict(risk_report.build(conn)))
 
 
-def _maybe_refresh_champion(conn) -> None:
-    """Re-publish soccer_model.json only when the settled-match count has risen
-    (a match just finished) — keeps the heavy tournament sim off the per-minute path."""
-    settled = conn.execute(
-        "SELECT COUNT(*) n FROM fixture WHERE status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"
-    ).fetchone()["n"]
-    wm = CONFIG.paths.output / ".champion_watermark"
-    prev = -1
+def _settled_count(conn):
+    return conn.execute("SELECT COUNT(*) FROM fixture WHERE status_short IN ('FT','AET','PEN') "
+                        "AND home_goals IS NOT NULL").fetchone()[0]
+
+
+def _maybe_refresh_reports(conn):
+    """Independent success watermark: spawning or refreshing champions is not report success."""
+    settled = _settled_count(conn)
     try:
-        prev = int(wm.read_text().strip())
-    except Exception:
-        pass
-    if settled == prev:
+        previous = int((CONFIG.paths.output / ".settle_reports_watermark").read_text().strip())
+    except (OSError, ValueError):
+        previous = -1
+    if settled == previous or not _due(".settle_reports_spawned", 300):
         return
-    # A match just finished → refresh scorer tallies (TTL-gated per comp, cheap),
-    # then re-simulate every league on the new results.
+    from prediction_market_soccer.ops.proc_lock import acquire, release
+    if not acquire("refresh_all"):
+        return  # a full refresh or the previous report process already owns the work
+    release("refresh_all")
+    import subprocess
+    import sys
+    CONFIG.paths.logs.mkdir(parents=True, exist_ok=True)
+    with (CONFIG.paths.logs / "settle_reports.log").open("a") as log:
+        subprocess.Popen([sys.executable, "-m", "prediction_market_soccer.ops.settle_reports"],
+                         cwd=str(CONFIG.paths.root.parent), stdout=log,
+                         stderr=subprocess.STDOUT, start_new_session=True)
+    atomic_bytes(CONFIG.paths.output / ".settle_reports_spawned", str(time.time()).encode())
+    print("[live_refresh] pending settle reports spawned in background")
+
+
+def _maybe_refresh_champion(conn) -> None:
+    settled = _settled_count(conn)
+    wm = CONFIG.paths.output / ".champion_watermark"
     try:
-        from prediction_market_soccer.config.leagues import active as _active
+        previous = int(wm.read_text().strip())
+    except (OSError, ValueError):
+        previous = -1
+    if settled == previous:
+        return
+    from prediction_market_soccer.ops.proc_lock import acquire, release
+    if not acquire("refresh_all"):
+        return
+    try:
+        from prediction_market_soccer.config.leagues import active
         from prediction_market_soccer.ingest.api_football import ApiFootball
         from prediction_market_soccer.ingest import soccer_ingest as si
-        _api = ApiFootball(conn)
-        for _c in _active():
-            si.sync_topscorers(_api, conn, _c)
-    except Exception as e:
-        print(f"[live_refresh] topscorers refresh skipped: {e}")
-    from prediction_market_soccer.model.run_model import refresh_model
-    pl = refresh_model()
-    # A match just settled → the bet ledger, the OOS report and the PnL PDF need a
-    # refresh — in a DETACHED process, not here. They ran inline for a while, which was
-    # fine when they scored with the cached live model; the honest per-day walk-forward
-    # made each ~140 strength fits, and this loop holds the single-instance lock, so
-    # every settle wave froze the in-play card for the whole rebuild (8-15 minute
-    # "cycles"; 2,440 prior rebuilds in one day's log before the date-stamped prior
-    # cache landed). The spawn is fire-and-forget: reports land minutes later, the
-    # card never stops, and settle_reports' own lock file keeps it single-flight.
-    try:
-        import subprocess
-        import sys
-        subprocess.Popen(
-            [sys.executable, "-m", "prediction_market_soccer.ops.settle_reports"],
-            cwd=str(CONFIG.paths.repo_root) if hasattr(CONFIG.paths, "repo_root") else None,
-            stdout=open(CONFIG.paths.logs / "settle_reports.log", "a"),
-            stderr=subprocess.STDOUT,
-            start_new_session=True)
-        print("[live_refresh] settle reports spawned in background")
-    except Exception as e:
-        print(f"[live_refresh] settle reports spawn failed: {e}")
-    # Recent-form (近期状态) also depends on the just-settled result (projected into
-    # nt_recent earlier this cycle), so regenerate form.json on the SAME settle event —
-    # else the form table shows stale recent results until the next daily refresh.
-    try:
-        from prediction_market_soccer.ops import form_export
-        _write_both("form.json", form_export.build(conn))
-    except Exception as e:
-        print(f"[live_refresh] form refresh skipped: {e}")
-    # Season odds (冠军/前四/降级盘): model season-probs were just re-simulated and the
-    # Kalshi season prices move continuously → regenerate on the SAME settle event.
-    try:
-        from prediction_market_soccer.ops import season_odds_export
-        _write_both("season_odds.json", season_odds_export.build(conn))
-    except Exception as e:
-        print(f"[live_refresh] season_odds refresh skipped: {e}")
-    # Schedule (list + bracket views): a just-settled match must show its result — and the
-    # NEXT round's now-determined pairing — immediately, not on the next daily refresh.
-    try:
-        from prediction_market_soccer.ops import schedule_export
-        _write_both("schedule.json", schedule_export.build(conn))
-    except Exception as e:
-        print(f"[live_refresh] schedule refresh skipped: {e}")
-    wm.write_text(str(settled))
-    print(f"[live_refresh] re-simulated on new result — {len(pl.get('leagues', []))} leagues refreshed")
+        try:
+            api = ApiFootball(conn)
+            for comp in active():
+                si.sync_topscorers(api, conn, comp)
+        except Exception as exc:
+            print(f"[live_refresh] topscorers refresh warning: {exc}")
+        from prediction_market_soccer.ops.export_stage import ExportStage
+        with ExportStage() as stage:
+            from prediction_market_soccer.model.run_model import refresh_model
+            from prediction_market_soccer.ops import form_export, season_odds_export, schedule_export
+            payload = refresh_model()
+            _write_both("form.json", form_export.build(conn))
+            _write_both("season_odds.json", season_odds_export.build(conn))
+            _write_both("schedule.json", schedule_export.build(conn))
+            stage.promote()
+        atomic_bytes(wm, str(settled).encode())
+        print(f"[live_refresh] new result: {len(payload.get('leagues', []))} leagues refreshed")
+    finally:
+        release("refresh_all")
 
 
 # ── stale-minute retry ───────────────────────────────────────────────────────
@@ -523,11 +511,84 @@ def _sync_live_until_fresh(api, conn, si):
     return synced
 
 
+def _imminent_pre(conn):
+    from prediction_market_soccer.config.leagues import active
+    lids = tuple(c.api_football_id for c in active())
+    now = datetime.now(timezone.utc)
+    return bool(conn.execute(
+        f"SELECT 1 FROM fixture WHERE league_id IN ({','.join('?' * len(lids))}) "
+        "AND status_short='NS' AND kickoff_ts>? AND kickoff_ts<=? LIMIT 1",
+        (*lids, now.isoformat(), (now + timedelta(minutes=25)).isoformat())).fetchone())
+
+
+def _refresh_upcoming_board(conn, issues, *, horizon_hours, limit):
+    try:
+        # Reprice the requested time slice and preserve the rest of the calendar.
+        from prediction_market_soccer.ops import upcoming_export
+        rows = upcoming_export.build(limit=limit, conn=conn, with_venues=True, horizon_hours=horizon_hours)
+        # MERGED into the existing board, never written over it. This loop rebuilds a
+        # NEAR-TERM slice, and writing that slice as the whole file replaced the daily
+        # calendar with it — at 12 hours that means a quiet evening published an EMPTY
+        # upcoming.json and the two most prominent cards (Today's Predictions, Match
+        # Pricing) went blank until the next daily run. Refresh what we re-priced, keep
+        # what we did not look at.
+        merged = _merge_upcoming(_read_upcoming(), rows, conn)
+        from prediction_market_soccer.ops.export_status import source_as_of, data_status
+        _write_both("upcoming.json", {
+            "as_of": datetime.now(timezone.utc).isoformat(), "n": len(merged),
+            "source_as_of": source_as_of(merged),
+            "data_status": data_status(merged),
+            "note": "Venue availability and model coverage are reported per match.",
+            "matches": merged,
+            "recent_finished": upcoming_export.recent_finished(conn),
+        })
+    except Exception as e:
+        issues.append({"code": "upcoming_export_failed"})
+        print(f"[live_refresh] upcoming rebuild failed (kept previous): {e}")
+
+
+
+def _paper_and_demo(conn, inplay, issues):
+    from prediction_market_soccer.ops import paper_trading
+    try:
+        paper = paper_trading.run_cycle(conn, inplay)
+        if paper.get('state') != 'ok':
+            issues.append({'code': 'paper_decision_unavailable', 'detail': paper.get('reason') or paper.get('errors')})
+        if paper.get('entries') or paper.get('exits') or paper.get('settled') or paper.get('errors'):
+            print(f"[live_refresh] paper strategy: {paper}")
+    except Exception as exc:
+        issues.append({'code': 'paper_decision_failed'})
+        print(f"[live_refresh] paper strategy failed: {exc}")
+        return  # no executor pass following a failed paper transaction
+    try:
+        from prediction_market_soccer.exec import kalshi_mirror
+        if kalshi_mirror.enabled():
+            result = kalshi_mirror.run_cycle(conn, inplay or {'matches': []})
+            if result.get('errors'):
+                issues.append({'code':'demo_execution_unavailable'})
+            if result.get('actions') or result.get('errors'):
+                print(f"[live_refresh] kalshi mirror: {result.get('summary')}")
+    except Exception as exc:
+        issues.append({'code':'demo_execution_failed'})
+        print(f"[live_refresh] kalshi mirror skipped: {exc}")
+
+
+@writer
 def refresh_once(conn=None) -> dict:
     """One in-play refresh cycle. Returns a small status dict for logging."""
     from prediction_market_soccer.ingest import store
 
     conn = conn or store.init_db()
+    issues = []
+    # Complete any existing paper positions before a report process can advance
+    # its result watermark. This is bookkeeping only and never recalculates a bet.
+    from prediction_market_soccer.util.paper_store import settle
+    settle(conn)
+    try:
+        _maybe_refresh_reports(conn)
+    except Exception as e:
+        issues.append({"code": "settle_reports_spawn_failed"})
+        print(f"[live_refresh] report retry failed: {e}")
     # Order-book probe FIRST — before the match-window check, because its far-out buckets
     # (T-48h, T-24h) fall on days with no matches at all. Most cycles nothing is due and it
     # returns immediately; see ops/venue_liquidity for why this is measured rather than
@@ -540,7 +601,33 @@ def refresh_once(conn=None) -> dict:
     except Exception as e:
         print(f"[live_refresh] book probe skipped: {e}")
     if not _in_match_window(conn):
-        return {"window": False, "n_live": 0}
+        # Exchange settlement may arrive hours after a fixture ends. Keep
+        # observing held/unknown Demo orders even when no new trade is eligible.
+        # This narrow path has no order submission or cancellation capability.
+        try:
+            from prediction_market_soccer.exec.demo_forward import reconcile_only
+            reconciliation = reconcile_only(conn)
+            if reconciliation.get('errors'):
+                issues.append({"code": "demo_reconciliation_unavailable"})
+            if reconciliation.get('needed'):
+                print(f"[live_refresh] idle Demo reconciliation: {reconciliation}")
+        except Exception as e:
+            issues.append({"code": "demo_reconciliation_failed"})
+            print(f"[live_refresh] idle Demo reconciliation failed: {type(e).__name__}: {str(e)[:120]}")
+        # The demo account is shared with other strategies, so balances can change
+        # while soccer is idle. Keep the same ten-minute read-only refresh cadence.
+        try:
+            _maybe_refresh_risk(conn)
+        except Exception as e:
+            issues.append({"code": "risk_report_failed"})
+            print(f"[live_refresh] risk_report refresh skipped: {e}")
+        # The calendar is idle, but an old live card must not keep displaying yesterday.
+        _write_both("inplay_live.json", {"ts": datetime.now(timezone.utc).isoformat(),
+                    "source_as_of": conn.execute("SELECT MAX(updated_at) FROM fixture").fetchone()[0],
+                    "n_live": 0, "matches": [], "scan_error": None, "venue_blind": {},
+                    "data_status": {"state": "degraded" if issues else "ok", "issues": issues},
+                    "window": False})
+        return {"window": False, "n_live": 0, "issues": issues}
 
     # 1. Pull live fixture state (status / score / minute / xG) AND finished results.
     #    sync_live only sees CURRENTLY-live fixtures, so a match that just ended would
@@ -576,6 +663,7 @@ def refresh_once(conn=None) -> dict:
         si.sync_results(api, conn)
         si.project_wc_results_to_nt_recent(conn)  # keep recent-form current with WC results (0 API)
     except Exception as e:
+        issues.append({"code": "fixture_sync_failed"})
         print(f"[live_refresh] sync failed (using stored state): {e}")
 
     # 2. Regenerate the in-play export (live model + venue quotes + arb) and the
@@ -583,6 +671,30 @@ def refresh_once(conn=None) -> dict:
     from prediction_market_soccer.ops import inplay_export, inplay_export_advance, upcoming_export
 
     inplay = inplay_export.build(conn, with_venues=True)
+    if _stale_live_fixtures(conn):
+        issues.append({"code": "fixture_state_stale"})
+    if issues:
+        existing = (inplay.get("data_status") or {}).get("issues", [])
+        inplay["data_status"] = {"state": "degraded", "issues": existing + issues}
+    issues = list({json.dumps(i, sort_keys=True): i for i in (inplay.get("data_status") or {}).get("issues", [])}.values())
+    # Record per-milestone price/prob snapshots as live matches cross 15/30/45/60/75',
+    # then regenerate the milestone price-track export (PriceTrack / Mark-to-Market view).
+    try:
+        # CAPTURE every cycle — this is the one piece of the tail that is time-critical,
+        # because a milestone minute passed unrecorded cannot be recovered later.
+        _capture_milestones(conn, inplay)
+    except Exception as e:
+        issues.append({"code": "milestone_capture_failed"})
+        print(f"[live_refresh] milestone capture skipped: {e}")
+    # Only the imminent PRE window is repriced each minute; far-out calendar
+    # rows retain the normal five-minute cadence below. Capture all imminent
+    # matches even on a busy evening without scanning a thousand 12-hour rows.
+    imminent_pre = _imminent_pre(conn)
+    if imminent_pre and _due("upcoming.json", 60):
+        _refresh_upcoming_board(conn, issues, horizon_hours=0.5, limit=1000)
+    # Time-critical paper capture and decisions precede all demo execution and
+    # slow report/history exports. A paper position never depends on a demo fill.
+    _paper_and_demo(conn, inplay, issues)
     # 2-way ADVANCE in-play (plan 24) — built + recorded in PARALLEL to the 3-way above.
     # Separate JSON + separate review-log file; failure-tolerant (never blocks the 3-way path).
     inplay_adv = None
@@ -591,6 +703,7 @@ def refresh_once(conn=None) -> dict:
         _write_both("inplay_live_advance.json", inplay_adv)
         _append_review_log_advance(inplay_adv, synced)
     except Exception as e:
+        issues.append({"code": "advance_export_failed"})
         print(f"[warn] advance in-play export skipped: {e}")
     # …and grafted ONTO the 3-way rows before writing, because that is where the card
     # reads it from: the Advances lens is offered off caps.advance but rendered off
@@ -599,44 +712,22 @@ def refresh_once(conn=None) -> dict:
     inplay_export.graft_advance(inplay, inplay_adv)
     _write_both("inplay_live.json", inplay)
     _append_review_log(inplay, synced)
-    # Record per-milestone price/prob snapshots as live matches cross 15/30/45/60/75',
-    # then regenerate the milestone price-track export (PriceTrack / Mark-to-Market view).
-    try:
-        # CAPTURE every cycle — this is the one piece of the tail that is time-critical,
-        # because a milestone minute passed unrecorded cannot be recovered later.
-        _capture_milestones(conn, inplay)
-    except Exception as e:
-        print(f"[live_refresh] milestone capture skipped: {e}")
     if _due("milestone_marks.json", _TAIL_INTERVAL_S):
         try:
             # Fill PRE/FT (+ any milestone missed live) for settled matches from venue
             # history; retries across cycles until the just-ended match's history is up.
-            _maybe_backfill_milestones(conn)
+            collection = _maybe_backfill_milestones(conn)
+            if collection.get('complete') is False:
+                issues.append({'code':'milestone_collection_partial'})
             from prediction_market_soccer.ops import milestone_export
-            _write_both("milestone_marks.json", milestone_export.build(conn))
+            # Read the published canonical strategy ledger; refreshing prices must
+            # never freeze or independently replay a historical strategy decision.
+            _write_both("milestone_marks.json", milestone_export.build(conn, freeze=False))
         except Exception as e:
+            issues.append({"code": "milestone_export_failed"})
             print(f"[live_refresh] milestone backfill/export skipped: {e}")
-    if _due("upcoming.json", _TAIL_INTERVAL_S):
-      try:
-        # 12-hour horizon: the live loop only needs the boards a desk could act on in
-        # this cycle. The 07:30 daily refresh prices the whole calendar.
-        rows = upcoming_export.build(limit=16, conn=conn, with_venues=True,
-                                     horizon_hours=12)
-        # MERGED into the existing board, never written over it. This loop rebuilds a
-        # NEAR-TERM slice, and writing that slice as the whole file replaced the daily
-        # calendar with it — at 12 hours that means a quiet evening published an EMPTY
-        # upcoming.json and the two most prominent cards (Today's Predictions, Match
-        # Pricing) went blank until the next daily run. Refresh what we re-priced, keep
-        # what we did not look at.
-        merged = _merge_upcoming(_read_upcoming(), rows, conn)
-        _write_both("upcoming.json", {
-            "as_of": datetime.now(timezone.utc).isoformat(), "n": len(merged),
-            "note": "Real Kalshi + Polymarket US single-match quotes; venue=null only when unlisted.",
-            "matches": merged,
-            "recent_finished": upcoming_export.recent_finished(conn),
-        })
-      except Exception as e:
-        print(f"[live_refresh] upcoming rebuild failed (kept previous): {e}")
+    if not imminent_pre and _due("upcoming.json", _TAIL_INTERVAL_S):
+        _refresh_upcoming_board(conn, issues, horizon_hours=12, limit=16)
 
     # Model-vs-market (Divergence view) — not-started fixtures only, so a match that
     # just finished drops out of it instead of lingering.
@@ -645,28 +736,17 @@ def refresh_once(conn=None) -> dict:
             from prediction_market_soccer.strategy.xv_monitor import compare_matches
             _write_both("xv_matches.json", compare_matches(limit=12))
         except Exception as e:
+            issues.append({"code": "xv_matches_failed"})
             print(f"[live_refresh] xv_matches rebuild skipped: {e}")
 
 
-    # Kalshi DEMO mirror of the 择时(实现) strategy. Placed AFTER the upcoming block (which
-    # stashes the PRE quotes ≤20' pre-kickoff) and after milestone capture, so both the
-    # pre-match and the in-play entry are placed on the SAME cycle — on the same rows — the
-    # paper ledger will later freeze from; exits are re-evaluated every cycle. Off unless
-    # KALSHI_DEMO_MIRROR=true; refuses anything but the demo host. Never raises into the loop.
-    try:
-        from prediction_market_soccer.exec import kalshi_mirror
-        if kalshi_mirror.enabled():
-            _mr = kalshi_mirror.run_cycle(conn, inplay)
-            if _mr.get("actions") or _mr.get("errors"):
-                print(f"[live_refresh] kalshi mirror: {_mr.get('summary')}")
-    except Exception as e:
-        print(f"[live_refresh] kalshi mirror skipped: {e}")
     # Risk / Venues & Gates view — its venue balances are LIVE Kalshi/Poly API calls,
     # so refresh it on a ~10-min throttle (not every minute) to keep the balance current
     # without hammering the venues.
     try:
         _maybe_refresh_risk(conn)
     except Exception as e:
+        issues.append({"code": "risk_report_failed"})
         print(f"[live_refresh] risk_report refresh skipped: {e}")
 
     # When a match has just FINISHED (settled count rose), re-simulate the champion +
@@ -675,10 +755,17 @@ def refresh_once(conn=None) -> dict:
     try:
         _maybe_refresh_champion(conn)
     except Exception as e:
+        issues.append({"code": "champion_refresh_failed"})
         print(f"[live_refresh] champion refresh skipped: {e}")
 
+    try:
+        _maybe_refresh_reports(conn)
+    except Exception as exc:
+        issues.append({"code": "settle_reports_spawn_failed"})
+        print(f"[live_refresh] report retry failed: {exc}")
+
     n_opp = sum(len(m.get("opportunities", [])) for m in inplay["matches"])
-    return {"window": True, "synced": synced, "n_live": inplay["n_live"], "n_opp": n_opp}
+    return {"window": True, "synced": synced, "n_live": inplay["n_live"], "n_opp": n_opp, "issues": issues}
 
 
 def main() -> None:
@@ -693,7 +780,17 @@ def main() -> None:
     conn = store.init_db()
 
     def _go():
-        st = refresh_once(conn)
+        status = RunStatus("live_refresh")
+        try:
+            st = refresh_once(conn)
+            for issue in st.get("issues", []):
+                status.doc["steps"].append({"name": issue["code"], "state": "failed", "required": False})
+            status.finish(input_value={"window": st["window"], "n_live": st["n_live"]})
+        except BaseException as exc:
+            status.finish(error=exc)
+            raise
+        finally:
+            publish_operations()
         ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
         if st["window"]:
             print(f"[live_refresh {ts}] live={st['n_live']} opps={st.get('n_opp', 0)} synced={st.get('synced', 0)}")

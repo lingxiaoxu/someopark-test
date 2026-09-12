@@ -1,0 +1,39 @@
+{
+  "name": "release_current_views",
+  "state": "ok",
+  "last_attempt_at": "2026-09-11T08:49:01.558966+00:00",
+  "last_success_at": "2026-09-11T08:51:58.795488+00:00",
+  "finished_at": "2026-09-11T08:51:58.795488+00:00",
+  "steps": [
+    {
+      "name": "upcoming.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-11T08:49:03.763900+00:00",
+      "finished_at": "2026-09-11T08:51:55.995647+00:00"
+    },
+    {
+      "name": "inplay_live.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-11T08:51:55.998163+00:00",
+      "finished_at": "2026-09-11T08:51:56.078687+00:00"
+    },
+    {
+      "name": "risk_report.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-11T08:51:56.079036+00:00",
+      "finished_at": "2026-09-11T08:51:56.564498+00:00"
+    },
+    {
+      "name": "frontend_overview.json",
+      "state": "ok",
+      "required": true,
+      "started_at": "2026-09-11T08:51:56.564821+00:00",
+      "finished_at": "2026-09-11T08:51:56.652238+00:00"
+    }
+  ],
+  "last_success_input": null,
+  "last_activity_at": "2026-09-11T08:51:58.795520+00:00"
+}

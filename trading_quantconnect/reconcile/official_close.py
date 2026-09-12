@@ -8,7 +8,7 @@ M4 的 equity 平面原先把 Q 定义成"QC 同一份 payload 自算 = 持仓�
 
 8/27 收盘的三方对照:
 
-    QC runtimeStatistics.Equity                5,739,681.75   ← 真收盘
+    QC runtimeStatistics.Equity                5,739,681.75   ← QC 自报
     cash + Σ q×p(payload 里的价)              5,711,713.85   ← 差 27,968
     cash + Σ q×官方收盘价(本模块)             5,739,207.02   ← 差 QC 自报 474.73
 
@@ -17,7 +17,7 @@ payload 里的 `p` 停在 ~15:45,到次日凌晨两点都没再更新过,所以�
 
 **2026-09-04 修正**:本段原写"equity 曲线最后一次跳动在 16:02:16、15:47→16:02
 涨 +28.5k"。实测不成立 —— 用五个 session 的存档股数×分钟 K 逐分钟扫描,QC 自报
-净值恒等于 **15:58 那根分钟 K** 的账(池化 RMS 0.216bp;次优的 15:57 是 2.767bp,
+净值在当时样本中最接近 **15:58 那根分钟 K** 的账(池化 RMS 0.216bp;次优的 15:57 是 2.767bp,
 16:00 是 4.152bp,识别毫无歧义;8/27 那天尾盘 13 分钟拉了 47bp,自报值精确跟在
 坡顶)。另实测 QC 净值的推送滞后约 **1 分钟**(不是 15 分钟,15 分钟假设的拟合
 误差差 11 倍),发布节奏 ~62-66 秒一次。真正 15 分钟延迟的是 payload 的 `p`
@@ -34,8 +34,14 @@ equity 平面永远出不了裁决;而 `rolloff --freeze` 走同一个自算值,
   · 与 P(官方 EOD)同价源族(五策略最终都落在 Polygon 日 K 口径上),
     价格噪声两边对消,D 只反映股数与现金的差异 —— 这正是镜像保真度要量的东西;
   · 逐票可归因(符合"只按持仓 shares 去对照"的要求),不是一个黑箱总数;
-  · QC 自报净值降级为**独立交叉校验**:两者差超过 gross 的 CROSS_TOL_BP 就
-    拒绝出裁决(见 qc_reconcile.equity_plane)。
+  · QC 自报净值降级为**独立交叉校验**:原始差超过 gross 的 CROSS_TOL_BP 时,
+    以固定分钟逐票验证估值时点桥;证据不全或剩余差仍超限就拒绝出裁决。
+
+2026-09-11 复核:9/8 原始差 +5923.73 = 固定 15:58→官方收盘桥 +6074.2635
+加剩余差 −150.5335(0.1939bp)。9/1–9/10 七个交易日固定参考残差均 <1.18bp。
+15:58 是 9/4 已记录的经验参考,不是 QC 内部逐票采样时刻的保证;不能扫描
+当天行情择优挑一个分钟,也不能把未解释的剩余差声称为零。桥只用于交叉校验,
+不改变官方 Q、不进入 ΔD 归因、不修改冻结 K 或既定台阶规则。
 
 ────────────────────────────────────────────────────────────────────────────
 取数方式
@@ -52,9 +58,12 @@ equity 平面永远出不了裁决;而 `rolloff --freeze` 走同一个自算值,
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -68,6 +77,59 @@ _GROUPED = ("https://api.polygon.io/v2/aggs/grouped/locale/us/market/"
 _TIMEOUT = 60
 
 
+def qc_reference_prices(session: str, tickers) -> dict:
+    """QC 自报净值的固定分钟参考价(收盘前两分钟 bar 的 close)。
+
+    参考时点来自 9/4 的跨日实测,不是对当天净值扫描择优。常规日 15:58,
+    NYSE 半日市 12:58。只接受精确该分钟的未复权 bar,缺价不前填、不换分钟。
+    本函数只提供估值时点桥;官方 Q、冻结 K、净值归因仍使用官方日 K。
+    """
+    import pandas_market_calendars as mcal
+
+    want = sorted(set(tickers))
+    if not want:
+        raise SourceError("没有票可做 QC 分钟交叉校验")
+    key = os.environ.get("POLYGON_API_KEY")
+    if not key:
+        raise SourceError("POLYGON_API_KEY 不可见,无法验证 QC 估值时点差")
+    sched = mcal.get_calendar("NYSE").schedule(start_date=session, end_date=session)
+    if sched.empty:
+        raise SourceError(f"{session} 不是 NYSE 交易日")
+    from datetime import timedelta
+    stamp = sched["market_close"].iloc[0] - timedelta(minutes=2)
+    epoch = int(stamp.timestamp() * 1000)
+
+    def fetch(ticker):
+        url = (f"https://api.polygon.io/v2/aggs/ticker/{quote(ticker, safe='')}/"
+               f"range/1/minute/{epoch}/{epoch + 59999}")
+        try:
+            r = requests.get(url, params={"apiKey": key, "adjusted": "false",
+                                         "sort": "asc", "limit": 2}, timeout=_TIMEOUT)
+        except requests.RequestException as e:
+            # requests 的异常字符串可能含 apiKey URL,不能写入报告/日志。
+            raise SourceError(f"{ticker} 分钟价请求失败({type(e).__name__})") from None
+        if r.status_code != 200:
+            raise SourceError(f"{ticker} 分钟价 HTTP {r.status_code}")
+        try:
+            doc = r.json()
+            rows = [b for b in (doc.get("results") or []) if b.get("t") == epoch]
+            if doc.get("ticker") != ticker or len(rows) != 1:
+                raise ValueError("wrong ticker or missing/duplicate exact minute")
+            price = float(rows[0]["c"])
+            if not math.isfinite(price) or price <= 0:
+                raise ValueError("invalid price")
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise SourceError(f"{ticker} 缺有效的精确 {stamp.isoformat()} 分钟 bar") from None
+        return ticker, price
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        prices = dict(pool.map(fetch, want))
+    return {"bar_start_utc": stamp.isoformat(),
+            "bar_start_et": stamp.tz_convert("America/New_York").isoformat(),
+            "source": "Polygon unadjusted 1-minute close; fixed NYSE close minus 2 minutes",
+            "prices": prices}
+
+
 def grouped_closes(session: str) -> dict[str, float]:
     """该交易日全市场收盘价 {ticker: close}。非交易日/取不到一律抛。"""
     key = os.environ.get("POLYGON_API_KEY")
@@ -79,7 +141,7 @@ def grouped_closes(session: str) -> dict[str, float]:
                          params={"apiKey": key, "adjusted": "false"},
                          timeout=_TIMEOUT)
     except requests.RequestException as e:
-        raise SourceError(f"Polygon 日 K 取数失败({e})—— 不出裁决") from e
+        raise SourceError(f"Polygon 日 K 取数失败({type(e).__name__})—— 不出裁决") from None
     if r.status_code != 200:
         raise SourceError(f"Polygon 日 K HTTP {r.status_code} —— 不出裁决")
     doc = r.json()

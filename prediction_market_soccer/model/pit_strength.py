@@ -36,101 +36,114 @@ _BUCKET_DAYS = 1
 _PIT_SUFFIX = "_pit"
 
 
-_PRIOR_DAYS_BUILT: set[str] = set()
+# Increment when prior reconstruction semantics change; old incomplete caches are invalid.
+_PIT_VERSION = "roster-asof-v4-fc-identity"
+_PRIOR_DAYS_BUILT: set[tuple[str, str, str]] = set()
+
+
+def fc_input_fingerprint(conn):
+    """Current FC identity/ratings fingerprint, not proof of historical availability."""
+    import hashlib
+    import sqlite3
+    h = hashlib.sha256()
+    try:
+        for row in conn.execute('SELECT * FROM fc_player ORDER BY rowid'):
+            h.update(json.dumps(list(row),default=str,separators=(',',':')).encode())
+    except sqlite3.OperationalError:
+        pass
+    return h.hexdigest()
+
+
+def _db_identity(conn) -> str:
+    from pathlib import Path
+    db = next((r[2] for r in conn.execute("PRAGMA database_list") if r[1] == "main"), "")
+    return str(Path(db).resolve()) if db else f"memory:{id(conn)}"
 
 
 def pit_out_dir(conn):
-    """Where this connection's point-in-time priors live. The production database writes
-    beside the live priors (data/priors); ANY other database — the test suite's in-memory
-    stores, an APFS clone, a scratch copy — gets a temp directory keyed by its path, so a
-    run against test data can never leave a prior built from fixture rows in production
-    (measured 2026-09-02: one pytest run rewrote 85 production prior files)."""
+    """Separate every database, including in-memory connections, from live priors."""
     import hashlib
     import tempfile
     from pathlib import Path
     from prediction_market_soccer.config import CONFIG
     from prediction_market_soccer.ingest import store
-    try:
-        db = next((r[2] for r in conn.execute("PRAGMA database_list") if r[1] == "main"), "")
-    except Exception:  # noqa: BLE001
-        db = ""
-    if db and Path(db).resolve() == Path(store.DB_PATH).resolve():
+    db = _db_identity(conn)
+    if db == str(Path(store.DB_PATH).resolve()):
         return CONFIG.paths.priors
-    key = hashlib.sha1((db or "memory").encode("utf-8")).hexdigest()[:10]
+    key = hashlib.sha256(db.encode()).hexdigest()[:16]
     d = Path(tempfile.gettempdir()) / "someopark_soccer_pit" / key
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
-def pit_prior(conn, comp_key: str, as_of: str):
-    """The club prior as it stood on ``as_of``'s date — built, not read from today's file.
+def _source_fingerprint(conn, day: str) -> str:
+    """Invalidate corrected membership/results and recovered historical Elo sources.
 
-    THE single entry point for a point-in-time prior, shared by both replay paths. It was
-    two: WalkForwardStrength got this treatment while ops/performance_report._pit_strength
-    kept caching `load_prior(league)` under the LEAGUE alone, so the frozen bet ledger —
-    the bet log, the three performance tracks, the published Brier — priced every settled
-    match with TODAY's prior while its model memo varied by date. Measured on Brasileirão's
-    58 settled matches: Brier 0.6364 with today's prior vs 0.6688 with the match-day one,
-    paired t = -4.02, and on Argentina the argmax pick flipped on 29 of 90 matches. One
-    function now, so a future fix cannot land on one caller and miss the other.
-
-    The per-day build is process-wide (the priors are files, and every caller wants the
-    same one for a given day); the returned snapshots are cached by the caller.
+    Future fixtures contribute identity only. Historical strengths still come solely
+    from build_all(as_of=day); a fingerprint is an invalidation key, not model input.
     """
+    import hashlib
+    from prediction_market_soccer.ingest import club_prior
+    h = hashlib.sha256(_PIT_VERSION.encode())
+    for sql, args in (
+        ("SELECT club_id, comp, api_team_id, name FROM club_registry ORDER BY comp, club_id", ()),
+        ("SELECT api_id, canonical_team_id FROM team_meta ORDER BY api_id", ()),
+        ("SELECT api_id,name FROM team ORDER BY api_id", ()),
+        ("SELECT api_id,league_id,season,home_api_id,away_api_id FROM fixture ORDER BY api_id", ()),
+        ("SELECT api_id,league_id,season,round,home_api_id,away_api_id,kickoff_ts,status_short,home_goals,away_goals "
+         "FROM fixture WHERE substr(kickoff_ts,1,10) < ? ORDER BY api_id", (day,)),
+    ):
+        for row in conn.execute(sql, args):
+            h.update(json.dumps(list(row), default=str, separators=(",", ":")).encode())
+    # FC26 is a current, unversioned feature source: invalidate corrections without
+    # claiming it was historically available. Historical PIT evidence remains unproven.
+    h.update(fc_input_fingerprint(conn).encode())
+    from prediction_market_soccer.config.leagues import active
+    for comp in active():
+        for season in [comp.season - 1]:
+            for row in conn.execute(
+                    "SELECT team_api_id,points,rank,played FROM standing WHERE league_id=? AND season=? ORDER BY team_api_id",
+                    (comp.api_football_id, season)):
+                h.update(repr((comp.key, season, tuple(row))).encode())
+    elo_cutoff = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    for p in sorted(club_prior._PRIORS.glob("clubelo_*")):
+        # Historical builds may use an earlier valid website snapshot. Never pin
+        # an outage/default forever when a legitimate historical source arrives.
+        if p.is_file() and p.name[8:18] <= elo_cutoff:
+            h.update(p.name.encode()); h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def pit_prior(conn, comp_key: str, as_of: str):
+    """Build a date-specific prior; missing history NEVER loads today's live prior."""
     from prediction_market_soccer.ingest.club_prior import build_all, load_prior
-    day = (as_of or "")[:10]
-    if not day:
-        return load_prior(comp_key)
+    day = str(as_of or "")[:10]
+    datetime.strptime(day, "%Y-%m-%d")   # empty/invalid dates cannot mean 'live'
     out_dir = pit_out_dir(conn)
-    # DATE-STAMPED files, built once and reused forever. The previous scheme wrote every
-    # bucket to the same clubs_<comp>_pit.json and tracked "already built" in process
-    # memory — so every settle event, every calibrate run and every OOS run in a fresh
-    # process re-ground the whole window from scratch: 2,440 `club_prior built` lines in
-    # one day's live log, and the 8-15 minute "cycles" that came with them. A PAST day's
-    # prior is immutable (its inputs are that day's fixtures and that day's cached
-    # ClubElo CSV), so the file IS the cache; only a never-before-seen day pays the
-    # build. TODAY's file is rebuilt once per process — today is still moving.
     suffix = f"{_PIT_SUFFIX}_{day}"
-    import datetime as _dt
-    today = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
     probe = out_dir / f"clubs_{comp_key}{suffix}.json"
     meta_p = out_dir / f".pit_built_{day}.json"
-    # The cache is only valid for the DATABASE that built it. The test suite seeds
-    # small fixture sets into throwaway DBs and calls this with the same dates the
-    # production DB uses; before this fingerprint, a test inherited a file built from
-    # production data (or from the previous test) and 11 tests failed only when run
-    # together — the classic symptom of state leaking through a shared path.
-    _db = ""
+    fingerprint = _source_fingerprint(conn, day)
+    identity = _db_identity(conn)
+    expected = {"db": identity, "day": day, "version": _PIT_VERSION,
+                "source_fingerprint": fingerprint}
     try:
-        _db = next((r[2] for r in conn.execute("PRAGMA database_list") if r[1] == "main"), "")
-    except Exception:
-        pass
-    _built_ok = False
-    if probe.exists() and meta_p.exists():
-        try:
-            _built_ok = (json.loads(meta_p.read_text(encoding="utf-8")).get("db") == _db)
-        except Exception:
-            _built_ok = False
-    fresh_needed = (day >= today and day not in _PRIOR_DAYS_BUILT)
-    if fresh_needed or not _built_ok:
-        summary = build_all(conn, as_of=day, suffix=suffix, out_dir=out_dir) or {}
-        # A build made while ClubElo was unreachable carries no Elo anchor ("0 with Elo"
-        # on every European comp). For TODAY that is rebuilt per process anyway; for a
-        # PAST day the file would otherwise be fingerprinted as final and the degraded
-        # prior served forever. Leave the fingerprint unwritten so the next call rebuilds.
-        _euro = [v for k, v in summary.items() if k in ("epl", "laliga", "seriea", "bundesliga", "ligue1")]
-        degraded = bool(_euro) and all("0 with Elo" in str(v) for v in _euro)
-        if not degraded:
-            meta_p.write_text(json.dumps({"db": _db, "day": day}), encoding="utf-8")
-        else:
-            print(f"[pit_prior] {day}: built without Elo (ClubElo outage) — not fingerprinted, will rebuild")
-        _PRIOR_DAYS_BUILT.add(day)
-    if not probe.exists():
-        # a store that carries no registry for this competition (the test fixtures) built
-        # nothing for it: read the LIVE prior (read-only) rather than fail — this is what
-        # such a store effectively got before the isolation, minus the production writes
-        return load_prior(comp_key)
-    return load_prior(comp_key, suffix=suffix, out_dir=out_dir)
+        valid = probe.exists() and json.loads(meta_p.read_text()) == expected
+    except (OSError, ValueError):
+        valid = False
+    if not valid:
+        # A failed build must not leave yesterday's success marker usable.
+        meta_p.unlink(missing_ok=True)
+        for old in out_dir.glob(f"clubs_*{suffix}.json"):
+            old.unlink(missing_ok=True)
+        build_all(conn, as_of=day, suffix=suffix, out_dir=out_dir, point_in_time=True)
+        if not probe.exists():
+            raise FileNotFoundError(f"historical prior unavailable: {comp_key}@{day}")
+        # A build may have recovered an eligible historical Elo cache.
+        expected["source_fingerprint"] = _source_fingerprint(conn, day)
+        meta_p.write_text(json.dumps(expected), encoding="utf-8")
+        _PRIOR_DAYS_BUILT.add((identity, day, expected["source_fingerprint"]))
+    return load_prior(comp_key, suffix=suffix, out_dir=out_dir, validate_roster=False)
 
 
 def bucket_start(kickoff_ts: str, *, bucket_days: int = _BUCKET_DAYS) -> str:
@@ -166,7 +179,7 @@ class WalkForwardStrength:
         self._bucket_days = bucket_days
         self._verbose = verbose
         self._cache: dict[tuple[str, str], object] = {}
-        self._failed: set[str] = set()
+        self._failed: set[tuple[str, str]] = set()
         # (competition, day) → the prior as it stood that day. NOT a set of days: the
         # per-day files share one path per competition and are overwritten in place.
         self._priors: dict[tuple[str, str], object] = {}
@@ -184,25 +197,26 @@ class WalkForwardStrength:
         hit = self._priors.get((comp_key, day))
         if hit is not None:
             return hit
+        got = pit_prior(self._conn, comp_key, day)
+        # A successful build validates the whole date generation. Capture its
+        # available competitions together, without reading any live-prior fallback.
         from prediction_market_soccer.config.leagues import active
-        pit_prior(self._conn, comp_key, day)          # builds the whole day once (or reuses the file)
         from prediction_market_soccer.ingest.club_prior import load_prior
-        _od = pit_out_dir(self._conn)
+        out_dir = pit_out_dir(self._conn)
         for c in active():
             try:
-                self._priors[(c.key, day)] = load_prior(c.key, suffix=f"{_PIT_SUFFIX}_{day}", out_dir=_od)
-            except Exception:      # a competition with no registry rows has no prior
-                self._priors[(c.key, day)] = None
-        got = self._priors.get((comp_key, day))
-        if got is None:
-            raise FileNotFoundError(f"no {comp_key} prior for {day}")
+                self._priors[(c.key, day)] = load_prior(
+                    c.key, suffix=f"{_PIT_SUFFIX}_{day}", out_dir=out_dir, validate_roster=False)
+            except (FileNotFoundError, ValueError):
+                pass
+        self._priors[(comp_key, day)] = got
         return got
 
     def for_match(self, comp_key: str, kickoff_ts: str):
-        if comp_key in self._failed:
-            return None
         as_of = bucket_start(kickoff_ts, bucket_days=self._bucket_days)
         key = (comp_key, as_of)
+        if key in self._failed:
+            return None
         if key in self._cache:
             return self._cache[key]
         from prediction_market_soccer.model.squad_strength import build_strength_live
@@ -211,7 +225,7 @@ class WalkForwardStrength:
                                      as_of=as_of, xg_form=True)
         except Exception as e:  # noqa: BLE001
             print(f"[pit_strength:{comp_key}] model unavailable ({type(e).__name__}: {e}) — skipped")
-            self._failed.add(comp_key)
+            self._failed.add(key)
             return None
         if self._verbose:
             print(f"[pit_strength] {comp_key} @ {as_of[:10]}: {len(sm.ratings)} clubs")

@@ -1,129 +1,139 @@
-// server/tools/realtimeNavTool.ts
-// Realtime NAV(controller 中央估值引擎)— 双供:
-//   ① Someo Agent 工具 get_realtime_nav(agent 路由)
-//   ② realtimeNavGrounding() 文本块(chat 路由的非 coding 分支注入;
-//      coding 模式 prompt 保持纯洁,绝不在此文件之外碰它)
-// 只读 controller/output/*,与 RealtimeNavViewer 面板同源同口径。
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+// Someo Agent NAV tool + ordinary-chat grounding. Coding prompts/routes stay untouched.
+// Read the same data adapters and use the same display rules as RealtimeNavViewer.
 import type { AgentTool } from './index.js'
+import {
+  buildRealtimeNavPanel, roundedNavMoney, type NavPanelInput,
+} from '../../shared/realtimeNav.js'
+import { readOfficialEquity } from '../utils/officialEquity.js'
+import {
+  etToday, readNavLatest, readNavMirror, readNavPrevClose, readNavReconcile, readNavStream,
+} from '../utils/controllerNavData.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const REPO = path.join(__dirname, '..', '..', '..')
-const OUT = path.join(REPO, 'controller', 'output')
-const DATA = path.join(__dirname, '..', '..', 'public', 'data')
-
-// 官方口径锚(与 controller/reconcile_eod._ANCHORS / RealtimeNavViewer 一致)
-const ANCHORS: Record<string, { file: string; col: string }> = {
-  MRPT: { file: 'strategy_performance.json', col: 'mrpt_equity' },
-  MTFS: { file: 'strategy_performance.json', col: 'mtfs_equity' },
-  SSRS: { file: 'master_portfolio_performance.json', col: 'sr_equity' },
-  AISS: { file: 'master_portfolio_performance.json', col: 'aiss_equity' },
-  AEUS: { file: 'master_portfolio_performance.json', col: 'aeus_equity' },
-  BDC:  { file: 'private_credit_bdc_performance.json', col: 'bdc_equity' },
-}
-
-function officialEod(): Record<string, { date: string; value: number }> {
-  const cache: Record<string, any[]> = {}
-  const out: Record<string, { date: string; value: number }> = {}
-  for (const [st, { file, col }] of Object.entries(ANCHORS)) {
-    cache[file] ||= JSON.parse(fs.readFileSync(path.join(DATA, file), 'utf-8'))
-    for (let i = cache[file].length - 1; i >= 0; i--) {
-      if (cache[file][i][col] != null) {
-        out[st] = { date: cache[file][i].date, value: Number(cache[file][i][col]) }
-        break
-      }
+function readPanelInput(nowMs: number): NavPanelInput & { input_errors: Record<string, string> } {
+  const latest = readNavLatest()
+  const input_errors: Record<string, string> = {}
+  const optional = <T>(name: string, read: () => T, fallback: T): T => {
+    try { return read() } catch (e) {
+      input_errors[name] = String(e)
+      return fallback
     }
   }
-  return out
+  const now = new Date(nowMs)
+  return {
+    latest,
+    official: optional('official', readOfficialEquity, null),
+    mirror: optional('scalars', readNavMirror, null),
+    prevClose: optional('prev-close', () => readNavPrevClose(now), null),
+    reconcile: optional('reconcile', () => readNavReconcile(now), null),
+    streamRows: optional('stream', () => readNavStream(etToday(now)).rows, []),
+    nowMs, input_errors,
+  }
 }
 
-function latestReconcile(): any | null {
-  if (!fs.existsSync(OUT)) return null
-  const files = fs.readdirSync(OUT).filter(f => f.startsWith('reconcile_')).sort()
-  if (!files.length) return null
-  return JSON.parse(fs.readFileSync(path.join(OUT, files[files.length - 1]), 'utf-8'))
-}
-
-// 与面板同口径的快照:官方锚定值 = official_EOD × (1 + day_return)
-export function buildRealtimeNav(): any {
-  const p = path.join(OUT, 'nav_latest.json')
-  if (!fs.existsSync(p)) {
-    return { error: 'controller not running yet (no nav_latest.json)' }
+// Optional input is for a deterministic replay of one panel snapshot, without I/O.
+export function buildRealtimeNav(snapshot?: NavPanelInput): any {
+  let input: ReturnType<typeof readPanelInput> | NavPanelInput
+  try {
+    input = snapshot ?? readPanelInput(Date.now())
+  } catch (e) {
+    return { error: `controller NAV unavailable: ${String(e)}` }
   }
-  const nav = JSON.parse(fs.readFileSync(p, 'utf-8'))
-  const off = officialEod()
-  const rec = latestReconcile()
-  const strategies: any[] = []
-  let officialSum = 0
-  let allOfficial = true
-  for (const n of nav.nodes || []) {
-    if (n.kind !== 'strategy') continue
-    const o = off[n.display_name]
-    const r = n.day_return ?? null
-    const anchored = o != null && r != null ? o.value * (1 + r)
-      : o != null ? o.value : null
-    if (anchored == null) allOfficial = false
-    else officialSum += anchored
-    strategies.push({
-      strategy: n.display_name,
-      official_anchored_value: anchored != null ? Math.round(anchored) : null,
-      official_eod: o ?? null,
-      day_return_pct: r != null ? +(r * 100).toFixed(3) : null,
-      day_pnl_usd: n.day_pnl ?? null,
-      positions_as_of: n.positions_as_of ?? null,
-      corp_action: !!n.corp_action,
-      holdings: (n.holdings || []).map((h: any) => ({
-        ticker: h.name, shares: h.shares })),
-    })
-  }
-  const pf = (nav.nodes || []).find((n: any) => n.kind === 'portfolio')
-  const mid = (nav.nodes || []).filter(
-    (n: any) => n.kind !== 'strategy' && n.kind !== 'portfolio')
+  const panel = buildRealtimeNavPanel(input)
+  const { latest: nav, reconcile: rec } = input
+  const pf = nav.nodes.find(n => n.kind === 'portfolio')
+  const ledgerReturn = (n: typeof pf) => n?.day_return != null
+    ? +(n.day_return * 100).toFixed(3) : null
+  const amount = (value: number | null) => value === null ? null : roundedNavMoney(value)
   return {
     as_of_utc: nav.ts,
     market: nav.market,
     feed_delay_min: nav.feed_delay_min,
+    price_as_of_utc: panel.feed.priceTs,
+    price_time_et: panel.feed.priceTimeEt,
+    price_label_mode: panel.feed.dead ? 'frozen' : panel.feed.delayMin >= 1 ? 'delayed' : 'live',
+    heartbeat_time_et: panel.feed.timeEt,
+    heartbeat_age_seconds: panel.feed.ageSeconds,
+    heartbeat_state: panel.quality.states.heartbeat,
     quality_checks: {
-      dual_engine_match: true,      // nav_latest 只在双引擎对拍通过后发布
+      dual_engine_match: panel.quality.states.dual_engine_match === 'pass',
       price_fresh: !nav.stale,
       quotes_missing: nav.missing || [],
       structure_sync_error: nav.rebuild_error || null,
       reconcile_verdict: rec?.verdict ?? 'none',
+      reconcile_date: rec?.date ?? null,
+      reconcile_age_bdays: rec?.age_bdays ?? null,
+      reconcile_stale: rec?.stale === true,
+      states: panel.quality.states,
+      status: panel.quality.status,
+      all_pass: panel.quality.allPass,
     },
-    basis_note: 'Values are OFFICIAL basis: per-strategy official EOD × (1 + '
-      + 'intraday day_return). day_return/day_pnl come from the controller '
-      + 'dollar account (shares × price; structure-change accounting steps '
-      + 'excluded). Same numbers as the Realtime NAV panel.',
+    basis_note: 'Panel display values and percentages use the same functions as '
+      + 'RealtimeNavViewer. MRPT/MTFS: live ledger value minus frozen capital base C; '
+      + 'AISS/SSRS/AEUS/BDC: live ledger value times frozen strategy scalar k. '
+      + 'No constants are recalculated. If official conversion is unavailable, '
+      + 'value falls back to the ledger exactly as the panel does; basis marks this '
+      + 'and official_anchored_value is null. Display percentages use the panel EOD '
+      + 'baseline; comparison_date is the panel label, while official_eod records '
+      + 'the actual baseline date. day_pnl_usd and ledger_day_return_pct are ledger '
+      + 'diagnostics, not the panel percentage. rolloff is the historical frozen K '
+      + 'memo, not a fresh QC reconciliation and not an input to live NAV. '
+      + 'Compare the same as_of_utc snapshot; the panel polls every 45 seconds.',
     portfolio: {
-      official_anchored_value: allOfficial ? Math.round(officialSum) : null,
-      day_return_pct: pf?.day_return != null ? +(pf.day_return * 100).toFixed(3) : null,
+      ...panel.portfolio,
+      value: roundedNavMoney(panel.portfolio.value),
+      official_anchored_value: amount(panel.portfolio.official_anchored_value),
+      day_return_pct: panel.portfolio.day_return_pct === null ? null
+        : +panel.portfolio.day_return_pct.toFixed(2),
+      ledger_day_return_pct: ledgerReturn(pf),
       day_pnl_usd: pf?.day_pnl ?? null,
+      day_pnl_basis: 'ledger',
     },
-    strategies,
-    mid_layers: mid.map((n: any) => ({
-      name: n.display_name, kind: n.kind,
-      day_return_pct: n.day_return != null ? +(n.day_return * 100).toFixed(3) : null,
-      day_pnl_usd: n.day_pnl ?? null,
-    })),
+    strategies: panel.strategies.map(s => {
+      const n = nav.nodes.find(n => n.node_id === s.node_id)
+      return {
+        ...s,
+        value: roundedNavMoney(s.value),
+        official_anchored_value: amount(s.official_anchored_value),
+        day_return_pct: s.day_return_pct === null ? null : +s.day_return_pct.toFixed(2),
+        ledger_day_return_pct: ledgerReturn(n),
+        day_pnl_usd: n?.day_pnl ?? null,
+        day_pnl_basis: 'ledger',
+      }
+    }),
+    mid_layers: nav.nodes.filter(n => n.kind !== 'strategy' && n.kind !== 'portfolio').map(n => {
+      const strategy = panel.strategies.find(s => s.children.some(c => c.node_id === n.node_id))
+      const display = strategy?.children.find(c => c.node_id === n.node_id)
+      return {
+        ...display, name: n.display_name, kind: n.kind, strategy: strategy?.strategy ?? null,
+        day_return_pct: ledgerReturn(n), ledger_day_return_pct: ledgerReturn(n),
+        day_pnl_usd: n.day_pnl ?? null, day_pnl_basis: 'ledger',
+      }
+    }),
+    rolloff: panel.rolloff,
+    display_conversion: input.mirror ? {
+      scalars: input.mirror.scalars, capital_base: input.mirror.capital_base ?? null,
+      frozen_at: input.mirror.frozen_at ?? null,
+      scaled_frozen: input.mirror.scaled_frozen ?? null,
+    } : null,
     structure_hash: nav.structure_hash,
     last_rebuild_ts: nav.last_rebuild_ts,
+    structure_diff: nav.structure_diff || [],
+    corp_actions: nav.corp_actions || {},
+    input_errors: 'input_errors' in input ? input.input_errors : {},
   }
 }
 
 export const realtimeNavTool: AgentTool = {
   definition: {
     name: 'get_realtime_nav',
-    description: 'Get LIVE intraday portfolio valuation from the central '
-      + 'valuation controller (minute-level, dual-engine verified). Returns '
-      + 'official-basis values per strategy (MRPT/MTFS/SSRS/AISS/AEUS/BDC) and '
-      + 'PORTFOLIO: official_anchored_value = official EOD × (1+day_return), '
-      + 'day_return/day_pnl from the shares×price dollar account, stock-level '
-      + 'holdings, pair/subsector mid-layers, quality checks (dual-engine '
-      + 'match, price freshness, position-level reconcile verdict) and '
-      + 'structure info. Use for questions about CURRENT/realtime NAV, '
-      + 'intraday PnL, or the Realtime NAV panel. For daily HISTORY use '
+    description: 'Get CURRENT/realtime NAV using the same data and display rules '
+      + 'as the Realtime NAV panel. Returns portfolio and all six strategy card '
+      + 'values, card percentages and baseline dates, displayed holdings and QC '
+      + 'mirror shares, price timestamps/delay, all panel quality states and the '
+      + 'historical frozen K memo. Use value/display_value and display_return '
+      + 'when describing the panel; basis identifies official vs ledger fallback. '
+      + 'ledger_day_return_pct/day_pnl_usd are separately labelled ledger diagnostics. '
+      + 'No re-anchoring or changes to frozen constants. For daily HISTORY use '
       + 'get_strategy_performance instead.',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
@@ -134,15 +144,11 @@ export const realtimeNavTool: AgentTool = {
   },
 }
 
-// chat(非 agent)路由的 grounding 文本——与面板同数,防止模型编数字
 export async function realtimeNavGrounding(): Promise<string | null> {
   const d = buildRealtimeNav()
-  if (d.error) {
-    return '\n\n## Realtime NAV (controller): ' + d.error
-  }
-  return (
-    '\n\n## Realtime NAV data (authoritative — live numbers on the Realtime '
-    + 'NAV panel the user is seeing; answer ONLY from them, do not invent '
-    + 'figures):\n' + JSON.stringify(d)
-  )
+  if (d.error) return '\n\n## Realtime NAV (controller): ' + d.error
+  return '\n\n## Realtime NAV panel snapshot (authoritative): Use value/display_value '
+    + 'and display_return to describe the panel. Respect basis, quality states and '
+    + 'as_of_utc; do not substitute ledger diagnostics or historical rolloff values '
+    + 'for current panel values. Do not invent missing data.\n' + JSON.stringify(d)
 }

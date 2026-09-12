@@ -9,7 +9,6 @@ import json
 from datetime import datetime, timezone
 
 from prediction_market_macro.config.registry import REGISTRY
-from prediction_market_macro.jobs.scheduler import set_coverage
 from prediction_market_macro.model.common import grid_pmf, pred_to_row
 from prediction_market_macro.util.periods import kalshi_period_to_key
 
@@ -44,7 +43,31 @@ def _open_periods(conn, series: str) -> list[tuple[str, str]]:
     return out
 
 
-def run(conn, settings) -> int:
+def _predicted_coverage(conn, series: str, period: str) -> None:
+    # Freeze runs are one-shot tasks. Once marked done, a later prediction cannot
+    # rely on another executor pass to restore their state (deciding can fail or
+    # the book can close meanwhile). Keep the condition in the write itself so a
+    # concurrent freeze cannot be lost between a read and an unconditional update.
+    conn.execute(
+        "INSERT INTO coverage(series,period,state,updated_ts) VALUES(?,?,'predicted',?)"
+        " ON CONFLICT(series,period) DO UPDATE SET state=excluded.state,"
+        " updated_ts=excluded.updated_ts WHERE coverage.state!='frozen'",
+        (series, period, datetime.now(timezone.utc).isoformat()))
+    conn.commit()
+
+
+class PredictionError(RuntimeError):
+    """One or more requested predictions failed; successes and alerts are committed."""
+
+    def __init__(self, failures, succeeded):
+        self.failures = tuple(failures)
+        self.succeeded = succeeded
+        super().__init__(f"prediction failed ({len(self.failures)} errors, {succeeded} succeeded): "
+                         + "; ".join(self.failures))
+
+
+def run(conn, settings, *, only_series: set[str] | None = None,
+        update_coverage: bool = True, fail_on_error: bool = False) -> int:
     import importlib
     from prediction_market_macro.model.common import Categorical
     from prediction_market_macro.research import param_select
@@ -63,17 +86,33 @@ def run(conn, settings) -> int:
             (now.isoformat(), "warn", "predict_all",
              f"cleveland_nowcast.refresh_if_stale: {e}"))
     n = 0
+    failures = []
+
+    def failed(label, error):
+        message = f"{label}: {error}"
+        failures.append(message)
+        conn.execute("INSERT INTO alerts(ts,level,source,message) VALUES(?,?,?,?)",
+                     (now.isoformat(), "error", "predict_all", message))
+
     for spec in REGISTRY.values():
+        if only_series is not None and spec.ticker not in only_series:
+            continue
         disp = SERIES_DISPATCH.get(spec.ticker)
         if disp is None:
             continue
-        mod = importlib.import_module(disp[0])
-        fn = getattr(mod, disp[1])
         # #119: today's DSR-gated parameter choice. A single SELECT — the scoring runs in
         # `param_select.refresh` earlier in the pipeline. `{}` means the gate held and the
         # registered defaults are used, which is the common case; `params=None` is passed
         # in that case so the model takes exactly the path it took before this landed.
-        params = param_select.current(conn, spec.ticker) or None
+        try:
+            mod = importlib.import_module(disp[0])
+            fn = getattr(mod, disp[1])
+            params = param_select.current(conn, spec.ticker) or None
+        except Exception as exc:
+            if not fail_on_error:
+                raise
+            failed(spec.ticker, exc)
+            continue
         for kalshi_tok, key in _open_periods(conn, spec.ticker):
             try:
                 pred = fn(conn, now, key, series=spec.ticker, params=params)
@@ -87,12 +126,12 @@ def run(conn, settings) -> int:
                     " dist_json, ladder_json, inputs_json, data_horizon, created_ts)"
                     " VALUES(?,?,?,?,?,?,?,?,?)",
                     pred_to_row(pred, ladder))
-                set_coverage(conn, spec.ticker, key, "predicted")
+                if update_coverage:
+                    _predicted_coverage(conn, spec.ticker, key)
                 n += 1
             except Exception as e:                               # noqa: BLE001
-                conn.execute(
-                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                    (now.isoformat(), "error", "predict_all",
-                     f"{spec.ticker}/{key}: {e}"))
+                failed(f"{spec.ticker}/{key}", e)
     conn.commit()
+    if fail_on_error and failures:
+        raise PredictionError(failures, n)
     return n

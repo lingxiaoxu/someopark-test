@@ -43,6 +43,7 @@ function LiveCard({ m }: { m: any }) {
         {leagueLabel({ league: m.league ?? '', zh: m.league_zh }, lang, t)}
       </div>
       <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        {!m.model && <div>{t('soccer.dataHealth.unavailable')}</div>}
         {t('soccer.model')}: {t('soccer.abbrHome')} {pct(m.model?.home)} · {t('soccer.abbrDraw')} {pct(m.model?.draw)} · {t('soccer.abbrAway')} {pct(m.model?.away)}
       </div>
       <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>
@@ -62,12 +63,13 @@ export default function SoccerUpcoming() {
   const SLOTS = 6;
   const now = Date.now();
   const liveMatches = (live.data?.matches ?? []).slice(0, SLOTS);
-  const liveKeys = new Set(liveMatches.map((m: any) => `${m.home?.id}|${m.away?.id}`));
+  const fixtureKey = (m: any) => m.fixture_id != null ? String(m.fixture_id) : `${m.kickoff}|${m.home?.id ?? m.home?.name}|${m.away?.id ?? m.away?.name}`;
+  const liveKeys = new Set(liveMatches.map(fixtureKey));
   // Soonest not-started fixtures (never a match already confirmed live).
   const all = up.data?.matches ?? [];
   const future = all.filter((m) => new Date(m.kickoff).getTime() > now);
   const pool = (future.length ? future : all)
-    .filter((m) => !liveKeys.has(`${m.home?.id}|${m.away?.id}`));
+    .filter((m) => !liveKeys.has(fixtureKey(m)));
   const upMatches = pool.slice(0, Math.max(0, SLOTS - liveMatches.length));
 
   // §3.7: group the upcoming slice by league (LIVE stays on top, cross-league).
@@ -78,7 +80,7 @@ export default function SoccerUpcoming() {
     groups.get(key)!.matches.push(m);
   }
 
-  const hasAdvance = all.some((m) => m.caps?.advance) || liveMatches.some((m: any) => m.caps?.advance);
+  const hasAdvance = upMatches.some((m) => m.caps?.advance) || liveMatches.some((m: any) => m.caps?.advance);
   const total = liveMatches.length + upMatches.length;
   const loading = up.loading && live.loading && !total;
   const openPredictions = () => setArtifact({ type: 'soccer_predictions', title: t('soccer.todaysPredictions') });
@@ -107,10 +109,17 @@ export default function SoccerUpcoming() {
           {hasAdvance && <AdvanceModeToggle />}
         </div>
       </div>
+      {!!total && !!(up.error || live.error) && (
+        <button type="button" role="status"
+          onClick={() => setArtifact({ type: 'soccer_venues', title: t('soccer.venuesApi') })}
+          style={{ color: 'var(--warning, #a86b00)', fontSize: 10, fontFamily: 'var(--font-mono)', background: 'none', border: 'none', padding: '0 0 8px', textAlign: 'left', cursor: 'pointer' }}>
+          {t('soccer.dataHealth.loadFailed')} {t('soccer.venuesApi')} →
+        </button>
+      )}
       {loading ? (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t('soccer.loadingUpcoming')}</div>
       ) : !total ? (
-        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t('soccer.noUpcoming')}</div>
+        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t(up.error || live.error ? 'soccer.dataHealth.loadFailed' : 'soccer.noUpcoming')}</div>
       ) : (
         <>
           {!!liveMatches.length && (

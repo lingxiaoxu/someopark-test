@@ -21,13 +21,12 @@ z-score over present clubs only and neutral-fill the rest.
 """
 from __future__ import annotations
 
-import difflib
 import math
 import re
 from pathlib import Path
 
 from prediction_market_soccer.config import CONFIG
-from prediction_market_soccer.ingest.soccer_ingest import club_id_of
+from prediction_market_soccer.util.club_identity import FCClubResolver
 
 # ── FC rating → per-match international goal-rate map ─────────────────────────
 # A "goal threat" composite (finishing-led) feeds an exponential anchored at two
@@ -112,6 +111,10 @@ _EA_ALIASES: dict[tuple[str, str], str] = {
     ("Bundesliga", "TSG Hoffenheim"): "1899_hoffenheim",
     ("Bundesliga", "Frankfurt"): "eintracht_frankfurt",
     ("Bundesliga", "M'gladbach"): "borussia_mnchengladbach",
+    # Previously verified FC26 style aliases, shared with ingest in the same scope.
+    ("Bundesliga", "FC Bayern München"): "bayern_mnchen",
+    ("Bundesliga", "1. FC Köln"): "1_fc_kln",
+    ("Eredivisie", "N.E.C. Nijmegen"): "nec_nijmegen",
     # Ligue 1 (+ Le Mans from Ligue 2)
     ("Ligue 1 McDonald's", "Paris SG"): "paris_saint_germain",
     ("Ligue 1 McDonald's", "OM"): "marseille",
@@ -197,9 +200,8 @@ def ingest_fc_players(conn=None, csv_path: Path | str | None = None) -> int:
     """Map FC 26 players to CLUBS (team column), compute goal-rate prior, upsert
     fc_player. canonical_team_id now holds the club_id from club_registry.
 
-    Matching: exact `club_id_of(team)` against the registry first; a constrained
-    fuzzy pass (cutoff 0.85) catches EA spelling variants; everything else drops
-    (never guessed — §3.8-e). De-dupes (club, last-name) keeping highest overall;
+    Matching: reviewed EA aliases and unique registered names within the source
+    league; ambiguous/unknown labels remain unmatched. De-dupes (club, last-name) keeping highest overall;
     ranks players within a club by goal-rate. Returns rows written.
     """
     import pandas as pd
@@ -209,29 +211,14 @@ def ingest_fc_players(conn=None, csv_path: Path | str | None = None) -> int:
     conn = conn or store.init_db()
     df = load_fc_frame(csv_path)
 
-    regs = conn.execute(
-        "SELECT DISTINCT club_id, name FROM club_registry").fetchall()
+    regs = [dict(r) for r in conn.execute(
+        "SELECT club_id,comp,api_team_id,name FROM club_registry")]
     registry_ids = {r["club_id"] for r in regs}
-    reg_names = {r["name"]: r["club_id"] for r in regs}
     if not registry_ids:
         print("[fc_ingest] club_registry empty — run soccer_ingest --scope static first")
         return 0
 
-    fuzzy_cache: dict[str, str] = {}
-
-    def club_of(team_name: str, league_name: str = "") -> str:
-        ali = _EA_ALIASES.get((league_name, team_name))
-        if ali in registry_ids:
-            return ali
-        cid = club_id_of(team_name)
-        if cid in registry_ids:
-            return cid
-        if team_name in fuzzy_cache:
-            return fuzzy_cache[team_name]
-        best = difflib.get_close_matches(team_name, list(reg_names), n=1, cutoff=0.85)
-        out = reg_names[best[0]] if best else ""
-        fuzzy_cache[team_name] = out
-        return out
+    club_of = FCClubResolver(regs, league_aliases=_EA_ALIASES).resolve
 
     df = df.copy()
     df["canon"] = df.apply(
@@ -270,6 +257,14 @@ def ingest_fc_players(conn=None, csv_path: Path | str | None = None) -> int:
     )
     df["rank"] = df.groupby("canon")["goal_rate"].rank(ascending=False, method="first").astype(int)
 
+    from prediction_market_soccer.util import source_history
+    # Retain both the old full set and its replacement, with actual local
+    # observation times. No historical received time is inferred from FC season.
+    observed_revisions = source_history.capture_current_sources(conn, tables=('fc_player',))
+    csv_source = Path(csv_path) if csv_path else CONFIG.paths.fc_raw / 'ea_fc26_players.csv'
+    observed_revisions.append(source_history.stage_version(conn, 'file:fc26', 'players',
+        {'csv_sha256': source_history.hashlib.sha256(csv_source.read_bytes()).hexdigest(),
+         'resolver_version': source_history.hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}))
     conn.execute("DELETE FROM fc_player")
     written = 0
     now = store.utcnow()
@@ -291,7 +286,9 @@ def ingest_fc_players(conn=None, csv_path: Path | str | None = None) -> int:
             ),
         )
         written += 1
+    observed_revisions.extend(source_history.capture_current_sources(conn, tables=('fc_player',)))
     conn.commit()
+    source_history.finalize_versions(conn, observed_revisions)
     return written
 
 

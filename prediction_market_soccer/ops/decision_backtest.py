@@ -1,278 +1,122 @@
-"""ops/decision_backtest.py — PIT backtest of the pre-match DECISION model (plan 20).
+"""Explicit candidate-only decision comparison, without legacy price/model fallback.
 
-Answers, on the REAL settled matches of our enabled competitions and REAL recorded
-venue prices, the question "what pre-match decision rule makes the most money / has
-the best CLV?":
-
-  * Strategy A — argmax  (the CURRENT rule): bet the most-likely side, $1 flat.
-  * Strategy B — value   : bet the best net-edge side (decision_model.decide), $1 flat.
-  * Strategy C — value + confidence sizing: same side, stake scaled to [$0.2, $2].
-
-Everything is strictly point-in-time: the model probabilities are recomputed for
-each match with features cut at its kickoff (same engine as param_sweep), and the
-prices come from milestone_snapshot (PRE = entry, T15..T75 / FT = exits).
-
-For the VALUE pick it also reports the PnL of each EXIT timing (hold-to-FT vs sell
-at T15/T30/HT/T60/T75), so we can see whether holding to settlement or taking an
-in-play exit pays better.
-
-Run:  python -m prediction_market_soccer.ops.decision_backtest
+This is a research calculation, not a paper journal or a published financial book.
+Each fixture keeps its eligibility result; unavailable exits are never hold P&L.
 """
 from __future__ import annotations
 
-from dataclasses import replace
-
-from prediction_market_soccer.config.config import CONFIG
 from prediction_market_soccer.strategy.decision_model import SideQuote, decide
 
 _SIDES = ("home", "draw", "away")
 _EXITS = ("T15", "T30", "HT", "T60", "T75", "FT")
-_FINISHED = ("FT", "AET", "PEN")
 
 
-# ── PnL accounting for a YES contract bought at entry_c ¢ (pays 100¢ if it wins) ──
-def _pnl_hold(stake: float, entry_c: float, won: bool) -> float:
-    """Hold to settlement: each contract → 100¢ (win) or 0¢ (loss)."""
-    if entry_c <= 0:
-        return 0.0
-    return stake * ((100.0 - entry_c) / entry_c) if won else -stake
+def _pnl_hold(stake, entry_c, won):
+    return stake * ((100 - entry_c) / entry_c) if won else -stake
 
 
-def _pnl_exit(stake: float, entry_c: float, exit_c: float) -> float:
-    """Sell before settlement at exit_c ¢ (the pick side's price at that milestone)."""
-    if entry_c <= 0 or exit_c is None:
-        return 0.0
-    return stake * ((exit_c - entry_c) / entry_c)
+def _pnl_exit(stake, entry_c, exit_c):
+    return stake * (exit_c - entry_c) / entry_c
 
 
-def _quotes_from_row(row) -> dict:
-    """Best (cheapest) executable ask per side across the two venues + its de-vig."""
-    q = {}
-    for s in _SIDES:
-        asks = []
-        ka, pa = row[f"kalshi_{s}_ask"], row[f"poly_{s}_ask"]
-        if ka is not None:
-            asks.append((ka, "kalshi"))
-        if pa is not None:
-            asks.append((pa, "poly_us"))
-        if not asks:
-            q[s] = SideQuote()
-            continue
-        ask, ven = min(asks, key=lambda t: t[0])
-        q[s] = SideQuote(ask=ask, devig=row[f"devig_{s}"], venue=ven)
-    return q
+def _quotes_from_row(row):
+    raise ValueError("legacy snapshot prices are not candidate inputs")
 
 
-# venue label (as used by the decision model) → milestone_snapshot column prefix
-_COL = {"kalshi": "kalshi", "poly_us": "poly", "poly": "poly"}
-
-
-def _exit_cents(row, side: str, venue: str | None):
-    """Price you'd sell the pick side at this milestone — the bid (selling hits the
-    bid), falling back to ask, on the entry venue (else either venue)."""
+def _exit_cents(row, side, venue):
+    """Legacy inspection adapter: same venue bid only, never ask or other venue."""
     if row is None:
         return None
-    pref = [_COL.get(venue)] if venue else []
-    pref += [p for p in ("kalshi", "poly") if p != _COL.get(venue)]
-    for p in pref:
-        bid = row[f"{p}_{side}_bid"]
-        if bid is not None:
-            return bid * 100.0
-    for p in pref:
-        ask = row[f"{p}_{side}_ask"]
-        if ask is not None:
-            return ask * 100.0
-    return None
+    prefix = {"kalshi": "kalshi", "poly_us": "poly", "poly": "poly"}.get(venue)
+    value = row[f"{prefix}_{side}_bid"] if prefix else None
+    return value * 100 if value is not None else None
 
 
-def backtest(conn=None, *, calib_confidence: float = 0.25) -> dict:
-    from prediction_market_soccer.ingest import store
-    from prediction_market_soccer.ingest.club_prior import load_prior
-    from prediction_market_soccer.model.altdata_adjust import altdata_index
-    from prediction_market_soccer.model.form_strength import form_index
-    from prediction_market_soccer.model.match_pricing import price_match, is_knockout
-    from prediction_market_soccer.model.probability_calibration import load_calibration, apply_calibration
-    from prediction_market_soccer.model.squad_strength import build_strength_live
+def backtest(conn=None, *, calib_confidence=0.25, candidate=None, decision_scope=None):
+    """decision_scope: ordered [{fixture_id,pre_at,cutoff,exit_targets:{label:at}}].
 
-    conn = conn or store.init_db()
-    prior = load_prior()
-    cal = load_calibration()
-    cfg_model = CONFIG.model
-    name_of = {t.team_id: t.name for t in prior.teams}
-    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
-        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-
-    from prediction_market_soccer.config.leagues import neutral_venue_for, active as _active
-    _comp_of = {c.api_football_id: c.key for c in _active()}
-    _lids = tuple(_comp_of)
-    fixtures = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, round, kickoff_ts, "
-        "raw_json, league_id "
-        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
-        "AND league_id IN ({}) "
-        "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED)), ",".join("?" * len(_lids))),
-        (*_FINISHED, *_lids)).fetchall()
-
-    # milestone rows indexed by (fixture, milestone)
-    ms = {}
-    for r in conn.execute("SELECT * FROM milestone_snapshot"):
-        ms[(r["fixture_api_id"], r["milestone"])] = r
-
-    strategies = {"A_argmax": [], "B_value_flat": [], "C_value_sized": [],
-                  "D_value_smart_exit": []}
-    exit_pnl = {e: [] for e in (*_EXITS,)}          # value pick, $1 flat, PnL by exit timing
-    exit_pnl_argmax = {e: [] for e in (*_EXITS,)}   # same curve for the argmax pick
-    clv_list, detail = [], []
-
-    for f in fixtures:
-        hi, ai = cmap.get(f["home_api_id"]), cmap.get(f["away_api_id"])
-        if not (hi and ai):
+    Candidate features contain an explicitly selected ``model`` probability map,
+    form/calibration inputs and frozen lambdas. This function never builds today's
+    prior or reads a final event table on behalf of an old decision.
+    """
+    if candidate is None or decision_scope is None:
+        return {"status": "unavailable", "reason": "explicit_candidate_and_decision_scope_required",
+                "strategies": {}, "detail": [], "eligibility": []}
+    from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
+    candidate.verify_method_code()
+    cfg,risk=candidate.parameters()
+    strategies = {k: [] for k in ("A_argmax", "B_value_flat", "C_value_sized", "D_value_smart_exit")}
+    details, eligibility = [], []
+    scope_ids = [r['fixture_id'] for r in decision_scope]
+    if scope_ids != candidate.manifest['fixture_ids']:
+        raise ValueError('decision scope must preserve the complete candidate fixture order')
+    for item in decision_scope:
+        fid, at, cutoff = item['fixture_id'], item['pre_at'], item['cutoff']
+        feat, qr, result = candidate.features_at(fid, at), candidate.quotes_at(fid, at), candidate.result_at(fid, cutoff)
+        bad = next((r for r in (feat, qr, result) if r['status'] != 'ok'), None)
+        if bad:
+            eligibility.append({'fixture_id': fid, 'status': bad['status'], 'reason': bad['reason']})
             continue
-        pre = ms.get((f["api_id"], "PRE"))
-        if pre is None:
+        v, quotes = feat['data'], qr['data']
+        model = v.get('model')
+        if not model or any(s not in model for s in _SIDES) or abs(sum(model.values()) - 1) > 1e-6:
+            eligibility.append({'fixture_id': fid, 'status': 'invalid', 'reason': 'missing_candidate_model'})
             continue
-        _lg = _comp_of.get(f["league_id"])
-        ko = is_knockout(f["round"], _lg)
-
-        # PIT calibrated model probs (features cut at kickoff), PER-LEAGUE model —
-        # the same construction match_pick/upcoming price with (C2). The traded
-        # market is the 90-MIN 3-way for both stages: knockout=False pricing with
-        # host_neutral on KO rounds, exactly like performance_report.match_pick.
-        from prediction_market_soccer.ops.performance_report import _pit_strength
-        sm = _pit_strength(conn, f["kickoff_ts"], _lg)
-        mp = price_match(sm, hi, ai, knockout=False, host_neutral=neutral_venue_for(_lg, f["round"], conn, f["api_id"]))
-        p = apply_calibration([mp.p_home, mp.p_draw, mp.p_away], cal, knockout=False)
-        model = {"home": p[0], "draw": p[1], "away": p[2]}
-
-        # settle on the 90-minute regulation score (an AET score would mis-settle the Tie market)
-        from prediction_market_soccer.util.pricing import reg_score
-        gh90, ga90 = reg_score(f["raw_json"], f["home_goals"], f["away_goals"])
-        result = "home" if gh90 > ga90 else ("draw" if gh90 == ga90 else "away")
-
-        # PIT recent-form for the confidence blend.
-        try:
-            fi = form_index(conn, as_of=f["kickoff_ts"])
-            form = {"home_z": fi[hi].form_z if hi in fi else None,
-                    "away_z": fi[ai].form_z if ai in fi else None}
-        except Exception:
-            form = None
-
-        quotes = _quotes_from_row(pre)
-
-        # ── Strategy A: argmax, $1 flat ──
+        prices = {s: quotes[s].get('ask') if candidate.manifest.get('require_observed_quotes') else quotes[s].get('price') for s in _SIDES}
+        if any(p is None or not 0 < p < 1 for p in prices.values()):
+            eligibility.append({'fixture_id': fid, 'status': 'unavailable', 'reason': 'missing_candidate_ask_or_reference'})
+            continue
+        outcome = result['data'].get('result')
+        if outcome not in _SIDES:
+            eligibility.append({'fixture_id': fid, 'status': 'invalid', 'reason': 'invalid_regulation_result'})
+            continue
         a_side = max(_SIDES, key=lambda s: model[s])
-        a_q = quotes.get(a_side)
-        if a_q and a_q.ask is not None:
-            a_entry = a_q.ask * 100.0
-            a_won = a_side == result
-            strategies["A_argmax"].append({"side": a_side, "won": a_won,
-                                           "pnl": _pnl_hold(1.0, a_entry, a_won)})
-            # exit-timing comparison for the argmax pick too (the value pick's own
-            # curve is built below) — same $1 flat basis.
-            for e in _EXITS:
-                if e == "FT":
-                    exit_pnl_argmax["FT"].append(_pnl_hold(1.0, a_entry, a_won))
-                else:
-                    ec = _exit_cents(ms.get((f["api_id"], e)), a_side, a_q.venue)
-                    if ec is not None:
-                        exit_pnl_argmax[e].append(_pnl_exit(1.0, a_entry, ec))
-
-        # ── Strategies B/C: value pick via decision_model ──
-        d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=True)
-        if d.side is not None and d.price_cents:
-            entry = d.price_cents
-            won = d.side == result
-            strategies["B_value_flat"].append({"side": d.side, "won": won, "pnl": _pnl_hold(1.0, entry, won)})
-            strategies["C_value_sized"].append({"side": d.side, "won": won, "stake": d.stake_usd,
-                                                 "pnl": _pnl_hold(d.stake_usd, entry, won)})
-            # exit-timing PnL for the value pick ($1 flat for apples-to-apples)
-            for e in _EXITS:
-                if e == "FT":
-                    exit_pnl["FT"].append(_pnl_hold(1.0, entry, won))
-                else:
-                    ec = _exit_cents(ms.get((f["api_id"], e)), d.side, d.venue)
-                    if ec is not None:
-                        exit_pnl[e].append(_pnl_exit(1.0, entry, ec))
-            # ── Strategy D: value pick + MODEL-DRIVEN smart exit ──
-            # Same entry as B, but the position is cashed out when the in-play price
-            # over-reacts versus the live model (strategy/smart_exit); when it never
-            # fires the bet is simply held to settlement, so D ≥ B only when the exit
-            # rule adds something. This is the "intelligent timing" arm, as opposed to
-            # the fixed-clock exits in the exit_pnl curve.
-            try:
-                from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
-                se = smart_exit_cashout(conn, sm, f["api_id"], d.side, entry, hi, ai,
-                                        f["round"], won)
-            except Exception:
-                se = None
-            if se and se.get("pnl_c") is not None:
-                # per-contract ¢ move → $1-flat PnL on the same basis as A/B
-                d_pnl = 1.0 * (se["pnl_c"] / entry) if entry else 0.0
-            else:
-                d_pnl = _pnl_hold(1.0, entry, won)
-            strategies["D_value_smart_exit"].append(
-                {"side": d.side, "won": won, "pnl": d_pnl,
-                 "exited": bool(se), "sold_min": (se or {}).get("sold_min")})
-
-            # CLV ¢ (pick side T75 − entry); positive ⇒ market drifted our way
-            t75c = _exit_cents(ms.get((f["api_id"], "T75")), d.side, d.venue)
-            if t75c is not None:
-                clv_list.append(t75c - entry)
-            detail.append({"date": (f["kickoff_ts"] or "")[:10],
-                           "match": f"{name_of.get(hi, hi)} v {name_of.get(ai, ai)}",
-                           "argmax": a_side, "value": d.side, "result": result,
-                           "entry_c": round(entry, 1), "stake": d.stake_usd,
-                           "edge": d.net_edge, "k": d.confidence_k})
-
-    def _summ(rows, money_key="pnl"):
-        n = len(rows)
-        if not n:
-            return {"n": 0}
-        wins = sum(1 for r in rows if r.get("won"))
-        pnl = sum(r[money_key] for r in rows)
-        staked = sum(r.get("stake", 1.0) for r in rows)
-        return {"n": n, "wins": wins, "win_rate": round(wins / n, 3),
-                "pnl": round(pnl, 3), "staked": round(staked, 2),
-                "roi": round(pnl / staked, 4) if staked else None}
-
-    out = {"strategies": {k: _summ(v) for k, v in strategies.items()},
-           "exit_timing_argmax": {e: {"n": len(v), "pnl": round(sum(v), 3),
-                                      "avg": round(sum(v) / len(v), 4) if v else None}
-                                  for e, v in exit_pnl_argmax.items()},
-           "exit_timing": {e: {"n": len(v), "pnl": round(sum(v), 3),
-                               "roi": round(sum(v) / len(v), 4) if v else None} for e, v in exit_pnl.items()},
-           "clv": {"n": len(clv_list), "avg_cents": round(sum(clv_list) / len(clv_list), 2) if clv_list else None,
-                   "pct_positive": round(sum(1 for c in clv_list if c > 0) / len(clv_list), 3) if clv_list else None},
-           "detail": detail, "calib_confidence": calib_confidence}
-    return out
+        a_entry = 100 * prices[a_side]
+        strategies['A_argmax'].append({'fixture_id': fid, 'side': a_side, 'won': a_side == outcome,
+                                      'pnl': _pnl_hold(1, a_entry, a_side == outcome), 'stake': 1})
+        total = sum(prices.values())
+        qs = {s: SideQuote(ask=prices[s], devig=prices[s] / total, venue=quotes[s].get('venue')) for s in _SIDES}
+        d = decide(model, qs, cfg=cfg, risk=risk, calib_confidence=v.get('calib_confidence', calib_confidence), form=v.get('form'), gate_open=v.get('gate_open', True))
+        if d.side is None:
+            eligibility.append({'fixture_id': fid, 'status': 'no_edge', 'reason': d.reason})
+            continue
+        won = d.side == outcome
+        for label, stake in [('B_value_flat', 1), ('C_value_sized', d.stake_usd)]:
+            strategies[label].append({'fixture_id': fid, 'side': d.side, 'won': won, 'stake': stake,
+                                      'pnl': _pnl_hold(stake, d.price_cents, won)})
+        se = smart_exit_cashout(None, None, fid, d.side, d.price_cents, None, None, None, won,
+                               candidate=candidate, entry_at=at, until=cutoff)
+        if se['status'] == 'exited':
+            pnl = se['pnl_c'] / d.price_cents
+        elif se['status'] == 'held_no_trigger':
+            pnl = _pnl_hold(1, d.price_cents, won)
+        else:
+            pnl = None
+        if pnl is not None:
+            strategies['D_value_smart_exit'].append({'fixture_id': fid, 'side': d.side, 'won': won, 'pnl': pnl,
+                                                     'stake': 1, 'exited': se['status'] == 'exited'})
+        eligibility.append({'fixture_id': fid, 'status': 'evaluated', 'exit_status': se['status'], 'exit_reason': se.get('reason')})
+        details.append({'fixture_id': fid, 'side': d.side, 'entry_c': d.price_cents, 'stake': d.stake_usd,
+                        'selected_quote': quotes[d.side], 'smart_exit': se})
+    summary = {}
+    for name, rows in strategies.items():
+        n, stake = len(rows), sum(r['stake'] for r in rows)
+        pnl = sum(r['pnl'] for r in rows)
+        summary[name] = {'n': n, 'wins': sum(r['won'] for r in rows), 'pnl': pnl, 'staked': stake,
+                         'win_rate': sum(r['won'] for r in rows) / n if n else None, 'roi': pnl / stake if stake else None}
+    return {'status': 'evaluated', 'run_id': candidate.run_id, 'scope_id': candidate.scope_id,
+            'strategies': summary, 'records': strategies, 'detail': details, 'eligibility': eligibility,
+            'evidence': 'candidate_research_only'}
 
 
-def _fmt(d: dict) -> str:
-    L = []
-    L.append("=" * 68)
-    L.append("PRE-MATCH DECISION BACKTEST  (PIT, real settled matches + real prices)")
-    L.append("=" * 68)
-    L.append(f"{'strategy':<16}{'n':>4}{'win%':>8}{'PnL($)':>10}{'staked':>9}{'ROI':>9}")
-    for k, s in d["strategies"].items():
-        if s.get("n"):
-            L.append(f"{k:<16}{s['n']:>4}{s['win_rate']*100:>7.1f}%{s['pnl']:>10.2f}{s['staked']:>9.2f}{(s['roi'] or 0)*100:>8.1f}%")
-    L.append("")
-    L.append("EXIT TIMING for the VALUE pick ($1 flat) — hold-to-FT vs sell early:")
-    L.append(f"{'exit':<8}{'n':>4}{'PnL($)':>10}{'avg ROI':>10}")
-    for e in _EXITS:
-        s = d["exit_timing"][e]
-        L.append(f"{e:<8}{s['n']:>4}{s['pnl']:>10.2f}{(s['roi'] or 0)*100:>9.1f}%")
-    c = d["clv"]
-    L.append("")
-    L.append(f"CLV (value pick, T75−entry): avg {c['avg_cents']}¢  positive on {(c['pct_positive'] or 0)*100:.0f}% of {c['n']} bets")
-    L.append(f"(calib_confidence used for sizing = {d['calib_confidence']:+.2f})")
-    return "\n".join(L)
+def _fmt(doc):
+    import json
+    return json.dumps(doc, ensure_ascii=False, indent=2)
 
 
 def main():
-    d = backtest()
-    print(_fmt(d))
+    raise SystemExit('Use CandidateMarketData and a fixed decision scope; no default historical replay.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

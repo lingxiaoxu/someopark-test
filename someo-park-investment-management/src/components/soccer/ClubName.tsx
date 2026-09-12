@@ -8,6 +8,7 @@ import { useSoccerFocus } from '../../contexts/SoccerFocusContext';
 import { useSoccerIndex, useSoccerMeta, type ClubStatus } from '../../lib/clubIndex';
 import { SOCCER_ITEMS } from './SoccerArtifactGrid';
 import { clubName, leagueLabel } from './soccerLabels';
+import { resolveClubId, type SoccerClubRef } from '../../lib/soccerClubIdentity';
 
 const ORDER = SOCCER_ITEMS.map((i) => i.type);
 const ITEM_BY_TYPE = Object.fromEntries(SOCCER_ITEMS.map((i) => [i.type, i]));
@@ -48,7 +49,7 @@ function statusLine(
  */
 export default function ClubName({
   club, bold,
-}: { club?: { id?: string; club_id?: string; team_id?: string; name?: string; zh?: string } | null; bold?: boolean }) {
+}: { club?: SoccerClubRef; bold?: boolean }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || '';
   const setActiveArtifact = useSetArtifact();
@@ -86,7 +87,7 @@ export default function ClubName({
   }, [open]);
 
   const label = clubName(club, lang, t);
-  const id = club?.club_id || club?.team_id || club?.id || '';
+  const id = resolveClubId(club);
   // No canonical id → plain text. A popover keyed on a name we could not resolve would
   // link to the wrong club, which is worse than not offering the link.
   if (!id) return <>{label}</>;

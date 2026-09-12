@@ -16,6 +16,7 @@ import time
 from datetime import datetime, timezone
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.quote_evidence import (qualify_source_block, source_kind, collect_receipts, diagnose_quotes)
 from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData as _KMD
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
@@ -104,11 +105,9 @@ def _match_hedge_advance(conn, fx, pick_name, hi, ai, sm, gh, ga, minute, lap, p
     hedge_c = None
     for v in ("kalshi", "poly_us"):
         blk = (prices or {}).get(v)
-        if blk and blk.get(other) and blk[other].get("mid_c") is not None:
-            hedge_c = blk[other]["mid_c"]
+        if blk and blk.get(other) and blk[other].get("ask_c") is not None:
+            hedge_c = blk[other]["ask_c"]
             break
-    if hedge_c is None:
-        hedge_c = to_cents(model_adv[other])
     if entry_c is None or hedge_c is None or hedge_c >= 100.0:
         return None
     SHARES = 10.0
@@ -153,13 +152,17 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
     from prediction_market_soccer.config.leagues import active, by_api_id, caps_for
     from prediction_market_soccer.ingest.soccer_ingest import carry_of, leg_of
     from prediction_market_soccer.model.strength_cache import composite_live_strength
-    sm = composite_live_strength(conn)
+    try:
+        sm = composite_live_strength(conn)
+    except Exception as exc:
+        print(f"[inplay] strength unavailable ({type(exc).__name__})")
+        sm = None
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     _lids = tuple(c.api_football_id for c in active())
     live = conn.execute(
-        "SELECT league_id, api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round "
+        "SELECT league_id, api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round, raw_json, kickoff_ts, updated_at "
         "FROM fixture WHERE status_short IN ({}) AND league_id IN ({}) "
         "AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-10 hours') "
         "ORDER BY elapsed DESC".format(",".join("?" * len(_LIVE)), ",".join("?" * len(_lids))),
@@ -174,7 +177,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         # trace is indistinguishable from "nothing to trade", and that is how a crash
         # inside the scanner could run for days unnoticed.
         opps = []
-        scan_error = f"{type(e).__name__}: {e}"
+        scan_error = "opportunity_scan_failed"
         import traceback
         print(f"[inplay] opportunity scan FAILED — no signals this cycle: {scan_error}")
         traceback.print_exc()
@@ -186,123 +189,151 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
 
     matches = []
     for fx in live:
-        hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
-        if not (hi and ai):
+        fixture_comp = by_api_id(fx["league_id"])
+        if not fixture_comp or not caps_for(fixture_comp.key, fx["round"]).advance:
             continue
-        comp = by_api_id(fx["league_id"])
-        leg, agg = leg_of(conn, fx["api_id"])          # running aggregate — display only
-        _, carry = carry_of(conn, fx["api_id"])        # first leg only — what the model carries
-        cp = caps_for(comp.key, fx["round"], leg=leg) if comp else None
-        if not (cp and cp.advance):
-            continue   # §3.0: the advance path exists ⇔ caps.advance (C1 done right)
-        minute = fx["elapsed"] or 0
-        gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
-        # C5: the deciding leg of a two-legged tie carries the leg-1 AGGREGATE in — the
-        # live advance state is the aggregate, so shift the score fed to the model.
-        # (tie table stores agg for team_a = leg-1 home = TODAY'S AWAY side on leg 2.)
-        carry_h = carry_a = 0
-        # Carry the FIRST LEG only. `agg` already folds in leg 2 the moment it kicks
-        # off, so adding it to the live leg-2 score counted those goals twice — a side
-        # 1-0 up on the night read as 2-0 up on aggregate from its own single goal.
-        if cp.two_leg and leg == 2 and carry:
+        try:
+            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
+            if not (hi and ai):
+                raise KeyError("missing_team_mapping")
+            comp = by_api_id(fx["league_id"])
+            leg, agg = leg_of(conn, fx["api_id"])          # running aggregate — display only
+            _, carry = carry_of(conn, fx["api_id"])        # first leg only — what the model carries
+            cp = caps_for(comp.key, fx["round"], leg=leg) if comp else None
+            if not (cp and cp.advance):
+                continue   # §3.0: the advance path exists ⇔ caps.advance (C1 done right)
+            minute = fx["elapsed"] or 0
+            gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
+            # C5: the deciding leg of a two-legged tie carries the leg-1 AGGREGATE in — the
+            # live advance state is the aggregate, so shift the score fed to the model.
+            # (tie table stores agg for team_a = leg-1 home = TODAY'S AWAY side on leg 2.)
+            carry_h = carry_a = 0
+            # Carry the FIRST LEG only. `agg` already folds in leg 2 the moment it kicks
+            # off, so adding it to the live leg-2 score counted those goals twice — a side
+            # 1-0 up on the night read as 2-0 up on aggregate from its own single goal.
+            if cp.two_leg and leg == 2 and carry:
+                try:
+                    a_a, a_b = (int(x) for x in carry.split("-"))
+                    carry_h, carry_a = a_b, a_a
+                except ValueError:
+                    pass
+            gh_eff, ga_eff = gh + carry_h, ga + carry_a
+            period = _period_for(fx["status_short"])
+            xg = {r["team_api_id"]: r["xg"] for r in conn.execute(
+                "SELECT team_api_id, xg FROM fixture_stats WHERE fixture_api_id=?", (fx["api_id"],))}
+            reds = {r["team_api_id"]: r["n"] for r in conn.execute(
+                "SELECT team_api_id, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
+                "AND type='Card' AND detail LIKE '%Red%' GROUP BY team_api_id", (fx["api_id"],))}
+            rh, ra = reds.get(fx["home_api_id"], 0), reds.get(fx["away_api_id"], 0)
+            lam_h, lam_a = sm.pair_lambdas(hi, ai, knockout=True, neutral=bool(cp.neutral))
+            # Live penalty-shootout tally (kicks already taken/scored per side) from the stored
+            # shootout events (comments='Penalty Shootout'; detail 'Penalty'=scored, 'Missed
+            # Penalty'=miss). Feeds the shootout DP so the advance prob updates PER KICK during pens
+            # instead of sitting on the static pre-shootout strength prior. Zero outside pens.
+            so_taken = {"home": 0, "away": 0}
+            so_scored = {"home": 0, "away": 0}
+            if period == "pens":
+                for r in conn.execute(
+                    "SELECT team_api_id, detail, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
+                    "AND comments='Penalty Shootout' GROUP BY team_api_id, detail", (fx["api_id"],)):
+                    side = ("home" if r["team_api_id"] == fx["home_api_id"]
+                            else "away" if r["team_api_id"] == fx["away_api_id"] else None)
+                    if side is None:
+                        continue
+                    so_taken[side] += r["n"]
+                    if r["detail"] == "Penalty":
+                        so_scored[side] += r["n"]
+            shootout_home = shootout_win_prob_detailed(
+                sm, hi, ai, taken_a=so_taken["home"], scored_a=so_scored["home"],
+                taken_b=so_taken["away"], scored_b=so_scored["away"])
+            lap = live_advance_prob(lam_h, lam_a, minute, gh_eff, ga_eff, period=period,
+                                    et_then_pens=bool(cp.et_then_pens),
+                                    shootout_home=shootout_home,
+                                    red_home=rh, red_away=ra, xg_home=xg.get(fx["home_api_id"]),
+                                    xg_away=xg.get(fx["away_api_id"]),
+                                    et_home_goals=gh_eff, et_away_goals=ga_eff)
+            prices = {"model_c": model_cents({"home": lap.p_home_advance, "away": lap.p_away_advance})}
+            quote_status = {v: "unavailable" if with_venues else "not_requested"
+                            for v in ("kalshi", "poly_us")}
+            quote_receipts = []
+            for v, fn in quote_sources.items():
+                try:
+                    raw_q = fn(fx["api_id"])
+                    quote_receipts.extend(collect_receipts(raw_q))
+                    q = qualify_source_block(raw_q, market_kind=source_kind(v, fn, 'advance'),
+                                             fixture_id=fx['api_id'], comp=comp.key)
+                    source_status = fn.status(fx['api_id']) if hasattr(fn, 'status') else {}
+                    quote_status[v] = "ok" if q else ("not_requested" if source_status.get('state') == 'not_requested' else "unavailable")
+                except Exception:
+                    quote_status[v] = "unavailable"
+                    q = None
+                if q:
+                    prices[v] = _q2c(q)
+            fixture_opps = by_fixture.get(fx["api_id"], [])
+            # During the shootout there is NO open play, so open-play tactics (momentum / xG-chase /
+            # possession / fade / red-card / comeback) are meaningless — keep only model-vs-market
+            # value (relative_value / lock_arb, now driven by the LIVE shootout model) and any
+            # held-position "manage" exits. The 90'+ET reads are already settled.
+            if period == "pens":
+                fixture_opps = [o for o in fixture_opps
+                                if o.get("reason_key") in ("relative_value", "lock_arb")
+                                or o.get("intent") == "manage"]
+            # Confidence tier + staking gate on every advance opportunity (same validated rules as
+            # the 3-way view; the advance signals are all home/away so the tiering applies directly).
+            # Without this the advance opportunities showed an empty 置信 column.
             try:
-                a_a, a_b = (int(x) for x in carry.split("-"))
-                carry_h, carry_a = a_b, a_a
-            except ValueError:
-                pass
-        gh_eff, ga_eff = gh + carry_h, ga + carry_a
-        period = _period_for(fx["status_short"])
-        xg = {r["team_api_id"]: r["xg"] for r in conn.execute(
-            "SELECT team_api_id, xg FROM fixture_stats WHERE fixture_api_id=?", (fx["api_id"],))}
-        reds = {r["team_api_id"]: r["n"] for r in conn.execute(
-            "SELECT team_api_id, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
-            "AND type='Card' AND detail LIKE '%Red%' GROUP BY team_api_id", (fx["api_id"],))}
-        rh, ra = reds.get(fx["home_api_id"], 0), reds.get(fx["away_api_id"], 0)
-        lam_h, lam_a = sm.pair_lambdas(hi, ai, knockout=True, neutral=bool(cp.neutral))
-        # Live penalty-shootout tally (kicks already taken/scored per side) from the stored
-        # shootout events (comments='Penalty Shootout'; detail 'Penalty'=scored, 'Missed
-        # Penalty'=miss). Feeds the shootout DP so the advance prob updates PER KICK during pens
-        # instead of sitting on the static pre-shootout strength prior. Zero outside pens.
-        so_taken = {"home": 0, "away": 0}
-        so_scored = {"home": 0, "away": 0}
-        if period == "pens":
-            for r in conn.execute(
-                "SELECT team_api_id, detail, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
-                "AND comments='Penalty Shootout' GROUP BY team_api_id, detail", (fx["api_id"],)):
-                side = ("home" if r["team_api_id"] == fx["home_api_id"]
-                        else "away" if r["team_api_id"] == fx["away_api_id"] else None)
-                if side is None:
-                    continue
-                so_taken[side] += r["n"]
-                if r["detail"] == "Penalty":
-                    so_scored[side] += r["n"]
-        shootout_home = shootout_win_prob_detailed(
-            sm, hi, ai, taken_a=so_taken["home"], scored_a=so_scored["home"],
-            taken_b=so_taken["away"], scored_b=so_scored["away"])
-        lap = live_advance_prob(lam_h, lam_a, minute, gh_eff, ga_eff, period=period,
-                                et_then_pens=bool(cp.et_then_pens),
-                                shootout_home=shootout_home,
-                                red_home=rh, red_away=ra, xg_home=xg.get(fx["home_api_id"]),
-                                xg_away=xg.get(fx["away_api_id"]),
-                                et_home_goals=gh_eff, et_away_goals=ga_eff)
-        prices = {"model_c": model_cents({"home": lap.p_home_advance, "away": lap.p_away_advance})}
-        for v, fn in quote_sources.items():
-            try:
-                q = fn(fx["api_id"])
+                from prediction_market_soccer.strategy import inplay_confidence as ic
+                ctx = ic.match_context(hi, ai, name.get(hi, hi), name.get(ai, ai), gh, ga, minute,
+                                       model={"home": lap.p_home_advance, "away": lap.p_away_advance},
+                                       knockout=True)
+                for _o in fixture_opps:
+                    ic.annotate(_o, ctx)
             except Exception:
-                q = None
-            if q:
-                prices[v] = _q2c(q)
-        fixture_opps = by_fixture.get(fx["api_id"], [])
-        # During the shootout there is NO open play, so open-play tactics (momentum / xG-chase /
-        # possession / fade / red-card / comeback) are meaningless — keep only model-vs-market
-        # value (relative_value / lock_arb, now driven by the LIVE shootout model) and any
-        # held-position "manage" exits. The 90'+ET reads are already settled.
-        if period == "pens":
-            fixture_opps = [o for o in fixture_opps
-                            if o.get("reason_key") in ("relative_value", "lock_arb")
-                            or o.get("intent") == "manage"]
-        # Confidence tier + staking gate on every advance opportunity (same validated rules as
-        # the 3-way view; the advance signals are all home/away so the tiering applies directly).
-        # Without this the advance opportunities showed an empty 置信 column.
-        try:
-            from prediction_market_soccer.strategy import inplay_confidence as ic
-            ctx = ic.match_context(hi, ai, name.get(hi, hi), name.get(ai, ai), gh, ga, minute,
-                                   model={"home": lap.p_home_advance, "away": lap.p_away_advance},
-                                   knockout=True)
-            for _o in fixture_opps:
-                ic.annotate(_o, ctx)
-        except Exception:
-            pass
-        try:
-            hedge = _match_hedge_advance(conn, fx, None, hi, ai, sm, gh, ga, minute, lap, prices, period=period)
-            if hedge is not None:
-                hedge["held_team"] = name.get(hi, hi) if hedge["held_side"] == "home" else name.get(ai, ai)
-        except Exception:
-            hedge = None
-        matches.append({
-            "fixture_id": fx["api_id"],
-            "status": fx["status_short"],
-            "minute": minute,
-            "period": period,
-            "score": f"{gh}-{ga}",
-            "reds": f"{rh}-{ra}",
-            # Live shootout tally (scored) for the UI, None outside pens.
-            "shootout": ({"home": so_scored["home"], "away": so_scored["away"]} if period == "pens" else None),
-            "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
-            "away": {"id": ai, "name": name.get(ai, ai), "zh": zh.get(ai, "")},
-            "model": {
-                "home": round(lap.p_home_advance, 4), "away": round(lap.p_away_advance, 4),
-                "p_reg_decides": round(lap.p_reg_decides, 4), "p_et_decides": round(lap.p_et_decides, 4),
-                "p_pens_decides": round(lap.p_pens_decides, 4),
-            },
-            "xg": {"home": xg.get(fx["home_api_id"]), "away": xg.get(fx["away_api_id"])},
-            "prices": prices,
-            "opportunities": fixture_opps,
-            "hedge_advance": hedge,
-        })
+                pass
+            try:
+                hedge = _match_hedge_advance(conn, fx, None, hi, ai, sm, gh, ga, minute, lap, prices, period=period)
+                if hedge is not None:
+                    hedge["held_team"] = name.get(hi, hi) if hedge["held_side"] == "home" else name.get(ai, ai)
+            except Exception:
+                hedge = None
+            matches.append({
+                "fixture_id": fx["api_id"],
+                "kickoff": fx["kickoff_ts"], "source_as_of": fx["updated_at"],
+                "pricing_state": "ok", "quote_status": quote_status, "quote_receipts": quote_receipts,
+                "quote_diagnostics": diagnose_quotes(quote_receipts),
+                "league": comp.key if comp else None,
+                "status": fx["status_short"],
+                "minute": minute,
+                "period": period,
+                "score": f"{gh}-{ga}",
+                "reds": f"{rh}-{ra}",
+                # Live shootout tally (scored) for the UI, None outside pens.
+                "shootout": ({"home": so_scored["home"], "away": so_scored["away"]} if period == "pens" else None),
+                "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
+                "away": {"id": ai, "name": name.get(ai, ai), "zh": zh.get(ai, "")},
+                "model": {
+                    "home": round(lap.p_home_advance, 4), "away": round(lap.p_away_advance, 4),
+                    "p_reg_decides": round(lap.p_reg_decides, 4), "p_et_decides": round(lap.p_et_decides, 4),
+                    "p_pens_decides": round(lap.p_pens_decides, 4),
+                },
+                "xg": {"home": xg.get(fx["home_api_id"]), "away": xg.get(fx["away_api_id"])},
+                "prices": prices,
+                "opportunities": fixture_opps,
+                "hedge_advance": hedge,
+            })
+        except Exception as exc:
+            from prediction_market_soccer.ops.export_status import fixture_unavailable
+            reason = "missing_team_mapping" if not (cmap.get(fx["home_api_id"]) and cmap.get(fx["away_api_id"])) else "missing_strength" if isinstance(exc, KeyError) or sm is None else "pricing_failed"
+            row = fixture_unavailable(fx, by_api_id(fx["league_id"]), cmap, name, zh, reason)
+            row.update(minute=fx["elapsed"] or 0, score=f"{fx['home_goals'] or 0}-{fx['away_goals'] or 0}",
+                       period=_period_for(fx["status_short"]), prices={}, opportunities=[], hedge=None, hedge_advance=None)
+            matches.append(row)
+            print(f"[inplay] unavailable fixture={fx['api_id']} ({type(exc).__name__})")
 
+    from prediction_market_soccer.ops.export_status import data_status, source_as_of
+    issues = [{"code": scan_error}] if scan_error else []
     return {"ts": datetime.now(timezone.utc).isoformat(), "n_live": len(matches),
+            "source_as_of": source_as_of(live), "data_status": data_status(matches, issues),
             **({"scan_error": scan_error} if scan_error else {}),
             # Series Kalshi refused this cycle. An empty board with no note reads as
             # "the market was quiet"; this is what distinguishes it from "we were not
@@ -320,11 +351,14 @@ def main() -> None:
     def _go():
         doc = build(with_venues=not args.no_venues)
         CONFIG.paths.ensure()
-        (CONFIG.paths.output / "inplay_live_advance.json").write_text(
-            json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+        from prediction_market_soccer.ops.run_status import atomic_json
+        atomic_json(CONFIG.paths.output / "inplay_live_advance.json", doc)
         n_opp = sum(len(m["opportunities"]) for m in doc["matches"])
         print(f"inplay_live_advance.json: {doc['n_live']} live knockout match(es), {n_opp} opportunities")
         for m in doc["matches"]:
+            if not m.get("model"):
+                print(f"  fixture={m['fixture_id']} pricing unavailable")
+                continue
             print(f"  {m['home']['name']} {m['score']} {m['away']['name']} @{m['minute']}' [{m['period']}]  "
                   f"adv H{m['model']['home']:.2f}/A{m['model']['away']:.2f}  {len(m['opportunities'])} opps")
         return doc

@@ -5,6 +5,8 @@
 #   bash prediction_market_macro/ops/install_launchd.sh            # install + load
 #   bash prediction_market_macro/ops/install_launchd.sh uninstall  # unload + remove
 #   bash prediction_market_macro/ops/install_launchd.sh status     # launchctl view
+#   bash prediction_market_macro/ops/install_launchd.sh install com.someopark.macrotick
+#                                                               # update only tick
 set -euo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/launchd" && pwd)"
@@ -13,7 +15,23 @@ PLISTS=(com.someopark.macrorefresh com.someopark.macrotick
         com.someopark.macrowatchdog com.someopark.macroweekly
         com.someopark.macroreplay)
 
-case "${1:-install}" in
+ACTION="${1:-install}"
+if [ "$#" -gt 0 ]; then shift; fi
+if [ "$#" -gt 0 ]; then
+  for requested in "$@"; do
+    known=false
+    for p in "${PLISTS[@]}"; do
+      if [ "$requested" = "$p" ]; then known=true; break; fi
+    done
+    if [ "$known" != true ]; then
+      echo "unknown macro launchd label: $requested" >&2
+      exit 1
+    fi
+  done
+  PLISTS=("$@")
+fi
+
+case "$ACTION" in
   install)
     mkdir -p "$DST_DIR" \
              "$(dirname "$SRC_DIR")/../data/logs"
@@ -35,7 +53,7 @@ case "${1:-install}" in
     launchctl list | grep -E "someopark\.macro" || echo "none loaded"
     ;;
   *)
-    echo "usage: $0 [install|uninstall|status]" >&2
+    echo "usage: $0 [install|uninstall|status] [com.someopark.macro<label> ...]" >&2
     exit 1
     ;;
 esac

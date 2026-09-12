@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
-# refresh_and_deploy.sh — unattended daily pipeline for the World Cup predictions.
-#
-#   1. pull new results + missing odds (+ recent form on Sundays),
-#   2. regenerate every prediction export on the CURRENT (growing) OOS sample,
-#   3. sync the JSON into the frontend, build, and deploy to Firebase Hosting.
-#
-# Designed to run from cron / launchd with no human in the loop. Firebase deploy
-# unattended needs a CI token: run `firebase login:ci` once and export the token
-# as FIREBASE_TOKEN (e.g. in this script's env or the launchd plist). If the token
-# is absent it falls back to the interactive login (works when you run it by hand).
-#
-# Manual run:  bash prediction_market_soccer/ops/refresh_and_deploy.sh
+# refresh_and_deploy.sh — Soccer-only scheduled data refresh (legacy filename).
+# refresh_all validates and promotes Soccer JSON/PDF to output and the existing
+# public/data/soccer directory. Express exposes that data through the current
+# tunnel; this job does not rebuild or publish the shared frontend/Hosting site.
+# Result acknowledgement happens only after the complete data refresh succeeds.
 set -uo pipefail
 
-REPO="/Users/xuling/code/someopark-test"
-FRONTEND="$REPO/someo-park-investment-management"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Hold the existing lock through Soccer refresh and result acknowledgement.
+export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+cd "$REPO" || exit 1
+if [ "${1:-}" != "--locked" ]; then
+  # Gate before recording a publish attempt, so quiet 15-minute ticks remain idle.
+  if [ "${1:-}" = "--trigger" ]; then
+    set -a
+    [ -f "$REPO/.env" ] && source "$REPO/.env"
+    [ -f "$REPO/prediction_market_soccer/.env" ] && source "$REPO/prediction_market_soccer/.env"
+    set +a
+    TOUT="$(conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger 2>&1)" || { echo "$TOUT"; exit 1; }
+    echo "$TOUT"
+    echo "$TOUT" | grep -q "^RUN" || exit 0
+  fi
+  exec conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.proc_lock \
+    --run refresh_deploy -- bash "$0" --locked "$@"
+fi
+shift
 LOGDIR="$REPO/prediction_market_soccer/data/logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/refresh_deploy_$(date +%Y%m%d_%H%M%S).log"
@@ -22,7 +32,7 @@ exec > >(tee -a "$LOG") 2>&1
 
 echo "=== refresh_and_deploy @ $(date) ==="
 
-# Make conda / node / npm / firebase reachable under cron's minimal PATH.
+# Make conda reachable under cron's minimal PATH.
 # (Do NOT source the user's shell profile — a non-interactive bash aborts on it.)
 export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
@@ -34,15 +44,6 @@ set -a
 [ -f "$REPO/prediction_market_soccer/.env" ] && source "$REPO/prediction_market_soccer/.env"
 set +a
 
-# --trigger: event-driven gate. Run every ~15 min; only proceed to the full
-# pipeline when a NEW match result has just landed (else exit cheaply).
-if [ "${1:-}" = "--trigger" ]; then
-  TOUT="$(conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger 2>&1)"
-  echo "trigger: $TOUT"
-  echo "$TOUT" | grep -q "^RUN" || { echo "trigger: nothing to do — exit"; exit 0; }
-  echo "trigger: new result → running full pipeline"
-fi
-
 # Weekly (Sunday) also re-pull recent national-team form; daily skips it (cheaper).
 FORM_FLAG=""
 [ "$(date +%u)" = "7" ] && FORM_FLAG="--with-form"
@@ -51,21 +52,13 @@ echo "--- 1) refresh exports on current OOS sample ---"
 conda run -n someopark_run --no-capture-output \
   python -m prediction_market_soccer.ops.refresh_all --ingest $FORM_FLAG || { echo "refresh failed"; exit 1; }
 
-echo "--- 2) sync + build frontend ---"
-cd "$FRONTEND" || { echo "frontend not found"; exit 1; }
-npm run sync:soccer || { echo "sync failed"; exit 1; }
-npm run build  || { echo "build failed"; exit 1; }
+# Consume only results included in the successfully promoted Soccer data batch.
+cd "$REPO" || exit 1
+conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger \
+  --acknowledge-refresh || { echo "result acknowledgement failed"; exit 1; }
 
-echo "--- 3) deploy to firebase hosting ---"
-if [ -n "${FIREBASE_TOKEN:-}" ]; then
-  firebase deploy --only hosting --project someopark --token "$FIREBASE_TOKEN" || { echo "deploy failed"; exit 1; }
-else
-  firebase deploy --only hosting --project someopark || { echo "deploy failed (no FIREBASE_TOKEN; needs interactive auth)"; exit 1; }
-fi
-
-# --- 4) (DAILY only, NOT the 15-min --trigger) re-run the slow 1152 param sweep,
-#         TIME-ISOLATED: wait 60s so it never overlaps the refresh/build/deploy above
-#         (CPU isolation), then sync just its JSON over the tunnel (no rebuild needed).
+# Optional legacy research output, still opt-in and separate from shared Hosting.
+# Wait so it does not overlap the successful data refresh above.
 if [ "${1:-}" != "--trigger" ]; then
   # Param sweep is DISABLED for the first ~6 weeks (plan §2.2: tiny early-season
   # samples over-fit; the WC ran it daily over 104 settled). Enable by touching
@@ -76,10 +69,9 @@ if [ "${1:-}" != "--trigger" ]; then
     cd "$REPO" || exit 0
     conda run -n someopark_run --no-capture-output \
       python -m prediction_market_soccer.ops.param_sweep && echo "param sweep: done" || echo "param sweep: skipped (non-fatal)"
-    cd "$FRONTEND" && npm run sync:soccer || true
   else
     echo "--- 4) param sweep disabled (cold-start; touch data/output/.enable_sweep to enable) ---"
   fi
 fi
 
-echo "=== done @ $(date) — https://someopark.web.app ==="
+echo "=== Soccer data refresh complete @ $(date) — existing Express data service ==="
