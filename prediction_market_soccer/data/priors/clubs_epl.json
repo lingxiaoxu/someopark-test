@@ -20,12 +20,12 @@
    "league": "epl",
    "api_team_id": 42,
    "elo": 2039.0,
-   "elo_rank": 1,
+   "elo_rank": 2,
    "last_pts": 2.2368,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.292,
-   "market_p_champion": 0.49183,
+   "anchor_points": 2.2773,
+   "market_p_champion": 0.49644,
    "anchor_source": "elo+table+market"
   },
   {
@@ -39,8 +39,8 @@
    "last_pts": 1.7105,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.5822,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.5902,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -54,8 +54,8 @@
    "last_pts": 1.5,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.4591,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4715,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -69,8 +69,8 @@
    "last_pts": 1.3947,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.4007,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4149,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -84,8 +84,8 @@
    "last_pts": 1.3947,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.424,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4359,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -99,8 +99,8 @@
    "last_pts": 1.3684,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.6197,
-   "market_p_champion": 0.08904,
+   "anchor_points": 1.6335,
+   "market_p_champion": 0.09681,
    "anchor_source": "elo+table+market"
   },
   {
@@ -110,12 +110,12 @@
    "league": "epl",
    "api_team_id": 1346,
    "elo": 1692.1964,
-   "elo_rank": 79,
+   "elo_rank": 89,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0099,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.0715,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+market"
   },
   {
@@ -129,8 +129,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2926,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3096,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -140,12 +140,12 @@
    "league": "epl",
    "api_team_id": 45,
    "elo": 1819.0,
-   "elo_rank": 29,
+   "elo_rank": 30,
    "last_pts": 1.2895,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.3204,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3386,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -155,12 +155,12 @@
    "league": "epl",
    "api_team_id": 36,
    "elo": 1795.0,
-   "elo_rank": 38,
+   "elo_rank": 41,
    "last_pts": 1.3684,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.315,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3366,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -169,14 +169,14 @@
    "zh": "",
    "league": "epl",
    "api_team_id": 64,
-   "elo": null,
-   "elo_rank": 112,
+   "elo": 1629.9222,
+   "elo_rank": 140,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.179,
-   "market_p_champion": 0.00574,
-   "anchor_source": "default+market"
+   "anchor_points": 0.9321,
+   "market_p_champion": 0.00525,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "ipswich",
@@ -185,12 +185,12 @@
    "league": "epl",
    "api_team_id": 57,
    "elo": 1690.0,
-   "elo_rank": 81,
+   "elo_rank": 93,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0045,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.0666,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+market"
   },
   {
@@ -200,12 +200,12 @@
    "league": "epl",
    "api_team_id": 63,
    "elo": 1806.0,
-   "elo_rank": 33,
+   "elo_rank": 34,
    "last_pts": 1.2368,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.2817,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3017,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -215,12 +215,12 @@
    "league": "epl",
    "api_team_id": 40,
    "elo": 1931.0,
-   "elo_rank": 7,
+   "elo_rank": 8,
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.7319,
-   "market_p_champion": 0.06099,
+   "anchor_points": 1.7343,
+   "market_p_champion": 0.05971,
    "anchor_source": "elo+table+market"
   },
   {
@@ -230,12 +230,12 @@
    "league": "epl",
    "api_team_id": 50,
    "elo": 2027.7952,
-   "elo_rank": 2,
+   "elo_rank": 3,
    "last_pts": 2.0526,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.1445,
-   "market_p_champion": 0.24825,
+   "anchor_points": 2.1312,
+   "market_p_champion": 0.24547,
    "anchor_source": "elo+table+market"
   },
   {
@@ -249,8 +249,8 @@
    "last_pts": 1.8684,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.721,
-   "market_p_champion": 0.02374,
+   "anchor_points": 1.7301,
+   "market_p_champion": 0.02284,
    "anchor_source": "elo+table+market"
   },
   {
@@ -264,8 +264,8 @@
    "last_pts": 1.2895,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.4181,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4267,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -275,12 +275,12 @@
    "league": "epl",
    "api_team_id": 65,
    "elo": 1804.0,
-   "elo_rank": 36,
+   "elo_rank": 37,
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2492,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2695,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -290,12 +290,12 @@
    "league": "epl",
    "api_team_id": 746,
    "elo": 1736.8699,
-   "elo_rank": 57,
+   "elo_rank": 62,
    "last_pts": 1.4211,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.25,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2798,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -305,12 +305,12 @@
    "league": "epl",
    "api_team_id": 47,
    "elo": 1806.0,
-   "elo_rank": 34,
+   "elo_rank": 35,
    "last_pts": 1.0789,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2225,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2425,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   }
  ]

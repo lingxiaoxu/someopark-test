@@ -19,6 +19,9 @@ if [ "${1:-}" != "--locked" ]; then
     set +a
     TOUT="$(conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger 2>&1)" || { echo "$TOUT"; exit 1; }
     echo "$TOUT"
+    # Pre-match sentry: 15-min guard for calendar/PRE-staging/PIT-cache/disk/poly-global
+    # reference prices. Fail-open — the sentry must never block the trigger path.
+    conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.pre_match_sentry 2>&1 | tail -3 || true
     echo "$TOUT" | grep -q "^RUN" || exit 0
   fi
   exec conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.proc_lock \

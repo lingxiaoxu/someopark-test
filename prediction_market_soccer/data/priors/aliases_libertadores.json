@@ -1,45 +1,107 @@
 {
- "comp": "libertadores",
- "series": "KXCONMEBOLLIBADVANCE",
- "as_of": "2026-08-28T00:03:46.798300+00:00",
- "aliases": {
-  "Cerro Porteno": "cerro_porteno",
-  "Coquimbo": "coquimbo_unido",
-  "Corinthians": "corinthians",
-  "Cruzeiro": "cruzeiro",
-  "Estudiantes de La Plata": "estudiantes_l_p",
-  "Flamengo": "flamengo",
-  "Fluminense": "fluminense",
-  "Ind. del Valle": "independiente_del_valle",
-  "Independiente Rivadavia": "independ_rivadavia",
-  "LDU Quito": "ldu_de_quito",
-  "Mirassol": "mirassol",
-  "Palmeiras": "palmeiras",
-  "Platense": "platense",
-  "Tolima": "deportes_tolima",
-  "Universidad Catolica": "universidad_catolica"
- },
- "codes": {
-  "fluminense": "FLU",
-  "independ_rivadavia": "IRM",
-  "estudiantes_l_p": "ELP",
-  "universidad_catolica": "UC",
-  "deportes_tolima": "TOL",
-  "independiente_del_valle": "IND",
-  "platense": "PLA",
-  "coquimbo_unido": "COQ",
-  "palmeiras": "PAL",
-  "cerro_porteno": "CPO",
-  "cruzeiro": "CRU",
-  "flamengo": "FLA",
-  "mirassol": "MIR",
-  "ldu_de_quito": "LDU",
-  "corinthians": "COR"
- },
- "unmatched": [
-  {
-   "kalshi_name": "Rosario",
-   "code": "CARC"
-  }
- ]
+  "comp": "libertadores",
+  "series": "KXCONMEBOLLIBADVANCE",
+  "as_of": "2026-09-12T06:00:39.191889+00:00",
+  "aliases": {
+    "Cerro Porteno": "cerro_porteno",
+    "Coquimbo": "coquimbo_unido",
+    "Corinthians": "corinthians",
+    "Cruzeiro": "cruzeiro",
+    "Estudiantes de La Plata": "estudiantes_l_p",
+    "Flamengo": "flamengo",
+    "Fluminense": "fluminense",
+    "Ind. del Valle": "independiente_del_valle",
+    "Independiente Rivadavia": "independ_rivadavia",
+    "LDU Quito": "ldu_de_quito",
+    "Mirassol": "mirassol",
+    "Palmeiras": "palmeiras",
+    "Platense": "platense",
+    "Tolima": "deportes_tolima",
+    "Universidad Catolica": "universidad_catolica",
+    "Estudiantes La Plata": "estudiantes_l_p",
+    "Rosario": "rosario_central"
+  },
+  "codes": {
+    "fluminense": "FLU",
+    "independ_rivadavia": "IRM",
+    "estudiantes_l_p": "ELP",
+    "universidad_catolica": "UC",
+    "deportes_tolima": "TOL",
+    "independiente_del_valle": "IND",
+    "platense": "PLA",
+    "coquimbo_unido": "COQ",
+    "palmeiras": "PAL",
+    "cerro_porteno": "CPO",
+    "cruzeiro": "CRU",
+    "flamengo": "FLA",
+    "mirassol": "MIR",
+    "ldu_de_quito": "LDU",
+    "corinthians": "COR",
+    "rosario_central": "CARC"
+  },
+  "unmatched": [
+    {
+      "kalshi_name": "Platense advances",
+      "code": "PLA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Platense"
+      ]
+    },
+    {
+      "kalshi_name": "Fluminense advances",
+      "code": "FLU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Fluminense"
+      ]
+    },
+    {
+      "kalshi_name": "LDU Quito advances",
+      "code": "LDU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "LDU de Quito"
+      ]
+    },
+    {
+      "kalshi_name": "Palmeiras advances",
+      "code": "PAL",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Palmeiras"
+      ]
+    },
+    {
+      "kalshi_name": "Corinthians advances",
+      "code": "COR",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Corinthians"
+      ]
+    },
+    {
+      "kalshi_name": "Estudiantes La Plata advances",
+      "code": "ELP",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Estudiantes L.P."
+      ]
+    },
+    {
+      "kalshi_name": "Flamengo advances",
+      "code": "FLA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Flamengo"
+      ]
+    },
+    {
+      "kalshi_name": "Ind. del Valle advances",
+      "code": "IND",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    }
+  ],
+  "complete": true
 }

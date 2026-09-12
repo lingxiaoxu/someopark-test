@@ -1,8 +1,176 @@
 {
- "comp": "uecl",
- "series": "KXUECLADVANCE",
- "as_of": "2026-08-28T00:03:43.906453+00:00",
- "aliases": {},
- "codes": {},
- "unmatched": []
+  "comp": "uecl",
+  "series": "KXUECLADVANCE",
+  "as_of": "2026-09-12T06:00:38.433601+00:00",
+  "aliases": {
+    "Aarhus": "aarhus",
+    "Ajax": "ajax",
+    "Atalanta": "atalanta",
+    "Brann": "brann",
+    "Brighton": "brighton",
+    "CSKA Sofia": "cska_sofia",
+    "Egnatia Rrogozhine": "egnatia_rrogozhin",
+    "Freiburg": "sc_freiburg",
+    "Gent": "gent",
+    "Getafe": "getafe",
+    "Hajduk": "hnk_hajduk_split",
+    "Heart of Midlothian": "heart_of_midlothian",
+    "IC Escaldes": "inter_club_d_escaldes",
+    "Kuopion Palloseura": "kups",
+    "Lincoln Red Imps": "lincoln_red_imps_fc",
+    "Monaco": "monaco",
+    "Pafos": "pafos",
+    "Panathinaikos": "panathinaikos",
+    "Riga FC": "riga",
+    "Trabzonspor": "trabzonspor",
+    "Enschede": "twente"
+  },
+  "codes": {
+    "aarhus": "AGF",
+    "ajax": "AJA",
+    "atalanta": "ATA",
+    "brann": "SKB",
+    "brighton": "BRI",
+    "cska_sofia": "CSK",
+    "egnatia_rrogozhin": "EGR",
+    "sc_freiburg": "SCF",
+    "gent": "KAA",
+    "getafe": "GET",
+    "hnk_hajduk_split": "HAJ",
+    "heart_of_midlothian": "HOM",
+    "inter_club_d_escaldes": "ESC",
+    "kups": "KUPS",
+    "lincoln_red_imps_fc": "LIN",
+    "monaco": "ASM",
+    "pafos": "PAF",
+    "panathinaikos": "PAN",
+    "riga": "RFC",
+    "trabzonspor": "TRA",
+    "twente": "TWE"
+  },
+  "unmatched": [
+    {
+      "kalshi_name": "Banja Luka",
+      "code": "BBL",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Borac Banja Luka"
+      ]
+    },
+    {
+      "kalshi_name": "Braga",
+      "code": "BRA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "SC Braga",
+        "Bravo",
+        "Brann"
+      ]
+    },
+    {
+      "kalshi_name": "Copenhagen",
+      "code": "FCC",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Copenhagen"
+      ]
+    },
+    {
+      "kalshi_name": "Crvena Zvezda",
+      "code": "CZV",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FK Crvena Zvezda"
+      ]
+    },
+    {
+      "kalshi_name": "Iberia",
+      "code": "IBE",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Hibernian",
+        "FC Iberia 1999"
+      ]
+    },
+    {
+      "kalshi_name": "Jablonec",
+      "code": "FKJ",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FK Jablonec"
+      ]
+    },
+    {
+      "kalshi_name": "Kairat",
+      "code": "ALM",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Kairat Almaty",
+        "Zira"
+      ]
+    },
+    {
+      "kalshi_name": "Kauno",
+      "code": "KAZ",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    },
+    {
+      "kalshi_name": "Lugano",
+      "code": "LUG",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Lugano"
+      ]
+    },
+    {
+      "kalshi_name": "Midtjylland",
+      "code": "FCM",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Midtjylland"
+      ]
+    },
+    {
+      "kalshi_name": "Mjallby",
+      "code": "MJA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Mjallby AIF"
+      ]
+    },
+    {
+      "kalshi_name": "Nordsjaelland",
+      "code": "NJA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Nordsjaelland"
+      ]
+    },
+    {
+      "kalshi_name": "St. Truidense",
+      "code": "STT",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "St. Truiden"
+      ]
+    },
+    {
+      "kalshi_name": "Thun",
+      "code": "THU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Thun"
+      ]
+    },
+    {
+      "kalshi_name": "Uni Craiova",
+      "code": "CSU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Universitatea Craiova"
+      ]
+    }
+  ],
+  "complete": true
 }

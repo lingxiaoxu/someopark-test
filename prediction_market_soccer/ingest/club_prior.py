@@ -426,6 +426,102 @@ _ELO_ELIGIBLE_COMPS = frozenset({
 })
 
 
+# Curated registry-slug -> ClubElo Club-name bridge. Every pair was verified
+# against the live CSV before entry (2026-09-12): the exact slug pass misses these
+# because ClubElo shortens ('Bayern' vs bayern_mnchen) or keeps historical names
+# ('Steaua' for FCSB, 'NK Varteks' for Varazdin, 'Novi Sad' for Vojvodina), and
+# difflib at 0.78 cannot bridge them. Ambiguous labels stay OUT (fail closed):
+# Lincoln Red Imps (CSV only has England's Lincoln City), Inter Escaldes, Bohemians.
+_ELO_NAME_ALIASES: dict[str, str] = {
+    "1_fc_kln": "Koeln",
+    "aek_athens_fc": "AEK",
+    "aek_larnaca": "Larnaca",
+    "apollon_limassol": "Apollon Lemesos",
+    "baakehir": "Bueyueksehir",
+    "bate_borisov": "BATE",
+    "bayern_mnchen": "Bayern",
+    "beikta": "Besiktas",
+    "beitar_jerusalem": "Beitar",
+    "borussia_mnchengladbach": "Gladbach",
+    "cfr_1907_cluj": "CFR Cluj",
+    "club_brugge_kv": "Brugge",
+    "cska_1948": "CSKA 1948 Sofia",
+    "debreceni_vsc": "Debrecen",
+    "dei": "Decic",
+    "deportivo_la_coruna": "Depor",
+    "dunajska_streda": "FC DAC 1904",
+    "eintracht_frankfurt": "Frankfurt",
+    "estac_troyes": "Troyes",
+    "fc_copenhagen": "FC Kobenhavn",
+    "fc_differdange_03": "Differdang",
+    "fc_noah": "Noah",
+    "fc_porto": "Porto",
+    "fc_schalke_04": "Schalke",
+    "fc_sion": "Sion",
+    "fc_st_gallen": "StGallen",
+    "fc_thun": "Thun",
+    "fc_vaduz": "Vaduz (SUI)",
+    "fcsb": "Steaua",
+    "fk_liepaja": "Liepajas",
+    "fk_tobol_kostanay": "Tobol",
+    "fsv_mainz_05": "Mainz",
+    "gap_connah_s_quay_fc": "Connahs Quay",
+    "gornik_zabrze": "Gornik",
+    "gyori_eto_fc": "Gyoer",
+    "hamburger_sv": "Hamburg",
+    "hamrun_spartans": "Hamrun",
+    "hapoel_beer_sheva": "Beer-Sheva",
+    "heart_of_midlothian": "Hearts",
+    "hegelmann_litauen": "FC Hegelmann",
+    "hnk_hajduk_split": "Hajduk",
+    "hnk_rijeka": "Rijeka",
+    "hull_city": "Hull",
+    "ifk_goteborg": "Goeteborg",
+    "kairat_almaty": "FK Kairat",
+    "kalju_nomme": "Nomme Kalju",
+    "kups": "Kuopio",
+    "lask_linz": "LASK",
+    "lech_poznan": "Lech",
+    "levski_sofia": "Levski",
+    "ludogorets": "Razgrad",
+    "maccabi_tel_aviv": "M Tel Aviv",
+    "mjallby_aif": "Mjaellby",
+    "ml_vitebsk": "FK Maxline Vitebs",
+    "neftchi_baku": "Neftçi PFK",
+    "nk_varazdin": "NK Varteks",
+    "nsi_runavik": "Runavik",
+    "olympiakos_piraeus": "Olympiakos",
+    "omonia_nicosia": "Omonia",
+    "pafos": "Paphos",
+    "panevys": "Panevezys",
+    "plzen": "Viktoria Plzen",
+    "polessya": "Polissya Zhytomyr",
+    "psv_eindhoven": "PSV",
+    "pyunik_yerevan": "Pyunik",
+    "qarabag": "Karabakh Agdam",
+    "racing_santander": "Santander",
+    "rakw_czstochowa": "Rakow",
+    "rgas_fs": "FK RFS",
+    "sc_braga": "Braga",
+    "sc_paderborn_07": "Paderborn",
+    "shakhtar_donetsk": "Shakhtar",
+    "shamrock_rovers": "Shamrock",
+    "stade_brestois_29": "Brest",
+    "union_st_gilloise": "St Gillis",
+    "universitatea_craiova": "Craiova",
+    "us_mondorf_les_bains": "US Mondorf",
+    "valur_reykjavik": "Valur",
+    "vardar_skopje": "Vardar",
+    "vikingur_gota": "Víkingur (FAR)",
+    "vikingur_reykjavik": "Vikingur",
+    "vllaznia_shkodr": "Vllaznia",
+    "vojvodina": "Novi Sad",
+    "werder_bremen": "Werder",
+    "yelimay_semey": "FK Semey",
+    "zrinjski": "Zrinjski Mostar",
+}
+
+
 def _match_elo(elo_rows: list[dict], registry_rows: list[dict],
                comp_key: str | None = None) -> dict[int, float]:
     """api_team_id -> Elo, via alias table first, then a fuzzy match that is actually
@@ -446,10 +542,18 @@ def _match_elo(elo_rows: list[dict], registry_rows: list[dict],
             by_alias[rr["api_team_id"]] = elo_by_id[cid]
         else:
             unmatched_registry.append(rr)
-    # fuzzy pass for the rest (bootstrap-time only; result frozen into the JSON)
     elo_names = {er["Club"]: float(er["Elo"]) for er in elo_rows}
-    keys = list(elo_names)
+    # curated bridge before any fuzzy guess: exact, human-verified names only
+    remaining = []
     for rr in unmatched_registry:
+        target = _ELO_NAME_ALIASES.get(rr["club_id"])
+        if target is not None and target in elo_names:
+            by_alias[rr["api_team_id"]] = elo_names[target]
+        else:
+            remaining.append(rr)
+    # fuzzy pass for the rest (bootstrap-time only; result frozen into the JSON)
+    keys = list(elo_names)
+    for rr in remaining:
         # 0.78 is right ONCE the federation gate above is in place: the 40 extra
         # matches it buys over 0.90 are all genuine German/Nordic prefix differences
         # ("SC Freiburg"→"Freiburg", "VfB Stuttgart"→"Stuttgart"), and raising it to

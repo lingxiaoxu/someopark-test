@@ -14,12 +14,12 @@
    "league": "epl",
    "api_team_id": 42,
    "elo": 2039.0,
-   "elo_rank": 1,
+   "elo_rank": 2,
    "last_pts": 2.2368,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.292,
-   "market_p_champion": 0.49183,
+   "anchor_points": 2.2773,
+   "market_p_champion": 0.49644,
    "anchor_source": "elo+table+market"
   },
   {
@@ -29,12 +29,12 @@
    "league": "epl",
    "api_team_id": 66,
    "elo": 1890.2632,
-   "elo_rank": 10,
+   "elo_rank": 11,
    "last_pts": 1.7105,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.5822,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.5902,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -44,12 +44,12 @@
    "league": "epl",
    "api_team_id": 35,
    "elo": 1860.0,
-   "elo_rank": 17,
+   "elo_rank": 18,
    "last_pts": 1.5,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.4591,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4715,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -59,12 +59,12 @@
    "league": "epl",
    "api_team_id": 55,
    "elo": 1847.0,
-   "elo_rank": 20,
+   "elo_rank": 21,
    "last_pts": 1.3947,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.4007,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4149,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -74,12 +74,12 @@
    "league": "epl",
    "api_team_id": 51,
    "elo": 1863.0,
-   "elo_rank": 16,
+   "elo_rank": 17,
    "last_pts": 1.3947,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.424,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4359,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -89,12 +89,12 @@
    "league": "epl",
    "api_team_id": 49,
    "elo": 1892.0,
-   "elo_rank": 9,
+   "elo_rank": 10,
    "last_pts": 1.3684,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.6197,
-   "market_p_champion": 0.08904,
+   "anchor_points": 1.6335,
+   "market_p_champion": 0.09681,
    "anchor_source": "elo+table+market"
   },
   {
@@ -104,12 +104,12 @@
    "league": "epl",
    "api_team_id": 1346,
    "elo": 1692.1964,
-   "elo_rank": 73,
+   "elo_rank": 84,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0099,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.0715,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+market"
   },
   {
@@ -119,12 +119,12 @@
    "league": "epl",
    "api_team_id": 52,
    "elo": 1827.0,
-   "elo_rank": 25,
+   "elo_rank": 26,
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2926,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3096,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -134,12 +134,12 @@
    "league": "epl",
    "api_team_id": 45,
    "elo": 1819.0,
-   "elo_rank": 28,
+   "elo_rank": 30,
    "last_pts": 1.2895,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.3204,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3386,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -149,12 +149,12 @@
    "league": "epl",
    "api_team_id": 36,
    "elo": 1795.0,
-   "elo_rank": 37,
+   "elo_rank": 41,
    "last_pts": 1.3684,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.315,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3366,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -163,14 +163,14 @@
    "zh": "",
    "league": "epl",
    "api_team_id": 64,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1629.9222,
+   "elo_rank": 130,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.179,
-   "market_p_champion": 0.00574,
-   "anchor_source": "default+market"
+   "anchor_points": 0.9321,
+   "market_p_champion": 0.00525,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "ipswich",
@@ -179,12 +179,12 @@
    "league": "epl",
    "api_team_id": 57,
    "elo": 1690.0,
-   "elo_rank": 75,
+   "elo_rank": 88,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0045,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.0666,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+market"
   },
   {
@@ -194,12 +194,12 @@
    "league": "epl",
    "api_team_id": 63,
    "elo": 1806.0,
-   "elo_rank": 32,
+   "elo_rank": 34,
    "last_pts": 1.2368,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.2817,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.3017,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -209,12 +209,12 @@
    "league": "epl",
    "api_team_id": 40,
    "elo": 1931.0,
-   "elo_rank": 7,
+   "elo_rank": 8,
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.7319,
-   "market_p_champion": 0.06099,
+   "anchor_points": 1.7343,
+   "market_p_champion": 0.05971,
    "anchor_source": "elo+table+market"
   },
   {
@@ -224,12 +224,12 @@
    "league": "epl",
    "api_team_id": 50,
    "elo": 2027.7952,
-   "elo_rank": 2,
+   "elo_rank": 3,
    "last_pts": 2.0526,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.1445,
-   "market_p_champion": 0.24825,
+   "anchor_points": 2.1312,
+   "market_p_champion": 0.24547,
    "anchor_source": "elo+table+market"
   },
   {
@@ -239,12 +239,12 @@
    "league": "epl",
    "api_team_id": 33,
    "elo": 1888.0,
-   "elo_rank": 11,
+   "elo_rank": 12,
    "last_pts": 1.8684,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.721,
-   "market_p_champion": 0.02374,
+   "anchor_points": 1.7301,
+   "market_p_champion": 0.02284,
    "anchor_source": "elo+table+market"
   },
   {
@@ -254,12 +254,12 @@
    "league": "epl",
    "api_team_id": 34,
    "elo": 1886.0,
-   "elo_rank": 13,
+   "elo_rank": 14,
    "last_pts": 1.2895,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.4181,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.4267,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -269,12 +269,12 @@
    "league": "epl",
    "api_team_id": 65,
    "elo": 1804.0,
-   "elo_rank": 35,
+   "elo_rank": 37,
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2492,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2695,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -284,12 +284,12 @@
    "league": "epl",
    "api_team_id": 746,
    "elo": 1736.8699,
-   "elo_rank": 56,
+   "elo_rank": 62,
    "last_pts": 1.4211,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.25,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2798,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -299,12 +299,12 @@
    "league": "epl",
    "api_team_id": 47,
    "elo": 1806.0,
-   "elo_rank": 33,
+   "elo_rank": 35,
    "last_pts": 1.0789,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2225,
-   "market_p_champion": 0.00574,
+   "anchor_points": 1.2425,
+   "market_p_champion": 0.00525,
    "anchor_source": "elo+table+market"
   },
   {
@@ -314,11 +314,11 @@
    "league": "laliga",
    "api_team_id": 542,
    "elo": 1734.0405,
-   "elo_rank": 58,
+   "elo_rank": 64,
    "last_pts": 1.1316,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.2388,
+   "anchor_points": 1.2497,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -329,11 +329,11 @@
    "league": "laliga",
    "api_team_id": 531,
    "elo": 1768.4587,
-   "elo_rank": 47,
+   "elo_rank": 52,
    "last_pts": 1.1842,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3075,
+   "anchor_points": 1.3192,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -344,11 +344,11 @@
    "league": "laliga",
    "api_team_id": 530,
    "elo": 1888.0,
-   "elo_rank": 12,
+   "elo_rank": 13,
    "last_pts": 1.8158,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.7713,
+   "anchor_points": 1.7856,
    "market_p_champion": 0.01238,
    "anchor_source": "elo+table+market"
   },
@@ -359,11 +359,11 @@
    "league": "laliga",
    "api_team_id": 529,
    "elo": 2017.0,
-   "elo_rank": 3,
+   "elo_rank": 4,
    "last_pts": 2.4737,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.4644,
+   "anchor_points": 2.4814,
    "market_p_champion": 0.62052,
    "anchor_source": "elo+table+market"
   },
@@ -374,11 +374,11 @@
    "league": "laliga",
    "api_team_id": 538,
    "elo": 1752.0,
-   "elo_rank": 51,
+   "elo_rank": 56,
    "last_pts": 1.4211,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.3729,
+   "anchor_points": 1.3842,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -388,14 +388,14 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 544,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1695.4896,
+   "elo_rank": 81,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1647,
+   "anchor_points": 1.2033,
    "market_p_champion": 0.00436,
-   "anchor_source": "default+market"
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "elche",
@@ -404,11 +404,11 @@
    "league": "laliga",
    "api_team_id": 797,
    "elo": 1691.0,
-   "elo_rank": 74,
+   "elo_rank": 86,
    "last_pts": 1.1316,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.1775,
+   "anchor_points": 1.1875,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -419,11 +419,11 @@
    "league": "laliga",
    "api_team_id": 540,
    "elo": 1702.0,
-   "elo_rank": 66,
+   "elo_rank": 76,
    "last_pts": 1.2105,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2227,
+   "anchor_points": 1.233,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -434,11 +434,11 @@
    "league": "laliga",
    "api_team_id": 546,
    "elo": 1702.0,
-   "elo_rank": 67,
+   "elo_rank": 77,
    "last_pts": 1.3421,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.2573,
+   "anchor_points": 1.271,
    "market_p_champion": null,
    "anchor_source": "elo+table"
   },
@@ -449,11 +449,11 @@
    "league": "laliga",
    "api_team_id": 539,
    "elo": 1713.3447,
-   "elo_rank": 63,
+   "elo_rank": 72,
    "last_pts": 1.1053,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.1995,
+   "anchor_points": 1.2099,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -464,11 +464,11 @@
    "league": "laliga",
    "api_team_id": 535,
    "elo": 1673.368,
-   "elo_rank": 84,
+   "elo_rank": 103,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1326,
+   "anchor_points": 1.149,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+market"
   },
@@ -479,11 +479,11 @@
    "league": "laliga",
    "api_team_id": 727,
    "elo": 1736.0,
-   "elo_rank": 57,
+   "elo_rank": 63,
    "last_pts": 1.1053,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2317,
+   "anchor_points": 1.2427,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -493,14 +493,14 @@
    "zh": "",
    "league": "laliga",
    "api_team_id": 4665,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1690.1728,
+   "elo_rank": 87,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1647,
+   "anchor_points": 1.1903,
    "market_p_champion": 0.00436,
-   "anchor_source": "default+market"
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "rayo_vallecano",
@@ -509,11 +509,11 @@
    "league": "laliga",
    "api_team_id": 728,
    "elo": 1743.0025,
-   "elo_rank": 54,
+   "elo_rank": 60,
    "last_pts": 1.3158,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.3206,
+   "anchor_points": 1.3318,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -524,11 +524,11 @@
    "league": "laliga",
    "api_team_id": 543,
    "elo": 1811.0,
-   "elo_rank": 31,
+   "elo_rank": 33,
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5162,
+   "anchor_points": 1.5287,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -539,11 +539,11 @@
    "league": "laliga",
    "api_team_id": 541,
    "elo": 1973.0,
-   "elo_rank": 4,
+   "elo_rank": 5,
    "last_pts": 2.2632,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.2499,
+   "anchor_points": 2.266,
    "market_p_champion": 0.2973,
    "anchor_source": "elo+table+market"
   },
@@ -554,11 +554,11 @@
    "league": "laliga",
    "api_team_id": 548,
    "elo": 1776.0,
-   "elo_rank": 44,
+   "elo_rank": 49,
    "last_pts": 1.2105,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3282,
+   "anchor_points": 1.34,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -569,11 +569,11 @@
    "league": "laliga",
    "api_team_id": 536,
    "elo": 1722.0,
-   "elo_rank": 60,
+   "elo_rank": 69,
    "last_pts": 1.1316,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2216,
+   "anchor_points": 1.2323,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -584,11 +584,11 @@
    "league": "laliga",
    "api_team_id": 532,
    "elo": 1741.0,
-   "elo_rank": 55,
+   "elo_rank": 61,
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3079,
+   "anchor_points": 1.319,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -599,11 +599,11 @@
    "league": "laliga",
    "api_team_id": 533,
    "elo": 1795.0,
-   "elo_rank": 38,
+   "elo_rank": 42,
    "last_pts": 1.8947,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6118,
+   "anchor_points": 1.624,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -614,12 +614,12 @@
    "league": "seriea",
    "api_team_id": 489,
    "elo": 1829.8603,
-   "elo_rank": 24,
+   "elo_rank": 25,
    "last_pts": 1.8421,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.8157,
-   "market_p_champion": 0.09225,
+   "anchor_points": 1.8162,
+   "market_p_champion": 0.08709,
    "anchor_source": "elo+table+market"
   },
   {
@@ -629,12 +629,12 @@
    "league": "seriea",
    "api_team_id": 497,
    "elo": 1850.7849,
-   "elo_rank": 18,
+   "elo_rank": 19,
    "last_pts": 1.9211,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.9148,
-   "market_p_champion": 0.17919,
+   "anchor_points": 1.9127,
+   "market_p_champion": 0.17227,
    "anchor_source": "elo+table+market"
   },
   {
@@ -644,12 +644,12 @@
    "league": "seriea",
    "api_team_id": 499,
    "elo": 1821.3734,
-   "elo_rank": 27,
+   "elo_rank": 29,
    "last_pts": 1.5526,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.5529,
-   "market_p_champion": 0.00615,
+   "anchor_points": 1.5524,
+   "market_p_champion": 0.00438,
    "anchor_source": "elo+table+market"
   },
   {
@@ -659,12 +659,12 @@
    "league": "seriea",
    "api_team_id": 500,
    "elo": 1758.9285,
-   "elo_rank": 49,
+   "elo_rank": 54,
    "last_pts": 1.4737,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4316,
-   "market_p_champion": 0.00615,
+   "anchor_points": 1.4312,
+   "market_p_champion": 0.00438,
    "anchor_source": "elo+table+market"
   },
   {
@@ -674,7 +674,7 @@
    "league": "seriea",
    "api_team_id": 490,
    "elo": 1659.0,
-   "elo_rank": 90,
+   "elo_rank": 112,
    "last_pts": 1.1316,
    "last_rank": 14,
    "promoted": false,
@@ -689,12 +689,12 @@
    "league": "seriea",
    "api_team_id": 895,
    "elo": 1814.0,
-   "elo_rank": 30,
+   "elo_rank": 32,
    "last_pts": 1.8684,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.8023,
-   "market_p_champion": 0.09225,
+   "anchor_points": 1.8027,
+   "market_p_champion": 0.08709,
    "anchor_source": "elo+table+market"
   },
   {
@@ -704,12 +704,12 @@
    "league": "seriea",
    "api_team_id": 502,
    "elo": 1717.0,
-   "elo_rank": 61,
+   "elo_rank": 70,
    "last_pts": 1.1053,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2319,
-   "market_p_champion": 0.00615,
+   "anchor_points": 1.2314,
+   "market_p_champion": 0.00438,
    "anchor_source": "elo+table+market"
   },
   {
@@ -719,7 +719,7 @@
    "league": "seriea",
    "api_team_id": 512,
    "elo": 1677.4814,
-   "elo_rank": 83,
+   "elo_rank": 102,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -734,7 +734,7 @@
    "league": "seriea",
    "api_team_id": 495,
    "elo": 1663.0322,
-   "elo_rank": 86,
+   "elo_rank": 106,
    "last_pts": 1.0789,
    "last_rank": 16,
    "promoted": false,
@@ -749,12 +749,12 @@
    "league": "seriea",
    "api_team_id": 505,
    "elo": 1944.6116,
-   "elo_rank": 6,
+   "elo_rank": 7,
    "last_pts": 2.2895,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.2695,
-   "market_p_champion": 0.50779,
+   "anchor_points": 2.2692,
+   "market_p_champion": 0.54198,
    "anchor_source": "elo+table+market"
   },
   {
@@ -764,12 +764,12 @@
    "league": "seriea",
    "api_team_id": 496,
    "elo": 1840.9407,
-   "elo_rank": 21,
+   "elo_rank": 22,
    "last_pts": 1.8158,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.8092,
-   "market_p_champion": 0.07294,
+   "anchor_points": 1.8103,
+   "market_p_champion": 0.06821,
    "anchor_source": "elo+table+market"
   },
   {
@@ -779,12 +779,12 @@
    "league": "seriea",
    "api_team_id": 487,
    "elo": 1772.0,
-   "elo_rank": 46,
+   "elo_rank": 51,
    "last_pts": 1.4211,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.431,
-   "market_p_champion": 0.00615,
+   "anchor_points": 1.4306,
+   "market_p_champion": 0.00438,
    "anchor_source": "elo+table+market"
   },
   {
@@ -794,7 +794,7 @@
    "league": "seriea",
    "api_team_id": 867,
    "elo": 1613.0,
-   "elo_rank": 108,
+   "elo_rank": 138,
    "last_pts": 1.0,
    "last_rank": 17,
    "promoted": false,
@@ -809,7 +809,7 @@
    "league": "seriea",
    "api_team_id": 1579,
    "elo": 1642.1331,
-   "elo_rank": 99,
+   "elo_rank": 124,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -824,12 +824,12 @@
    "league": "seriea",
    "api_team_id": 492,
    "elo": 1831.0,
-   "elo_rank": 22,
+   "elo_rank": 23,
    "last_pts": 2.0,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.8065,
-   "market_p_champion": 0.02483,
+   "anchor_points": 1.8089,
+   "market_p_champion": 0.02149,
    "anchor_source": "elo+table+market"
   },
   {
@@ -839,7 +839,7 @@
    "league": "seriea",
    "api_team_id": 523,
    "elo": 1645.1244,
-   "elo_rank": 97,
+   "elo_rank": 121,
    "last_pts": 1.1842,
    "last_rank": 13,
    "promoted": false,
@@ -854,7 +854,7 @@
    "league": "seriea",
    "api_team_id": 488,
    "elo": 1695.5758,
-   "elo_rank": 70,
+   "elo_rank": 80,
    "last_pts": 1.2895,
    "last_rank": 11,
    "promoted": false,
@@ -869,7 +869,7 @@
    "league": "seriea",
    "api_team_id": 503,
    "elo": 1684.7684,
-   "elo_rank": 77,
+   "elo_rank": 94,
    "last_pts": 1.1842,
    "last_rank": 12,
    "promoted": false,
@@ -884,7 +884,7 @@
    "league": "seriea",
    "api_team_id": 494,
    "elo": 1707.0,
-   "elo_rank": 64,
+   "elo_rank": 73,
    "last_pts": 1.3158,
    "last_rank": 10,
    "promoted": false,
@@ -899,12 +899,12 @@
    "league": "seriea",
    "api_team_id": 517,
    "elo": 1651.0,
-   "elo_rank": 94,
+   "elo_rank": 116,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1408,
-   "market_p_champion": 0.00615,
+   "anchor_points": 1.1404,
+   "market_p_champion": 0.00438,
    "anchor_source": "elo+market"
   },
   {
@@ -914,11 +914,11 @@
    "league": "bundesliga",
    "api_team_id": 167,
    "elo": 1747.3444,
-   "elo_rank": 53,
+   "elo_rank": 58,
    "last_pts": 1.7941,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5049,
+   "anchor_points": 1.5548,
    "market_p_champion": 0.00556,
    "anchor_source": "elo+table+market"
   },
@@ -928,14 +928,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 192,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1662.6633,
+   "elo_rank": 108,
    "last_pts": 0.9412,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0363,
+   "anchor_points": 1.125,
    "market_p_champion": 0.00556,
-   "anchor_source": "table+market"
+   "anchor_source": "elo+table+market"
   },
   {
    "club_id": "bayer_leverkusen",
@@ -944,11 +944,11 @@
    "league": "bundesliga",
    "api_team_id": 168,
    "elo": 1867.4016,
-   "elo_rank": 15,
+   "elo_rank": 16,
    "last_pts": 1.7353,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.7441,
+   "anchor_points": 1.7374,
    "market_p_champion": 0.0144,
    "anchor_source": "elo+table+market"
   },
@@ -958,14 +958,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 157,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 2045.0,
+   "elo_rank": 1,
    "last_pts": 2.6176,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.63,
+   "anchor_points": 2.5868,
    "market_p_champion": 0.81163,
-   "anchor_source": "table+market"
+   "anchor_source": "elo+table+market"
   },
   {
    "club_id": "borussia_dortmund",
@@ -974,11 +974,11 @@
    "league": "bundesliga",
    "api_team_id": 165,
    "elo": 1894.4141,
-   "elo_rank": 8,
+   "elo_rank": 9,
    "last_pts": 2.1471,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0368,
+   "anchor_points": 2.0174,
    "market_p_champion": 0.08032,
    "anchor_source": "elo+table+market"
   },
@@ -988,14 +988,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 163,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1689.5142,
+   "elo_rank": 91,
    "last_pts": 1.1176,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.1686,
+   "anchor_points": 1.226,
    "market_p_champion": 0.00556,
-   "anchor_source": "table+market"
+   "anchor_source": "elo+table+market"
   },
   {
    "club_id": "eintracht_frankfurt",
@@ -1003,14 +1003,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 169,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1732.18,
+   "elo_rank": 65,
    "last_pts": 1.2941,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.2941,
+   "anchor_points": 1.3563,
    "market_p_champion": null,
-   "anchor_source": "table"
+   "anchor_source": "elo+table"
   },
   {
    "club_id": "fc_augsburg",
@@ -1019,11 +1019,11 @@
    "league": "bundesliga",
    "api_team_id": 170,
    "elo": 1723.6624,
-   "elo_rank": 59,
+   "elo_rank": 68,
    "last_pts": 1.2647,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.2644,
+   "anchor_points": 1.3255,
    "market_p_champion": 0.00556,
    "anchor_source": "elo+table+market"
   },
@@ -1033,14 +1033,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 174,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1651.0,
+   "elo_rank": 117,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0804,
+   "anchor_points": 1.1679,
    "market_p_champion": 0.00556,
-   "anchor_source": "default+market"
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "fsv_mainz_05",
@@ -1048,14 +1048,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 164,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1745.8028,
+   "elo_rank": 59,
    "last_pts": 1.1765,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.1765,
+   "anchor_points": 1.3211,
    "market_p_champion": null,
-   "anchor_source": "table"
+   "anchor_source": "elo+table"
   },
   {
    "club_id": "hamburger_sv",
@@ -1063,14 +1063,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 175,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1672.3446,
+   "elo_rank": 104,
    "last_pts": 1.1176,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.1686,
+   "anchor_points": 1.2037,
    "market_p_champion": 0.00556,
-   "anchor_source": "table+market"
+   "anchor_source": "elo+table+market"
   },
   {
    "club_id": "rb_leipzig",
@@ -1079,11 +1079,11 @@
    "league": "bundesliga",
    "api_team_id": 173,
    "elo": 1818.0,
-   "elo_rank": 29,
+   "elo_rank": 31,
    "last_pts": 1.9118,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7484,
+   "anchor_points": 1.765,
    "market_p_champion": 0.02366,
    "anchor_source": "elo+table+market"
   },
@@ -1094,11 +1094,11 @@
    "league": "bundesliga",
    "api_team_id": 160,
    "elo": 1785.5498,
-   "elo_rank": 41,
+   "elo_rank": 46,
    "last_pts": 1.3824,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4181,
+   "anchor_points": 1.4501,
    "market_p_champion": 0.00556,
    "anchor_source": "elo+table+market"
   },
@@ -1108,14 +1108,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 185,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1660.1529,
+   "elo_rank": 111,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0804,
+   "anchor_points": 1.1881,
    "market_p_champion": 0.00556,
-   "anchor_source": "default+market"
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "sv_elversberg",
@@ -1124,11 +1124,11 @@
    "league": "bundesliga",
    "api_team_id": 1660,
    "elo": 1677.6064,
-   "elo_rank": 82,
+   "elo_rank": 101,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0858,
+   "anchor_points": 1.2266,
    "market_p_champion": 0.00556,
    "anchor_source": "elo+market"
   },
@@ -1139,11 +1139,11 @@
    "league": "bundesliga",
    "api_team_id": 182,
    "elo": 1680.0,
-   "elo_rank": 80,
+   "elo_rank": 99,
    "last_pts": 1.1471,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.143,
+   "anchor_points": 1.2247,
    "market_p_champion": 0.00556,
    "anchor_source": "elo+table+market"
   },
@@ -1154,11 +1154,11 @@
    "league": "bundesliga",
    "api_team_id": 172,
    "elo": 1830.0,
-   "elo_rank": 23,
+   "elo_rank": 24,
    "last_pts": 1.8235,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.7109,
+   "anchor_points": 1.7218,
    "market_p_champion": 0.0144,
    "anchor_source": "elo+table+market"
   },
@@ -1168,14 +1168,14 @@
    "zh": "",
    "league": "bundesliga",
    "api_team_id": 162,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1689.6175,
+   "elo_rank": 90,
    "last_pts": 0.9412,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 0.9412,
+   "anchor_points": 1.1061,
    "market_p_champion": null,
-   "anchor_source": "table"
+   "anchor_source": "elo+table"
   },
   {
    "club_id": "angers",
@@ -1184,11 +1184,11 @@
    "league": "ligue1",
    "api_team_id": 77,
    "elo": 1612.0435,
-   "elo_rank": 109,
+   "elo_rank": 139,
    "last_pts": 1.0588,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.052,
+   "anchor_points": 1.0656,
    "market_p_champion": null,
    "anchor_source": "elo+table"
   },
@@ -1199,11 +1199,11 @@
    "league": "ligue1",
    "api_team_id": 108,
    "elo": 1638.6441,
-   "elo_rank": 100,
+   "elo_rank": 126,
    "last_pts": 1.0,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.0726,
+   "anchor_points": 1.0868,
    "market_p_champion": null,
    "anchor_source": "elo+table"
   },
@@ -1213,14 +1213,14 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 110,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1615.5934,
+   "elo_rank": 137,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9902,
+   "anchor_points": 1.0715,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "le_havre",
@@ -1229,12 +1229,12 @@
    "league": "ligue1",
    "api_team_id": 111,
    "elo": 1610.7132,
-   "elo_rank": 110,
+   "elo_rank": 140,
    "last_pts": 1.0294,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0761,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.0875,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1244,12 +1244,12 @@
    "league": "ligue1",
    "api_team_id": 1298,
    "elo": 1583.7315,
-   "elo_rank": 115,
+   "elo_rank": 153,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0099,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.0275,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+market"
   },
   {
@@ -1259,12 +1259,12 @@
    "league": "ligue1",
    "api_team_id": 116,
    "elo": 1822.0,
-   "elo_rank": 26,
+   "elo_rank": 28,
    "last_pts": 2.0588,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.841,
-   "market_p_champion": 0.01893,
+   "anchor_points": 1.855,
+   "market_p_champion": 0.02126,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1274,12 +1274,12 @@
    "league": "ligue1",
    "api_team_id": 79,
    "elo": 1784.0,
-   "elo_rank": 42,
+   "elo_rank": 47,
    "last_pts": 1.7941,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7064,
-   "market_p_champion": 0.02767,
+   "anchor_points": 1.7195,
+   "market_p_champion": 0.03035,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1289,12 +1289,12 @@
    "league": "ligue1",
    "api_team_id": 97,
    "elo": 1696.8497,
-   "elo_rank": 69,
+   "elo_rank": 79,
    "last_pts": 1.3235,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3078,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.3209,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1304,12 +1304,12 @@
    "league": "ligue1",
    "api_team_id": 80,
    "elo": 1788.6859,
-   "elo_rank": 39,
+   "elo_rank": 44,
    "last_pts": 1.7647,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.6838,
-   "market_p_champion": 0.01893,
+   "anchor_points": 1.6971,
+   "market_p_champion": 0.02126,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1319,12 +1319,12 @@
    "league": "ligue1",
    "api_team_id": 81,
    "elo": 1775.0,
-   "elo_rank": 45,
+   "elo_rank": 50,
    "last_pts": 1.7353,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.6535,
-   "market_p_champion": 0.01893,
+   "anchor_points": 1.6665,
+   "market_p_champion": 0.02126,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1334,12 +1334,12 @@
    "league": "ligue1",
    "api_team_id": 91,
    "elo": 1797.4271,
-   "elo_rank": 36,
+   "elo_rank": 40,
    "last_pts": 1.5882,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.7288,
-   "market_p_champion": 0.13724,
+   "anchor_points": 1.7267,
+   "market_p_champion": 0.10467,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1349,12 +1349,12 @@
    "league": "ligue1",
    "api_team_id": 84,
    "elo": 1665.186,
-   "elo_rank": 85,
+   "elo_rank": 105,
    "last_pts": 0.9412,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.1198,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.1323,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1364,12 +1364,12 @@
    "league": "ligue1",
    "api_team_id": 114,
    "elo": 1697.8179,
-   "elo_rank": 68,
+   "elo_rank": 78,
    "last_pts": 1.2941,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2982,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.3113,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1379,12 +1379,12 @@
    "league": "ligue1",
    "api_team_id": 85,
    "elo": 1953.0,
-   "elo_rank": 5,
+   "elo_rank": 6,
    "last_pts": 2.2353,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.3166,
-   "market_p_champion": 0.69975,
+   "anchor_points": 2.343,
+   "market_p_champion": 0.7127,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1394,12 +1394,12 @@
    "league": "ligue1",
    "api_team_id": 94,
    "elo": 1765.0,
-   "elo_rank": 48,
+   "elo_rank": 53,
    "last_pts": 1.7353,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.6909,
-   "market_p_champion": 0.0547,
+   "anchor_points": 1.7039,
+   "market_p_champion": 0.05808,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1408,14 +1408,14 @@
    "zh": "",
    "league": "ligue1",
    "api_team_id": 106,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1680.2701,
+   "elo_rank": 98,
    "last_pts": 1.1471,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.1471,
+   "anchor_points": 1.2397,
    "market_p_champion": null,
-   "anchor_source": "table"
+   "anchor_source": "elo+table"
   },
   {
    "club_id": "strasbourg",
@@ -1424,12 +1424,12 @@
    "league": "ligue1",
    "api_team_id": 95,
    "elo": 1748.2686,
-   "elo_rank": 52,
+   "elo_rank": 57,
    "last_pts": 1.5588,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4685,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.4826,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1439,12 +1439,12 @@
    "league": "ligue1",
    "api_team_id": 96,
    "elo": 1684.0,
-   "elo_rank": 78,
+   "elo_rank": 95,
    "last_pts": 1.3333,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.2934,
-   "market_p_champion": 0.00341,
+   "anchor_points": 1.3062,
+   "market_p_champion": 0.00435,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1454,11 +1454,11 @@
    "league": "ucl",
    "api_team_id": 406,
    "elo": 1607.6508,
-   "elo_rank": 112,
+   "elo_rank": 142,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1767,
+   "anchor_points": 1.1918,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1468,14 +1468,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 575,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1706.5803,
+   "elo_rank": 75,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9098,
-   "market_p_champion": 0.0052,
-   "anchor_source": "default+market"
+   "anchor_points": 1.2875,
+   "market_p_champion": 0.00532,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "ararat_armenia",
@@ -1484,11 +1484,11 @@
    "league": "ucl",
    "api_team_id": 3683,
    "elo": 1461.0,
-   "elo_rank": 140,
+   "elo_rank": 200,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9802,
+   "anchor_points": 0.9758,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1499,11 +1499,11 @@
    "league": "ucl",
    "api_team_id": 15847,
    "elo": 1348.0,
-   "elo_rank": 167,
+   "elo_rank": 242,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8289,
+   "anchor_points": 0.8093,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1514,12 +1514,12 @@
    "league": "ucl",
    "api_team_id": 327,
    "elo": 1786.0,
-   "elo_rank": 40,
+   "elo_rank": 45,
    "last_pts": null,
    "last_rank": 23,
    "promoted": false,
-   "anchor_points": 1.3437,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.3752,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -1529,11 +1529,11 @@
    "league": "ucl",
    "api_team_id": 3364,
    "elo": 1481.0,
-   "elo_rank": 136,
+   "elo_rank": 194,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.007,
+   "anchor_points": 1.0052,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1544,11 +1544,11 @@
    "league": "ucl",
    "api_team_id": 4360,
    "elo": 1526.0,
-   "elo_rank": 126,
+   "elo_rank": 177,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0673,
+   "anchor_points": 1.0715,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1559,11 +1559,11 @@
    "league": "ucl",
    "api_team_id": 247,
    "elo": 1693.3237,
-   "elo_rank": 71,
+   "elo_rank": 82,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2914,
+   "anchor_points": 1.318,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1573,14 +1573,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 569,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1802.0,
+   "elo_rank": 38,
    "last_pts": null,
    "last_rank": 19,
    "promoted": false,
-   "anchor_points": 0.9098,
-   "market_p_champion": 0.0052,
-   "anchor_source": "default+market"
+   "anchor_points": 1.3929,
+   "market_p_champion": 0.00532,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "dinamo_zagreb",
@@ -1589,11 +1589,11 @@
    "league": "ucl",
    "api_team_id": 620,
    "elo": 1678.3365,
-   "elo_rank": 81,
+   "elo_rank": 100,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2713,
+   "anchor_points": 1.296,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1604,11 +1604,11 @@
    "league": "ucl",
    "api_team_id": 14281,
    "elo": 1414.0,
-   "elo_rank": 151,
+   "elo_rank": 219,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9173,
+   "anchor_points": 0.9065,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1619,11 +1619,11 @@
    "league": "ucl",
    "api_team_id": 3327,
    "elo": 1421.0,
-   "elo_rank": 149,
+   "elo_rank": 216,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9267,
+   "anchor_points": 0.9168,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1634,11 +1634,11 @@
    "league": "ucl",
    "api_team_id": 3502,
    "elo": 1377.0,
-   "elo_rank": 158,
+   "elo_rank": 229,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8677,
+   "anchor_points": 0.852,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1648,14 +1648,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 212,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1827.0,
+   "elo_rank": 27,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.515,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fc_thun",
@@ -1663,14 +1663,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 1012,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1579.319,
+   "elo_rank": 154,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1501,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fenerbahe",
@@ -1679,12 +1679,12 @@
    "league": "ucl",
    "api_team_id": 611,
    "elo": 1778.0,
-   "elo_rank": 43,
+   "elo_rank": 48,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3357,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.3664,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -1694,12 +1694,12 @@
    "league": "ucl",
    "api_team_id": 209,
    "elo": 1707.0,
-   "elo_rank": 65,
+   "elo_rank": 74,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2643,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.2879,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -1709,11 +1709,11 @@
    "league": "ucl",
    "api_team_id": 598,
    "elo": 1663.0,
-   "elo_rank": 87,
+   "elo_rank": 107,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2508,
+   "anchor_points": 1.2734,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1724,11 +1724,11 @@
    "league": "ucl",
    "api_team_id": 687,
    "elo": 1255.0,
-   "elo_rank": 184,
+   "elo_rank": 267,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7043,
+   "anchor_points": 0.6723,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1739,11 +1739,11 @@
    "league": "ucl",
    "api_team_id": 4625,
    "elo": 1318.0,
-   "elo_rank": 178,
+   "elo_rank": 256,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7887,
+   "anchor_points": 0.7651,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1754,12 +1754,12 @@
    "league": "ucl",
    "api_team_id": 645,
    "elo": 1805.0,
-   "elo_rank": 34,
+   "elo_rank": 36,
    "last_pts": null,
    "last_rank": 20,
    "promoted": false,
-   "anchor_points": 1.3628,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.3962,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -1768,14 +1768,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 340,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1578.0,
+   "elo_rank": 155,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1481,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "gyori_eto_fc",
@@ -1783,14 +1783,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 2402,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1561.0,
+   "elo_rank": 161,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1231,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "hapoel_beer_sheva",
@@ -1798,14 +1798,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 563,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1618.0,
+   "elo_rank": 134,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2071,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "heart_of_midlothian",
@@ -1813,14 +1813,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 254,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1550.0,
+   "elo_rank": 166,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1069,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "inter_club_d_escaldes",
@@ -1843,14 +1843,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 664,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1475.0,
+   "elo_rank": 196,
    "last_pts": null,
    "last_rank": 36,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9964,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "kauno_algiris",
@@ -1859,11 +1859,11 @@
    "league": "ucl",
    "api_team_id": 3872,
    "elo": 1393.0,
-   "elo_rank": 154,
+   "elo_rank": 225,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8892,
+   "anchor_points": 0.8756,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1874,11 +1874,11 @@
    "league": "ucl",
    "api_team_id": 701,
    "elo": 1407.0,
-   "elo_rank": 153,
+   "elo_rank": 223,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9079,
+   "anchor_points": 0.8962,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1888,14 +1888,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 1165,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1494.0,
+   "elo_rank": 189,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0244,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "larne",
@@ -1904,11 +1904,11 @@
    "league": "ucl",
    "api_team_id": 5354,
    "elo": 1320.0,
-   "elo_rank": 177,
+   "elo_rank": 255,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7914,
+   "anchor_points": 0.768,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -1918,14 +1918,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 1026,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1644.0,
+   "elo_rank": 122,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2454,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "lech_poznan",
@@ -1933,14 +1933,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 347,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1681.0,
+   "elo_rank": 97,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2999,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "levski_sofia",
@@ -1948,14 +1948,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 646,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1587.696,
+   "elo_rank": 151,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1624,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "lincoln_red_imps_fc",
@@ -1978,14 +1978,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 2240,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1534.0,
+   "elo_rank": 174,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0833,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ml_vitebsk",
@@ -1993,14 +1993,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 7808,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1454.0,
+   "elo_rank": 204,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9655,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "nec_nijmegen",
@@ -2009,11 +2009,11 @@
    "league": "ucl",
    "api_team_id": 413,
    "elo": 1607.0,
-   "elo_rank": 113,
+   "elo_rank": 143,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1758,
+   "anchor_points": 1.1909,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2023,14 +2023,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 553,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1727.4275,
+   "elo_rank": 67,
    "last_pts": null,
    "last_rank": 18,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3683,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "omonia_nicosia",
@@ -2038,14 +2038,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 3402,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1639.0,
+   "elo_rank": 125,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.238,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "petrocub",
@@ -2054,11 +2054,11 @@
    "league": "ucl",
    "api_team_id": 2271,
    "elo": 1356.0,
-   "elo_rank": 166,
+   "elo_rank": 239,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8396,
+   "anchor_points": 0.8211,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2068,14 +2068,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 197,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1789.0,
+   "elo_rank": 43,
    "last_pts": null,
    "last_rank": 28,
    "promoted": false,
-   "anchor_points": 0.9098,
-   "market_p_champion": 0.0052,
-   "anchor_source": "default+market"
+   "anchor_points": 1.3785,
+   "market_p_champion": 0.00532,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "riga",
@@ -2099,12 +2099,12 @@
    "league": "ucl",
    "api_team_id": 13976,
    "elo": 1561.0,
-   "elo_rank": 119,
+   "elo_rank": 162,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1177,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.1266,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -2113,14 +2113,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 550,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1685.0,
+   "elo_rank": 93,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9098,
-   "market_p_champion": 0.0052,
-   "anchor_source": "default+market"
+   "anchor_points": 1.2636,
+   "market_p_champion": 0.00532,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "shamrock_rovers",
@@ -2128,14 +2128,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 652,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1422.0,
+   "elo_rank": 215,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9183,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "slavia_praha",
@@ -2144,12 +2144,12 @@
    "league": "ucl",
    "api_team_id": 560,
    "elo": 1756.0,
-   "elo_rank": 50,
+   "elo_rank": 55,
    "last_pts": null,
    "last_rank": 34,
    "promoted": false,
-   "anchor_points": 1.3136,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.3421,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -2159,12 +2159,12 @@
    "league": "ucl",
    "api_team_id": 656,
    "elo": 1555.0,
-   "elo_rank": 121,
+   "elo_rank": 164,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1116,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.12,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -2174,11 +2174,11 @@
    "league": "ucl",
    "api_team_id": 628,
    "elo": 1635.0,
-   "elo_rank": 102,
+   "elo_rank": 128,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2133,
+   "anchor_points": 1.2321,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2189,12 +2189,12 @@
    "league": "ucl",
    "api_team_id": 228,
    "elo": 1881.0,
-   "elo_rank": 14,
+   "elo_rank": 15,
    "last_pts": null,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4391,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.4802,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -2204,11 +2204,11 @@
    "league": "ucl",
    "api_team_id": 637,
    "elo": 1633.0,
-   "elo_rank": 103,
+   "elo_rank": 129,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2106,
+   "anchor_points": 1.2292,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2219,11 +2219,11 @@
    "league": "ucl",
    "api_team_id": 673,
    "elo": 1272.0,
-   "elo_rank": 183,
+   "elo_rank": 265,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7271,
+   "anchor_points": 0.6973,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2234,11 +2234,11 @@
    "league": "ucl",
    "api_team_id": 354,
    "elo": 1367.0,
-   "elo_rank": 162,
+   "elo_rank": 233,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8543,
+   "anchor_points": 0.8373,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2263,14 +2263,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 1393,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1801.3395,
+   "elo_rank": 39,
    "last_pts": null,
    "last_rank": 27,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4772,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "universitatea_craiova",
@@ -2278,14 +2278,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 632,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1576.0,
+   "elo_rank": 156,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1452,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "vardar_skopje",
@@ -2293,14 +2293,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 574,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1400.0,
+   "elo_rank": 224,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.8859,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "viking",
@@ -2309,12 +2309,12 @@
    "league": "ucl",
    "api_team_id": 759,
    "elo": 1687.0,
-   "elo_rank": 76,
+   "elo_rank": 92,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2442,
-   "market_p_champion": 0.0052,
+   "anchor_points": 1.2658,
+   "market_p_champion": 0.00532,
    "anchor_source": "elo+market"
   },
   {
@@ -2323,14 +2323,14 @@
    "zh": "",
    "league": "ucl",
    "api_team_id": 278,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1518.0,
+   "elo_rank": 182,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0597,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "aluminij",
@@ -2339,11 +2339,11 @@
    "league": "uel",
    "api_team_id": 4358,
    "elo": 1295.0,
-   "elo_rank": 179,
+   "elo_rank": 258,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.6476,
+   "anchor_points": 0.5868,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2354,11 +2354,11 @@
    "league": "uel",
    "api_team_id": 554,
    "elo": 1662.0,
-   "elo_rank": 88,
+   "elo_rank": 109,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3685,
+   "anchor_points": 1.3965,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2369,11 +2369,11 @@
    "league": "uel",
    "api_team_id": 201,
    "elo": 1693.0,
-   "elo_rank": 72,
+   "elo_rank": 83,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4294,
+   "anchor_points": 1.4648,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2383,14 +2383,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 549,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1692.0,
+   "elo_rank": 85,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0122,
-   "market_p_champion": 0.08589,
-   "anchor_source": "default+market"
+   "anchor_points": 1.4798,
+   "market_p_champion": 0.08273,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "benfica",
@@ -2399,12 +2399,12 @@
    "league": "uel",
    "api_team_id": 211,
    "elo": 1849.0,
-   "elo_rank": 19,
+   "elo_rank": 20,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7037,
-   "market_p_champion": 0.11575,
+   "anchor_points": 1.7568,
+   "market_p_champion": 0.11207,
    "anchor_source": "elo+market"
   },
   {
@@ -2414,11 +2414,11 @@
    "league": "uel",
    "api_team_id": 853,
    "elo": 1497.0,
-   "elo_rank": 131,
+   "elo_rank": 186,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0444,
+   "anchor_points": 1.0325,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2429,11 +2429,11 @@
    "league": "uel",
    "api_team_id": 670,
    "elo": 1341.0,
-   "elo_rank": 170,
+   "elo_rank": 246,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7379,
+   "anchor_points": 0.6883,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2444,11 +2444,11 @@
    "league": "uel",
    "api_team_id": 572,
    "elo": 1573.6351,
-   "elo_rank": 117,
+   "elo_rank": 158,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1949,
+   "anchor_points": 1.2015,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2459,11 +2459,11 @@
    "league": "uel",
    "api_team_id": 397,
    "elo": 1715.0,
-   "elo_rank": 62,
+   "elo_rank": 71,
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.4726,
+   "anchor_points": 1.5134,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2473,14 +2473,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 1011,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1597.1161,
+   "elo_rank": 147,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2533,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ferencvarosi_tc",
@@ -2489,12 +2489,12 @@
    "league": "uel",
    "api_team_id": 651,
    "elo": 1656.4622,
-   "elo_rank": 92,
+   "elo_rank": 114,
    "last_pts": null,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3718,
-   "market_p_champion": 0.04965,
+   "anchor_points": 1.3903,
+   "market_p_champion": 0.0473,
    "anchor_source": "elo+market"
   },
   {
@@ -2504,11 +2504,11 @@
    "league": "uel",
    "api_team_id": 363,
    "elo": 1616.9523,
-   "elo_rank": 106,
+   "elo_rank": 135,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.28,
+   "anchor_points": 1.2971,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2518,14 +2518,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 608,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1585.8648,
+   "elo_rank": 152,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2285,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "hradec_krlov",
@@ -2534,11 +2534,11 @@
    "league": "uel",
    "api_team_id": 3723,
    "elo": 1568.0,
-   "elo_rank": 118,
+   "elo_rank": 160,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1838,
+   "anchor_points": 1.1891,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2549,11 +2549,11 @@
    "league": "uel",
    "api_team_id": 3554,
    "elo": 1457.0,
-   "elo_rank": 141,
+   "elo_rank": 202,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9658,
+   "anchor_points": 0.9442,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2564,11 +2564,11 @@
    "league": "uel",
    "api_team_id": 336,
    "elo": 1616.0,
-   "elo_rank": 107,
+   "elo_rank": 136,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2781,
+   "anchor_points": 1.295,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2579,11 +2579,11 @@
    "league": "uel",
    "api_team_id": 321,
    "elo": 1524.0,
-   "elo_rank": 128,
+   "elo_rank": 179,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0974,
+   "anchor_points": 1.092,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2593,14 +2593,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 604,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1602.0,
+   "elo_rank": 145,
    "last_pts": null,
    "last_rank": 36,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2641,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ofi",
@@ -2609,11 +2609,11 @@
    "league": "uel",
    "api_team_id": 1124,
    "elo": 1457.0,
-   "elo_rank": 142,
+   "elo_rank": 203,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9658,
+   "anchor_points": 0.9442,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2623,14 +2623,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 3403,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1597.0,
+   "elo_rank": 148,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2531,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "paok",
@@ -2639,11 +2639,11 @@
    "league": "uel",
    "api_team_id": 619,
    "elo": 1661.0384,
-   "elo_rank": 89,
+   "elo_rank": 110,
    "last_pts": null,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.3666,
+   "anchor_points": 1.3943,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2653,14 +2653,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 567,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1647.0,
+   "elo_rank": 119,
    "last_pts": null,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3634,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "qarabag",
@@ -2668,14 +2668,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 556,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1602.3413,
+   "elo_rank": 144,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2648,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "rangers",
@@ -2684,11 +2684,11 @@
    "league": "uel",
    "api_team_id": 257,
    "elo": 1609.5163,
-   "elo_rank": 111,
+   "elo_rank": 141,
    "last_pts": null,
    "last_rank": 32,
    "promoted": false,
-   "anchor_points": 1.2654,
+   "anchor_points": 1.2807,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2699,11 +2699,11 @@
    "league": "uel",
    "api_team_id": 571,
    "elo": 1646.0,
-   "elo_rank": 96,
+   "elo_rank": 120,
    "last_pts": null,
    "last_rank": 31,
    "promoted": false,
-   "anchor_points": 1.3371,
+   "anchor_points": 1.3612,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2714,11 +2714,11 @@
    "league": "uel",
    "api_team_id": 568,
    "elo": 1380.0,
-   "elo_rank": 157,
+   "elo_rank": 228,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8145,
+   "anchor_points": 0.7743,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2729,11 +2729,11 @@
    "league": "uel",
    "api_team_id": 735,
    "elo": 1629.4728,
-   "elo_rank": 104,
+   "elo_rank": 131,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3046,
+   "anchor_points": 1.3247,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2744,11 +2744,11 @@
    "league": "uel",
    "api_team_id": 4799,
    "elo": 1450.0,
-   "elo_rank": 144,
+   "elo_rank": 208,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.952,
+   "anchor_points": 0.9288,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2759,11 +2759,11 @@
    "league": "uel",
    "api_team_id": 998,
    "elo": 1654.8741,
-   "elo_rank": 93,
+   "elo_rank": 115,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3545,
+   "anchor_points": 1.3807,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2774,11 +2774,11 @@
    "league": "uel",
    "api_team_id": 325,
    "elo": 1575.0,
-   "elo_rank": 116,
+   "elo_rank": 157,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1976,
+   "anchor_points": 1.2045,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2789,11 +2789,11 @@
    "league": "uel",
    "api_team_id": 415,
    "elo": 1658.0,
-   "elo_rank": 91,
+   "elo_rank": 113,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3606,
+   "anchor_points": 1.3876,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2804,11 +2804,11 @@
    "league": "uel",
    "api_team_id": 2599,
    "elo": 1511.0,
-   "elo_rank": 130,
+   "elo_rank": 183,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0719,
+   "anchor_points": 1.0633,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2833,14 +2833,14 @@
    "zh": "",
    "league": "uel",
    "api_team_id": 702,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1460.0,
+   "elo_rank": 201,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9508,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "aek_larnaca",
@@ -2848,14 +2848,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 614,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1599.1484,
+   "elo_rank": 146,
    "last_pts": null,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.5603,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "af_elbasani",
@@ -2864,11 +2864,11 @@
    "league": "uecl",
    "api_team_id": 20406,
    "elo": 1359.0,
-   "elo_rank": 165,
+   "elo_rank": 236,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1031,
+   "anchor_points": 1.075,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2879,12 +2879,12 @@
    "league": "uecl",
    "api_team_id": 194,
    "elo": 1683.0,
-   "elo_rank": 79,
+   "elo_rank": 96,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6627,
-   "market_p_champion": 0.19355,
+   "anchor_points": 1.6799,
+   "market_p_champion": 0.15879,
    "anchor_source": "elo+market"
   },
   {
@@ -2894,11 +2894,11 @@
    "league": "uecl",
    "api_team_id": 582,
    "elo": 1327.0,
-   "elo_rank": 175,
+   "elo_rank": 252,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0437,
+   "anchor_points": 1.0103,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2908,14 +2908,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 602,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1529.0,
+   "elo_rank": 176,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4186,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "atltic_club_d_escaldes",
@@ -2954,11 +2954,11 @@
    "league": "uecl",
    "api_team_id": 601,
    "elo": 1545.0,
-   "elo_rank": 123,
+   "elo_rank": 168,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4482,
+   "anchor_points": 1.4509,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2968,14 +2968,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 564,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1627.0,
+   "elo_rank": 132,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.6166,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ballkani",
@@ -2984,11 +2984,11 @@
    "league": "uecl",
    "api_team_id": 12733,
    "elo": 1375.0,
-   "elo_rank": 159,
+   "elo_rank": 230,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1328,
+   "anchor_points": 1.1073,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -2998,14 +2998,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 388,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1281.0,
+   "elo_rank": 261,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9173,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "beitar_jerusalem",
@@ -3013,14 +3013,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 657,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1532.0,
+   "elo_rank": 175,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4246,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "bohemians",
@@ -3044,11 +3044,11 @@
    "league": "uecl",
    "api_team_id": 319,
    "elo": 1592.0,
-   "elo_rank": 114,
+   "elo_rank": 149,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5354,
+   "anchor_points": 1.5459,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3059,11 +3059,11 @@
    "league": "uecl",
    "api_team_id": 4359,
    "elo": 1424.0,
-   "elo_rank": 148,
+   "elo_rank": 214,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2237,
+   "anchor_points": 1.2063,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3074,11 +3074,11 @@
    "league": "uecl",
    "api_team_id": 356,
    "elo": 1074.0,
-   "elo_rank": 193,
+   "elo_rank": 279,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.5744,
+   "anchor_points": 0.4989,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3088,14 +3088,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2246,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1545.0,
+   "elo_rank": 169,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4509,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "coleraine_fc",
@@ -3104,11 +3104,11 @@
    "league": "uecl",
    "api_team_id": 669,
    "elo": 1339.0,
-   "elo_rank": 171,
+   "elo_rank": 248,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.066,
+   "anchor_points": 1.0345,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3118,14 +3118,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 1426,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1445.0,
+   "elo_rank": 211,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2488,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "debreceni_vsc",
@@ -3133,14 +3133,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2392,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1447.0,
+   "elo_rank": 210,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2528,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "dei",
@@ -3148,14 +3148,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3745,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1222.0,
+   "elo_rank": 274,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.7981,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "dila",
@@ -3179,11 +3179,11 @@
    "league": "uecl",
    "api_team_id": 394,
    "elo": 1452.0,
-   "elo_rank": 143,
+   "elo_rank": 205,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2757,
+   "anchor_points": 1.2629,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3194,11 +3194,11 @@
    "league": "uecl",
    "api_team_id": 2262,
    "elo": 1362.0,
-   "elo_rank": 163,
+   "elo_rank": 234,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1087,
+   "anchor_points": 1.081,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3209,11 +3209,11 @@
    "league": "uecl",
    "api_team_id": 3326,
    "elo": 1414.0,
-   "elo_rank": 152,
+   "elo_rank": 220,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2052,
+   "anchor_points": 1.1861,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3224,11 +3224,11 @@
    "league": "uecl",
    "api_team_id": 14393,
    "elo": 1251.0,
-   "elo_rank": 186,
+   "elo_rank": 269,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9027,
+   "anchor_points": 0.8567,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3238,14 +3238,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2257,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1521.0,
+   "elo_rank": 180,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4024,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "elezniar_panevo",
@@ -3254,11 +3254,11 @@
    "league": "uecl",
    "api_team_id": 12360,
    "elo": 1368.0,
-   "elo_rank": 160,
+   "elo_rank": 231,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1198,
+   "anchor_points": 1.0932,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3284,11 +3284,11 @@
    "league": "uecl",
    "api_team_id": 562,
    "elo": 1439.0,
-   "elo_rank": 146,
+   "elo_rank": 212,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2515,
+   "anchor_points": 1.2367,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3298,14 +3298,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 400,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1690.0,
+   "elo_rank": 89,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.744,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fc_differdange_03",
@@ -3313,14 +3313,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 684,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1325.0,
+   "elo_rank": 254,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0062,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fc_levadia_tallinn",
@@ -3329,11 +3329,11 @@
    "league": "uecl",
    "api_team_id": 2273,
    "elo": 1368.0,
-   "elo_rank": 161,
+   "elo_rank": 232,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1198,
+   "anchor_points": 1.0932,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3344,11 +3344,11 @@
    "league": "uecl",
    "api_team_id": 606,
    "elo": 1635.4284,
-   "elo_rank": 101,
+   "elo_rank": 127,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.616,
+   "anchor_points": 1.6337,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3358,14 +3358,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3684,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1471.0,
+   "elo_rank": 198,
    "last_pts": null,
    "last_rank": 19,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3013,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fc_nordsjaelland",
@@ -3374,11 +3374,11 @@
    "league": "uecl",
    "api_team_id": 398,
    "elo": 1649.0,
-   "elo_rank": 95,
+   "elo_rank": 118,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6411,
+   "anchor_points": 1.6611,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3403,14 +3403,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 630,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1569.9844,
+   "elo_rank": 159,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.5014,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fc_vaduz",
@@ -3418,14 +3418,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 660,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1412.0,
+   "elo_rank": 221,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1821,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fcsb",
@@ -3433,14 +3433,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 559,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1501.0,
+   "elo_rank": 185,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.362,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fk_jablonec",
@@ -3449,11 +3449,11 @@
    "league": "uecl",
    "api_team_id": 1122,
    "elo": 1544.0,
-   "elo_rank": 124,
+   "elo_rank": 170,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4463,
+   "anchor_points": 1.4489,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3463,14 +3463,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 661,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1289.0,
+   "elo_rank": 260,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9335,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fk_partizan",
@@ -3479,11 +3479,11 @@
    "league": "uecl",
    "api_team_id": 573,
    "elo": 1489.0,
-   "elo_rank": 134,
+   "elo_rank": 192,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3443,
+   "anchor_points": 1.3377,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3494,11 +3494,11 @@
    "league": "uecl",
    "api_team_id": 679,
    "elo": 1388.0,
-   "elo_rank": 155,
+   "elo_rank": 226,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1569,
+   "anchor_points": 1.1336,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3508,14 +3508,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2259,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1357.0,
+   "elo_rank": 237,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0709,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "fk_zalgiris_vilnius",
@@ -3524,11 +3524,11 @@
    "league": "uecl",
    "api_team_id": 586,
    "elo": 1343.0,
-   "elo_rank": 168,
+   "elo_rank": 244,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0734,
+   "anchor_points": 1.0426,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3539,11 +3539,11 @@
    "league": "uecl",
    "api_team_id": 2170,
    "elo": 1542.4645,
-   "elo_rank": 125,
+   "elo_rank": 171,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4435,
+   "anchor_points": 1.4458,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3553,14 +3553,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 357,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1138.0,
+   "elo_rank": 277,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.6283,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "gent",
@@ -3569,11 +3569,11 @@
    "league": "uecl",
    "api_team_id": 631,
    "elo": 1626.6191,
-   "elo_rank": 105,
+   "elo_rank": 133,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5996,
+   "anchor_points": 1.6159,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3584,11 +3584,11 @@
    "league": "uecl",
    "api_team_id": 3484,
    "elo": 1552.0,
-   "elo_rank": 122,
+   "elo_rank": 165,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4612,
+   "anchor_points": 1.465,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3599,11 +3599,11 @@
    "league": "uecl",
    "api_team_id": 5352,
    "elo": 1242.0,
-   "elo_rank": 188,
+   "elo_rank": 272,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8861,
+   "anchor_points": 0.8385,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3613,14 +3613,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 4626,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1352.0,
+   "elo_rank": 240,
    "last_pts": null,
    "last_rank": 33,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0608,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "hapoel_tel_aviv",
@@ -3629,11 +3629,11 @@
    "league": "uecl",
    "api_team_id": 4501,
    "elo": 1525.0,
-   "elo_rank": 127,
+   "elo_rank": 178,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4111,
+   "anchor_points": 1.4105,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3644,11 +3644,11 @@
    "league": "uecl",
    "api_team_id": 4133,
    "elo": 1335.0,
-   "elo_rank": 173,
+   "elo_rank": 250,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0586,
+   "anchor_points": 1.0265,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3658,14 +3658,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3861,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1276.0,
+   "elo_rank": 263,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9072,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "hibernian",
@@ -3674,11 +3674,11 @@
    "league": "uecl",
    "api_team_id": 249,
    "elo": 1488.0,
-   "elo_rank": 135,
+   "elo_rank": 193,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3424,
+   "anchor_points": 1.3357,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3689,11 +3689,11 @@
    "league": "uecl",
    "api_team_id": 649,
    "elo": 1419.0,
-   "elo_rank": 150,
+   "elo_rank": 217,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2144,
+   "anchor_points": 1.1962,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3703,14 +3703,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 561,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1541.7083,
+   "elo_rank": 172,
    "last_pts": null,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4442,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ifk_goteborg",
@@ -3718,14 +3718,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 366,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1491.0,
+   "elo_rank": 190,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3418,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "ilves",
@@ -3749,11 +3749,11 @@
    "league": "uecl",
    "api_team_id": 1164,
    "elo": 1521.0,
-   "elo_rank": 129,
+   "elo_rank": 181,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4037,
+   "anchor_points": 1.4024,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3763,14 +3763,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 662,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1245.0,
+   "elo_rank": 271,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.8445,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "koper",
@@ -3779,11 +3779,11 @@
    "league": "uecl",
    "api_team_id": 4374,
    "elo": 1474.0,
-   "elo_rank": 138,
+   "elo_rank": 197,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3165,
+   "anchor_points": 1.3074,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3809,11 +3809,11 @@
    "league": "uecl",
    "api_team_id": 583,
    "elo": 1281.0,
-   "elo_rank": 181,
+   "elo_rank": 262,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9584,
+   "anchor_points": 0.9173,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3824,11 +3824,11 @@
    "league": "uecl",
    "api_team_id": 17161,
    "elo": 1496.0,
-   "elo_rank": 132,
+   "elo_rank": 187,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3573,
+   "anchor_points": 1.3519,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3838,14 +3838,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 566,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1549.1856,
+   "elo_rank": 167,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4594,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "malisheva",
@@ -3854,11 +3854,11 @@
    "league": "uecl",
    "api_team_id": 15576,
    "elo": 1326.0,
-   "elo_rank": 176,
+   "elo_rank": 253,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0419,
+   "anchor_points": 1.0083,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3869,11 +3869,11 @@
    "league": "uecl",
    "api_team_id": 14507,
    "elo": 1253.0,
-   "elo_rank": 185,
+   "elo_rank": 268,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9065,
+   "anchor_points": 0.8607,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3884,11 +3884,11 @@
    "league": "uecl",
    "api_team_id": 691,
    "elo": 1250.0,
-   "elo_rank": 187,
+   "elo_rank": 270,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9009,
+   "anchor_points": 0.8547,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3899,11 +3899,11 @@
    "league": "uecl",
    "api_team_id": 3740,
    "elo": 1232.0,
-   "elo_rank": 189,
+   "elo_rank": 273,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8675,
+   "anchor_points": 0.8183,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3914,11 +3914,11 @@
    "league": "uecl",
    "api_team_id": 256,
    "elo": 1495.0,
-   "elo_rank": 133,
+   "elo_rank": 188,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3554,
+   "anchor_points": 1.3498,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -3928,14 +3928,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2270,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1451.0,
+   "elo_rank": 206,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2609,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "nk_varazdin",
@@ -3943,14 +3943,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 1483,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1508.0,
+   "elo_rank": 184,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3761,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "nsi_runavik",
@@ -3958,14 +3958,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 682,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1344.0,
+   "elo_rank": 243,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0446,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "paide",
@@ -3989,11 +3989,11 @@
    "league": "uecl",
    "api_team_id": 2390,
    "elo": 1479.0,
-   "elo_rank": 137,
+   "elo_rank": 195,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3257,
+   "anchor_points": 1.3175,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4004,11 +4004,11 @@
    "league": "uecl",
    "api_team_id": 617,
    "elo": 1643.4385,
-   "elo_rank": 98,
+   "elo_rank": 123,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6308,
+   "anchor_points": 1.6499,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4018,14 +4018,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3874,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1298.0,
+   "elo_rank": 257,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.9517,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "penybont",
@@ -4034,11 +4034,11 @@
    "league": "uecl",
    "api_team_id": 2191,
    "elo": 1137.0,
-   "elo_rank": 192,
+   "elo_rank": 278,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.6913,
+   "anchor_points": 0.6263,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4049,11 +4049,11 @@
    "league": "uecl",
    "api_team_id": 3741,
    "elo": 1148.0,
-   "elo_rank": 191,
+   "elo_rank": 276,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7117,
+   "anchor_points": 0.6485,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4063,14 +4063,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 6496,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1541.0,
+   "elo_rank": 173,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.4428,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "pyunik_yerevan",
@@ -4078,14 +4078,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 709,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1416.0,
+   "elo_rank": 218,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.1902,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "rakw_czstochowa",
@@ -4093,14 +4093,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3491,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1592.0,
+   "elo_rank": 150,
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.5459,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "rapid_vienna",
@@ -4109,11 +4109,11 @@
    "league": "uecl",
    "api_team_id": 781,
    "elo": 1558.0,
-   "elo_rank": 120,
+   "elo_rank": 163,
    "last_pts": null,
    "last_rank": 36,
    "promoted": false,
-   "anchor_points": 1.4723,
+   "anchor_points": 1.4772,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4123,14 +4123,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 4160,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1451.0,
+   "elo_rank": 207,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.2609,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "sc_braga",
@@ -4138,14 +4138,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 217,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1729.0,
+   "elo_rank": 66,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.8228,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "shelbourne",
@@ -4154,11 +4154,11 @@
    "league": "uecl",
    "api_team_id": 3854,
    "elo": 1361.0,
-   "elo_rank": 164,
+   "elo_rank": 235,
    "last_pts": null,
    "last_rank": 34,
    "promoted": false,
-   "anchor_points": 1.1068,
+   "anchor_points": 1.079,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4169,11 +4169,11 @@
    "league": "uecl",
    "api_team_id": 609,
    "elo": 1449.0,
-   "elo_rank": 145,
+   "elo_rank": 209,
    "last_pts": null,
    "last_rank": 22,
    "promoted": false,
-   "anchor_points": 1.2701,
+   "anchor_points": 1.2569,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4184,11 +4184,11 @@
    "league": "uecl",
    "api_team_id": 4331,
    "elo": 1338.0,
-   "elo_rank": 172,
+   "elo_rank": 249,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0642,
+   "anchor_points": 1.0325,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4199,11 +4199,11 @@
    "league": "uecl",
    "api_team_id": 1120,
    "elo": 1275.0,
-   "elo_rank": 182,
+   "elo_rank": 264,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9473,
+   "anchor_points": 0.9052,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4229,11 +4229,11 @@
    "league": "uecl",
    "api_team_id": 275,
    "elo": 1383.0,
-   "elo_rank": 156,
+   "elo_rank": 227,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1476,
+   "anchor_points": 1.1235,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4244,11 +4244,11 @@
    "league": "uecl",
    "api_team_id": 685,
    "elo": 1342.0,
-   "elo_rank": 169,
+   "elo_rank": 245,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0716,
+   "anchor_points": 1.0406,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4259,11 +4259,11 @@
    "league": "uecl",
    "api_team_id": 2036,
    "elo": 1292.0,
-   "elo_rank": 180,
+   "elo_rank": 259,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9788,
+   "anchor_points": 0.9395,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4273,14 +4273,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 2037,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1340.0,
+   "elo_rank": 247,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0366,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "valletta_fc",
@@ -4289,11 +4289,11 @@
    "league": "uecl",
    "api_team_id": 659,
    "elo": 1178.0,
-   "elo_rank": 190,
+   "elo_rank": 275,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7673,
+   "anchor_points": 0.7091,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4303,14 +4303,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 274,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1410.0,
+   "elo_rank": 222,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.178,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "vele",
@@ -4319,11 +4319,11 @@
    "league": "uecl",
    "api_team_id": 3381,
    "elo": 1438.0,
-   "elo_rank": 147,
+   "elo_rank": 213,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2497,
+   "anchor_points": 1.2346,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4333,14 +4333,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 580,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1271.0,
+   "elo_rank": 266,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 0.8971,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "virtus",
@@ -4363,14 +4363,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 3339,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1357.0,
+   "elo_rank": 238,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0709,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "yelimay_semey",
@@ -4378,14 +4378,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 21011,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1349.0,
+   "elo_rank": 241,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.837,
+   "anchor_points": 1.0547,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "zimbru",
@@ -4394,11 +4394,11 @@
    "league": "uecl",
    "api_team_id": 4633,
    "elo": 1329.0,
-   "elo_rank": 174,
+   "elo_rank": 251,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0475,
+   "anchor_points": 1.0143,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4409,11 +4409,11 @@
    "league": "uecl",
    "api_team_id": 648,
    "elo": 1464.0,
-   "elo_rank": 139,
+   "elo_rank": 199,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2979,
+   "anchor_points": 1.2872,
    "market_p_champion": null,
    "anchor_source": "elo"
   },
@@ -4423,14 +4423,14 @@
    "zh": "",
    "league": "uecl",
    "api_team_id": 588,
-   "elo": null,
-   "elo_rank": null,
+   "elo": 1491.0,
+   "elo_rank": 191,
    "last_pts": null,
    "last_rank": 23,
    "promoted": false,
-   "anchor_points": 0.837,
+   "anchor_points": 1.3418,
    "market_p_champion": null,
-   "anchor_source": "default"
+   "anchor_source": "elo"
   },
   {
    "club_id": "2_de_mayo",
@@ -4668,7 +4668,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6457,
+   "anchor_points": 1.6453,
    "market_p_champion": 0.00138,
    "anchor_source": "domestic_league"
   },
@@ -4758,7 +4758,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.166,
+   "anchor_points": 2.1657,
    "market_p_champion": 0.46154,
    "anchor_source": "domestic_league"
   },
@@ -4983,7 +4983,7 @@
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.0722,
+   "anchor_points": 2.0728,
    "market_p_champion": 0.0479,
    "anchor_source": "domestic_league"
   },
@@ -5823,8 +5823,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7058,
-   "market_p_champion": 0.02653,
+   "anchor_points": 1.7054,
+   "market_p_champion": 0.02719,
    "anchor_source": "table+market"
   },
   {
@@ -5839,7 +5839,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 0.8094,
-   "market_p_champion": 0.00317,
+   "market_p_champion": 0.00337,
    "anchor_source": "table+market"
   },
   {
@@ -5854,7 +5854,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.3667,
-   "market_p_champion": 0.00317,
+   "market_p_champion": 0.00337,
    "anchor_source": "table+market"
   },
   {
@@ -5868,8 +5868,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.0205,
-   "market_p_champion": 0.00317,
+   "anchor_points": 1.0206,
+   "market_p_champion": 0.00337,
    "anchor_source": "table+market"
   },
   {
@@ -5883,8 +5883,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9628,
-   "market_p_champion": 0.00317,
+   "anchor_points": 0.9629,
+   "market_p_champion": 0.00337,
    "anchor_source": "table+market"
   },
   {
@@ -5899,7 +5899,7 @@
    "last_rank": 15,
    "promoted": false,
    "anchor_points": 1.2225,
-   "market_p_champion": 0.00317,
+   "market_p_champion": 0.00337,
    "anchor_source": "table+market"
   },
   {
@@ -6146,487 +6146,487 @@
  "teams": [
   {
    "team": "Arsenal",
-   "fifa_rank": 1
-  },
-  {
-   "team": "Aston Villa",
-   "fifa_rank": 10
-  },
-  {
-   "team": "Bournemouth",
-   "fifa_rank": 17
-  },
-  {
-   "team": "Brentford",
-   "fifa_rank": 20
-  },
-  {
-   "team": "Brighton",
-   "fifa_rank": 16
-  },
-  {
-   "team": "Chelsea",
-   "fifa_rank": 9
-  },
-  {
-   "team": "Coventry",
-   "fifa_rank": 73
-  },
-  {
-   "team": "Crystal Palace",
-   "fifa_rank": 25
-  },
-  {
-   "team": "Everton",
-   "fifa_rank": 28
-  },
-  {
-   "team": "Fulham",
-   "fifa_rank": 37
-  },
-  {
-   "team": "Hull City",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Ipswich",
-   "fifa_rank": 75
-  },
-  {
-   "team": "Leeds",
-   "fifa_rank": 32
-  },
-  {
-   "team": "Liverpool",
-   "fifa_rank": 7
-  },
-  {
-   "team": "Manchester City",
    "fifa_rank": 2
   },
   {
-   "team": "Manchester United",
+   "team": "Aston Villa",
    "fifa_rank": 11
   },
   {
-   "team": "Newcastle",
-   "fifa_rank": 13
-  },
-  {
-   "team": "Nottingham Forest",
-   "fifa_rank": 35
-  },
-  {
-   "team": "Sunderland",
-   "fifa_rank": 56
-  },
-  {
-   "team": "Tottenham",
-   "fifa_rank": 33
-  },
-  {
-   "team": "Alaves",
-   "fifa_rank": 58
-  },
-  {
-   "team": "Athletic Club",
-   "fifa_rank": 47
-  },
-  {
-   "team": "Atletico Madrid",
-   "fifa_rank": 12
-  },
-  {
-   "team": "Barcelona",
-   "fifa_rank": 3
-  },
-  {
-   "team": "Celta Vigo",
-   "fifa_rank": 51
-  },
-  {
-   "team": "Deportivo La Coruna",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Elche",
-   "fifa_rank": 74
-  },
-  {
-   "team": "Espanyol",
-   "fifa_rank": 66
-  },
-  {
-   "team": "Getafe",
-   "fifa_rank": 67
-  },
-  {
-   "team": "Levante",
-   "fifa_rank": 63
-  },
-  {
-   "team": "Malaga",
-   "fifa_rank": 84
-  },
-  {
-   "team": "Osasuna",
-   "fifa_rank": 57
-  },
-  {
-   "team": "Racing Santander",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Rayo Vallecano",
-   "fifa_rank": 54
-  },
-  {
-   "team": "Real Betis",
-   "fifa_rank": 31
-  },
-  {
-   "team": "Real Madrid",
-   "fifa_rank": 4
-  },
-  {
-   "team": "Real Sociedad",
-   "fifa_rank": 44
-  },
-  {
-   "team": "Sevilla",
-   "fifa_rank": 60
-  },
-  {
-   "team": "Valencia",
-   "fifa_rank": 55
-  },
-  {
-   "team": "Villarreal",
-   "fifa_rank": 38
-  },
-  {
-   "team": "AC Milan",
-   "fifa_rank": 24
-  },
-  {
-   "team": "AS Roma",
+   "team": "Bournemouth",
    "fifa_rank": 18
   },
   {
-   "team": "Atalanta",
-   "fifa_rank": 27
-  },
-  {
-   "team": "Bologna",
-   "fifa_rank": 49
-  },
-  {
-   "team": "Cagliari",
-   "fifa_rank": 90
-  },
-  {
-   "team": "Como",
-   "fifa_rank": 30
-  },
-  {
-   "team": "Fiorentina",
-   "fifa_rank": 61
-  },
-  {
-   "team": "Frosinone",
-   "fifa_rank": 83
-  },
-  {
-   "team": "Genoa",
-   "fifa_rank": 86
-  },
-  {
-   "team": "Inter",
-   "fifa_rank": 6
-  },
-  {
-   "team": "Juventus",
+   "team": "Brentford",
    "fifa_rank": 21
   },
   {
-   "team": "Lazio",
-   "fifa_rank": 46
+   "team": "Brighton",
+   "fifa_rank": 17
   },
   {
-   "team": "Lecce",
-   "fifa_rank": 108
+   "team": "Chelsea",
+   "fifa_rank": 10
   },
   {
-   "team": "Monza",
-   "fifa_rank": 99
+   "team": "Coventry",
+   "fifa_rank": 84
   },
   {
-   "team": "Napoli",
-   "fifa_rank": 22
-  },
-  {
-   "team": "Parma",
-   "fifa_rank": 97
-  },
-  {
-   "team": "Sassuolo",
-   "fifa_rank": 70
-  },
-  {
-   "team": "Torino",
-   "fifa_rank": 77
-  },
-  {
-   "team": "Udinese",
-   "fifa_rank": 64
-  },
-  {
-   "team": "Venezia",
-   "fifa_rank": 94
-  },
-  {
-   "team": "1899 Hoffenheim",
-   "fifa_rank": 53
-  },
-  {
-   "team": "1. FC Köln",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Bayer Leverkusen",
-   "fifa_rank": 15
-  },
-  {
-   "team": "Bayern München",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Borussia Dortmund",
-   "fifa_rank": 8
-  },
-  {
-   "team": "Borussia Mönchengladbach",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Eintracht Frankfurt",
-   "fifa_rank": 999
-  },
-  {
-   "team": "FC Augsburg",
-   "fifa_rank": 59
-  },
-  {
-   "team": "FC Schalke 04",
-   "fifa_rank": 999
-  },
-  {
-   "team": "FSV Mainz 05",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Hamburger SV",
-   "fifa_rank": 999
-  },
-  {
-   "team": "RB Leipzig",
-   "fifa_rank": 29
-  },
-  {
-   "team": "SC Freiburg",
-   "fifa_rank": 41
-  },
-  {
-   "team": "SC Paderborn 07",
-   "fifa_rank": 999
-  },
-  {
-   "team": "SV Elversberg",
-   "fifa_rank": 82
-  },
-  {
-   "team": "Union Berlin",
-   "fifa_rank": 80
-  },
-  {
-   "team": "VfB Stuttgart",
-   "fifa_rank": 23
-  },
-  {
-   "team": "Werder Bremen",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Angers",
-   "fifa_rank": 109
-  },
-  {
-   "team": "Auxerre",
-   "fifa_rank": 100
-  },
-  {
-   "team": "Estac Troyes",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Le Havre",
-   "fifa_rank": 110
-  },
-  {
-   "team": "Le Mans",
-   "fifa_rank": 115
-  },
-  {
-   "team": "Lens",
+   "team": "Crystal Palace",
    "fifa_rank": 26
   },
   {
-   "team": "Lille",
-   "fifa_rank": 42
+   "team": "Everton",
+   "fifa_rank": 30
   },
   {
-   "team": "Lorient",
-   "fifa_rank": 69
+   "team": "Fulham",
+   "fifa_rank": 41
   },
   {
-   "team": "Lyon",
-   "fifa_rank": 39
+   "team": "Hull City",
+   "fifa_rank": 130
   },
   {
-   "team": "Marseille",
-   "fifa_rank": 45
+   "team": "Ipswich",
+   "fifa_rank": 88
   },
   {
-   "team": "Monaco",
-   "fifa_rank": 36
-  },
-  {
-   "team": "Nice",
-   "fifa_rank": 85
-  },
-  {
-   "team": "Paris FC",
-   "fifa_rank": 68
-  },
-  {
-   "team": "Paris Saint Germain",
-   "fifa_rank": 5
-  },
-  {
-   "team": "Rennes",
-   "fifa_rank": 48
-  },
-  {
-   "team": "Stade Brestois 29",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Strasbourg",
-   "fifa_rank": 52
-  },
-  {
-   "team": "Toulouse",
-   "fifa_rank": 78
-  },
-  {
-   "team": "Aarhus",
-   "fifa_rank": 112
-  },
-  {
-   "team": "AEK Athens FC",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Ararat-Armenia",
-   "fifa_rank": 140
-  },
-  {
-   "team": "Atert Bissen",
-   "fifa_rank": 167
-  },
-  {
-   "team": "Bodo/Glimt",
-   "fifa_rank": 40
-  },
-  {
-   "team": "Borac Banja Luka",
-   "fifa_rank": 136
-  },
-  {
-   "team": "Celje",
-   "fifa_rank": 126
-  },
-  {
-   "team": "Celtic",
-   "fifa_rank": 71
-  },
-  {
-   "team": "Club Brugge KV",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Dinamo Zagreb",
-   "fifa_rank": 81
-  },
-  {
-   "team": "Drita",
-   "fifa_rank": 151
-  },
-  {
-   "team": "Egnatia Rrogozhinë",
-   "fifa_rank": 149
-  },
-  {
-   "team": "FC Iberia 1999",
-   "fifa_rank": 158
-  },
-  {
-   "team": "FC Porto",
-   "fifa_rank": 999
-  },
-  {
-   "team": "FC Thun",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Fenerbahçe",
-   "fifa_rank": 43
-  },
-  {
-   "team": "Feyenoord",
-   "fifa_rank": 65
-  },
-  {
-   "team": "FK Crvena Zvezda",
-   "fifa_rank": 87
-  },
-  {
-   "team": "Flora Tallinn",
-   "fifa_rank": 184
-  },
-  {
-   "team": "Floriana",
-   "fifa_rank": 178
-  },
-  {
-   "team": "Galatasaray",
+   "team": "Leeds",
    "fifa_rank": 34
   },
   {
+   "team": "Liverpool",
+   "fifa_rank": 8
+  },
+  {
+   "team": "Manchester City",
+   "fifa_rank": 3
+  },
+  {
+   "team": "Manchester United",
+   "fifa_rank": 12
+  },
+  {
+   "team": "Newcastle",
+   "fifa_rank": 14
+  },
+  {
+   "team": "Nottingham Forest",
+   "fifa_rank": 37
+  },
+  {
+   "team": "Sunderland",
+   "fifa_rank": 62
+  },
+  {
+   "team": "Tottenham",
+   "fifa_rank": 35
+  },
+  {
+   "team": "Alaves",
+   "fifa_rank": 64
+  },
+  {
+   "team": "Athletic Club",
+   "fifa_rank": 52
+  },
+  {
+   "team": "Atletico Madrid",
+   "fifa_rank": 13
+  },
+  {
+   "team": "Barcelona",
+   "fifa_rank": 4
+  },
+  {
+   "team": "Celta Vigo",
+   "fifa_rank": 56
+  },
+  {
+   "team": "Deportivo La Coruna",
+   "fifa_rank": 81
+  },
+  {
+   "team": "Elche",
+   "fifa_rank": 86
+  },
+  {
+   "team": "Espanyol",
+   "fifa_rank": 76
+  },
+  {
+   "team": "Getafe",
+   "fifa_rank": 77
+  },
+  {
+   "team": "Levante",
+   "fifa_rank": 72
+  },
+  {
+   "team": "Malaga",
+   "fifa_rank": 103
+  },
+  {
+   "team": "Osasuna",
+   "fifa_rank": 63
+  },
+  {
+   "team": "Racing Santander",
+   "fifa_rank": 87
+  },
+  {
+   "team": "Rayo Vallecano",
+   "fifa_rank": 60
+  },
+  {
+   "team": "Real Betis",
+   "fifa_rank": 33
+  },
+  {
+   "team": "Real Madrid",
+   "fifa_rank": 5
+  },
+  {
+   "team": "Real Sociedad",
+   "fifa_rank": 49
+  },
+  {
+   "team": "Sevilla",
+   "fifa_rank": 69
+  },
+  {
+   "team": "Valencia",
+   "fifa_rank": 61
+  },
+  {
+   "team": "Villarreal",
+   "fifa_rank": 42
+  },
+  {
+   "team": "AC Milan",
+   "fifa_rank": 25
+  },
+  {
+   "team": "AS Roma",
+   "fifa_rank": 19
+  },
+  {
+   "team": "Atalanta",
+   "fifa_rank": 29
+  },
+  {
+   "team": "Bologna",
+   "fifa_rank": 54
+  },
+  {
+   "team": "Cagliari",
+   "fifa_rank": 112
+  },
+  {
+   "team": "Como",
+   "fifa_rank": 32
+  },
+  {
+   "team": "Fiorentina",
+   "fifa_rank": 70
+  },
+  {
+   "team": "Frosinone",
+   "fifa_rank": 102
+  },
+  {
+   "team": "Genoa",
+   "fifa_rank": 106
+  },
+  {
+   "team": "Inter",
+   "fifa_rank": 7
+  },
+  {
+   "team": "Juventus",
+   "fifa_rank": 22
+  },
+  {
+   "team": "Lazio",
+   "fifa_rank": 51
+  },
+  {
+   "team": "Lecce",
+   "fifa_rank": 138
+  },
+  {
+   "team": "Monza",
+   "fifa_rank": 124
+  },
+  {
+   "team": "Napoli",
+   "fifa_rank": 23
+  },
+  {
+   "team": "Parma",
+   "fifa_rank": 121
+  },
+  {
+   "team": "Sassuolo",
+   "fifa_rank": 80
+  },
+  {
+   "team": "Torino",
+   "fifa_rank": 94
+  },
+  {
+   "team": "Udinese",
+   "fifa_rank": 73
+  },
+  {
+   "team": "Venezia",
+   "fifa_rank": 116
+  },
+  {
+   "team": "1899 Hoffenheim",
+   "fifa_rank": 58
+  },
+  {
+   "team": "1. FC Köln",
+   "fifa_rank": 108
+  },
+  {
+   "team": "Bayer Leverkusen",
+   "fifa_rank": 16
+  },
+  {
+   "team": "Bayern München",
+   "fifa_rank": 1
+  },
+  {
+   "team": "Borussia Dortmund",
+   "fifa_rank": 9
+  },
+  {
+   "team": "Borussia Mönchengladbach",
+   "fifa_rank": 91
+  },
+  {
+   "team": "Eintracht Frankfurt",
+   "fifa_rank": 65
+  },
+  {
+   "team": "FC Augsburg",
+   "fifa_rank": 68
+  },
+  {
+   "team": "FC Schalke 04",
+   "fifa_rank": 117
+  },
+  {
+   "team": "FSV Mainz 05",
+   "fifa_rank": 59
+  },
+  {
+   "team": "Hamburger SV",
+   "fifa_rank": 104
+  },
+  {
+   "team": "RB Leipzig",
+   "fifa_rank": 31
+  },
+  {
+   "team": "SC Freiburg",
+   "fifa_rank": 46
+  },
+  {
+   "team": "SC Paderborn 07",
+   "fifa_rank": 111
+  },
+  {
+   "team": "SV Elversberg",
+   "fifa_rank": 101
+  },
+  {
+   "team": "Union Berlin",
+   "fifa_rank": 99
+  },
+  {
+   "team": "VfB Stuttgart",
+   "fifa_rank": 24
+  },
+  {
+   "team": "Werder Bremen",
+   "fifa_rank": 90
+  },
+  {
+   "team": "Angers",
+   "fifa_rank": 139
+  },
+  {
+   "team": "Auxerre",
+   "fifa_rank": 126
+  },
+  {
+   "team": "Estac Troyes",
+   "fifa_rank": 137
+  },
+  {
+   "team": "Le Havre",
+   "fifa_rank": 140
+  },
+  {
+   "team": "Le Mans",
+   "fifa_rank": 153
+  },
+  {
+   "team": "Lens",
+   "fifa_rank": 28
+  },
+  {
+   "team": "Lille",
+   "fifa_rank": 47
+  },
+  {
+   "team": "Lorient",
+   "fifa_rank": 79
+  },
+  {
+   "team": "Lyon",
+   "fifa_rank": 44
+  },
+  {
+   "team": "Marseille",
+   "fifa_rank": 50
+  },
+  {
+   "team": "Monaco",
+   "fifa_rank": 40
+  },
+  {
+   "team": "Nice",
+   "fifa_rank": 105
+  },
+  {
+   "team": "Paris FC",
+   "fifa_rank": 78
+  },
+  {
+   "team": "Paris Saint Germain",
+   "fifa_rank": 6
+  },
+  {
+   "team": "Rennes",
+   "fifa_rank": 53
+  },
+  {
+   "team": "Stade Brestois 29",
+   "fifa_rank": 98
+  },
+  {
+   "team": "Strasbourg",
+   "fifa_rank": 57
+  },
+  {
+   "team": "Toulouse",
+   "fifa_rank": 95
+  },
+  {
+   "team": "Aarhus",
+   "fifa_rank": 142
+  },
+  {
+   "team": "AEK Athens FC",
+   "fifa_rank": 75
+  },
+  {
+   "team": "Ararat-Armenia",
+   "fifa_rank": 200
+  },
+  {
+   "team": "Atert Bissen",
+   "fifa_rank": 242
+  },
+  {
+   "team": "Bodo/Glimt",
+   "fifa_rank": 45
+  },
+  {
+   "team": "Borac Banja Luka",
+   "fifa_rank": 194
+  },
+  {
+   "team": "Celje",
+   "fifa_rank": 177
+  },
+  {
+   "team": "Celtic",
+   "fifa_rank": 82
+  },
+  {
+   "team": "Club Brugge KV",
+   "fifa_rank": 38
+  },
+  {
+   "team": "Dinamo Zagreb",
+   "fifa_rank": 100
+  },
+  {
+   "team": "Drita",
+   "fifa_rank": 219
+  },
+  {
+   "team": "Egnatia Rrogozhinë",
+   "fifa_rank": 216
+  },
+  {
+   "team": "FC Iberia 1999",
+   "fifa_rank": 229
+  },
+  {
+   "team": "FC Porto",
+   "fifa_rank": 27
+  },
+  {
+   "team": "FC Thun",
+   "fifa_rank": 154
+  },
+  {
+   "team": "Fenerbahçe",
+   "fifa_rank": 48
+  },
+  {
+   "team": "Feyenoord",
+   "fifa_rank": 74
+  },
+  {
+   "team": "FK Crvena Zvezda",
+   "fifa_rank": 107
+  },
+  {
+   "team": "Flora Tallinn",
+   "fifa_rank": 267
+  },
+  {
+   "team": "Floriana",
+   "fifa_rank": 256
+  },
+  {
+   "team": "Galatasaray",
+   "fifa_rank": 36
+  },
+  {
    "team": "Gornik Zabrze",
-   "fifa_rank": 999
+   "fifa_rank": 155
   },
   {
    "team": "Gyori ETO FC",
-   "fifa_rank": 999
+   "fifa_rank": 161
   },
   {
    "team": "Hapoel Beer Sheva",
-   "fifa_rank": 999
+   "fifa_rank": 134
   },
   {
    "team": "Heart Of Midlothian",
-   "fifa_rank": 999
+   "fifa_rank": 166
   },
   {
    "team": "Inter Club d'Escaldes",
@@ -6634,35 +6634,35 @@
   },
   {
    "team": "Kairat Almaty",
-   "fifa_rank": 999
+   "fifa_rank": 196
   },
   {
    "team": "Kauno Žalgiris",
-   "fifa_rank": 154
+   "fifa_rank": 225
   },
   {
    "team": "KI Klaksvik",
-   "fifa_rank": 153
+   "fifa_rank": 223
   },
   {
    "team": "KuPS",
-   "fifa_rank": 999
+   "fifa_rank": 189
   },
   {
    "team": "Larne",
-   "fifa_rank": 177
+   "fifa_rank": 255
   },
   {
    "team": "Lask Linz",
-   "fifa_rank": 999
+   "fifa_rank": 122
   },
   {
    "team": "Lech Poznan",
-   "fifa_rank": 999
+   "fifa_rank": 97
   },
   {
    "team": "Levski Sofia",
-   "fifa_rank": 999
+   "fifa_rank": 151
   },
   {
    "team": "Lincoln Red Imps FC",
@@ -6670,31 +6670,31 @@
   },
   {
    "team": "Mjallby AIF",
-   "fifa_rank": 999
+   "fifa_rank": 174
   },
   {
    "team": "ML Vitebsk",
-   "fifa_rank": 999
+   "fifa_rank": 204
   },
   {
    "team": "NEC Nijmegen",
-   "fifa_rank": 113
+   "fifa_rank": 143
   },
   {
    "team": "Olympiakos Piraeus",
-   "fifa_rank": 999
+   "fifa_rank": 67
   },
   {
    "team": "Omonia Nicosia",
-   "fifa_rank": 999
+   "fifa_rank": 125
   },
   {
    "team": "Petrocub",
-   "fifa_rank": 166
+   "fifa_rank": 239
   },
   {
    "team": "PSV Eindhoven",
-   "fifa_rank": 999
+   "fifa_rank": 43
   },
   {
    "team": "Riga",
@@ -6702,43 +6702,43 @@
   },
   {
    "team": "Sabah FA",
-   "fifa_rank": 119
+   "fifa_rank": 162
   },
   {
    "team": "Shakhtar Donetsk",
-   "fifa_rank": 999
+   "fifa_rank": 93
   },
   {
    "team": "Shamrock Rovers",
-   "fifa_rank": 999
+   "fifa_rank": 215
   },
   {
    "team": "Slavia Praha",
-   "fifa_rank": 50
+   "fifa_rank": 55
   },
   {
    "team": "Slovan Bratislava",
-   "fifa_rank": 121
+   "fifa_rank": 164
   },
   {
    "team": "Sparta Praha",
-   "fifa_rank": 102
+   "fifa_rank": 128
   },
   {
    "team": "Sporting CP",
-   "fifa_rank": 14
+   "fifa_rank": 15
   },
   {
    "team": "Sturm Graz",
-   "fifa_rank": 103
+   "fifa_rank": 129
   },
   {
    "team": "Sutjeska",
-   "fifa_rank": 183
+   "fifa_rank": 265
   },
   {
    "team": "The New Saints",
-   "fifa_rank": 162
+   "fifa_rank": 233
   },
   {
    "team": "Tre Fiori",
@@ -6746,151 +6746,151 @@
   },
   {
    "team": "Union St. Gilloise",
-   "fifa_rank": 999
+   "fifa_rank": 39
   },
   {
    "team": "Universitatea Craiova",
-   "fifa_rank": 999
+   "fifa_rank": 156
   },
   {
    "team": "Vardar Skopje",
-   "fifa_rank": 999
+   "fifa_rank": 224
   },
   {
    "team": "Viking",
-   "fifa_rank": 76
-  },
-  {
-   "team": "Vikingur Reykjavik",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Aluminij",
-   "fifa_rank": 179
-  },
-  {
-   "team": "Anderlecht",
-   "fifa_rank": 88
-  },
-  {
-   "team": "AZ Alkmaar",
-   "fifa_rank": 72
-  },
-  {
-   "team": "Beşiktaş",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Benfica",
-   "fifa_rank": 19
-  },
-  {
-   "team": "CSKA Sofia",
-   "fifa_rank": 131
-  },
-  {
-   "team": "Derry City",
-   "fifa_rank": 170
-  },
-  {
-   "team": "Dynamo Kyiv",
-   "fifa_rank": 117
-  },
-  {
-   "team": "FC Midtjylland",
-   "fifa_rank": 62
-  },
-  {
-   "team": "FC ST. Gallen",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Ferencvarosi TC",
    "fifa_rank": 92
   },
   {
+   "team": "Vikingur Reykjavik",
+   "fifa_rank": 182
+  },
+  {
+   "team": "Aluminij",
+   "fifa_rank": 258
+  },
+  {
+   "team": "Anderlecht",
+   "fifa_rank": 109
+  },
+  {
+   "team": "AZ Alkmaar",
+   "fifa_rank": 83
+  },
+  {
+   "team": "Beşiktaş",
+   "fifa_rank": 85
+  },
+  {
+   "team": "Benfica",
+   "fifa_rank": 20
+  },
+  {
+   "team": "CSKA Sofia",
+   "fifa_rank": 186
+  },
+  {
+   "team": "Derry City",
+   "fifa_rank": 246
+  },
+  {
+   "team": "Dynamo Kyiv",
+   "fifa_rank": 158
+  },
+  {
+   "team": "FC Midtjylland",
+   "fifa_rank": 71
+  },
+  {
+   "team": "FC ST. Gallen",
+   "fifa_rank": 147
+  },
+  {
+   "team": "Ferencvarosi TC",
+   "fifa_rank": 114
+  },
+  {
    "team": "Hammarby FF",
-   "fifa_rank": 106
+   "fifa_rank": 135
   },
   {
    "team": "HNK Hajduk Split",
-   "fifa_rank": 999
+   "fifa_rank": 152
   },
   {
    "team": "Hradec Králové",
-   "fifa_rank": 118
+   "fifa_rank": 160
   },
   {
    "team": "Žilina",
-   "fifa_rank": 141
+   "fifa_rank": 202
   },
   {
    "team": "Jagiellonia",
-   "fifa_rank": 107
+   "fifa_rank": 136
   },
   {
    "team": "Lillestrom",
-   "fifa_rank": 128
+   "fifa_rank": 179
   },
   {
    "team": "Maccabi Tel Aviv",
-   "fifa_rank": 999
+   "fifa_rank": 145
   },
   {
    "team": "OFI",
-   "fifa_rank": 142
+   "fifa_rank": 203
   },
   {
    "team": "Pafos",
-   "fifa_rank": 999
+   "fifa_rank": 148
   },
   {
    "team": "PAOK",
-   "fifa_rank": 89
+   "fifa_rank": 110
   },
   {
    "team": "Plzen",
-   "fifa_rank": 999
+   "fifa_rank": 119
   },
   {
    "team": "Qarabag",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Rangers",
-   "fifa_rank": 111
-  },
-  {
-   "team": "Red Bull Salzburg",
-   "fifa_rank": 96
-  },
-  {
-   "team": "Sheriff Tiraspol",
-   "fifa_rank": 157
-  },
-  {
-   "team": "St. Truiden",
-   "fifa_rank": 104
-  },
-  {
-   "team": "Torreense",
    "fifa_rank": 144
   },
   {
+   "team": "Rangers",
+   "fifa_rank": 141
+  },
+  {
+   "team": "Red Bull Salzburg",
+   "fifa_rank": 120
+  },
+  {
+   "team": "Sheriff Tiraspol",
+   "fifa_rank": 228
+  },
+  {
+   "team": "St. Truiden",
+   "fifa_rank": 131
+  },
+  {
+   "team": "Torreense",
+   "fifa_rank": 208
+  },
+  {
    "team": "Trabzonspor",
-   "fifa_rank": 93
+   "fifa_rank": 115
   },
   {
    "team": "Tromso",
-   "fifa_rank": 116
+   "fifa_rank": 157
   },
   {
    "team": "Twente",
-   "fifa_rank": 91
+   "fifa_rank": 113
   },
   {
    "team": "Universitatea Cluj",
-   "fifa_rank": 130
+   "fifa_rank": 183
   },
   {
    "team": "Vestri",
@@ -6898,27 +6898,27 @@
   },
   {
    "team": "Vojvodina",
-   "fifa_rank": 999
+   "fifa_rank": 201
   },
   {
    "team": "AEK Larnaca",
-   "fifa_rank": 999
+   "fifa_rank": 146
   },
   {
    "team": "AF Elbasani",
-   "fifa_rank": 165
+   "fifa_rank": 236
   },
   {
    "team": "Ajax",
-   "fifa_rank": 79
+   "fifa_rank": 96
   },
   {
    "team": "Alashkert",
-   "fifa_rank": 175
+   "fifa_rank": 252
   },
   {
    "team": "Apollon Limassol",
-   "fifa_rank": 999
+   "fifa_rank": 176
   },
   {
    "team": "Atlètic Club d'Escaldes",
@@ -6930,23 +6930,23 @@
   },
   {
    "team": "Austria Vienna",
-   "fifa_rank": 123
+   "fifa_rank": 168
   },
   {
    "team": "Başakşehir",
-   "fifa_rank": 999
+   "fifa_rank": 132
   },
   {
    "team": "Ballkani",
-   "fifa_rank": 159
+   "fifa_rank": 230
   },
   {
    "team": "Bate Borisov",
-   "fifa_rank": 999
+   "fifa_rank": 261
   },
   {
    "team": "Beitar Jerusalem",
-   "fifa_rank": 999
+   "fifa_rank": 175
   },
   {
    "team": "Bohemians",
@@ -6954,35 +6954,35 @@
   },
   {
    "team": "Brann",
-   "fifa_rank": 114
+   "fifa_rank": 149
   },
   {
    "team": "Bravo",
-   "fifa_rank": 148
+   "fifa_rank": 214
   },
   {
    "team": "Caernarfon Town",
-   "fifa_rank": 193
+   "fifa_rank": 279
   },
   {
    "team": "CFR 1907 Cluj",
-   "fifa_rank": 999
+   "fifa_rank": 169
   },
   {
    "team": "Coleraine FC",
-   "fifa_rank": 171
+   "fifa_rank": 248
   },
   {
    "team": "CSKA 1948",
-   "fifa_rank": 999
+   "fifa_rank": 211
   },
   {
    "team": "Debreceni VSC",
-   "fifa_rank": 999
+   "fifa_rank": 210
   },
   {
    "team": "Dečić",
-   "fifa_rank": 999
+   "fifa_rank": 274
   },
   {
    "team": "Dila",
@@ -6990,27 +6990,27 @@
   },
   {
    "team": "Dinamo Minsk",
-   "fifa_rank": 143
+   "fifa_rank": 205
   },
   {
    "team": "Dinamo Tbilisi",
-   "fifa_rank": 163
+   "fifa_rank": 234
   },
   {
    "team": "Dinamo Tirana",
-   "fifa_rank": 152
+   "fifa_rank": 220
   },
   {
    "team": "Dukagjini",
-   "fifa_rank": 186
+   "fifa_rank": 269
   },
   {
    "team": "Dunajska Streda",
-   "fifa_rank": 999
+   "fifa_rank": 180
   },
   {
    "team": "Železničar Pančevo",
-   "fifa_rank": 160
+   "fifa_rank": 231
   },
   {
    "team": "Europa",
@@ -7018,31 +7018,31 @@
   },
   {
    "team": "FC Astana",
-   "fifa_rank": 146
+   "fifa_rank": 212
   },
   {
    "team": "FC Copenhagen",
-   "fifa_rank": 999
+   "fifa_rank": 89
   },
   {
    "team": "FC Differdange 03",
-   "fifa_rank": 999
+   "fifa_rank": 254
   },
   {
    "team": "FC Levadia Tallinn",
-   "fifa_rank": 161
+   "fifa_rank": 232
   },
   {
    "team": "FC Lugano",
-   "fifa_rank": 101
+   "fifa_rank": 127
   },
   {
    "team": "FC Noah",
-   "fifa_rank": 999
+   "fifa_rank": 198
   },
   {
    "team": "FC Nordsjaelland",
-   "fifa_rank": 95
+   "fifa_rank": 118
   },
   {
    "team": "FC Santa Coloma",
@@ -7050,91 +7050,91 @@
   },
   {
    "team": "FC Sion",
-   "fifa_rank": 999
+   "fifa_rank": 159
   },
   {
    "team": "FC Vaduz",
-   "fifa_rank": 999
+   "fifa_rank": 221
   },
   {
    "team": "FCSB",
-   "fifa_rank": 999
+   "fifa_rank": 185
   },
   {
    "team": "FK Jablonec",
-   "fifa_rank": 124
+   "fifa_rank": 170
   },
   {
    "team": "FK Liepaja",
-   "fifa_rank": 999
+   "fifa_rank": 260
   },
   {
    "team": "FK Partizan",
-   "fifa_rank": 134
+   "fifa_rank": 192
   },
   {
    "team": "FK Sarajevo",
-   "fifa_rank": 155
+   "fifa_rank": 226
   },
   {
    "team": "FK Tobol Kostanay",
-   "fifa_rank": 999
+   "fifa_rank": 237
   },
   {
    "team": "FK Zalgiris Vilnius",
-   "fifa_rank": 168
+   "fifa_rank": 244
   },
   {
    "team": "Gais",
-   "fifa_rank": 125
+   "fifa_rank": 171
   },
   {
    "team": "GAP Connah S Quay FC",
-   "fifa_rank": 999
+   "fifa_rank": 277
   },
   {
    "team": "Gent",
-   "fifa_rank": 105
+   "fifa_rank": 133
   },
   {
    "team": "GKS Katowice",
-   "fifa_rank": 122
+   "fifa_rank": 165
   },
   {
    "team": "Glentoran",
-   "fifa_rank": 188
+   "fifa_rank": 272
   },
   {
    "team": "Hamrun Spartans",
-   "fifa_rank": 999
+   "fifa_rank": 240
   },
   {
    "team": "Hapoel Tel Aviv",
-   "fifa_rank": 127
+   "fifa_rank": 178
   },
   {
    "team": "HB Torshavn",
-   "fifa_rank": 173
+   "fifa_rank": 250
   },
   {
    "team": "Hegelmann Litauen",
-   "fifa_rank": 999
+   "fifa_rank": 263
   },
   {
    "team": "Hibernian",
-   "fifa_rank": 135
+   "fifa_rank": 193
   },
   {
    "team": "HJK Helsinki",
-   "fifa_rank": 150
+   "fifa_rank": 217
   },
   {
    "team": "HNK Rijeka",
-   "fifa_rank": 999
+   "fifa_rank": 172
   },
   {
    "team": "IFK Goteborg",
-   "fifa_rank": 999
+   "fifa_rank": 190
   },
   {
    "team": "Ilves",
@@ -7142,15 +7142,15 @@
   },
   {
    "team": "Inter Turku",
-   "fifa_rank": 129
+   "fifa_rank": 181
   },
   {
    "team": "Kalju Nomme",
-   "fifa_rank": 999
+   "fifa_rank": 271
   },
   {
    "team": "Koper",
-   "fifa_rank": 138
+   "fifa_rank": 197
   },
   {
    "team": "La Fiorita",
@@ -7158,47 +7158,47 @@
   },
   {
    "team": "Linfield",
-   "fifa_rank": 181
+   "fifa_rank": 262
   },
   {
    "team": "LNZ Cherkasy",
-   "fifa_rank": 132
-  },
-  {
-   "team": "Ludogorets",
-   "fifa_rank": 999
-  },
-  {
-   "team": "Malisheva",
-   "fifa_rank": 176
-  },
-  {
-   "team": "Marsaxlokk",
-   "fifa_rank": 185
-  },
-  {
-   "team": "Milsami Orhei",
    "fifa_rank": 187
   },
   {
+   "team": "Ludogorets",
+   "fifa_rank": 167
+  },
+  {
+   "team": "Malisheva",
+   "fifa_rank": 253
+  },
+  {
+   "team": "Marsaxlokk",
+   "fifa_rank": 268
+  },
+  {
+   "team": "Milsami Orhei",
+   "fifa_rank": 270
+  },
+  {
    "team": "Mornar",
-   "fifa_rank": 189
+   "fifa_rank": 273
   },
   {
    "team": "Motherwell",
-   "fifa_rank": 133
+   "fifa_rank": 188
   },
   {
    "team": "Neftchi Baku",
-   "fifa_rank": 999
+   "fifa_rank": 206
   },
   {
    "team": "NK Varazdin",
-   "fifa_rank": 999
+   "fifa_rank": 184
   },
   {
    "team": "NSI Runavik",
-   "fifa_rank": 999
+   "fifa_rank": 243
   },
   {
    "team": "Paide",
@@ -7206,63 +7206,63 @@
   },
   {
    "team": "Paks",
-   "fifa_rank": 137
+   "fifa_rank": 195
   },
   {
    "team": "Panathinaikos",
-   "fifa_rank": 98
+   "fifa_rank": 123
   },
   {
    "team": "Panevėžys",
-   "fifa_rank": 999
+   "fifa_rank": 257
   },
   {
    "team": "Penybont",
-   "fifa_rank": 192
+   "fifa_rank": 278
   },
   {
    "team": "Petrovac",
-   "fifa_rank": 191
+   "fifa_rank": 276
   },
   {
    "team": "Polessya",
-   "fifa_rank": 999
+   "fifa_rank": 173
   },
   {
    "team": "Pyunik Yerevan",
-   "fifa_rank": 999
+   "fifa_rank": 218
   },
   {
    "team": "Raków Częstochowa",
-   "fifa_rank": 999
+   "fifa_rank": 150
   },
   {
    "team": "Rapid Vienna",
-   "fifa_rank": 120
+   "fifa_rank": 163
   },
   {
    "team": "Rīgas FS",
-   "fifa_rank": 999
+   "fifa_rank": 207
   },
   {
    "team": "SC Braga",
-   "fifa_rank": 999
+   "fifa_rank": 66
   },
   {
    "team": "Shelbourne",
-   "fifa_rank": 164
+   "fifa_rank": 235
   },
   {
    "team": "Shkendija",
-   "fifa_rank": 145
+   "fifa_rank": 209
   },
   {
    "team": "Sileks",
-   "fifa_rank": 172
+   "fifa_rank": 249
   },
   {
    "team": "Spartak Trnava",
-   "fifa_rank": 182
+   "fifa_rank": 264
   },
   {
    "team": "St Joseph S Fc",
@@ -7270,35 +7270,35 @@
   },
   {
    "team": "Stjarnan",
-   "fifa_rank": 156
+   "fifa_rank": 227
   },
   {
    "team": "Torpedo Kutaisi",
-   "fifa_rank": 169
+   "fifa_rank": 245
   },
   {
    "team": "UNA Strassen",
-   "fifa_rank": 180
+   "fifa_rank": 259
   },
   {
    "team": "US Mondorf-les-bains",
-   "fifa_rank": 999
+   "fifa_rank": 247
   },
   {
    "team": "Valletta FC",
-   "fifa_rank": 190
+   "fifa_rank": 275
   },
   {
    "team": "Valur Reykjavik",
-   "fifa_rank": 999
+   "fifa_rank": 222
   },
   {
    "team": "Velež",
-   "fifa_rank": 147
+   "fifa_rank": 213
   },
   {
    "team": "Vikingur Gota",
-   "fifa_rank": 999
+   "fifa_rank": 266
   },
   {
    "team": "Virtus",
@@ -7306,23 +7306,23 @@
   },
   {
    "team": "Vllaznia Shkodër",
-   "fifa_rank": 999
+   "fifa_rank": 238
   },
   {
    "team": "Yelimay Semey",
-   "fifa_rank": 999
+   "fifa_rank": 241
   },
   {
    "team": "Zimbru",
-   "fifa_rank": 174
+   "fifa_rank": 251
   },
   {
    "team": "Zira",
-   "fifa_rank": 139
+   "fifa_rank": 199
   },
   {
    "team": "Zrinjski",
-   "fifa_rank": 999
+   "fifa_rank": 191
   },
   {
    "team": "2 de Mayo",
