@@ -103,6 +103,11 @@ TEAM_STRENGTH = {
     'Portugal': 1.3, 'Netherlands': 1.2, 'Croatia': 1.0,
     'Sweden': 0.3, 'Australia': 0.2, 'Egypt': 0.2,
     'Bosnia and Herzegovina': -0.2,
+    # 2026-09-12 (Switzerland_vs_Algeria / Colombia_vs_Ghana batch): added BEFORE the
+    # onlining run this time — the 08-12 and 09-01 episodes both measured the impact of
+    # a missing row at <2dp on anchored W/D/L, so this is hygiene and the never-simmed
+    # ridge path, done in the cheap order. Same FIFA-flavored scale.
+    'Colombia': 0.6, 'Switzerland': 0.4, 'Algeria': 0.2, 'Ghana': -0.2,
 }
 
 RE_GOAL = re.compile(r'^Goal Scored by - (.+) - \((.+)\)$')
