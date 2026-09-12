@@ -52,13 +52,32 @@ FORM_FLAG=""
 [ "$(date +%u)" = "7" ] && FORM_FLAG="--with-form"
 
 echo "--- 1) refresh exports on current OOS sample ---"
+# refresh_all signals "another instance holds the lock" with exit 75 (ops/refresh_all.py
+# acquire_or_exit busy_exit=75) — benign on matchdays, when a long live cycle or
+# settle_reports holds the shared flock. Treating it as failure wrote tracebacks and a
+# launchctl exit 1 every time (2026-09-12 17:16), noise that masks real trigger failures.
 conda run -n someopark_run --no-capture-output \
-  python -m prediction_market_soccer.ops.refresh_all --ingest $FORM_FLAG || { echo "refresh failed"; exit 1; }
+  python -m prediction_market_soccer.ops.refresh_all --ingest $FORM_FLAG
+RC=$?
+if [ "$RC" = "75" ]; then
+  echo "refresh skipped: another instance holds the lock (benign; next tick retries)"
+  exit 0
+elif [ "$RC" != "0" ]; then
+  echo "refresh failed (exit $RC)"; exit 1
+fi
 
 # Consume only results included in the successfully promoted Soccer data batch.
 cd "$REPO" || exit 1
 conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger \
   --acknowledge-refresh || { echo "result acknowledgement failed"; exit 1; }
+
+# C-33 health surface: ops/health_export is the single writer of health.json and was in
+# no pipeline at all, so the output ledger ("a live output that stops appearing raises an
+# alert") could never fire. Runs after a successful refresh, reads only local artifacts
+# (no --scan-venues here: that hits venue listings and belongs on a slower cadence).
+conda run -n someopark_run --no-capture-output \
+  python -m prediction_market_soccer.ops.health_export >/dev/null \
+  && echo "health.json: written" || echo "health export: skipped (non-fatal)"
 
 # Optional legacy research output, still opt-in and separate from shared Hosting.
 # Wait so it does not overlap the successful data refresh above.
