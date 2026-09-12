@@ -71,6 +71,13 @@ cd "$REPO" || exit 1
 conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.match_trigger \
   --acknowledge-refresh || { echo "result acknowledgement failed"; exit 1; }
 
+# Archive closed-day in-play review logs to the external drive, gzipped (~18x), and free
+# the local copy only after a byte-verified drive copy. Keeps the last 2 days local so the
+# three analysis/ scripts keep working unchanged; --once-per-day throttles the 15-min ticks.
+conda run -n someopark_run --no-capture-output \
+  python -m prediction_market_soccer.ops.archive_review_logs --once-per-day \
+  || echo "review log archive: skipped (non-fatal)"
+
 # C-33 health surface: ops/health_export is the single writer of health.json and was in
 # no pipeline at all, so the output ledger ("a live output that stops appearing raises an
 # alert") could never fire. Runs after a successful refresh, reads only local artifacts
