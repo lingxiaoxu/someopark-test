@@ -26,13 +26,24 @@ from datetime import datetime, timezone
 def one_pass(horizon_hours: float) -> dict:
     from prediction_market_soccer.ingest import store
     from prediction_market_soccer.ops import upcoming_export, paper_trading
+    from prediction_market_soccer.exec import kalshi_mirror
     conn = store.init_db()
     rows = upcoming_export.build(conn=conn, with_venues=True, horizon_hours=horizon_hours)
     out = paper_trading.run_cycle(conn)
     keep = {"state": out.get("state"), "entries": out.get("entries"),
             "exits": out.get("exits"), "errors": out.get("errors")}
     pre = [d for d in out.get("data_states", []) if d.get("track") == "pre"]
-    return {"staged_candidates": len(rows), "paper": keep, "pre_states": pre}
+    # The mirror must run in the SAME pass: paper_trading.execution_context refuses an
+    # unfilled PRE once the fixture leaves NS ("never place an unfilled PRE after
+    # kickoff"), and a PRE leg is staged within ~20 min of kickoff. Leaving the mirror
+    # to the 5-7 min live cycle means the window is already shut when it arrives — on
+    # 2026-09-12 that silently cost all 9 pre legs their demo order.
+    mirror = {"state": "disabled"}
+    if kalshi_mirror.enabled():
+        res = kalshi_mirror.run_cycle(conn, {"matches": []})
+        mirror = {"actions": len(res.get("actions") or []), "errors": res.get("errors") or [],
+                  "summary": res.get("summary")}
+    return {"staged_candidates": len(rows), "paper": keep, "pre_states": pre, "mirror": mirror}
 
 
 def main() -> None:
@@ -48,9 +59,12 @@ def main() -> None:
             res = one_pass(args.horizon_hours)
             pre = res["pre_states"]
             summary = " ".join(f"{d['fixture_api_id']}:{d['state']}/{d.get('reason','')[:28]}" for d in pre) or "-"
+            m = res["mirror"]
+            mtxt = (f"mirror={m.get('actions', 0)}act" + (f"/ERR{m['errors']}" if m.get("errors") else "")
+                    if m.get("state") != "disabled" else "mirror=off")
             print(f"[pre_fastpath] {datetime.now(timezone.utc).isoformat()[11:19]} "
                   f"cand={res['staged_candidates']} paper={res['paper']['state']} "
-                  f"entries={res['paper']['entries']} pre=[{summary}] ({time.time()-t0:.0f}s)", flush=True)
+                  f"entries={res['paper']['entries']} {mtxt} pre=[{summary}] ({time.time()-t0:.0f}s)", flush=True)
         except Exception as exc:  # noqa: BLE001 — a transient failure must not end the loop
             print(f"[pre_fastpath] ERROR {type(exc).__name__}: {str(exc)[:140]}", flush=True)
         if not args.loop:
