@@ -187,6 +187,17 @@ def cap_turnover(
     Uses linear interpolation: w_final = α * w_new + (1-α) * w_prev
     where α is chosen such that turnover(w_final, w_prev) = max_turnover.
     """
+    # 2026-09-13: prev_weights 为空(首次调仓)时,`mid * new + (1-mid) * prev` 会按
+    # 索引并集对齐,空 prev 让每一项都变 NaN;compute_turnover 再对全 NaN 求 skipna
+    # 和得 0.0,二分永远收敛不到,最终返回 11 个 NaN。下游 `> 1e-6` 对 NaN 恒为
+    # False → 空决策 → **首个调仓日 100% 空仓且无任何告警**。
+    # 首次调仓的换手恒为 0.50,所以凡 max_monthly_turnover < 0.50 的参数集全中:
+    # low_turnover 0.45(SSRS 今日实盘)与 ultra_selective 0.40。
+    # 在这里对齐而不是改各调用点的 seed:同一个陷阱在 compute_transaction_costs、
+    # should_emergency_rebalance、trade_audit 与三个 DailySignal 里都有,统一在
+    # 入口消解。空 prev 语义上就是"此前无持仓",fill_value=0.0 正是它。
+    prev_weights = prev_weights.reindex(new_weights.index, fill_value=0.0)
+
     to = compute_turnover(new_weights, prev_weights)
     if to <= max_turnover:
         return new_weights
