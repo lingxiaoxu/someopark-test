@@ -14,7 +14,7 @@ import os
 import time
 import traceback
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from prediction_market_macro.config.registry import REGISTRY, p0
@@ -149,6 +149,20 @@ def _run(weekly: bool = False) -> dict:
     from prediction_market_macro.ingest import ercot
     step("ercot", lambda: ercot.refresh(conn))
     step("ercot_mirror", lambda: ercot.mirror_weekly_burn(conn))
+    # 2026-09-13: EIA-930 那条腿此前**没有任何周期性摄取** —— backfill_eia930 在整个
+    # 代码库里只有定义、零调用者,于是 6 条 eia_* 序列停在最后一次人工回填的
+    # 2026-08-29,而 ercot.refresh() 负责的 dashboard 序列每天正常推进到当日。
+    # 后果:AEUS 的 ercot_demand_yoy / ercot_gas_share(都由 eia_* 派生)在
+    # 2026-09-13 的 weekly 触发 STALE(9 交易日 > 5),把 AEUS weekly 判成
+    # success-degraded —— 而 cron 建议的补救 `aeus_pipeline.sh update_data` 修不了,
+    # 因为 AEUS 对 ercot_daily 是**只读**的,数据归本模块所有。
+    # 探测确认 EIA 侧数据本身是新鲜的(2026-09-13 查到 ERCO daily 到 2026-09-12),
+    # 纯粹是没人去拉。
+    # 用 90 天滚动窗口而不是默认的 2019 起:函数是 INSERT OR REPLACE 且
+    # first_seen_ts 走 COALESCE 保留首见时间,所以重叠区间幂等、PIT 安全;
+    # 90 天足以覆盖 EIA 的修订窗与任何一次跑批中断。深度回填仍可手工传 start=。
+    step("ercot_eia930", lambda: ercot.backfill_eia930(
+        conn, start=(date.today() - timedelta(days=90)).isoformat()))
     # PJM grid fundamentals (2026-09-02, SHADOW per §7-bis — the deliberate twin of the
     # ERCOT lane; PJM is the larger market, so its gas burn carries more national weight
     # in the storage prints that move NG). One Data Miner request per refresh: the
