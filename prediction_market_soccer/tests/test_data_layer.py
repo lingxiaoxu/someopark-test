@@ -4,7 +4,10 @@ No network: uses a temp SQLite connection and sample API-Football payloads.
 """
 from __future__ import annotations
 
+import pathlib
+import shutil
 import sqlite3
+import tempfile
 
 import pytest
 
@@ -134,8 +137,37 @@ def test_monitor_levels_and_runs(conn):
     assert _level(0.85, 0.8, 0.95) == "WARN"
     assert _level(0.99, 0.8, 0.95) == "ALERT"
     assert _age_hours(None) is None
-    # health_report runs on an empty store and flags missing model run.
-    rep = health_report(conn=conn)
-    names = {c.name: c.level for c in rep.checks}
-    assert names.get("model_freshness") == "ALERT"  # no model_run yet
-    assert rep.worst in ("OK", "WARN", "ALERT")
+    # model_freshness reads the run timestamp the model stamps into its own payload
+    # (the model_run ledger it used to read has no writer in this edition). Point the
+    # output directory at a tmp dir so the assertion is about the check, not about
+    # whichever production artifact happens to be on disk.
+    import json
+    from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_soccer.config import CONFIG
+    from prediction_market_soccer.ops import monitor as monitor_module
+    original = CONFIG.paths
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    try:
+        object.__setattr__(CONFIG, "paths", replace(original, output=tmp))
+        # no payload at all → ALERT
+        rep = health_report(conn=conn)
+        names = {c.name: c.level for c in rep.checks}
+        assert names.get("model_freshness") == "ALERT", names.get("model_freshness")
+        # a payload carrying a fresh meta.run_ts → OK (this is what failed before the fix,
+        # because the empty ledger made the check ALERT no matter how fresh the model was)
+        fresh = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat()
+        (tmp / "soccer_model.json").write_text(json.dumps({"meta": {"run_ts": fresh}}), encoding="utf-8")
+        rep = health_report(conn=conn)
+        names = {c.name: c.level for c in rep.checks}
+        assert names.get("model_freshness") == "OK", names.get("model_freshness")
+        # a stale run_ts is still reported as stale
+        old_ts = (datetime.now(timezone.utc) - timedelta(hours=9)).isoformat()
+        (tmp / "soccer_model.json").write_text(json.dumps({"meta": {"run_ts": old_ts}}), encoding="utf-8")
+        rep = health_report(conn=conn)
+        names = {c.name: c.level for c in rep.checks}
+        assert names.get("model_freshness") == "ALERT", names.get("model_freshness")
+        assert rep.worst in ("OK", "WARN", "ALERT")
+    finally:
+        object.__setattr__(CONFIG, "paths", original)
+        shutil.rmtree(tmp, ignore_errors=True)

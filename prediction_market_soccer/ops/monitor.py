@@ -142,25 +142,41 @@ def _level(value: float, warn: float, alert: float, *, higher_is_worse: bool = T
     return "ALERT" if value <= alert else "WARN" if value <= warn else "OK"
 
 
+def _payload_run_ts():
+    """(run_ts, filename) stamped by the model into its own payload, or (None, "")."""
+    for name in ("soccer_model.json", "latest.json"):
+        try:
+            meta = json.loads((CONFIG.paths.output / name).read_text(encoding="utf-8")).get("meta") or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        if meta.get("run_ts"):
+            return meta["run_ts"], name
+    return None, ""
+
+
 def health_report(conn=None) -> HealthReport:
     conn = conn or store.init_db()
     rep = HealthReport(ts=datetime.now(timezone.utc).isoformat())
 
-    # 1) model freshness, from the model_run LEDGER. Kept ledger-only on purpose: the
-    # ledger is the record that a run happened with known params, and in the club edition
-    # it is empty in production — run_model.refresh_model writes the payload but never
-    # calls store.persist_model_run. That is a real bookkeeping gap in a module this one
-    # does not own, so it stays visible here rather than being papered over.
-    row = conn.execute("SELECT run_ts FROM model_run ORDER BY run_ts DESC LIMIT 1").fetchone()
-    age = _age_hours(row["run_ts"]) if row else None
+    # 1) model freshness, from the run timestamp the model stamps into its own payload.
+    # It used to read the model_run LEDGER, whose only writer (store.persist_model_run) is
+    # never called in this edition: git history shows the World-Cup call site in
+    # run_model.write_outputs was not carried across the club fork, and persist_model_run's
+    # signature (champion=/golden_boot=) plus sim_champion's knockout columns have no club
+    # analogue. The ledger therefore has zero rows and zero readers, and this check was
+    # permanently ALERT while the model was in fact fresh. meta.run_ts is the same fact the
+    # ledger was meant to carry — a simulation actually ran — and it stays distinct from
+    # model_export_freshness below, which reads file mtime: a copy or touch moves one and
+    # not the other, which is the discrimination the pair only pretended to have.
+    run_ts, run_src = _payload_run_ts()
+    age = _age_hours(run_ts)
     if age is None:
         rep.checks.append(Check("model_freshness", "ALERT", None,
-                                "no model_run recorded — refresh_model writes soccer_model.json "
-                                "but never persist_model_run(); see model_export_freshness for "
-                                "the actual age"))
+                                "no model run recorded — no soccer_model.json/latest.json "
+                                "carries meta.run_ts"))
     else:
         rep.checks.append(Check("model_freshness", _level(age, MODEL_AGE_WARN_H, MODEL_AGE_ALERT_H),
-                                round(age, 2), f"last model run {age:.1f}h ago"))
+                                round(age, 2), f"last model run {age:.1f}h ago ({run_src} meta.run_ts)"))
 
     # 1b) the age that is actually observable today: when the model payload was last
     # written. This is the line an operator acts on while the ledger gap above is open.

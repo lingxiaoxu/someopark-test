@@ -19,30 +19,11 @@ PIT 校准。
 
 ## 待办
 
-### 4. PRE 暂存后同轮决策（**已降级：先观测再决定**）
-- **文件**：`ops/live_refresh.py`
-- **状态**：2026-09-13 复核代码后发现 `_stash_pre`（在 `_refresh_upcoming_board` 内）与
-  `_paper_and_demo` 本来就是相邻调用，中间没有别的阶段。2026-09-12 的批量
-  `missing_fresh_observation` 更可能是**周期整体被第 3 项的重试循环拖垮**所致，而不是
-  这两步之间的间隔。
-- **下一步**：等第 3 项上线后的第一个满负荷比赛日，测量「PRE 观测写入 → run_cycle 开始」
-  的真实间隔。仍 >120s 才动顺序；否则关闭本项。
-- **临时兜底**：`ops/pre_fastpath.py`（非 pin）仍在，需要时手动起。
+（空）所有已知 pin 待办均已上线。新发现写在这里。
 
-### 7. `persist_model_run` 从不被调用
-- **文件**：待定（`refresh_model` 写 `soccer_model.json` 的那条路径）
-- **现象**：`health.json` 报 `model_freshness ALERT — no model_run recorded`。
-- **代价**：模型新鲜度告警永久失真（目前靠 `model_export_freshness` 兜底）。
-- **修法**：先确认是遗漏还是有意为之，再决定补登记还是改告警口径。
+## 待查
 
-## 待查（尚未定位，可能不涉及 pin 文件）
-
-- **demo 镜像接进 `pre_fastpath` 后仍 0 单**：2026-09-12 全天 21 条盘前腿、
-  `mirror=0act` 每轮。已排除：`enabled()` 为 True；Decimal 序列化已修；
-  `execution_context` 的「开球后不补 PRE 单」规则已由同拍调用规避。下一道闸未知，
-  需在开赛前逐 fixture 走 `demo_forward.run` 的 continue 分支定位。
-
----
+（空）
 
 ## 已上线
 
@@ -57,3 +38,8 @@ PIT 校准。
 - **原第 5 项「跳过不留痕」**：2026-09-13 复核发现痕迹一直都在，写的是
   `paper_data_state_event`（577 行）而非 `paper_evaluation_v2`；2026-09-12 丢掉的 11 场
   每场都有 `missed_data/window_expired` 行。原条目是表名记错。
+| 2026-09-13 03:4x | `d1b7147a3fc4` v12 | ④ PRE 腿优先决策 + `ps.positions()` 提出内层循环（实测单次 1.5 s × 每里程碑 ≈ 83 s，全花在 120 s 新鲜度预算上）<br>① demo 镜像三处静默 `continue` 现在记原因，summary 报 `skipped={原因:条数}` |
+
+### 已查明（无需 pin 改动）
+- **demo 镜像 0 单 = 两道真护栏,非缺陷**（2026-09-12 全量复核）：25 条 pre 腿中 20 条死于 Kalshi **DEMO 盘口 NO 边全空** → `yes_ask=None` → `no_executable_ask`（164/164 demo 回执无一有 ask；同一票号同一时刻 public 盘有 0.26/0.25）；另 5 条巴甲死于 demo **只挂了大小球事件、没有三向 GAME 事件**。问题在于两者都完全静默 —— 已在 v12 补上可观测性。demo 深度 0–4 档 vs 生产 19–55 档,是场馆特性。
+- **原第 7 项 `persist_model_run`**：世界杯版遗留。`git log -S` 证明该调用点在俱乐部分叉时就没带过来（从未存在），函数签名是 `champion=`/`golden_boot=` 淘汰赛形状,俱乐部无对应物;`model_run`/`sim_champion`/`sim_golden_boot` 三表零行零读者。修法 = 让 `model_freshness` 改读 payload 里的 `meta.run_ts`（`ops/monitor.py`,**非 pin**,已随本轮上线）。检查从永久 ALERT 变 OK，且与 `model_export_freshness`（文件 mtime）语义分离。

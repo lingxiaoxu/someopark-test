@@ -714,7 +714,15 @@ def run(conn, broker, *, now=None):
     legacy_warnings = _reconcile_legacy(conn, broker, now)
     _reconcile(conn, broker, now)
     ticker_index = DemoTickers(conn, broker)
-    out = {'actions': [], 'errors': legacy_warnings}
+    # Every drop below is a bare `continue`, so a mirror that places nothing looks exactly
+    # like a broken one: on 2026-09-12 all 25 pre legs were dropped by two real guards
+    # (an empty NO side on the Kalshi DEMO book → no liftable ask, 20 legs; no 3-way GAME
+    # event listed on demo, 5 legs) and every pass still printed only "0 action(s)".
+    # Recording the reason changes no decision and writes nothing durable.
+    out = {'actions': [], 'errors': legacy_warnings, 'skips': []}
+
+    def skip(reason, **fields):
+        out['skips'].append({'fixture': fid, 'track': track, 'reason': reason, **fields})
     venue_positions = None
     for position in positions(conn):
         entry = position['entry']
@@ -782,11 +790,13 @@ def run(conn, broker, *, now=None):
                 continue
             context = execution_context(conn, position, now=now)
             if not context:
+                skip('no_execution_context')
                 continue
             if legacy and not _release_empty_legacy(conn, broker, legacy, entry, now):
                 continue
             ticker = row['ticker'] if row and row['ticker'] else ticker_index.for_position(position, fx)
             if not ticker:
+                skip('no_demo_market', comp=entry.get('comp'), side=entry.get('side'))
                 continue
             binding = _intent_binding(conn,position,ticker)
             if not binding:
@@ -797,6 +807,7 @@ def run(conn, broker, *, now=None):
             conn.commit()
             selected = _execution_quote(conn,broker,ticker,binding,'buy')
             if not selected:
+                skip('no_executable_quote', ticker=ticker)
                 continue
             ask = selected['price']
             before = _dt(selected['receipt']['request_started_at'])

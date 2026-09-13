@@ -18,8 +18,8 @@
    "last_pts": 2.2368,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.2955,
-   "market_p_champion": 0.53113,
+   "anchor_points": 2.2899,
+   "market_p_champion": 0.52373,
    "anchor_source": "elo+table+market"
   },
   {
@@ -33,8 +33,8 @@
    "last_pts": 1.7105,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.5831,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.5829,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -48,8 +48,8 @@
    "last_pts": 1.5,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.4707,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.4705,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -63,8 +63,8 @@
    "last_pts": 1.3947,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.4179,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.4176,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -78,8 +78,8 @@
    "last_pts": 1.3947,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4355,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.4352,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -93,8 +93,8 @@
    "last_pts": 1.3684,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.6249,
-   "market_p_champion": 0.08674,
+   "anchor_points": 1.6306,
+   "market_p_champion": 0.09347,
    "anchor_source": "elo+table+market"
   },
   {
@@ -108,8 +108,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0676,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.0673,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+market"
   },
   {
@@ -123,8 +123,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2988,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.2985,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -138,8 +138,8 @@
    "last_pts": 1.2895,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.3396,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.3393,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -153,8 +153,8 @@
    "last_pts": 1.3684,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.3411,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.3408,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -168,8 +168,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9397,
-   "market_p_champion": 0.005,
+   "anchor_points": 0.9394,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+market"
   },
   {
@@ -183,8 +183,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0853,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.085,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+market"
   },
   {
@@ -198,8 +198,8 @@
    "last_pts": 1.2368,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.3011,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.3008,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -213,8 +213,8 @@
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.6972,
-   "market_p_champion": 0.03146,
+   "anchor_points": 1.698,
+   "market_p_champion": 0.02984,
    "anchor_source": "elo+table+market"
   },
   {
@@ -228,8 +228,8 @@
    "last_pts": 2.0526,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.1412,
-   "market_p_champion": 0.25332,
+   "anchor_points": 2.1437,
+   "market_p_champion": 0.26732,
    "anchor_source": "elo+table+market"
   },
   {
@@ -243,8 +243,8 @@
    "last_pts": 1.8684,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7339,
-   "market_p_champion": 0.02236,
+   "anchor_points": 1.7347,
+   "market_p_champion": 0.02093,
    "anchor_source": "elo+table+market"
   },
   {
@@ -258,8 +258,8 @@
    "last_pts": 1.2895,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.4293,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.429,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -273,8 +273,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2795,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.2793,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -288,8 +288,8 @@
    "last_pts": 1.4211,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.2765,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.2762,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -303,8 +303,8 @@
    "last_pts": 1.0789,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2432,
-   "market_p_champion": 0.005,
+   "anchor_points": 1.2429,
+   "market_p_champion": 0.00431,
    "anchor_source": "elo+table+market"
   },
   {
@@ -318,7 +318,7 @@
    "last_pts": 1.1316,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.2413,
+   "anchor_points": 1.2415,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -333,7 +333,7 @@
    "last_pts": 1.1842,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3162,
+   "anchor_points": 1.3163,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -363,8 +363,8 @@
    "last_pts": 2.4737,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.4799,
-   "market_p_champion": 0.61129,
+   "anchor_points": 2.4857,
+   "market_p_champion": 0.63899,
    "anchor_source": "elo+table+market"
   },
   {
@@ -378,7 +378,7 @@
    "last_pts": 1.4211,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.3847,
+   "anchor_points": 1.3848,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -393,7 +393,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2037,
+   "anchor_points": 1.2038,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+market"
   },
@@ -408,7 +408,7 @@
    "last_pts": 1.1316,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.192,
+   "anchor_points": 1.1921,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -423,7 +423,7 @@
    "last_pts": 1.2105,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2477,
+   "anchor_points": 1.2478,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -453,7 +453,7 @@
    "last_pts": 1.1053,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2102,
+   "anchor_points": 1.2103,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -468,7 +468,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1532,
+   "anchor_points": 1.1533,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+market"
   },
@@ -483,7 +483,7 @@
    "last_pts": 1.1053,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2242,
+   "anchor_points": 1.2243,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -498,7 +498,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.205,
+   "anchor_points": 1.2051,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+market"
   },
@@ -513,7 +513,7 @@
    "last_pts": 1.3158,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.3278,
+   "anchor_points": 1.3279,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -528,7 +528,7 @@
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5281,
+   "anchor_points": 1.5282,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -543,8 +543,8 @@
    "last_pts": 2.2632,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.273,
-   "market_p_champion": 0.30653,
+   "anchor_points": 2.2654,
+   "market_p_champion": 0.27883,
    "anchor_source": "elo+table+market"
   },
   {
@@ -558,7 +558,7 @@
    "last_pts": 1.2105,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3406,
+   "anchor_points": 1.3407,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -573,7 +573,7 @@
    "last_pts": 1.1316,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2326,
+   "anchor_points": 1.2327,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -588,7 +588,7 @@
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.318,
+   "anchor_points": 1.3181,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -603,7 +603,7 @@
    "last_pts": 1.8947,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6233,
+   "anchor_points": 1.6234,
    "market_p_champion": 0.00436,
    "anchor_source": "elo+table+market"
   },
@@ -1233,8 +1233,8 @@
    "last_pts": 1.0294,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.0874,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.0887,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1248,8 +1248,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.0266,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.028,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+market"
   },
   {
@@ -1263,8 +1263,8 @@
    "last_pts": 2.0588,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.8535,
-   "market_p_champion": 0.02411,
+   "anchor_points": 1.8529,
+   "market_p_champion": 0.02575,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1278,8 +1278,8 @@
    "last_pts": 1.7941,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.7164,
-   "market_p_champion": 0.03354,
+   "anchor_points": 1.7159,
+   "market_p_champion": 0.03536,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1293,8 +1293,8 @@
    "last_pts": 1.3235,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3212,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.3226,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1308,8 +1308,8 @@
    "last_pts": 1.7647,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.6954,
-   "market_p_champion": 0.02411,
+   "anchor_points": 1.6948,
+   "market_p_champion": 0.02575,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1323,8 +1323,8 @@
    "last_pts": 1.7353,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.6647,
-   "market_p_champion": 0.02411,
+   "anchor_points": 1.6642,
+   "market_p_champion": 0.02575,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1338,8 +1338,8 @@
    "last_pts": 1.5882,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.7326,
-   "market_p_champion": 0.11917,
+   "anchor_points": 1.7169,
+   "market_p_champion": 0.0932,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1353,8 +1353,8 @@
    "last_pts": 0.9412,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.125,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.1263,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1368,8 +1368,8 @@
    "last_pts": 1.2941,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.3133,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.3146,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1383,8 +1383,8 @@
    "last_pts": 2.2353,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.3422,
-   "market_p_champion": 0.6723,
+   "anchor_points": 2.3506,
+   "market_p_champion": 0.68212,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1399,7 +1399,7 @@
    "last_rank": 6,
    "promoted": false,
    "anchor_points": 1.703,
-   "market_p_champion": 0.06202,
+   "market_p_champion": 0.06426,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1428,8 +1428,8 @@
    "last_pts": 1.5588,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.4832,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.4845,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1443,8 +1443,8 @@
    "last_pts": 1.3333,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3079,
-   "market_p_champion": 0.00581,
+   "anchor_points": 1.3092,
+   "market_p_champion": 0.00683,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1474,7 +1474,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.2884,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -1519,7 +1519,7 @@
    "last_rank": 23,
    "promoted": false,
    "anchor_points": 1.3768,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -1579,7 +1579,7 @@
    "last_rank": 19,
    "promoted": false,
    "anchor_points": 1.3945,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -1683,8 +1683,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3691,
-   "market_p_champion": 0.00531,
+   "anchor_points": 1.369,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -1699,7 +1699,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.2895,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -1759,7 +1759,7 @@
    "last_rank": 20,
    "promoted": false,
    "anchor_points": 1.3989,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2074,7 +2074,7 @@
    "last_rank": 28,
    "promoted": false,
    "anchor_points": 1.3812,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2104,7 +2104,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.1293,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2119,7 +2119,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.2663,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2148,8 +2148,8 @@
    "last_pts": null,
    "last_rank": 34,
    "promoted": false,
-   "anchor_points": 1.3448,
-   "market_p_champion": 0.00531,
+   "anchor_points": 1.3447,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2164,7 +2164,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.1227,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2193,8 +2193,8 @@
    "last_pts": null,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4829,
-   "market_p_champion": 0.00531,
+   "anchor_points": 1.4828,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2314,7 +2314,7 @@
    "last_rank": null,
    "promoted": true,
    "anchor_points": 1.2674,
-   "market_p_champion": 0.00531,
+   "market_p_champion": 0.00546,
    "anchor_source": "elo+market"
   },
   {
@@ -2388,8 +2388,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4888,
-   "market_p_champion": 0.09109,
+   "anchor_points": 1.4907,
+   "market_p_champion": 0.09376,
    "anchor_source": "elo+market"
   },
   {
@@ -2403,8 +2403,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7654,
-   "market_p_champion": 0.12179,
+   "anchor_points": 1.7675,
+   "market_p_champion": 0.12488,
    "anchor_source": "elo+market"
   },
   {
@@ -2493,8 +2493,8 @@
    "last_pts": null,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.397,
-   "market_p_champion": 0.05358,
+   "anchor_points": 1.3987,
+   "market_p_champion": 0.05562,
    "anchor_source": "elo+market"
   },
   {
@@ -2883,9 +2883,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6899,
-   "market_p_champion": 0.15879,
-   "anchor_source": "elo+market"
+   "anchor_points": 1.7432,
+   "market_p_champion": null,
+   "anchor_source": "elo"
   },
   {
    "club_id": "alashkert",
@@ -4503,7 +4503,7 @@
    "last_pts": null,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.5403,
+   "anchor_points": 1.5384,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -4563,7 +4563,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.2299,
+   "anchor_points": 1.2211,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -4653,7 +4653,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2229,
+   "anchor_points": 1.2211,
    "market_p_champion": 0.1066,
    "anchor_source": "domestic_league"
   },
@@ -4668,7 +4668,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6455,
+   "anchor_points": 1.6562,
    "market_p_champion": 0.00138,
    "anchor_source": "domestic_league"
   },
@@ -4758,7 +4758,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.1659,
+   "anchor_points": 2.1446,
    "market_p_champion": 0.46154,
    "anchor_source": "domestic_league"
   },
@@ -4773,7 +4773,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5499,
+   "anchor_points": 1.5481,
    "market_p_champion": 0.3052,
    "anchor_source": "domestic_league"
   },
@@ -4938,7 +4938,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1076,
+   "anchor_points": 1.1057,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -4983,7 +4983,7 @@
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.0739,
+   "anchor_points": 2.0889,
    "market_p_champion": 0.0479,
    "anchor_source": "domestic_league"
   },
@@ -5193,7 +5193,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.4249,
+   "anchor_points": 1.4231,
    "market_p_champion": 0.11111,
    "anchor_source": "domestic_league"
   },
@@ -5433,7 +5433,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.1076,
+   "anchor_points": 1.1057,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -5673,7 +5673,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3499,
+   "anchor_points": 1.3365,
    "market_p_champion": null,
    "anchor_source": "domestic_league"
   },
@@ -5733,7 +5733,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2599,
+   "anchor_points": 1.3077,
    "market_p_champion": 0.22222,
    "anchor_source": "domestic_league"
   },
@@ -5748,7 +5748,7 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2899,
+   "anchor_points": 1.25,
    "market_p_champion": 0.11111,
    "anchor_source": "domestic_league"
   },
@@ -5808,7 +5808,7 @@
    "last_pts": null,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.1076,
+   "anchor_points": 1.1057,
    "market_p_champion": 0.11111,
    "anchor_source": "domestic_league"
   },
@@ -5823,8 +5823,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6852,
-   "market_p_champion": 0.02784,
+   "anchor_points": 1.6833,
+   "market_p_champion": 0.02093,
    "anchor_source": "table+market"
   },
   {
@@ -5838,8 +5838,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7903,
-   "market_p_champion": 0.00358,
+   "anchor_points": 0.7884,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -5853,8 +5853,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3554,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.3536,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -5868,8 +5868,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.0776,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.0758,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -5883,8 +5883,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9633,
-   "market_p_champion": 0.00358,
+   "anchor_points": 0.9615,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -5898,8 +5898,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2229,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.2211,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -6108,7 +6108,7 @@
    "last_pts": 1.3125,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 0.625,
+   "anchor_points": 0.8889,
    "market_p_champion": null,
    "anchor_source": "table"
   },
@@ -6123,7 +6123,7 @@
    "last_pts": 1.5625,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 1.625,
+   "anchor_points": 1.4444,
    "market_p_champion": null,
    "anchor_source": "table"
   },

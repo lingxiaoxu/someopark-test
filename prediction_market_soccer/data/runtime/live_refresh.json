@@ -1,13 +1,13 @@
 {
   "name": "live_refresh",
   "state": "ok",
-  "last_attempt_at": "2026-09-13T03:12:24.761298+00:00",
-  "last_success_at": "2026-09-13T03:12:29.618941+00:00",
-  "finished_at": "2026-09-13T03:12:29.618941+00:00",
+  "last_attempt_at": "2026-09-13T03:48:44.022624+00:00",
+  "last_success_at": "2026-09-13T03:48:45.199110+00:00",
+  "finished_at": "2026-09-13T03:48:45.199110+00:00",
   "steps": [],
   "last_success_input": {
     "window": false,
     "n_live": 0
   },
-  "last_activity_at": "2026-09-13T03:12:29.618953+00:00"
+  "last_activity_at": "2026-09-13T03:48:45.199115+00:00"
 }

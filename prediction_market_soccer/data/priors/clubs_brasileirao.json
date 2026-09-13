@@ -24,8 +24,8 @@
    "last_pts": 1.2632,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.4249,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.4231,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -39,8 +39,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6852,
-   "market_p_champion": 0.02784,
+   "anchor_points": 1.6833,
+   "market_p_champion": 0.02093,
    "anchor_source": "table+market"
   },
   {
@@ -54,8 +54,8 @@
    "last_pts": 1.5789,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.5403,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.5384,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -69,8 +69,8 @@
    "last_pts": 1.6579,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.2299,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.2211,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -80,12 +80,12 @@
    "league": "brasileirao",
    "api_team_id": 132,
    "elo": null,
-   "elo_rank": 290,
+   "elo_rank": 291,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7903,
-   "market_p_champion": 0.00358,
+   "anchor_points": 0.7884,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -99,8 +99,8 @@
    "last_pts": 1.2368,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2229,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.2211,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -110,12 +110,12 @@
    "league": "brasileirao",
    "api_team_id": 147,
    "elo": null,
-   "elo_rank": 144,
+   "elo_rank": 145,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3554,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.3536,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -129,8 +129,8 @@
    "last_pts": 1.8421,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6455,
-   "market_p_champion": 0.04555,
+   "anchor_points": 1.6562,
+   "market_p_champion": 0.12298,
    "anchor_source": "table+market"
   },
   {
@@ -144,8 +144,8 @@
    "last_pts": 2.0789,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.1659,
-   "market_p_champion": 0.57973,
+   "anchor_points": 2.1446,
+   "market_p_champion": 0.55333,
    "anchor_source": "table+market"
   },
   {
@@ -159,8 +159,8 @@
    "last_pts": 1.6842,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5499,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.5481,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -170,12 +170,12 @@
    "league": "brasileirao",
    "api_team_id": 130,
    "elo": null,
-   "elo_rank": 267,
+   "elo_rank": 268,
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.1076,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.1057,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -189,8 +189,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.0776,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.0758,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -204,8 +204,8 @@
    "last_pts": 1.7632,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.1076,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.1057,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -219,8 +219,8 @@
    "last_pts": 2.0,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0739,
-   "market_p_champion": 0.28966,
+   "anchor_points": 2.0889,
+   "market_p_champion": 0.27196,
    "anchor_source": "table+market"
   },
   {
@@ -230,12 +230,12 @@
    "league": "brasileirao",
    "api_team_id": 794,
    "elo": null,
-   "elo_rank": 283,
+   "elo_rank": 284,
    "last_pts": 1.2632,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3499,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.3365,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -249,8 +249,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9633,
-   "market_p_champion": 0.00358,
+   "anchor_points": 0.9615,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -264,8 +264,8 @@
    "last_pts": 1.2368,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.2599,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.3077,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -279,8 +279,8 @@
    "last_pts": 1.3421,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.2899,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.25,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -294,8 +294,8 @@
    "last_pts": 1.1842,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.1076,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.1057,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   },
   {
@@ -309,8 +309,8 @@
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2229,
-   "market_p_champion": 0.00358,
+   "anchor_points": 1.2211,
+   "market_p_champion": 0.00193,
    "anchor_source": "table+market"
   }
  ]

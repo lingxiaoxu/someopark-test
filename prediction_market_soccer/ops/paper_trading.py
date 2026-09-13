@@ -334,7 +334,17 @@ def run_cycle(conn, inplay_doc=None, *, now=None, strength=None):
                     'state': {'elapsed': 0, 'home_goals': 0, 'away_goals': 0, 'reds_home': 0, 'reds_away': 0}}
                 break
     persisted_observations = {}
-    for fid, observation in observations.items():
+    # ps.positions() json-parses every paper_entry payload (48 rows / 158 MB → 1.5 s measured).
+    # It was called once per (fixture, milestone) pair inside the loop below, ~83 s on an
+    # 11-match evening — time charged straight against the 120 s observation-freshness rule.
+    # Loop-invariant except for entries this cycle commits, which are added as they happen.
+    open_tracks = {(position['fixture_api_id'], position['track']) for position in ps.positions(conn)}
+    # A PRE observation is staged seconds before this call and dies at 120 s, so it must not
+    # queue behind the live fixtures: on 2026-09-12 the PRE leg's freshness check ran at
+    # +123..190 s and every pre leg of three kickoff waves was lost. sorted() is stable, so
+    # ordering within each group — and the precedence established above — is unchanged.
+    for fid, observation in sorted(observations.items(),
+                                   key=lambda item: 0 if item[1].get('milestone') == 'PRE' else 1):
         fx = conn.execute('SELECT * FROM fixture WHERE api_id=?', (fid,)).fetchone()
         pre = observation.get('milestone') == 'PRE'
         if not fx or not _fresh(observation, fx, clock().isoformat(), pre=pre, conn=conn):
@@ -357,7 +367,7 @@ def run_cycle(conn, inplay_doc=None, *, now=None, strength=None):
             if (fx['status_short'] == 'HT' if code == 'HT' else minimum <= observation['state']['elapsed'] <= minimum + 8)]
         for code in codes:
             track = 'pre' if pre else 'inplay'
-            if ps.evaluated(conn, version['version_id'], fid, track, code, epoch_id=epoch['epoch_id']) or any(p['fixture_api_id'] == fid and p['track'] == track for p in ps.positions(conn)):
+            if ps.evaluated(conn, version['version_id'], fid, track, code, epoch_id=epoch['epoch_id']) or (fid, track) in open_tracks:
                 continue
             try:
                 available = ps.available_quotes(conn, observation, decision_at)
@@ -369,6 +379,7 @@ def run_cycle(conn, inplay_doc=None, *, now=None, strength=None):
                 metadata = {**_metadata(conn, fx, hi, ai, observation, decided_at), **_epoch_metadata(epoch), 'milestone': code}
                 if dec and not dec.get('no_entry'):
                     out['entries'] += bool(ps.record_entry(conn, version, fid, track, {**dec, **metadata}))
+                    open_tracks.add((fid, track))   # same-cycle duplicate-entry guard, preserved
                     data_state(fid,track,code,'decision_recorded','entry_committed')
                 elif not pre and complete and dec and dec.get('model_evaluation_complete'):
                     # Pure calculator returned normally with complete inputs. Missing models throw.

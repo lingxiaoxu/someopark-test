@@ -1131,12 +1131,19 @@ def run_cycle(conn, inplay_doc: dict | None = None) -> dict:
             res = fn()
             out["actions"].extend(res.get('actions', []))
             out["errors"].extend(res.get('errors', []))
+            out.setdefault("skips", []).extend(res.get('skips', []))
         except Exception as e:  # noqa: BLE001
             out["errors"].append(f"{name}: {str(e)[:160]}")
             _log("leg_error", leg=name, error=str(e)[:200])
     out["open"] = _open_positions(conn)
     out["elapsed_s"] = round(time.time() - t0, 1)
+    # A drop is not an error, but "0 actions" must never be mistaken for "mirror is broken":
+    # name why each leg was passed over (empty demo book, no demo market, …).
+    skipped = {}
+    for row in out.get("skips") or []:
+        skipped[row.get("reason", "?")] = skipped.get(row.get("reason", "?"), 0) + 1
     out["summary"] = (f"{len(out['actions'])} action(s), {out['open']} open, {out['elapsed_s']}s"
+                      + (f", skipped={skipped}" if skipped else "")
                       + (f", errors={out['errors']}" if out["errors"] else ""))
     try:
         _export(conn, broker, out)

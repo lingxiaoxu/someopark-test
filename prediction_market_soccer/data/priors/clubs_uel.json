@@ -54,8 +54,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7296,
-   "market_p_champion": 0.11408,
+   "anchor_points": 1.7316,
+   "market_p_champion": 0.11707,
    "anchor_source": "elo+market"
   },
   {
@@ -99,8 +99,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.8497,
-   "market_p_champion": 0.00098,
+   "anchor_points": 0.8494,
+   "market_p_champion": 0.00107,
    "anchor_source": "elo+market"
   },
   {
@@ -129,8 +129,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.743,
-   "market_p_champion": 0.05358,
+   "anchor_points": 1.7447,
+   "market_p_champion": 0.05562,
    "anchor_source": "elo+market"
   },
   {
@@ -144,8 +144,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4888,
-   "market_p_champion": 0.09109,
+   "anchor_points": 1.4907,
+   "market_p_champion": 0.09376,
    "anchor_source": "elo+market"
   },
   {
@@ -159,8 +159,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7654,
-   "market_p_champion": 0.12179,
+   "anchor_points": 1.7675,
+   "market_p_champion": 0.12488,
    "anchor_source": "elo+market"
   },
   {
@@ -174,8 +174,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7389,
-   "market_p_champion": 0.06096,
+   "anchor_points": 1.7406,
+   "market_p_champion": 0.06313,
    "anchor_source": "elo+market"
   },
   {
@@ -185,7 +185,7 @@
    "league": "uel",
    "api_team_id": 4360,
    "elo": 1525.0,
-   "elo_rank": 303,
+   "elo_rank": 304,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -234,8 +234,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6962,
-   "market_p_champion": 0.09109,
+   "anchor_points": 1.6872,
+   "market_p_champion": 0.07836,
    "anchor_source": "elo+market"
   },
   {
@@ -384,8 +384,8 @@
    "last_pts": null,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.397,
-   "market_p_champion": 0.05358,
+   "anchor_points": 1.3987,
+   "market_p_champion": 0.05562,
    "anchor_source": "elo+market"
   },
   {
@@ -534,8 +534,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.752,
-   "market_p_champion": 0.12179,
+   "anchor_points": 1.7541,
+   "market_p_champion": 0.12488,
    "anchor_source": "elo+market"
   },
   {
@@ -650,7 +650,7 @@
    "league": "uel",
    "api_team_id": 321,
    "elo": 1524.0,
-   "elo_rank": 305,
+   "elo_rank": 306,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -684,8 +684,8 @@
    "last_pts": null,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 1.6524,
-   "market_p_champion": 0.09873,
+   "anchor_points": 1.6544,
+   "market_p_champion": 0.1015,
    "anchor_source": "elo+market"
   },
   {
@@ -714,8 +714,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3724,
-   "market_p_champion": 0.00098,
+   "anchor_points": 1.3721,
+   "market_p_champion": 0.00107,
    "anchor_source": "elo+market"
   },
   {
@@ -725,7 +725,7 @@
    "league": "uel",
    "api_team_id": 2240,
    "elo": 1534.0,
-   "elo_rank": 249,
+   "elo_rank": 250,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -774,8 +774,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4908,
-   "market_p_champion": 0.05358,
+   "anchor_points": 1.4925,
+   "market_p_champion": 0.05562,
    "anchor_source": "elo+market"
   },
   {
@@ -785,7 +785,7 @@
    "league": "uel",
    "api_team_id": 3402,
    "elo": 1636.0,
-   "elo_rank": 136,
+   "elo_rank": 135,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -830,7 +830,7 @@
    "league": "uel",
    "api_team_id": 567,
    "elo": 1646.0,
-   "elo_rank": 127,
+   "elo_rank": 126,
    "last_pts": null,
    "last_rank": 14,
    "promoted": false,
@@ -879,8 +879,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.4887,
-   "market_p_champion": 0.00795,
+   "anchor_points": 1.4899,
+   "market_p_champion": 0.00853,
    "anchor_source": "elo+market"
   },
   {
@@ -890,7 +890,7 @@
    "league": "uel",
    "api_team_id": 571,
    "elo": 1645.0,
-   "elo_rank": 130,
+   "elo_rank": 129,
    "last_pts": null,
    "last_rank": 31,
    "promoted": false,
@@ -909,8 +909,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5687,
-   "market_p_champion": 0.04631,
+   "anchor_points": 1.5704,
+   "market_p_champion": 0.04819,
    "anchor_source": "elo+market"
   },
   {
@@ -950,7 +950,7 @@
    "league": "uel",
    "api_team_id": 628,
    "elo": 1639.0,
-   "elo_rank": 134,
+   "elo_rank": 133,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -965,7 +965,7 @@
    "league": "uel",
    "api_team_id": 735,
    "elo": 1622.0,
-   "elo_rank": 145,
+   "elo_rank": 144,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -980,7 +980,7 @@
    "league": "uel",
    "api_team_id": 637,
    "elo": 1632.0,
-   "elo_rank": 139,
+   "elo_rank": 138,
    "last_pts": null,
    "last_rank": 26,
    "promoted": false,
@@ -999,8 +999,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.5533,
-   "market_p_champion": 0.08349,
+   "anchor_points": 1.5433,
+   "market_p_champion": 0.07072,
    "anchor_source": "elo+market"
   },
   {
@@ -1025,7 +1025,7 @@
    "league": "uel",
    "api_team_id": 998,
    "elo": 1647.0,
-   "elo_rank": 126,
+   "elo_rank": 125,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -1085,7 +1085,7 @@
    "league": "uel",
    "api_team_id": 2599,
    "elo": 1511.0,
-   "elo_rank": 311,
+   "elo_rank": 312,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
@@ -1130,7 +1130,7 @@
    "league": "uel",
    "api_team_id": 278,
    "elo": 1518.0,
-   "elo_rank": 309,
+   "elo_rank": 310,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
