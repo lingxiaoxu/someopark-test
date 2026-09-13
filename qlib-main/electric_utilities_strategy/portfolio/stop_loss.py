@@ -86,8 +86,24 @@ class SectorPositionTracker:
         """Update position states based on current weights and prices."""
         for ticker in weights.index:
             w = float(weights.get(ticker, 0.0))
-            price = float(prices[ticker].loc[:rebalance_date].dropna().iloc[-1]) \
-                if ticker in prices.columns else 0.0
+            # 2026-09-13: 原写法在 `w > 1e-4` 之前就无条件对空序列取 .iloc[-1]。
+            # AEUS 的 dc_power_cooling 首个有效价是 2020-02-11 而回测自 2019-01-01 起,
+            # 1934 天里有 279 天会抛 IndexError —— 而 _run_qlib 的异常会被 engine.py 的
+            # try/except 吞掉落到 _run_native,同一异常在那里再抛后被 BatchRun 记成
+            # status="error",结果是 42/42 套**静默产出空结果**,不是崩溃告警。
+            _ps = (prices[ticker].loc[:rebalance_date].dropna()
+                   if ticker in prices.columns else None)
+            price = float(_ps.iloc[-1]) if _ps is not None and len(_ps) else 0.0
+            if w > 1e-4 and price <= 0.0:
+                # **必须响**:有权重却无价 = 组合里存在一只当时尚未上市/无行情的票。
+                # 静默走 price=0 的删除分支会把它从止损跟踪里抹掉,而那是这类
+                # "上市前幽灵权重"目前唯一的暴露渠道(AEUS dc_power_cooling 在
+                # 2019-02-01 一度占 55%,首价之前 14 次调仓有 7 次非零)。
+                log.warning(
+                    "[stop_loss] %s 在 %s 有权重 %.4f 却取不到价格 —— 该票在此日"
+                    "尚无行情,已跳过止损跟踪。若该权重非零且显著,说明上游"
+                    "给了一只上市前的票,请查 universe/篮子构造。",
+                    ticker, rebalance_date, w)
 
             if w > 1e-4 and price > 0:
                 if ticker in self.positions:
