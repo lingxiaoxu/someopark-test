@@ -319,7 +319,7 @@
    "last_rank": 14,
    "promoted": false,
    "anchor_points": 1.2415,
-   "market_p_champion": 0.00436,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -333,8 +333,8 @@
    "last_pts": 1.1842,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3163,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.3164,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -348,8 +348,8 @@
    "last_pts": 1.8158,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.7853,
-   "market_p_champion": 0.01238,
+   "anchor_points": 1.7839,
+   "market_p_champion": 0.01372,
    "anchor_source": "elo+table+market"
   },
   {
@@ -363,8 +363,8 @@
    "last_pts": 2.4737,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.4857,
-   "market_p_champion": 0.63899,
+   "anchor_points": 2.4867,
+   "market_p_champion": 0.62922,
    "anchor_source": "elo+table+market"
   },
   {
@@ -378,8 +378,8 @@
    "last_pts": 1.4211,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.3848,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.3849,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -393,8 +393,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2038,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2039,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+market"
   },
   {
@@ -408,8 +408,8 @@
    "last_pts": 1.1316,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.1921,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.1922,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -423,8 +423,8 @@
    "last_pts": 1.2105,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.2478,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2479,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -453,8 +453,8 @@
    "last_pts": 1.1053,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.2103,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2104,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -468,8 +468,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1533,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.1534,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+market"
   },
   {
@@ -483,8 +483,8 @@
    "last_pts": 1.1053,
    "last_rank": 17,
    "promoted": false,
-   "anchor_points": 1.2243,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2244,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -498,8 +498,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2051,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2052,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+market"
   },
   {
@@ -513,8 +513,8 @@
    "last_pts": 1.3158,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.3279,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.328,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -528,8 +528,8 @@
    "last_pts": 1.5789,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5282,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.5283,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -543,8 +543,8 @@
    "last_pts": 2.2632,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.2654,
-   "market_p_champion": 0.27883,
+   "anchor_points": 2.2643,
+   "market_p_champion": 0.27438,
    "anchor_source": "elo+table+market"
   },
   {
@@ -558,8 +558,8 @@
    "last_pts": 1.2105,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3407,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.3408,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -573,8 +573,8 @@
    "last_pts": 1.1316,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2327,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.2328,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -588,8 +588,8 @@
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.3181,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.3182,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -603,8 +603,8 @@
    "last_pts": 1.8947,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6234,
-   "market_p_champion": 0.00436,
+   "anchor_points": 1.6235,
+   "market_p_champion": 0.00517,
    "anchor_source": "elo+table+market"
   },
   {
@@ -1473,8 +1473,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2884,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.2887,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -1518,8 +1518,8 @@
    "last_pts": null,
    "last_rank": 23,
    "promoted": false,
-   "anchor_points": 1.3768,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.3771,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -1578,8 +1578,8 @@
    "last_pts": null,
    "last_rank": 19,
    "promoted": false,
-   "anchor_points": 1.3945,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.3948,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -1683,8 +1683,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.369,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.3694,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -1698,8 +1698,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2895,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.2898,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -1758,8 +1758,8 @@
    "last_pts": null,
    "last_rank": 20,
    "promoted": false,
-   "anchor_points": 1.3989,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.3992,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2073,8 +2073,8 @@
    "last_pts": null,
    "last_rank": 28,
    "promoted": false,
-   "anchor_points": 1.3812,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.3815,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2103,8 +2103,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1293,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.1296,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2118,8 +2118,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2663,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.2666,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2148,8 +2148,8 @@
    "last_pts": null,
    "last_rank": 34,
    "promoted": false,
-   "anchor_points": 1.3447,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.345,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2163,8 +2163,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.1227,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.123,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2193,8 +2193,8 @@
    "last_pts": null,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.4828,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.4831,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2313,8 +2313,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.2674,
-   "market_p_champion": 0.00546,
+   "anchor_points": 1.2677,
+   "market_p_champion": 0.00531,
    "anchor_source": "elo+market"
   },
   {
@@ -2883,9 +2883,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7432,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.6516,
+   "market_p_champion": 0.08509,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "alashkert",

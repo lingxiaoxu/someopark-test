@@ -42,7 +42,7 @@ def one_pass(horizon_hours: float) -> dict:
     if kalshi_mirror.enabled():
         res = kalshi_mirror.run_cycle(conn, {"matches": []})
         mirror = {"actions": len(res.get("actions") or []), "errors": res.get("errors") or [],
-                  "summary": res.get("summary")}
+                  "skips": res.get("skips") or [], "summary": res.get("summary")}
     return {"staged_candidates": len(rows), "paper": keep, "pre_states": pre, "mirror": mirror}
 
 
@@ -60,7 +60,12 @@ def main() -> None:
             pre = res["pre_states"]
             summary = " ".join(f"{d['fixture_api_id']}:{d['state']}/{d.get('reason','')[:28]}" for d in pre) or "-"
             m = res["mirror"]
-            mtxt = (f"mirror={m.get('actions', 0)}act" + (f"/ERR{m['errors']}" if m.get("errors") else "")
+            skipped = {}
+            for row in m.get("skips") or []:
+                skipped[row.get("reason", "?")] = skipped.get(row.get("reason", "?"), 0) + 1
+            mtxt = (f"mirror={m.get('actions', 0)}act"
+                    + (f"/skip{skipped}" if skipped else "")
+                    + (f"/ERR{m['errors']}" if m.get("errors") else "")
                     if m.get("state") != "disabled" else "mirror=off")
             print(f"[pre_fastpath] {datetime.now(timezone.utc).isoformat()[11:19]} "
                   f"cand={res['staged_candidates']} paper={res['paper']['state']} "

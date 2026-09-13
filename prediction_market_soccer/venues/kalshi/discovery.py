@@ -38,10 +38,13 @@ from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData
 # schedule_metadata_unverified, losing Kalshi quotes entirely (2 fixtures on
 # 2026-09-12; the shape recurs on Brasileirão/Argentine evening kickoffs, whose tickers
 # are dated to the following day, e.g. KXBRASILEIROGAME-26SEP13BOTRBB for 09-12T23:30Z).
-# ucl/uecl are deliberately absent: no milestone was returned for the events sampled, so
-# their venue string is unverified and they keep exact-match behaviour (fail closed).
+# ucl/uecl were initially absent because sampling only OPEN events returned no milestones
+# (their next fixtures are 2026-10-13/14, which carry none yet); sampling CLOSED events —
+# September's played matchdays — gives them, verified 2026-09-13.
 _VENUE_LEAGUE_NAMES = {
     'epl': 'EPL',
+    'ucl': 'Champions League',
+    'uecl': 'Conference League',
     'uel': 'Europa League',
     'libertadores': 'CONMEBOL Libertadores',
     'sudamericana': 'CONMEBOL Sudamericana',

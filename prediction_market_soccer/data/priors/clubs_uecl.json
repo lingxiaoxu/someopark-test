@@ -69,9 +69,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7432,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.6516,
+   "market_p_champion": 0.08509,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "alashkert",
@@ -129,9 +129,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.9923,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.8853,
+   "market_p_champion": 0.18345,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "atert_bissen",
@@ -324,9 +324,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 2.0918,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 2.0135,
+   "market_p_champion": 0.38025,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "caernarfon_town",
@@ -1029,9 +1029,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.7675,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.5318,
+   "market_p_champion": 0.00691,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "gks_katowice",
@@ -1614,9 +1614,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.9628,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.8478,
+   "market_p_champion": 0.1441,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "mornar",
@@ -1974,9 +1974,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.9497,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.8568,
+   "market_p_champion": 0.19329,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "shamrock_rovers",
@@ -2169,9 +2169,9 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6582,
-   "market_p_champion": null,
-   "anchor_source": "elo"
+   "anchor_points": 1.4498,
+   "market_p_champion": 0.00691,
+   "anchor_source": "elo+market"
   },
   {
    "club_id": "tre_fiori",

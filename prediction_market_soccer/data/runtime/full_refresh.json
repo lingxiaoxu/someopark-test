@@ -1,7 +1,7 @@
 {
   "name": "full_refresh",
   "state": "running",
-  "last_attempt_at": "2026-09-13T03:27:30.536955+00:00",
+  "last_attempt_at": "2026-09-13T04:03:50.754959+00:00",
   "last_success_at": "2026-09-10T22:09:01.521948+00:00",
   "finished_at": null,
   "steps": [
@@ -9,416 +9,423 @@
       "name": "fixture_roster",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:30.778507+00:00",
-      "finished_at": "2026-09-13T03:27:49.455236+00:00"
+      "started_at": "2026-09-13T04:03:50.988908+00:00",
+      "finished_at": "2026-09-13T04:03:54.363328+00:00"
     },
     {
       "name": "teams:epl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:49.455724+00:00",
-      "finished_at": "2026-09-13T03:27:49.612041+00:00"
+      "started_at": "2026-09-13T04:03:54.363827+00:00",
+      "finished_at": "2026-09-13T04:03:54.502482+00:00"
     },
     {
       "name": "teams:laliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:49.612471+00:00",
-      "finished_at": "2026-09-13T03:27:49.780135+00:00"
+      "started_at": "2026-09-13T04:03:54.502875+00:00",
+      "finished_at": "2026-09-13T04:03:54.656210+00:00"
     },
     {
       "name": "teams:seriea",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:49.780613+00:00",
-      "finished_at": "2026-09-13T03:27:49.934921+00:00"
+      "started_at": "2026-09-13T04:03:54.656636+00:00",
+      "finished_at": "2026-09-13T04:03:55.142155+00:00"
     },
     {
       "name": "teams:bundesliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:49.935375+00:00",
-      "finished_at": "2026-09-13T03:27:50.141533+00:00"
+      "started_at": "2026-09-13T04:03:55.142520+00:00",
+      "finished_at": "2026-09-13T04:03:55.326910+00:00"
     },
     {
       "name": "teams:ligue1",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:50.141972+00:00",
-      "finished_at": "2026-09-13T03:27:50.283755+00:00"
+      "started_at": "2026-09-13T04:03:55.327418+00:00",
+      "finished_at": "2026-09-13T04:03:55.457786+00:00"
     },
     {
       "name": "teams:ucl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:50.284166+00:00",
-      "finished_at": "2026-09-13T03:27:50.925761+00:00"
+      "started_at": "2026-09-13T04:03:55.458217+00:00",
+      "finished_at": "2026-09-13T04:03:55.951246+00:00"
     },
     {
       "name": "teams:uel",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:50.926285+00:00",
-      "finished_at": "2026-09-13T03:27:51.466767+00:00"
+      "started_at": "2026-09-13T04:03:55.951671+00:00",
+      "finished_at": "2026-09-13T04:03:56.384140+00:00"
     },
     {
       "name": "teams:uecl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:51.467329+00:00",
-      "finished_at": "2026-09-13T03:27:52.426676+00:00"
+      "started_at": "2026-09-13T04:03:56.384548+00:00",
+      "finished_at": "2026-09-13T04:03:57.169649+00:00"
     },
     {
       "name": "teams:libertadores",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:52.427167+00:00",
-      "finished_at": "2026-09-13T03:27:52.773932+00:00"
+      "started_at": "2026-09-13T04:03:57.170084+00:00",
+      "finished_at": "2026-09-13T04:03:57.446037+00:00"
     },
     {
       "name": "teams:sudamericana",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:52.774469+00:00",
-      "finished_at": "2026-09-13T03:27:53.146216+00:00"
+      "started_at": "2026-09-13T04:03:57.446513+00:00",
+      "finished_at": "2026-09-13T04:03:57.753590+00:00"
     },
     {
       "name": "teams:brasileirao",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:53.146622+00:00",
-      "finished_at": "2026-09-13T03:27:53.300258+00:00"
+      "started_at": "2026-09-13T04:03:57.754138+00:00",
+      "finished_at": "2026-09-13T04:03:57.874662+00:00"
     },
     {
       "name": "teams:argentina",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:53.300702+00:00",
-      "finished_at": "2026-09-13T03:27:53.521614+00:00"
+      "started_at": "2026-09-13T04:03:57.875093+00:00",
+      "finished_at": "2026-09-13T04:03:58.034567+00:00"
     },
     {
       "name": "results",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:27:53.522049+00:00",
-      "finished_at": "2026-09-13T03:28:00.411552+00:00"
+      "started_at": "2026-09-13T04:03:58.035049+00:00",
+      "finished_at": "2026-09-13T04:04:03.297955+00:00"
     },
     {
       "name": "standings:epl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:00.412049+00:00",
-      "finished_at": "2026-09-13T03:28:00.942517+00:00"
+      "started_at": "2026-09-13T04:04:03.298546+00:00",
+      "finished_at": "2026-09-13T04:04:03.298863+00:00"
     },
     {
       "name": "standings_previous:epl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:00.943428+00:00",
-      "finished_at": "2026-09-13T03:28:01.225680+00:00"
+      "started_at": "2026-09-13T04:04:03.299149+00:00",
+      "finished_at": "2026-09-13T04:04:03.299421+00:00"
     },
     {
       "name": "topscorers:epl",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:01.226306+00:00",
-      "finished_at": "2026-09-13T03:28:01.226747+00:00"
+      "started_at": "2026-09-13T04:04:03.299693+00:00",
+      "finished_at": "2026-09-13T04:04:03.299955+00:00"
     },
     {
       "name": "standings:laliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:01.227121+00:00",
-      "finished_at": "2026-09-13T03:28:02.018317+00:00"
+      "started_at": "2026-09-13T04:04:03.300218+00:00",
+      "finished_at": "2026-09-13T04:04:03.300473+00:00"
     },
     {
       "name": "standings_previous:laliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:02.018861+00:00",
-      "finished_at": "2026-09-13T03:28:02.350933+00:00"
+      "started_at": "2026-09-13T04:04:03.300730+00:00",
+      "finished_at": "2026-09-13T04:04:03.300986+00:00"
     },
     {
       "name": "topscorers:laliga",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:02.351728+00:00",
-      "finished_at": "2026-09-13T03:28:02.352260+00:00"
+      "started_at": "2026-09-13T04:04:03.301256+00:00",
+      "finished_at": "2026-09-13T04:04:03.301505+00:00"
     },
     {
       "name": "standings:seriea",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:02.352728+00:00",
-      "finished_at": "2026-09-13T03:28:02.958792+00:00"
+      "started_at": "2026-09-13T04:04:03.301753+00:00",
+      "finished_at": "2026-09-13T04:04:03.301992+00:00"
     },
     {
       "name": "standings_previous:seriea",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:02.959521+00:00",
-      "finished_at": "2026-09-13T03:28:03.175357+00:00"
+      "started_at": "2026-09-13T04:04:03.302238+00:00",
+      "finished_at": "2026-09-13T04:04:03.302481+00:00"
     },
     {
       "name": "topscorers:seriea",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:03.176034+00:00",
-      "finished_at": "2026-09-13T03:28:03.176542+00:00"
+      "started_at": "2026-09-13T04:04:03.302729+00:00",
+      "finished_at": "2026-09-13T04:04:03.302984+00:00"
     },
     {
       "name": "standings:bundesliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:03.177019+00:00",
-      "finished_at": "2026-09-13T03:28:03.913900+00:00"
+      "started_at": "2026-09-13T04:04:03.303234+00:00",
+      "finished_at": "2026-09-13T04:04:03.303512+00:00"
     },
     {
       "name": "standings_previous:bundesliga",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:03.914396+00:00",
-      "finished_at": "2026-09-13T03:28:04.096663+00:00"
+      "started_at": "2026-09-13T04:04:03.303769+00:00",
+      "finished_at": "2026-09-13T04:04:03.304078+00:00"
     },
     {
       "name": "topscorers:bundesliga",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:04.097317+00:00",
-      "finished_at": "2026-09-13T03:28:04.097732+00:00"
+      "started_at": "2026-09-13T04:04:03.304341+00:00",
+      "finished_at": "2026-09-13T04:04:03.304599+00:00"
     },
     {
       "name": "standings:ligue1",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:04.098098+00:00",
-      "finished_at": "2026-09-13T03:28:04.701461+00:00"
+      "started_at": "2026-09-13T04:04:03.304863+00:00",
+      "finished_at": "2026-09-13T04:04:03.305129+00:00"
     },
     {
       "name": "standings_previous:ligue1",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:04.702494+00:00",
-      "finished_at": "2026-09-13T03:28:04.963384+00:00"
+      "started_at": "2026-09-13T04:04:03.305394+00:00",
+      "finished_at": "2026-09-13T04:04:03.305655+00:00"
     },
     {
       "name": "topscorers:ligue1",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:04.964377+00:00",
-      "finished_at": "2026-09-13T03:28:04.965085+00:00"
+      "started_at": "2026-09-13T04:04:03.305934+00:00",
+      "finished_at": "2026-09-13T04:04:03.306217+00:00"
     },
     {
       "name": "standings:ucl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:04.965686+00:00",
-      "finished_at": "2026-09-13T03:28:05.768391+00:00"
+      "started_at": "2026-09-13T04:04:03.306502+00:00",
+      "finished_at": "2026-09-13T04:04:03.306773+00:00"
     },
     {
       "name": "standings_previous:ucl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:05.769062+00:00",
-      "finished_at": "2026-09-13T03:28:06.064247+00:00"
+      "started_at": "2026-09-13T04:04:03.307039+00:00",
+      "finished_at": "2026-09-13T04:04:03.307310+00:00"
     },
     {
       "name": "topscorers:ucl",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:06.065179+00:00",
-      "finished_at": "2026-09-13T03:28:06.065707+00:00"
+      "started_at": "2026-09-13T04:04:03.307586+00:00",
+      "finished_at": "2026-09-13T04:04:03.307867+00:00"
     },
     {
       "name": "standings:uel",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:06.066164+00:00",
-      "finished_at": "2026-09-13T03:28:06.720236+00:00"
+      "started_at": "2026-09-13T04:04:03.308141+00:00",
+      "finished_at": "2026-09-13T04:04:03.308423+00:00"
     },
     {
       "name": "standings_previous:uel",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:06.720791+00:00",
-      "finished_at": "2026-09-13T03:28:06.976046+00:00"
+      "started_at": "2026-09-13T04:04:03.308701+00:00",
+      "finished_at": "2026-09-13T04:04:03.308989+00:00"
     },
     {
       "name": "topscorers:uel",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:06.976546+00:00",
-      "finished_at": "2026-09-13T03:28:06.976914+00:00"
+      "started_at": "2026-09-13T04:04:03.309272+00:00",
+      "finished_at": "2026-09-13T04:04:03.309557+00:00"
     },
     {
       "name": "standings:uecl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:06.977252+00:00",
-      "finished_at": "2026-09-13T03:28:07.608591+00:00"
+      "started_at": "2026-09-13T04:04:03.309847+00:00",
+      "finished_at": "2026-09-13T04:04:03.310143+00:00"
     },
     {
       "name": "standings_previous:uecl",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:07.609191+00:00",
-      "finished_at": "2026-09-13T03:28:07.946179+00:00"
+      "started_at": "2026-09-13T04:04:03.310470+00:00",
+      "finished_at": "2026-09-13T04:04:03.310764+00:00"
     },
     {
       "name": "topscorers:uecl",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:07.946767+00:00",
-      "finished_at": "2026-09-13T03:28:07.947209+00:00"
+      "started_at": "2026-09-13T04:04:03.311055+00:00",
+      "finished_at": "2026-09-13T04:04:03.311358+00:00"
     },
     {
       "name": "standings:libertadores",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:07.947586+00:00",
-      "finished_at": "2026-09-13T03:28:08.594659+00:00"
+      "started_at": "2026-09-13T04:04:03.311672+00:00",
+      "finished_at": "2026-09-13T04:04:03.312031+00:00"
     },
     {
       "name": "standings_previous:libertadores",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:08.595304+00:00",
-      "finished_at": "2026-09-13T03:28:08.811896+00:00"
+      "started_at": "2026-09-13T04:04:03.312367+00:00",
+      "finished_at": "2026-09-13T04:04:03.312752+00:00"
     },
     {
       "name": "topscorers:libertadores",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:08.812475+00:00",
-      "finished_at": "2026-09-13T03:28:08.812865+00:00"
+      "started_at": "2026-09-13T04:04:03.313120+00:00",
+      "finished_at": "2026-09-13T04:04:03.313466+00:00"
     },
     {
       "name": "standings:sudamericana",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:08.813201+00:00",
-      "finished_at": "2026-09-13T03:28:09.462761+00:00"
+      "started_at": "2026-09-13T04:04:03.313791+00:00",
+      "finished_at": "2026-09-13T04:04:03.314223+00:00"
     },
     {
       "name": "standings_previous:sudamericana",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:09.463327+00:00",
-      "finished_at": "2026-09-13T03:28:09.672293+00:00"
+      "started_at": "2026-09-13T04:04:03.314641+00:00",
+      "finished_at": "2026-09-13T04:04:03.315010+00:00"
     },
     {
       "name": "topscorers:sudamericana",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:09.672905+00:00",
-      "finished_at": "2026-09-13T03:28:09.673330+00:00"
+      "started_at": "2026-09-13T04:04:03.315368+00:00",
+      "finished_at": "2026-09-13T04:04:03.315714+00:00"
     },
     {
       "name": "standings:brasileirao",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:09.673692+00:00",
-      "finished_at": "2026-09-13T03:28:10.451362+00:00"
+      "started_at": "2026-09-13T04:04:03.316051+00:00",
+      "finished_at": "2026-09-13T04:04:03.316391+00:00"
     },
     {
       "name": "standings_previous:brasileirao",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:10.452026+00:00",
-      "finished_at": "2026-09-13T03:28:10.669301+00:00"
+      "started_at": "2026-09-13T04:04:03.316725+00:00",
+      "finished_at": "2026-09-13T04:04:03.317082+00:00"
     },
     {
       "name": "topscorers:brasileirao",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:10.670056+00:00",
-      "finished_at": "2026-09-13T03:28:10.670644+00:00"
+      "started_at": "2026-09-13T04:04:03.317422+00:00",
+      "finished_at": "2026-09-13T04:04:03.317758+00:00"
     },
     {
       "name": "standings:argentina",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:10.671166+00:00",
-      "finished_at": "2026-09-13T03:28:11.744115+00:00"
+      "started_at": "2026-09-13T04:04:03.318090+00:00",
+      "finished_at": "2026-09-13T04:04:03.318472+00:00"
     },
     {
       "name": "standings_previous:argentina",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:11.744656+00:00",
-      "finished_at": "2026-09-13T03:28:11.972017+00:00"
+      "started_at": "2026-09-13T04:04:03.318818+00:00",
+      "finished_at": "2026-09-13T04:04:03.319173+00:00"
     },
     {
       "name": "topscorers:argentina",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:11.972730+00:00",
-      "finished_at": "2026-09-13T03:28:11.973249+00:00"
+      "started_at": "2026-09-13T04:04:03.319516+00:00",
+      "finished_at": "2026-09-13T04:04:03.319858+00:00"
     },
     {
       "name": "odds",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:28:11.973714+00:00",
-      "finished_at": "2026-09-13T03:28:12.867392+00:00"
+      "started_at": "2026-09-13T04:04:03.320215+00:00",
+      "finished_at": "2026-09-13T04:04:03.326612+00:00"
     },
     {
       "name": "club_recent",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:28:12.870003+00:00",
-      "finished_at": "2026-09-13T03:29:11.853567+00:00"
+      "started_at": "2026-09-13T04:04:03.327152+00:00",
+      "finished_at": "2026-09-13T04:04:48.258106+00:00"
+    },
+    {
+      "name": "club_form",
+      "state": "ok",
+      "required": false,
+      "started_at": "2026-09-13T04:04:48.259205+00:00",
+      "finished_at": "2026-09-13T04:06:56.926727+00:00"
     },
     {
       "name": "fc_players",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:29:11.854667+00:00",
-      "finished_at": "2026-09-13T03:29:12.835648+00:00"
+      "started_at": "2026-09-13T04:06:56.927693+00:00",
+      "finished_at": "2026-09-13T04:06:58.539586+00:00"
     },
     {
       "name": "price_ticks",
       "state": "partial",
       "required": false,
-      "started_at": "2026-09-13T03:29:12.840005+00:00",
+      "started_at": "2026-09-13T04:06:58.543527+00:00",
       "reason": "incomplete_result",
-      "finished_at": "2026-09-13T03:29:30.521409+00:00"
+      "finished_at": "2026-09-13T04:07:14.536418+00:00"
     },
     {
       "name": "club_priors",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:29:30.522192+00:00",
-      "finished_at": "2026-09-13T03:33:25.122847+00:00"
+      "started_at": "2026-09-13T04:07:14.537792+00:00",
+      "finished_at": "2026-09-13T04:10:42.160885+00:00"
     },
     {
       "name": "clubelo_quality",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:33:25.123706+00:00",
-      "finished_at": "2026-09-13T03:33:25.407792+00:00"
+      "started_at": "2026-09-13T04:10:42.161455+00:00",
+      "finished_at": "2026-09-13T04:10:42.432722+00:00"
     },
     {
       "name": "param_select",
       "state": "ok",
       "required": true,
-      "started_at": "2026-09-13T03:33:25.408447+00:00",
-      "finished_at": "2026-09-13T03:36:45.772451+00:00"
+      "started_at": "2026-09-13T04:10:42.433253+00:00",
+      "finished_at": "2026-09-13T04:13:59.553527+00:00"
     },
     {
       "name": "clubelo_histories",
       "state": "ok",
       "required": false,
-      "started_at": "2026-09-13T03:36:45.773136+00:00",
-      "finished_at": "2026-09-13T03:36:45.774299+00:00"
+      "started_at": "2026-09-13T04:13:59.554188+00:00",
+      "finished_at": "2026-09-13T04:13:59.555163+00:00"
     },
     {
       "name": "daily_models",
       "state": "running",
       "required": false,
-      "started_at": "2026-09-13T03:36:45.774764+00:00"
+      "started_at": "2026-09-13T04:13:59.555838+00:00"
     }
   ],
   "last_success_input": 5431,
-  "last_activity_at": "2026-09-13T03:36:45.774766+00:00"
+  "last_activity_at": "2026-09-13T04:13:59.555840+00:00"
 }

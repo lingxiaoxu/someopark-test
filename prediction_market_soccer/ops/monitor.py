@@ -118,7 +118,7 @@ def _age_hours(iso: str | None) -> float | None:
         return None
     try:
         return (datetime.now(timezone.utc) - datetime.fromisoformat(iso)).total_seconds() / 3600
-    except ValueError:
+    except (TypeError, ValueError):     # a non-string or a naive/garbled stamp is "unknown", not a crash
         return None
 
 

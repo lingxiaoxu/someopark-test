@@ -569,8 +569,13 @@ def _sync_live_until_fresh(api, conn, si):
             break
         still = {f[0] for f in _stale_live_fixtures(conn)}
         blips = [b for b in blips if b[0] in still]
-    now_stale = {fx[0] for fx in _stale_live_fixtures(conn)}
-    _save_stale_history({fid: history.get(fid, 0) + 1 for fid in now_stale})
+    # Count only fixtures that were stale when the retry decision was made AND are still
+    # stale now. A fixture that first turns stale midway through this cycle was never
+    # offered a retry, so it must not be booked as "seen before" and denied its one blip
+    # retry next cycle; a blip that healed drops out and resets to zero.
+    seen_at_decision = {fx[0] for fx in stale}
+    still_stale = {fx[0] for fx in _stale_live_fixtures(conn)} & seen_at_decision
+    _save_stale_history({fid: history.get(fid, 0) + 1 for fid in still_stale})
     return synced
 
 
@@ -629,7 +634,11 @@ def _paper_and_demo(conn, inplay, issues):
             result = kalshi_mirror.run_cycle(conn, inplay or {'matches': []})
             if result.get('errors'):
                 issues.append({'code':'demo_execution_unavailable'})
-            if result.get('actions') or result.get('errors'):
+            # Skips are the normal matchday outcome (an empty demo book, no demo market),
+            # and on 2026-09-12 all 25 pre legs were skipped while this gate printed nothing
+            # at all — "0 action(s)" and "the mirror is broken" looked identical. Report a
+            # cycle that had anything to say, not only one that traded or failed.
+            if result.get('actions') or result.get('errors') or result.get('skips'):
                 print(f"[live_refresh] kalshi mirror: {result.get('summary')}")
     except Exception as exc:
         issues.append({'code':'demo_execution_failed'})
@@ -773,8 +782,15 @@ def refresh_once(conn=None) -> dict:
     # m.advance, so without this the live toggle was inert (the standalone advance JSON
     # has no frontend fetcher). Must run before the write below.
     inplay_export.graft_advance(inplay, inplay_adv)
-    _write_both("inplay_live.json", inplay)
-    _append_review_log(inplay, synced)
+    # The published payload carries the same quote receipts as the review log, and the same
+    # venue boilerplate inside them: neither the frontend nor the server reads
+    # selected_quotes or binding.identity_evidence (grepped across src/ and server/), yet on
+    # a busy evening it shipped megabytes of it to the browser. Strip once and reuse for both
+    # sinks; `inplay` itself is left intact for any later reader in this cycle.
+    published = {**inplay, "matches": [{**m, "opportunities": _lean_opportunities(m.get("opportunities", []))}
+                                       for m in inplay.get("matches", [])]}
+    _write_both("inplay_live.json", published)
+    _append_review_log(published, synced)
     if _due("milestone_marks.json", _TAIL_INTERVAL_S):
         try:
             # Fill PRE/FT (+ any milestone missed live) for settled matches from venue
