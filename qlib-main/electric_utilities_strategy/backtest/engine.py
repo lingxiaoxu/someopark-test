@@ -641,7 +641,15 @@ class AEUSBacktest:
         bench_series = bench_prices.iloc[:, 0] if bench_prices is not None else None
         portfolio_value = initial_capital
         current_weights = pd.Series(0.0, index=etf_tickers)
-        prev_scores = pd.Series(0.0, index=etf_tickers)
+        # 2026-09-13 C11:改用空哨兵,与其余四个调用点一致。
+        # rebalance.py:129-130 的契约明写 `if prev_scores.empty: return
+        # new_weights.copy()` —— 首次调仓不做 z 阈值过滤。播 0.0 会让首次调仓把
+        # |z| < threshold 的票全删掉(每次 WF fold 的第一次调仓都如此),而
+        # SectorRotationDailySignal(实盘)、AISS/AEUS 两个 DailySignal 与
+        # backtest/trade_audit.py 四处都用空哨兵。_run_native 是唯一异议者。
+        # 论据是"回测与实盘不一致",不是 git 史:0.0 seed 自 41e1222 未变,
+        # 空哨兵是 bd22f63 为修 qlib 侧 13 个月空仓 bug 加的,当时没碰 engine.py。
+        prev_scores = pd.Series(dtype=float)
 
         all_dates = prices.loc[bt_start:bt_end].index
         equity_curve = pd.Series(index=all_dates, dtype=float)

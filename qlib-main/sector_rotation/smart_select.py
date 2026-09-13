@@ -53,7 +53,22 @@ def _load_json(path: Path) -> dict:
     return {}
 
 
-def _load_equity_cache() -> Optional[pd.DataFrame]:
+def _load_equity_cache(signal_version: Optional[str] = None) -> Optional[pd.DataFrame]:
+    """按 signal_version 取净值缓存;未指定或该版本文件不存在时回退到无版本副本。
+
+    2026-09-13 C-ver:daily_backtest.sh 依次跑 V1 与 V2 的 --select,两趟都会写
+    `batch_equity_cache.parquet` 这个**无版本副本**,于是它最终等于**最后跑的那个
+    版本**(实测 2026-09-11:无版本副本的 sha 与 _v2 逐位相同,而生产实盘是 V1)。
+    smart_select 一直读这个副本,等于拿 V2 的净值曲线去给 V1 的候选打分。
+    带版本的 _v1/_v2 文件本来就在,只是没人读。
+    """
+    if signal_version:
+        pv = _CACHE_DIR / f"batch_equity_cache_{signal_version}.parquet"
+        if pv.exists():
+            return pd.read_parquet(pv)
+        log.warning("smart_select: 缺 %s,回退到无版本 batch_equity_cache.parquet"
+                    " —— 该副本等于最后跑的那个版本,可能不是 %s",
+                    pv.name, signal_version)
     p = _CACHE_DIR / "batch_equity_cache.parquet"
     if p.exists():
         return pd.read_parquet(p)
@@ -191,6 +206,7 @@ def mcps_realtime_scores(
     signal_date: date,
     macro_df: pd.DataFrame,
     top_candidates: List[dict],
+    signal_version: Optional[str] = None,
 ) -> Dict[str, float]:
     """
     Compute MCPS scores for top candidates using cached equity curves.
@@ -198,7 +214,7 @@ def mcps_realtime_scores(
     Returns {param_name: mcps_score}.
     """
     scores = {}
-    eq_cache = _load_equity_cache()
+    eq_cache = _load_equity_cache(signal_version)
     if eq_cache is None:
         log.warning("[SMART SELECT] No equity cache — skipping MCPS scoring")
         return scores
@@ -573,6 +589,7 @@ def macro_weight_tilt(
     macro_df: pd.DataFrame,
     signal_date: date,
     max_tilt: float = 0.05,
+    signal_version: Optional[str] = None,
 ) -> pd.Series:
     """
     Use autoencoder latent-space similarity to tilt sector weights.
@@ -614,7 +631,7 @@ def macro_weight_tilt(
         # Use macro_df index as proxy for available dates
         # Compute weighted mean returns for each sector
         # (We need prices but they're not passed here — use the equity cache sectors)
-        eq_cache = _load_equity_cache()
+        eq_cache = _load_equity_cache(signal_version)
         if eq_cache is None:
             return target_weights
 
@@ -698,7 +715,7 @@ def smart_param_select(
     macro_pos = macro_positioning(signal_date, macro_df)
 
     # ── Layer 2: MCPS real-time scoring ──
-    mcps_scores = mcps_realtime_scores(signal_date, macro_df, top_cands)
+    mcps_scores = mcps_realtime_scores(signal_date, macro_df, top_cands, signal_version=current_version)
     if not mcps_scores:
         log.info("[SMART SELECT] MCPS scoring unavailable — keeping current param set")
         result["macro_positioning"] = macro_pos
@@ -709,7 +726,7 @@ def smart_param_select(
 
     # ── Composite scoring ──
     cluster_oos = _load_json(_CACHE_DIR / "param_oos_by_macro_cluster.json")
-    eq_cache = _load_equity_cache()
+    eq_cache = _load_equity_cache(current_version)
     comp_scores = composite_score(
         mcps_scores=mcps_scores,
         cluster_oos=cluster_oos,
