@@ -391,7 +391,17 @@ else:
                 if float(adj_weights.get(ticker, 0.0)) > 1e-6
             }
 
-            if not target_weight_position:
+            # C5.b 后续修(2026-09-13,对抗复核 3f542e09 时发现):此处原为无条件早退。
+            # C5.b 的止损可以把**全部**腿清零,而 order_generator 正是唯一会为
+            # "持仓中但不在 target 里"的票发卖单的地方 —— exchange 的
+            # generate_order_for_target_amount_position 对 current ∪ target 求并集,
+            # 缺省 target_amount=0 就是全卖。跳过它 = 账面 weights_records 记全平、
+            # qlib Account 实际一股没卖,净值继续跟着未平掉的崩盘持仓走。
+            # (改前该分支不可达:optimize_weights 恒归一到 sum=1,apply_risk_controls
+            #  的现金上限封在 0.90,VIX 分档最高 0.35 —— 都到不了全 0。是止损清零
+            #  第一次把它打通。)OrderGenWOInteract 只对 target=None 短路,空 dict
+            # 会正常走完并生成清仓单,所以直接放行即可。
+            if not target_weight_position and not current_temp.get_stock_list():
                 return TradeDecisionWO([], self)
 
             # Use WeightStrategyBase's order generator to convert weights → Orders
