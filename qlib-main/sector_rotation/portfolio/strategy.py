@@ -115,6 +115,7 @@ else:
             signal_version: str = "v1",
             risk_overlay_cfg: Optional[dict] = None,
             bench_series: Optional[pd.Series] = None,
+            stop_loss_cfg: Optional[dict] = None,
             **kwargs,
         ) -> None:
             # WeightStrategyBase requires `signal` kwarg; we pass None because
@@ -144,6 +145,31 @@ else:
             self._bench_series = bench_series
             self._bench_pit = bench_series.shift(1) if bench_series is not None else None
 
+            # ── C5.b(2026-09-13): 风控三件套搬进 qlib 路径 ────────────────
+            # 此前 config.yaml 里 stop_loss.enabled / vix_progressive_derisk.enabled
+            # 都是 true,但只有 _run_native 读它们;qlib 路径(AISS/AEUS 的生产实际
+            # 执行路径)完全不读 → 配置说开着、实际从没生效。实测 66 个参数组里
+            # qlib 侧 stop_loss 事件 0/66,而 native 侧 7-15 次;紧急调仓 qlib 180 次
+            # vs native 99 次(差额全部来自缺失的 VIX 滞回冷却,不是执行模型差异)。
+            self._stop_loss_cfg = dict(stop_loss_cfg or {})
+            self._stop_loss_fn = None
+            self._position_tracker = None
+            if self._stop_loss_cfg.get("enabled", False):
+                try:
+                    from .stop_loss import apply_position_stops, SectorPositionTracker
+                    self._stop_loss_fn = apply_position_stops
+                    self._position_tracker = SectorPositionTracker()
+                except ImportError:
+                    logger.warning("[C5.b] stop_loss 模块导入失败,本次禁用止损")
+                    self._stop_loss_cfg = {"enabled": False}
+
+            # VIX 紧急调仓的滞回冷却状态(镜像 _run_native 的 emergency_active)
+            self._vix_threshold: float = float(
+                reb_cfg.get("emergency_derisk_vix", 35.0))
+            self._vix_recovery: float = self._vix_threshold * float(
+                reb_cfg.get("vix_recovery_factor", 0.80))
+            self._emergency_active: bool = False
+
             # Mutable per-step state
             self._current_weights: pd.Series = pd.Series(dtype=float)
             self._prev_scores: pd.Series = pd.Series(dtype=float)
@@ -156,6 +182,9 @@ else:
             self.costs_records: List[dict] = []
             self.risk_flags_records: List[dict] = []
             self.regime_records: Dict[pd.Timestamp, str] = {}
+            # C5.d: 与 _run_native 同名的两个输出通道,供 _assemble_result 回收
+            self.stop_loss_events: List = []
+            self.position_states_history: Dict[pd.Timestamp, dict] = {}
 
             # ETF ticker universe
             self._etf_tickers: List[str] = list(etf_prices.columns)
@@ -180,16 +209,32 @@ else:
             # Update daily portfolio returns for risk-control lookback
             self._update_daily_return(trade_start_time)
 
+            # ── C5.b: VIX 紧急调仓的滞回冷却(镜像 _run_native L635-648)────
+            # 先解除:VIX 回落到 recovery 线以下才清 active。缺这一步时
+            # should_emergency_rebalance 会在整段高波动里天天返回 True,
+            # 实测把紧急调仓从 99 次放大到 180 次。
+            if (self._emergency_active and "vix" in self._macro_pit.columns
+                    and trade_start_time in self._macro_pit.index):
+                _v = self._macro_pit.loc[trade_start_time, "vix"]
+                _cur_vix = self._vix_threshold if pd.isna(_v) else float(_v)
+                if _cur_vix < self._vix_recovery:
+                    self._emergency_active = False
+
+            macro_slice = (self._macro_pit.loc[:trade_start_time]
+                           if trade_start_time in self._macro_pit.index
+                           else self._macro_pit)
+            trigger_emergency = should_emergency_rebalance(
+                macro_slice,
+                self._current_weights,
+                vix_threshold=self._vix_threshold,
+                emergency_active=self._emergency_active,
+            )
+            if trigger_emergency:
+                self._emergency_active = True
+
             # Non-rebalance day: return empty decision immediately
-            if trade_start_time not in self._rebalance_dates:
-                # Check emergency re-balance condition
-                macro_slice = self._macro_pit.loc[:trade_start_time] if trade_start_time in self._macro_pit.index else self._macro_pit
-                if not should_emergency_rebalance(
-                    macro_slice,
-                    self._current_weights,
-                    vix_threshold=self._reb_cfg.get("emergency_derisk_vix", 35.0),
-                ):
-                    return TradeDecisionWO([], self)
+            if trade_start_time not in self._rebalance_dates and not trigger_emergency:
+                return TradeDecisionWO([], self)
 
             # Get latest composite scores up to this date
             avail_scores = self._composite_signals.loc[:trade_start_time].dropna(how="all")
@@ -220,7 +265,11 @@ else:
             filtered_weights = cap_turnover(filtered_weights, self._current_weights, max_to)
 
             # Risk controls (vol scaling, VIX emergency, DD circuit)
-            macro_slice = self._macro_pit.loc[:trade_start_time] if trade_start_time in self._macro_pit.index else self._macro_pit
+            # macro_slice 已在上方冷却判定处算好,复用同一片(同一 PIT 视图)
+            # C5.b: VIX 渐进降险分档 —— config 里 enabled=true,此前只有 native 读
+            _prog_cfg = self._risk_cfg.get("vix_progressive_derisk", {})
+            _prog_tiers = (_prog_cfg.get("tiers", [])
+                           if _prog_cfg.get("enabled", False) else [])
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=filtered_weights,
                 # 空序列 .iloc[-252:] 仍是空序列,无需三元(2026-09-13:原先写成
@@ -236,11 +285,12 @@ else:
                 vol_target=self._risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                 vol_scaling_enabled=self._risk_cfg.get("vol_scaling", {}).get("enabled", True),
                 vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
-                vix_emergency_threshold=self._reb_cfg.get("emergency_derisk_vix", 35.0),
+                vix_emergency_threshold=self._vix_threshold,
                 emergency_cash_pct=self._reb_cfg.get("emergency_cash_pct", 0.50),
                 dd_halve_threshold=self._risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
                 dd_release_rebound=self._risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                 max_weight=self._port_cfg.get("constraints", {}).get("max_weight", 0.40),
+                vix_progressive_tiers=_prog_tiers,
             )
 
             # ── Risk Overlay (v2) — 2026-07-22 接线,镜像 native 路径的同名块
@@ -262,6 +312,27 @@ else:
                 except Exception as _oe:
                     logger.warning(f"risk_overlay (v2) failed non-fatally: {_oe}")
 
+            # ── C5.b: 持仓追踪 + 止损(镜像 _run_native L730-748)──────────
+            # PIT: 追踪器与止损只可见 ≤dt-1 收盘,故用 _etf_prices_pit / _bench_pit。
+            if self._position_tracker is not None:
+                self._position_tracker.update(
+                    trade_start_time, adj_weights, self._etf_prices_pit)
+
+            if self._stop_loss_cfg.get("enabled", False):
+                _stopped, _sl_events, _halve = self._stop_loss_fn(
+                    current_weights=adj_weights,
+                    position_tracker=self._position_tracker,
+                    sector_prices=self._etf_prices_pit,
+                    spy_prices=self._bench_pit,
+                    rebalance_date=trade_start_time,
+                    config=self._stop_loss_cfg,
+                )
+                if _halve:
+                    adj_weights = adj_weights * 0.5
+                for _st in _stopped:
+                    adj_weights[_st] = 0.0
+                self.stop_loss_events.extend(_sl_events)
+
             # Transaction costs tracking
             portfolio_value = current_temp.calculate_value() if current_temp.get_stock_list() else self._equity_level
             cost_result = compute_transaction_costs(self._current_weights, adj_weights, portfolio_value)
@@ -274,6 +345,14 @@ else:
             # Update mutable state
             self._current_weights = adj_weights.copy()
             self._prev_scores = latest_scores.copy()
+
+            # C5.b: 止损可能已把某些腿清零,用最终权重再刷一次追踪器状态,
+            # 供下一日止损决策(与 _run_native L777-782 同序)。
+            if self._position_tracker is not None:
+                self._position_tracker.update(
+                    trade_start_time, self._current_weights, self._etf_prices_pit)
+                self.position_states_history[trade_start_time] = \
+                    self._position_tracker.get_all_states()
 
             # Convert target weights (cash_pct portion = 0-weight positions)
             target_weight_position = {

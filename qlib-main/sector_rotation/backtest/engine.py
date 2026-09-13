@@ -459,6 +459,10 @@ class SectorRotationBacktest:
             risk_overlay_cfg=self.cfg.get("risk_overlay", {}),
             bench_series=(bench_prices.iloc[:, 0] if bench_prices is not None
                           and len(bench_prices.columns) > 0 else None),
+            # C5.b(2026-09-13): 止损配置接线。config.yaml 的 stop_loss.enabled
+            # 一直是 true,但只有 _run_native 读;qlib 路径此前不传 → 止损在生产
+            # 路径上是死配置(实测 66 参数组 0 次触发,native 同期 7-15 次)。
+            stop_loss_cfg=self.cfg.get("stop_loss", {}),
             common_infra=common_infra,
         )
 
@@ -531,6 +535,9 @@ class SectorRotationBacktest:
             scores_records=strategy.scores_records,
             costs_records=strategy.costs_records,
             risk_flags_records=strategy.risk_flags_records,
+            # C5.d: 与 native 同名的两个输出通道
+            stop_loss_events=strategy.stop_loss_events or None,
+            position_states_history=strategy.position_states_history or None,
             regime_monthly=regime_monthly,
             bt_start=bt_start,
             bt_end=bt_end,
