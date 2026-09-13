@@ -246,7 +246,11 @@ else:
             _E, _phi, _z = self._exposure_mult(trade_start_time, filtered_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=filtered_weights,
-                portfolio_returns=(_rl := self._risk_lookback(trade_start_time)).iloc[-252:] if len(_rl) > 0 else pd.Series(dtype=float),
+                # 空序列 .iloc[-252:] 仍是空序列,无需三元(2026-09-13:原先写成
+                # 海象 `(_rl := ...) if len(_rl) > 0 else ...`,而 Python 先求条件
+                # 再求真分支,_rl 在条件里尚未绑定 → UnboundLocalError,被
+                # _run_qlib 的 try/except 吞成静默降级到 native)。
+                portfolio_returns=self._risk_lookback(trade_start_time).iloc[-252:],
                 macro=macro_slice,
                 # DD-circuit fix(2026-07-21): qlib 路径此前恒传 None → 断路器死代码。
                 # 用本策略自维护的日收益累乘重建全期净值(归一化;DD/rebound 尺度无关),
@@ -362,7 +366,11 @@ else:
             _E, _phi, _z = self._exposure_mult(trade_start_time, proposed_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=proposed_weights,
-                portfolio_returns=(_rl := self._risk_lookback(trade_start_time)).iloc[-252:] if len(_rl) > 0 else pd.Series(dtype=float),
+                # 空序列 .iloc[-252:] 仍是空序列,无需三元(2026-09-13:原先写成
+                # 海象 `(_rl := ...) if len(_rl) > 0 else ...`,而 Python 先求条件
+                # 再求真分支,_rl 在条件里尚未绑定 → UnboundLocalError,被
+                # _run_qlib 的 try/except 吞成静默降级到 native)。
+                portfolio_returns=self._risk_lookback(trade_start_time).iloc[-252:],
                 macro=macro_slice,
                 equity_curve=((1.0 + self._risk_lookback(trade_start_time)).cumprod()
                               if len(self._risk_lookback(trade_start_time)) > 0 else None),
