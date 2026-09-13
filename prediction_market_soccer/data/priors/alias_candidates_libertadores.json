@@ -1,0 +1,69 @@
+{
+  "as_of": "2026-09-12T06:00:39.192670+00:00",
+  "complete": true,
+  "approved": false,
+  "candidates": [
+    {
+      "kalshi_name": "Platense advances",
+      "code": "PLA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Platense"
+      ]
+    },
+    {
+      "kalshi_name": "Fluminense advances",
+      "code": "FLU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Fluminense"
+      ]
+    },
+    {
+      "kalshi_name": "LDU Quito advances",
+      "code": "LDU",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "LDU de Quito"
+      ]
+    },
+    {
+      "kalshi_name": "Palmeiras advances",
+      "code": "PAL",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Palmeiras"
+      ]
+    },
+    {
+      "kalshi_name": "Corinthians advances",
+      "code": "COR",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Corinthians"
+      ]
+    },
+    {
+      "kalshi_name": "Estudiantes La Plata advances",
+      "code": "ELP",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Estudiantes L.P."
+      ]
+    },
+    {
+      "kalshi_name": "Flamengo advances",
+      "code": "FLA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Flamengo"
+      ]
+    },
+    {
+      "kalshi_name": "Ind. del Valle advances",
+      "code": "IND",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    }
+  ]
+}

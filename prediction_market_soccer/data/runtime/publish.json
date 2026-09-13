@@ -1,18 +1,17 @@
 {
   "name": "publish",
-  "state": "ok",
-  "last_attempt_at": "2026-09-12T02:24:05.723575+00:00",
-  "last_success_at": "2026-09-12T03:04:36.936359+00:00",
-  "finished_at": "2026-09-12T03:04:36.936359+00:00",
+  "state": "running",
+  "last_attempt_at": "2026-09-13T02:15:29.290937+00:00",
+  "last_success_at": "2026-09-13T02:00:24.576889+00:00",
+  "finished_at": null,
   "steps": [
     {
       "name": "refresh_build_deploy",
-      "state": "ok",
+      "state": "running",
       "required": true,
-      "started_at": "2026-09-12T02:24:05.727334+00:00",
-      "finished_at": "2026-09-12T03:04:36.935356+00:00"
+      "started_at": "2026-09-13T02:15:29.294197+00:00"
     }
   ],
   "last_success_input": null,
-  "last_activity_at": "2026-09-12T03:04:36.936362+00:00"
+  "last_activity_at": "2026-09-13T02:15:29.294201+00:00"
 }

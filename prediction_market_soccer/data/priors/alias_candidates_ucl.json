@@ -1,0 +1,21 @@
+{
+  "as_of": "2026-09-12T06:00:35.842747+00:00",
+  "complete": true,
+  "approved": false,
+  "candidates": [
+    {
+      "kalshi_name": "Porto",
+      "code": "FCP",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "FC Porto"
+      ]
+    },
+    {
+      "kalshi_name": "LASK",
+      "code": "ASK",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    }
+  ]
+}

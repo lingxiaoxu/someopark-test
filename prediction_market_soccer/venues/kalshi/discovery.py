@@ -30,6 +30,52 @@ from prediction_market_soccer.util.quote_evidence import make_receipt, quote_fro
 from prediction_market_soccer.venues.base import OrderBook
 from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData
 
+
+# Kalshi's own league string per competition, harvested from live milestone details on
+# 2026-09-13 (one open event per series). The schedule proof compared it to comp.name
+# verbatim, so SEVEN of twelve competitions could never pass it — any fixture whose
+# Kalshi ticker date differs from ours falls back to that proof and was rejected as
+# schedule_metadata_unverified, losing Kalshi quotes entirely (2 fixtures on
+# 2026-09-12; the shape recurs on Brasileirão/Argentine evening kickoffs, whose tickers
+# are dated to the following day, e.g. KXBRASILEIROGAME-26SEP13BOTRBB for 09-12T23:30Z).
+# ucl/uecl are deliberately absent: no milestone was returned for the events sampled, so
+# their venue string is unverified and they keep exact-match behaviour (fail closed).
+_VENUE_LEAGUE_NAMES = {
+    'epl': 'EPL',
+    'uel': 'Europa League',
+    'libertadores': 'CONMEBOL Libertadores',
+    'sudamericana': 'CONMEBOL Sudamericana',
+    'brasileirao': 'Brasileiro Serie A',
+    'argentina': 'Argentina Primera Division',
+}
+
+
+def _fold_league(value):
+    """Case/space/diacritic-insensitive form, or None for a non-string."""
+    import unicodedata
+    if not isinstance(value, str):
+        return None
+    decomposed = unicodedata.normalize('NFKD', value)
+    return ' '.join(''.join(c for c in decomposed if not unicodedata.combining(c)).casefold().split())
+
+
+def _same_league(venue_name, comp_name, comp_key=None):
+    """True when the venue's league string denotes this competition.
+
+    Accepts the registry name or the venue's own verified spelling for that competition,
+    each compared case/space/diacritic-insensitively. Nothing else in the schedule proof
+    is relaxed: teams, kickoff instant, event ticker, status and cancellation flags are
+    all still asserted, so a genuinely different competition is still rejected.
+    """
+    venue = _fold_league(venue_name)
+    if venue is None:
+        return False
+    accepted = {_fold_league(comp_name)}
+    alias = _VENUE_LEAGUE_NAMES.get(comp_key)
+    if alias:
+        accepted.add(_fold_league(alias))
+    return venue in accepted - {None}
+
 PROD_PUBLIC = "https://api.elections.kalshi.com/trade-api/v2"
 
 
@@ -316,7 +362,7 @@ class KalshiDiscovery:
             if (not milestone.get('id') or milestone.get('category') != 'Sports'
                     or milestone.get('type') not in ('soccer_game', 'soccer_tournament_multi_leg')
                     or self._pair_from_title(milestone.get('title')) != frozenset((home_id, away_id))
-                    or detail.get('league') != self.comp.name
+                    or not _same_league(detail.get('league'), self.comp.name, self.comp.key)
                     or detail.get('main_game_event_ticker') != entry['event']
                     or dt(milestone['start_date']) != dt(f['kickoff_ts'])
                     or dt(milestone['last_updated_ts']) > received

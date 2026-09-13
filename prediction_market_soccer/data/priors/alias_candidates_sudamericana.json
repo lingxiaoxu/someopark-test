@@ -1,0 +1,63 @@
+{
+  "as_of": "2026-09-12T06:00:39.767831+00:00",
+  "complete": true,
+  "approved": false,
+  "candidates": [
+    {
+      "kalshi_name": "Vasco da Gama advances",
+      "code": "VDG",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Vasco DA Gama"
+      ]
+    },
+    {
+      "kalshi_name": "Independ. Santa Fe advances",
+      "code": "SFE",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    },
+    {
+      "kalshi_name": "Sao Paulo advances",
+      "code": "SPA",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Sao Paulo"
+      ]
+    },
+    {
+      "kalshi_name": "Boca Juniors advances",
+      "code": "BOC",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Boca Juniors"
+      ]
+    },
+    {
+      "kalshi_name": "Atletico Mineiro advances",
+      "code": "ATL",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    },
+    {
+      "kalshi_name": "Santos advances",
+      "code": "SAN",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    },
+    {
+      "kalshi_name": "Montevideo City advances",
+      "code": "TOR",
+      "reason": "unreviewed_identity",
+      "suggestions": []
+    },
+    {
+      "kalshi_name": "Cienciano advances",
+      "code": "CIE",
+      "reason": "unreviewed_identity",
+      "suggestions": [
+        "Cienciano"
+      ]
+    }
+  ]
+}

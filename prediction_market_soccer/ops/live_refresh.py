@@ -187,6 +187,31 @@ def _finalize_pending(api, conn, si) -> int:
             print(f"[live_refresh] closing stats skipped: {e}")
     return n
 
+def _lean_opportunities(opportunities):
+    """Signal detail verbatim, minus the one field that is venue boilerplate.
+
+    Each selected quote carries a receipt whose binding embeds identity_evidence — the
+    venue's ENTIRE event payload, including every market definition under that event.
+    It is constant for the match and rewritten every tick for every opportunity: on
+    2026-09-12 it was 98% of a 246 MB file whose predecessors were ~1 MB. Everything
+    that records what we saw and decided stays: all 31 other receipt fields (prices,
+    sizes, capture clocks, raw_hash) and binding_id, which is the hash OVER the binding
+    including identity_evidence, so the dropped blob stays verifiable and is re-fetchable
+    from the venue by event_ticker.
+
+    NOT reducible to a bare receipt_id: quote_receipt_v1 only stores receipts from the
+    execution path, so 38% of the ids seen here (495 of 1,300 on 2026-09-12) exist
+    nowhere else — this log is their only copy.
+    """
+    from copy import deepcopy
+    lean = deepcopy(opportunities)
+    for opportunity in lean:
+        for quote in (opportunity.get("selected_quotes") or []):
+            binding = ((quote.get("receipt") or {}).get("binding") or {})
+            binding.pop("identity_evidence", None)
+    return lean
+
+
 def _append_review_log(inplay: dict, synced: int) -> None:
     """Append a per-match, per-cycle record to a JSONL post-match review log.
 
@@ -211,7 +236,7 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             "xg": mch.get("xg"),                       # intra-game data fed in
             "model": mch.get("model"),                 # live 3-way + over + remaining goals
             "n_opportunities": len(mch.get("opportunities", [])),
-            "opportunities": mch.get("opportunities", []),  # full signal detail (kind/side/venue/edge/reason)
+            "opportunities": _lean_opportunities(mch.get("opportunities", [])),  # full signal detail minus venue boilerplate
             "hedge": mch.get("hedge"),                  # protect-leading hedge suggestion (None when N/A)
             "api_synced": synced,
         }, ensure_ascii=False))
@@ -244,7 +269,7 @@ def _append_review_log_advance(inplay_adv: dict, synced: int) -> None:
             "xg": mch.get("xg"),
             "advance_model": mch.get("model"),          # live 2-way advance (home/away) + reg/et/pens
             "n_opportunities": len(mch.get("opportunities", [])),
-            "opportunities": mch.get("opportunities", []),
+            "opportunities": _lean_opportunities(mch.get("opportunities", [])),
             "hedge_advance": mch.get("hedge_advance"),
             "api_synced": synced,
         }, ensure_ascii=False))
@@ -489,17 +514,51 @@ def _stale_live_fixtures(conn):
     return stale
 
 
+_STALE_STATE = CONFIG.paths.data / "runtime" / "stale_live_state.json"
+
+
+def _stale_history():
+    """{fixture_id: consecutive cycles seen stale}. Persisted because live_refresh runs
+    as a fresh process per cycle (launchd StartInterval), so in-memory state is lost."""
+    try:
+        return {int(k): int(v) for k, v in json.loads(_STALE_STATE.read_text()).items()}
+    except Exception:  # noqa: BLE001 — a missing/corrupt file simply means "no history"
+        return {}
+
+
+def _save_stale_history(history):
+    try:
+        _STALE_STATE.parent.mkdir(parents=True, exist_ok=True)
+        _STALE_STATE.write_text(json.dumps({str(k): v for k, v in history.items()}))
+    except Exception as e:  # noqa: BLE001 — diagnostics must never break the cycle
+        print(f"[live_refresh] stale-state write skipped: {e}")
+
+
 def _sync_live_until_fresh(api, conn, si):
-    """sync_live once, then retry (with backoff) while any in-play minute is stale vs the wall
-    clock — catching a transient blip that returned/failed to old data. Returns the synced count.
-    Extra API calls are incurred ONLY when a lag is detected (normal cycles retry zero times)."""
+    """sync_live once, then retry ONLY for a fixture that was fresh last cycle and is
+    stale now — a transient blip an immediate re-pull can actually fix.
+
+    A fixture stale for consecutive cycles is an UPSTREAM clock lag (API-Football ran
+    6-7 minutes behind all of 2026-09-12): re-pulling cannot fix it, and each retry
+    re-syncs every live fixture across four endpoints. That burned 2,878 retries in a
+    day and stretched cycles from ~90s to 5-7 min (peak 11m22s), which in turn pushed
+    in-play decisions past the 120s observation-freshness guard and cost pre legs their
+    staging window. Nothing about data freshness is relaxed here — only futile calls
+    are dropped; a persistently stale fixture still reports its lag once per cycle.
+    """
     gov = getattr(si, "_governor", {}) or {}
     synced = si.sync_live(api, conn, **gov)
+    history = _stale_history()
+    stale = _stale_live_fixtures(conn)
+    blips = [fx for fx in stale if history.get(fx[0], 0) == 0]
+    for fx in stale:
+        if fx[0] not in {b[0] for b in blips}:
+            print(f"[live_refresh] persistent upstream lag (fixture {fx[0]}: data {fx[1]}' "
+                  f"vs ~{fx[2]}' expected, {history.get(fx[0], 0) + 1} cycles) — no retry")
     for attempt in range(1, _SYNC_STALE_RETRIES + 1):
-        stale = _stale_live_fixtures(conn)
-        if not stale:
+        if not blips:
             break
-        fx = stale[0]
+        fx = blips[0]
         print(f"[live_refresh] stale minute (fixture {fx[0]}: data {fx[1]}' vs ~{fx[2]}' expected) "
               f"— re-syncing {attempt}/{_SYNC_STALE_RETRIES}")
         time.sleep(min(2.0, 0.5 * (2 ** (attempt - 1))))    # 0.5s → 1s → 2s backoff
@@ -508,6 +567,10 @@ def _sync_live_until_fresh(api, conn, si):
         except Exception as e:
             print(f"[live_refresh] retry sync failed ({e}); keeping best-effort state")
             break
+        still = {f[0] for f in _stale_live_fixtures(conn)}
+        blips = [b for b in blips if b[0] in still]
+    now_stale = {fx[0] for fx in _stale_live_fixtures(conn)}
+    _save_stale_history({fid: history.get(fid, 0) + 1 for fid in now_stale})
     return synced
 
 

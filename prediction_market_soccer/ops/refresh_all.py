@@ -64,6 +64,14 @@ def _refresh(conn, args, status):
     param_report = status.step("param_select", lambda: param_select_club.run(test_days=14, dry_run=True))
     from prediction_market_soccer.ingest import clubelo_web
     status.step("clubelo_histories", clubelo_web.refresh_histories, required=False)
+    # Build today's observed daily model per competition NOW, so a matchday decision
+    # never has to build it inline. build_observed_strength freezes the first eligible
+    # model per UTC day; when it is built at decision time its available_at lands AFTER
+    # that decision's cutoff, costing one ObservedInputsUnavailable round — and on
+    # 2026-09-12 the retry arrived after the ≤20-min PRE staging window had closed,
+    # losing every pre leg of the 13:00 and 13:30 waves. Paying that round here, in the
+    # quiet pre-match refresh, leaves matchday decisions a plain cache read.
+    status.step("daily_models", lambda: _prewarm_daily_models(conn), required=False)
 
     # Forward paper/demo decisions retain their own observed inputs. Historical
     # replay caches are research artifacts and no longer gate daily publication.
@@ -138,6 +146,38 @@ from prediction_market_soccer.ops.maintenance_gate import writer
 
 
 @writer
+def _prewarm_daily_models(conn) -> dict:
+    """First-eligible daily model for every competition with a fixture still to play today."""
+    from datetime import datetime, timedelta, timezone
+    from prediction_market_soccer.config.leagues import active
+    from prediction_market_soccer.model.observed_strength import (
+        build_observed_strength, ObservedInputsUnavailable)
+    now = datetime.now(timezone.utc)
+    horizon = (now + timedelta(hours=24)).isoformat()
+    due = {r[0] for r in conn.execute(
+        "SELECT DISTINCT league_id FROM fixture WHERE status_short='NS' AND kickoff_ts BETWEEN ? AND ?",
+        (now.isoformat(), horizon))}
+    out = {}
+    for comp in active():
+        if comp.api_football_id not in due:
+            continue
+        for attempt in (1, 2):     # the first build of the UTC day always costs one round
+            try:
+                model = build_observed_strength(conn, datetime.now(timezone.utc).isoformat(), comp.key)
+                connection = getattr(model, "observed_connection", None)
+                if connection is not None:
+                    connection.close()
+                out[comp.key] = f"ok(attempt {attempt})"
+                break
+            except ObservedInputsUnavailable as exc:
+                out[comp.key] = f"unavailable: {str(exc)[:60]}"
+            except Exception as exc:  # noqa: BLE001 — one competition must not stop the rest
+                out[comp.key] = f"{type(exc).__name__}: {str(exc)[:60]}"
+                break
+    print(f"[daily_models] {out}")
+    return out
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ingest", action="store_true")
