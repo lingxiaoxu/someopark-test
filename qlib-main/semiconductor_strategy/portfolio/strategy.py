@@ -246,13 +246,13 @@ else:
             _E, _phi, _z = self._exposure_mult(trade_start_time, filtered_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=filtered_weights,
-                portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
+                portfolio_returns=(_rl := self._risk_lookback(trade_start_time)).iloc[-252:] if len(_rl) > 0 else pd.Series(dtype=float),
                 macro=macro_slice,
                 # DD-circuit fix(2026-07-21): qlib 路径此前恒传 None → 断路器死代码。
                 # 用本策略自维护的日收益累乘重建全期净值(归一化;DD/rebound 尺度无关),
                 # 与 _run_native 的 ec_so_far 语义一致(近似差异:未含费用拖累)。
-                equity_curve=((1.0 + self._portfolio_daily_returns).cumprod()
-                              if len(self._portfolio_daily_returns) > 0 else None),
+                equity_curve=((1.0 + self._risk_lookback(trade_start_time)).cumprod()
+                              if len(self._risk_lookback(trade_start_time)) > 0 else None),
                 vol_target=self._risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                 vol_scaling_enabled=self._risk_cfg.get("vol_scaling", {}).get("enabled", True),
                 vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
@@ -279,8 +279,8 @@ else:
                         target_weights=adj_weights,
                         sector_prices=self._etf_prices_pit,
                         benchmark_prices=self._bench_pit,
-                        portfolio_equity=((1.0 + self._portfolio_daily_returns).cumprod()
-                                          if len(self._portfolio_daily_returns) > 0 else None),
+                        portfolio_equity=((1.0 + self._risk_lookback(trade_start_time)).cumprod()
+                                          if len(self._risk_lookback(trade_start_time)) > 0 else None),
                         vix=self._macro_pit.get("vix") if "vix" in self._macro_pit.columns else None,
                         rebalance_date=trade_start_time,
                         config=self._risk_overlay_cfg,
@@ -362,10 +362,10 @@ else:
             _E, _phi, _z = self._exposure_mult(trade_start_time, proposed_weights)
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=proposed_weights,
-                portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
+                portfolio_returns=(_rl := self._risk_lookback(trade_start_time)).iloc[-252:] if len(_rl) > 0 else pd.Series(dtype=float),
                 macro=macro_slice,
-                equity_curve=((1.0 + self._portfolio_daily_returns).cumprod()
-                              if len(self._portfolio_daily_returns) > 0 else None),
+                equity_curve=((1.0 + self._risk_lookback(trade_start_time)).cumprod()
+                              if len(self._risk_lookback(trade_start_time)) > 0 else None),
                 # fallback 路径先天不读 cfg(既有设计,其余参数保持函数默认);
                 # I-1/I-3 仅接开关类参数保证参数集在此路径同语义
                 vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
@@ -403,6 +403,24 @@ else:
                 top_n=self._port_cfg.get("top_n_sectors", 4),
                 min_score=self._port_cfg.get("min_zscore", -0.5),
             )
+
+        def _risk_lookback(self, dt: pd.Timestamp) -> pd.Series:
+            """风控回看窗:**严格早于 dt** 的自维护日收益。
+
+            2026-09-13 PIT 修正。`_update_daily_return(trade_start_time)` 在
+            generate_trade_decision 顶部就把**当日**收益追加进 _portfolio_daily_returns
+            (必须在那里追加,否则非调仓日的提前 return 会让序列漏日),于是决策时
+            波动窗与回撤曲线都含当日收益 —— 99/99 次调仓都如此,而 native 是在调仓块
+            **之后**才 append(engine.py 的 daily_returns_list.append,0/99)。
+            这是 qlib 侧单方面的 look-ahead:同一个 generate_trade_decision 刻意把
+            _macro_pit / _etf_prices_pit / _bench_pit 都 .shift(1) 做了 PIT 处理
+            (2026-07-28 审计),唯独漏了这一条。
+
+            截窗口而不是移动 append 点:append 必须留在顶部(见上),而 _equity_level
+            是**估值**、本就该含当日,不能一起截。
+            """
+            s = self._portfolio_daily_returns
+            return s.loc[s.index < dt] if len(s) else s
 
         def _update_daily_return(self, dt: pd.Timestamp) -> None:
             """Approximate portfolio daily return from current weights and ETF returns."""
