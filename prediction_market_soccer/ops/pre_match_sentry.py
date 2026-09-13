@@ -126,9 +126,33 @@ def pit_cache(*, check: bool) -> dict:
 
 
 def disk() -> dict:
+    """Free space plus the fill RATE, because the floor alone warns far too late.
+
+    A single epoch activation writes a ~12.5 GB pre-change DB snapshot, and the three of
+    2026-09-13 consumed 38 GB overnight; the 2026-09-11 outage began the same way and the
+    10 GB floor would not have fired until an in-flight paper entry had already been lost.
+    """
     free = shutil.disk_usage(MOD / "data").free
     state = "ALERT" if free < 2 * 2**30 else ("WARN" if free < 10 * 2**30 else "ok")
-    return {"state": state, "free_gb": round(free / 2**30, 1)}
+    out = {"state": state, "free_gb": round(free / 2**30, 1)}
+    mark = STAMPS / "disk_free.json"
+    try:
+        prior = json.loads(mark.read_text())
+        hours = (_now() - datetime.fromisoformat(prior["at"])).total_seconds() / 3600
+        if hours >= 0.5:
+            rate = (prior["free_gb"] - out["free_gb"]) / hours
+            out["gb_per_hour"] = round(rate, 2)
+            # Anything above this empties a healthy 150 GB margin inside a day.
+            if rate > 5 and out["state"] == "ok":
+                out["state"] = "WARN"
+                out["reason"] = f"free space falling {rate:.1f} GB/h"
+            mark.write_text(json.dumps({"at": _now().isoformat(), "free_gb": out["free_gb"]}))
+    except (OSError, ValueError, KeyError):
+        pass
+    if not mark.exists():
+        STAMPS.mkdir(parents=True, exist_ok=True)
+        mark.write_text(json.dumps({"at": _now().isoformat(), "free_gb": out["free_gb"]}))
+    return out
 
 
 def poly_global_reference(*, check: bool) -> dict:

@@ -41,6 +41,42 @@ def _conn():
     return store.init_db()
 
 
+def _reap_superseded_recovery_dbs() -> None:
+    """Drop the pre-change DB snapshots of epochs this one has superseded.
+
+    version_workflow.activate_forward_method backs the whole database up to
+    <durable>/recovery/database-before.db before it mutates anything, so an interrupted
+    activation can be reconciled. Once its journal reads `verified` the operation is
+    finished and that copy is dead weight — at 12.5 GB a piece, the three epochs of
+    2026-09-13 alone ate 38 GB of free space in one night (the 2026-09-11 outage began
+    exactly this way). The newest one is kept as the immediate rollback point; journals
+    and manifests are never touched, and nothing outside epoch_* directories is examined.
+    """
+    root = MOD / "data" / "book_candidates"
+    if not root.exists():
+        return
+    candidates = []
+    for directory in sorted(root.glob("epoch_*")):
+        backup = directory / "recovery" / "database-before.db"
+        journal = directory / "recovery" / "method-journal.json"
+        if not backup.exists() or not journal.exists():
+            continue
+        try:
+            if json.loads(journal.read_text()).get("phase") != "verified":
+                continue          # an unfinished operation still needs its recovery point
+        except (OSError, ValueError):
+            continue
+        candidates.append((backup.stat().st_mtime, backup))
+    for _, backup in sorted(candidates)[:-1]:     # keep the newest verified snapshot
+        size = backup.stat().st_size
+        try:
+            backup.unlink()
+            print(f"  回收 {backup.parent.parent.name}/recovery/database-before.db "
+                  f"({size / 2**30:.1f}G,journal 已 verified)")
+        except OSError as exc:
+            print(f"  回收跳过 {backup}: {exc}")
+
+
 def precheck(args) -> None:
     from prediction_market_soccer.util import forward_methods as FM
     from prediction_market_soccer.util.frozen_strategy_store import _require_no_open_positions, active_version
@@ -112,6 +148,7 @@ def verify(args) -> None:
     assert ep["manifest"]["compatible_epoch_ids"], "兼容集为空——旧前向入场会掉出 PIT 校准"
     print("epoch:", ep["epoch_id"][:12], ep["method_version"], "| runtime 一致 ✓ | 兼容",
           len(ep["manifest"]["compatible_epoch_ids"]), "个旧 epoch | 绑定", ep["book_version_id"][:12])
+    _reap_superseded_recovery_dbs()
     from prediction_market_soccer.ops import paper_trading
     out = paper_trading.run_cycle(conn)
     assert not out.get("errors"), out
