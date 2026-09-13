@@ -523,8 +523,29 @@ class AISSBacktest:
 
         # equity_curve: daily account total value from Position mark-to-market
         equity_curve: pd.Series = portfolio_df["account"].rename("portfolio")
+
+        # 2026-09-13 C-fee:qlib 的 Account 没有"基金管理费"这个概念,而 native 逐日做
+        # `portfolio_value = portfolio_value * (1 + port_ret) - fee_drag`
+        # (compute_daily_fee_drag 只在 _run_native 被调用)。两条路径因此差一个年费:
+        # SSRS 9bps/yr ≈ 7.7 年 0.69%。这里施加**数学等价**的逐日复利扣减:
+        # 每天乘 (1 - fee/10000/252),n 天后即 (1-d)^n,与逐日从 NAV 扣同构。
+        # 费率走与 native 同一个 key 解析(annual_fee_bps 优先、etf_fee_bps 兜底),
+        # 所以 AISS/AEUS 的 0bps 在两条路径上都是 0,SSRS 的 9bps 在两边都收。
+        _fee_bps = float(self.cost_cfg.get(
+            "annual_fee_bps", self.cost_cfg.get("etf_fee_bps", 9)) or 0.0)
+        if _fee_bps and len(equity_curve) > 1:
+            _d = 1.0 - (_fee_bps / 10000.0) / 252.0
+            _factor = pd.Series(_d, index=equity_curve.index).cumprod()
+            _factor.iloc[0] = 1.0            # 首日尚未持有一整天,不扣
+            equity_curve = (equity_curve * _factor).rename("portfolio")
+            daily_returns_adj = True
+        else:
+            daily_returns_adj = False
         # daily_returns: portfolio return rate per day (pre-cost gross return)
         daily_returns: pd.Series = portfolio_df["return"].rename("portfolio")
+        if daily_returns_adj:
+            # 日收益与扣费后的净值曲线保持自洽(否则 Sharpe 用的是税前、净值是税后)
+            daily_returns = ((1.0 + daily_returns) * _d - 1.0).rename("portfolio")
 
         # qlib Account turnover (portfolio_df["total_turnover"] / "turnover")
         qlib_turnover: Optional[pd.DataFrame] = None
