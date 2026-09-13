@@ -403,13 +403,23 @@ class SectorRotationBacktest:
         from .qlib_adapter import SectorETFExchange, SectorSimulatorExecutor
         from ..portfolio.strategy import SectorRotationWeightStrategy
 
+        from .costs import get_one_way_cost_bps
+        _tier_bps = {t: float(get_one_way_cost_bps(t)) for t in etf_prices.columns}
+        _scalar_bps = float(self.cost_cfg.get("transaction_cost_bps", 5))
+
         # --- 1. Exchange: inject yfinance prices into qlib Exchange ---
         exchange = SectorETFExchange(
             prices=etf_prices.loc[bt_start:bt_end],
-            open_cost=self.cost_cfg.get("transaction_cost_bps", 5) / 10000,
-            close_cost=self.cost_cfg.get("transaction_cost_bps", 5) / 10000,
+            # 2026-09-13:不再用隐式默认。三家 config 都**没有**定义
+            # `transaction_cost_bps`,原来的 .get(..., 5) 让 qlib 侧永远收平坦 5bps,
+            # 而 native 按票收 tier 的 3/5/8 —— 两条路径的"开成本"是两个不同实验。
+            # 现在把 native 自己的分档表(costs.get_one_way_cost_bps,唯一真值源)
+            # 传给 Exchange 逐单计费,标量只作为表外票的兜底。
+            open_cost=_scalar_bps / 10000,
+            close_cost=_scalar_bps / 10000,
             min_cost=0.0,
             impact_cost=self.cost_cfg.get("impact_cost_bps", 0) / 10000,
+            tier_cost_bps=_tier_bps,
         )
 
         # --- 2. Account + Position: qlib portfolio state tracker ---
@@ -657,9 +667,18 @@ class SectorRotationBacktest:
                         equity_curve=ec_so_far if len(ec_so_far) > 0 else None,
                         vol_target=self.risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                         vol_scaling_enabled=self.risk_cfg.get("vol_scaling", {}).get("enabled", True),
+                        # 2026-09-13:这两个 kwarg 此前**只有 SSRS 的 native 路径不转发**。
+                        # 四个调用点里另外三个都转发:本策略的 qlib 侧
+                        # (portfolio/strategy.py)、实盘 SectorRotationDailySignal,
+                        # 以及 AISS/AEUS 两个双胞胎的 engine.py。方向由多数裁定。
+                        # 后果是 semivol_* 一族在 qlib-vs-native 对比里凭空多出
+                        # 10-12pp 的差(semivol_070 −15.51 / 085 −18.48 / 100 −10.18),
+                        # 那不是执行模型差异,是 native 少读了两个配置项。
+                        vol_downside_only=self.risk_cfg.get("vol_scaling", {}).get("downside_only", False),
                         vix_emergency_threshold=self.reb_cfg.get("emergency_derisk_vix", 35.0),
                         emergency_cash_pct=self.reb_cfg.get("emergency_cash_pct", 0.50),
                         dd_halve_threshold=self.risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
+                        dd_release_rebound=self.risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
                         vix_progressive_tiers=prog_tiers,
                     )
@@ -744,7 +763,13 @@ class SectorRotationBacktest:
 
             fee_drag = compute_daily_fee_drag(
                 current_weights, portfolio_value,
-                annual_fee_bps=self.cost_cfg.get("etf_fee_bps", 9)
+                # 2026-09-13 key 错配修复:AISS/AEUS 的 config 声明的是
+                # `annual_fee_bps: 0`("个股无基金管理费"),而这里读的是
+                # `etf_fee_bps` —— key 永不匹配,默认 9 生效,两家的 native 路径
+                # 一直在违背明示意图每年收 9bps。SSRS 声明的确是 etf_fee_bps: 9,
+                # 故两个 key 都要认,优先取配置里真实存在的那个。
+                annual_fee_bps=self.cost_cfg.get(
+                    "annual_fee_bps", self.cost_cfg.get("etf_fee_bps", 9))
             )
             portfolio_value = portfolio_value * (1 + port_ret) - fee_drag
             equity_level = portfolio_value

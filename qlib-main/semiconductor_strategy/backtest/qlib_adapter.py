@@ -146,11 +146,21 @@ class SectorETFExchange(Exchange):
         close_cost: float = 0.0005,
         min_cost: float = 0.0,
         impact_cost: float = 0.0,
+        tier_cost_bps: Optional[dict] = None,
         **kwargs,
     ) -> None:
         # Pre-build the quote_df BEFORE super().__init__() calls get_quote_from_qlib()
         self._prepared_quote_df = _prices_to_quote_df(prices)
         self._etf_tickers = list(prices.columns)
+        # 2026-09-13 成本口径对齐:native 按票收 tier_1/2/3 的 3/5/8 bps,而 qlib 的
+        # Exchange 只接受**标量** open_cost/close_cost —— 更糟的是三家 config 都**没有**
+        # 定义 `transaction_cost_bps`,于是 engine 里的 .get(..., 5) 默认值生效,两条路径
+        # 的"开成本"一直是两个不同的实验(这极可能就是同一批参数集在三次独立测量里
+        # 给出三组不同残差的原因)。
+        # 这里存下按票的分档表,并在 _calc_trade_info_by_order 里逐单切换,从而复用
+        # qlib 的全部撮合逻辑而拿到与 native 相同的分档成本。空表 → 回退到标量,
+        # 行为与修改前完全一致。
+        self._tier_cost_bps: dict = dict(tier_cost_bps or {})
 
         super().__init__(
             # Pass a list to avoid Exchange calling D.instruments(codes)
@@ -164,6 +174,24 @@ class SectorETFExchange(Exchange):
             impact_cost=impact_cost,
             **kwargs,
         )
+
+    def _calc_trade_info_by_order(self, order, position, dealt_order_amount):
+        """按票分档成本:临时切换标量费率后复用 qlib 原逻辑,再恢复。
+
+        qlib 的成本在 `_calc_trade_info_by_order` 内部读 self.open_cost /
+        self.close_cost 两个**实例属性**,没有 per-order 钩子。逐单切换是最小侵入的
+        对齐方式:撮合、限价、冲击成本、min_cost 全部仍走 qlib 原实现。
+        表里没有的票沿用构造时的标量,故未配置分档时是严格 no-op。
+        """
+        bps = self._tier_cost_bps.get(getattr(order, "stock_id", None))
+        if bps is None:
+            return super()._calc_trade_info_by_order(order, position, dealt_order_amount)
+        _o, _c = self.open_cost, self.close_cost
+        self.open_cost = self.close_cost = float(bps) / 10000.0
+        try:
+            return super()._calc_trade_info_by_order(order, position, dealt_order_amount)
+        finally:
+            self.open_cost, self.close_cost = _o, _c
 
     def get_quote_from_qlib(self) -> None:
         """
