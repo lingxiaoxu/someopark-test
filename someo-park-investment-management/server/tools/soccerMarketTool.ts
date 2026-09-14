@@ -63,18 +63,41 @@ async function _load(file: string): Promise<any> {
 
 /** Resolve whatever the model passed as `league` — an id, an English/中文/日本語 name,
  *  or nothing — to a league id. Returns null for "all competitions". */
+/** Lower-case and strip diacritics, so "Primera División" and "Brasileirão" match the
+ *  unaccented spellings people and venues actually type. CJK is unaffected by NFD. */
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+}
+
 function resolveLeague(q?: string | null): string | null {
   if (!q) return null
-  const s = q.toString().trim().toLowerCase()
+  const s = fold(q.toString())
   if (SOCCER_LEAGUE_IDS.includes(s)) return s
   for (const lg of SOCCER_LEAGUES) {
-    if (lg.label.toLowerCase() === s) return lg.id
-    if (lg.aliases.some((a) => a.toLowerCase() === s)) return lg.id
+    if (fold(lg.label) === s) return lg.id
+    if (lg.aliases.some((a) => fold(a) === s)) return lg.id
   }
+  // Substring fallback, longest alias wins, and a tie between two competitions answers
+  // nothing. 'primera division' (laliga) and 'serie a' (seriea) are names other countries
+  // use too, so first-match-wins silently returned La Liga for "Argentina Primera Division"
+  // and Italy's Serie A for "Brazilian Serie A" — wrong tables, wrong odds, no error shown.
+  // Longest-match lets the specific spelling win; refusing a tie turns a wrong answer into
+  // an explicit "Unknown competition", which the caller can see.
+  let best: { id: string; len: number } | null = null
+  let ambiguous = false
   for (const lg of SOCCER_LEAGUES) {
-    if (lg.aliases.some((a) => s.includes(a.toLowerCase()))) return lg.id
+    for (const alias of lg.aliases) {
+      const a = fold(alias)
+      if (!a || !s.includes(a)) continue
+      if (!best || a.length > best.len) {
+        best = { id: lg.id, len: a.length }
+        ambiguous = false
+      } else if (a.length === best.len && lg.id !== best.id) {
+        ambiguous = true
+      }
+    }
   }
-  return null
+  return best && !ambiguous ? best.id : null
 }
 
 /** Club query → the set of club_ids it can mean (a query may be ambiguous, e.g. two

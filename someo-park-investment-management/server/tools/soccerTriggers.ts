@@ -92,12 +92,15 @@ export const SOCCER_LEAGUES: SoccerLeagueDef[] = [
     '南美杯', '南美俱乐部杯',
     'スダメリカーナ', 'スダメリカーナ杯'] },
   { id: 'brasileirao', label: 'Brasileirão Série A', kind: 'league', aliases: [
-    'brasileirao', 'brasileirao serie a', 'campeonato brasileiro', 'brazilian league',
+    'brasileirao', 'brasileirão', 'brasileirao serie a', 'brasileiro serie a', 'brazilian serie a',
+    'brazil serie a', 'serie a brazil', 'campeonato brasileiro', 'brazilian league',
     '巴甲', '巴西甲级联赛', '巴西足球甲级联赛',
     'ブラジル全国選手権', 'ブラジルリーグ',
     'championnat bresilien'] },
   { id: 'argentina', label: 'Liga Profesional Argentina', kind: 'league_playoffs', aliases: [
     'liga profesional', 'liga profesional argentina', 'lpf', 'argentine league',
+    'argentina primera division', 'argentine primera division', 'primera division argentina',
+    'primera division de argentina', 'argentina primera',
     '阿甲', '阿根廷甲级联赛', '阿根廷足球甲级联赛',
     'アルゼンチン1部', 'アルゼンチンリーグ',
     'championnat argentin'] },
