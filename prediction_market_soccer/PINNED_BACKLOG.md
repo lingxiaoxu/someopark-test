@@ -43,3 +43,10 @@ PIT 校准。
 ### 已查明（无需 pin 改动）
 - **demo 镜像 0 单 = 两道真护栏,非缺陷**（2026-09-12 全量复核）：25 条 pre 腿中 20 条死于 Kalshi **DEMO 盘口 NO 边全空** → `yes_ask=None` → `no_executable_ask`（164/164 demo 回执无一有 ask；同一票号同一时刻 public 盘有 0.26/0.25）；另 5 条巴甲死于 demo **只挂了大小球事件、没有三向 GAME 事件**。问题在于两者都完全静默 —— 已在 v12 补上可观测性。demo 深度 0–4 档 vs 生产 19–55 档,是场馆特性。
 - **原第 7 项 `persist_model_run`**：世界杯版遗留。`git log -S` 证明该调用点在俱乐部分叉时就没带过来（从未存在），函数签名是 `champion=`/`golden_boot=` 淘汰赛形状,俱乐部无对应物;`model_run`/`sim_champion`/`sim_golden_boot` 三表零行零读者。修法 = 让 `model_freshness` 改读 payload 里的 `meta.run_ts`（`ops/monitor.py`,**非 pin**,已随本轮上线）。检查从永久 ALERT 变 OK，且与 `model_export_freshness`（文件 mtime）语义分离。
+| 2026-09-14 02:47 | `c7d53f8739ea` v14 | PIT 修订膨胀止血:`project_results_to_club_recent` 每次刷新给全部 nt_recent 行盖新 `fetched_at`,内容哈希去重因此失效,一张 12,473 行的表积了 640 万条修订(同一 entity 588 条,去掉该字段后只有 1 个不同 payload)。改为实质字段未变则不 upsert;验收:连跑两次投影 0 upsert / 0 新增修订 |
+| 2026-09-14 03:30 | `2cff73ad5cbb` v15 | 投影缓存 `project_asof_cached`:决策恢复当日模型时不再重建世界视图,按 manifest_id 落盘(41MB/份)并在「输入集可证未变」时复用。判据=写缓存时的 availability 最大 rowid + 一次有界扫描(0.00s);高水位线在投影前采样;manifest 比对保留且仍执行。生产实测恢复 150s → **2.4s**。附带修掉并发 `immutable observation identity` 逸出 |
+
+### 非 pin 但同期上线
+- **两个索引**(2026-09-14 02:1x,无需 epoch):`avail_cover_v1(revision_id, available_at)` 消掉关联表回查、`source_rowid_v1(source)` 消掉 ORDER BY 临时排序。克隆实测 `project_asof` 201.7s→96.7s,内容逐表相同、manifest 逐位相同。
+- **epoch 恢复点自动回收**(`ops/forward_epoch_update.py`):每次 activate 前的整库备份(12-16G/次)在 journal=verified 后由下一次 verify 回收,只留最新一份。两轮共释放 28.5G。
+- **磁盘下降速率告警**(`ops/pre_match_sentry.py`):>5 GB/h 即 WARN,补上 10G 地板响应太迟的问题。
