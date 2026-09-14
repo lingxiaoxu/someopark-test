@@ -45,7 +45,10 @@ def test_venue_early_close_blocks_exit_despite_recent_cached_quote(setup,monkeyp
 def test_metadata_failure_isolated_and_not_eligible_for_cycle(setup,monkeypatch):
     conn,md=setup
     def market(ticker,**kw):
-        assert kw=={'tries':1,'timeout':5}
+        # 2026-09-14: the held-leg budget moved 1/5 -> 2/8 (one hiccup used to drop a
+        # leg for a whole 900s cycle, and the 1200s valuation bar then reported the
+        # entire book unpriceable). What this test guards is metadata-failure isolation.
+        assert kw=={'tries':kalshi_md._HELD_TRIES,'timeout':kalshi_md._HELD_TIMEOUT}
         if ticker=='T1': raise OSError('metadata unavailable')
         return {'ticker':ticker,'status':'active','close_time':(NOW+timedelta(hours=1)).isoformat()}
     monkeypatch.setattr(md,'market',market)

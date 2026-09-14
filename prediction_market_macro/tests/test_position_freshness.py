@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from prediction_market_macro.ingest.store import init_db
+from prediction_market_macro.ingest import kalshi_md
 from prediction_market_macro.ingest.kalshi_md import KalshiMD, OB
 from prediction_market_macro.jobs import tick
 from prediction_market_macro.ops import exits, pnl, predict_all, trading_kalshi
@@ -116,7 +117,12 @@ def test_targeted_snapshot_isolates_failure_and_preserves_old_timestamp(conn,mon
     out=md.snapshot_tickers(["T1","T2","T2"])
     assert out["refreshed"]==["T2"] and "T1" in out["failed"]
     assert conn.execute("SELECT max(ts) FROM quotes WHERE ticker='T1'").fetchone()[0]==old
-    assert len(calls)==2 and all(k["tries"]==1 and k["timeout"]==5 for _,k in calls)
+    # 2026-09-14: held-leg requests went tries=1/timeout=5 -> 2/8. One hiccup used to
+    # drop a leg for a whole 900s cycle, and with a 1200s valuation bar that made the
+    # panel report the entire book unpriceable. What this test guards is isolation and
+    # the untouched old timestamp, not the specific retry budget.
+    assert len(calls)==2 and all(k["tries"]==kalshi_md._HELD_TRIES
+                                 and k["timeout"]==kalshi_md._HELD_TIMEOUT for _,k in calls)
 
 
 def test_position_cycle_fetches_before_predict_exit_mark_and_export(conn,monkeypatch):

@@ -11,6 +11,14 @@ from prediction_market_macro.ops import trading_kalshi
 from prediction_market_macro.strategy import arb
 from prediction_market_macro.strategy.decision import Decision, GATES
 
+# A FIXED clock, injected into EVERY module that reads one. This file went red on
+# 2026-09-13 because it froze only `decide_all`'s clock while `ledger.entry_window`
+# kept reading the real one: with close_time = NOW + 1 day, once the real clock
+# passed 09-12 the not-frozen cases failed on too_close_to_close instead of on the
+# freeze rule they exist to test. Anchoring NOW to the real clock is NOT the fix —
+# the 601s case has one second of margin past the 600s boundary, so the ~80s a full
+# suite run takes between import and execution pushes it inside the window. Freeze
+# every clock instead, and the boundary cases stay exact.
 NOW = datetime(2026, 9, 11, 12, 25, tzinfo=timezone.utc)
 SPEC = REGISTRY["KXCPI"]
 
@@ -25,6 +33,8 @@ def book(tmp_path, monkeypatch):
             return NOW
 
     monkeypatch.setattr(da, "datetime", Clock)
+    from prediction_market_macro.ops import ledger as _ledger
+    monkeypatch.setattr(_ledger, "datetime", Clock)
     monkeypatch.setattr(da, "REGISTRY", {SPEC.ticker: SPEC})
     monkeypatch.setattr(da, "_warn_unevaluated_series_gate", lambda _: None)
     monkeypatch.setattr(trading_kalshi, "on_fill", lambda *args: None)

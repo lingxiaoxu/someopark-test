@@ -270,6 +270,12 @@ def linger(conn, s, md, max_sec: float | None = None, poll_sec: float = 20.0,
                     last_snap[series] = _time.monotonic()
                 except Exception as e:                           # noqa: BLE001
                     print(f"  ! densified snapshot {series}: {e}")
+                    try:
+                        from prediction_market_macro.ops.refresh import _alert
+                        _alert(conn, "warn", "quotes",
+                               f"densified_snapshot_failed:{series}:{str(e)[:120]}")
+                    except Exception:                            # noqa: BLE001
+                        pass
                 finally:
                     _drain_freezes(conn)
         now = datetime.now(timezone.utc)
@@ -420,7 +426,24 @@ def _maintain_positions(conn, s, md) -> None:
     tickers = {f["ticker"] for p in positions for f in p["fills"]}
     result = md.snapshot_tickers(tickers, before_each=lambda: _drain_freezes(conn))
     if result["failed"]:
+        # 2026-09-14: one transient miss cost a whole cycle. This pass runs every 900s
+        # while the valuation bar is 1200s, so a leg that fails here is already past the
+        # bar when the next pass arrives — and the panel then reports the WHOLE book as
+        # unpriceable (observed: KXNATGASW-26SEP1817-T2.699 at 1586s beside three healthy
+        # legs). Retry just the failures, immediately, once.
+        retry = md.snapshot_tickers(sorted(result["failed"]),
+                                    before_each=lambda: _drain_freezes(conn))
+        result = {"refreshed": sorted(set(result["refreshed"]) | set(retry["refreshed"])),
+                  "failed": retry["failed"]}
+    if result["failed"]:
+        # Failures were print-only: the panel said "unpriceable" and nothing said why.
         print(f"  ! held quote refresh: {result['failed']}")
+        try:
+            from prediction_market_macro.ops.refresh import _alert
+            _alert(conn, "warn", "quotes",
+                   "held_leg_requote_failed:" + ",".join(sorted(result["failed"]))[:180])
+        except Exception as exc:                                 # noqa: BLE001
+            print(f"  ! held quote alert: {exc}")
     _drain_freezes(conn)
     try:
         predict_all.run(conn, s, only_series={p["series"] for p in positions},

@@ -71,6 +71,9 @@ def _get(path: str, params: dict | None = None, tries: int = 9, timeout: float =
     raise RuntimeError(f"kalshi GET failed {url}: {last}")
 
 
+_HELD_TRIES, _HELD_TIMEOUT = 2, 8
+
+
 class KalshiMD:
     def __init__(self, conn=None, spacing: float = 0.18):
         self._conn = conn
@@ -160,6 +163,10 @@ class KalshiMD:
             ask_depth=no_bid[1] if no_bid else 0.0,
         )
 
+    # 2026-09-14: tries=1/timeout=5 meant one network hiccup dropped a held leg for a
+    # whole round, and with the tick firing every 900s against a 1200s freshness bar a
+    # single miss made the leg stale and the WHOLE portfolio unpriceable on the panel.
+    # These are the marks the user sees; one cheap retry is worth more than the 5s saved.
     def snapshot_tickers(self, tickers, *, before_each=None) -> dict:
         """Refresh held market status and quotes, with per-leg failure isolation.
 
@@ -172,7 +179,7 @@ class KalshiMD:
             if before_each is not None:
                 before_each()
             try:
-                market = self.market(ticker, tries=1, timeout=5)
+                market = self.market(ticker, tries=_HELD_TRIES, timeout=_HELD_TIMEOUT)
                 # An exchange can close early. Persist its latest state before
                 # asking for an orderbook, including when that request then fails.
                 self._conn.execute(
@@ -184,7 +191,7 @@ class KalshiMD:
                     raise ValueError("held market is not active or has closed")
                 if before_each is not None:
                     before_each()
-                ob = self.orderbook(ticker, tries=1, timeout=5)
+                ob = self.orderbook(ticker, tries=_HELD_TRIES, timeout=_HELD_TIMEOUT)
                 ts = datetime.now(timezone.utc).isoformat()
                 self._conn.execute(
                     "INSERT OR REPLACE INTO quotes(ts,ticker,yes_bid,yes_ask,bid_depth,ask_depth)"
