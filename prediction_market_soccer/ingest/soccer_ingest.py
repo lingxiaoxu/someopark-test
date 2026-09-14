@@ -496,6 +496,20 @@ def project_results_to_club_recent(conn) -> int:
             (r["home_api_id"], r["away_api_id"], r["home_goals"], r["away_goals"], 1),
             (r["away_api_id"], r["home_api_id"], r["away_goals"], r["home_goals"], 0),
         ):
+            # A finished result never changes, but this projection re-ran on every refresh
+            # and stamped a fresh fetched_at, so store.upsert staged a NEW PIT revision for
+            # every row every time: one entity carried 588 revisions whose payloads were
+            # identical once fetched_at was removed, and table:nt_recent reached 6.4M rows
+            # for a 12,417-row table. source_history.project_asof reads every one of them,
+            # which is what pushed a single model build to 207 s and stopped the paper path
+            # recording anything on 2026-09-13. Re-observe only a row that actually differs;
+            # the content-hash dedupe in stage_version then does what it was meant to do.
+            current = conn.execute(
+                "SELECT opp_api_id, kickoff_ts, league_id, is_friendly, gf, ga, is_home "
+                "FROM nt_recent WHERE fixture_api_id=? AND team_api_id=?",
+                (r["api_id"], tid)).fetchone()
+            if current is not None and tuple(current) == (opp, r["kickoff_ts"], r["league_id"], 0, gf, ga, is_home):
+                continue
             store.upsert(conn, "nt_recent", {
                 "fixture_api_id": r["api_id"], "team_api_id": tid, "opp_api_id": opp,
                 "kickoff_ts": r["kickoff_ts"], "league_id": r["league_id"], "is_friendly": 0,
