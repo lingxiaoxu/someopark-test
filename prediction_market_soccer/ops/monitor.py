@@ -142,6 +142,37 @@ def _level(value: float, warn: float, alert: float, *, higher_is_worse: bool = T
     return "ALERT" if value <= alert else "WARN" if value <= warn else "OK"
 
 
+def _utc_or_none(value):
+    """Parse an ISO stamp, or None — freshness must never crash on a malformed one."""
+    from datetime import datetime
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else None
+
+
+def _model_covers_latest_result(conn, run_ts):
+    """True when no fixture has finished since the model ran, so nothing can be stale.
+
+    Ageing on wall clock alone flags the model every quiet night — it is rebuilt by the
+    daily refresh and on each settled result, so with no final whistle since the last run
+    there is nothing to rebuild FROM (2026-09-14 15:31: model 3.7h old, last finished
+    fixture kicked off at 00:30). Leaving it lit all night would hide a model that really
+    did stop refreshing mid-matchday. Any doubt falls through to the age thresholds.
+    """
+    run_at = _utc_or_none(run_ts)
+    if run_at is None:
+        return False
+    try:
+        latest = conn.execute(
+            "SELECT MAX(kickoff_ts) FROM fixture WHERE status_short IN ('FT','AET','PEN')").fetchone()[0]
+    except Exception:  # noqa: BLE001 — an unreadable fixture table must not mute the check
+        return False
+    finished = _utc_or_none(latest)
+    return finished is not None and run_at >= finished
+
+
 def _payload_run_ts():
     """(run_ts, filename) stamped by the model into its own payload, or (None, "")."""
     for name in ("soccer_model.json", "latest.json"):
@@ -170,10 +201,20 @@ def health_report(conn=None) -> HealthReport:
     # not the other, which is the discrimination the pair only pretended to have.
     run_ts, run_src = _payload_run_ts()
     age = _age_hours(run_ts)
+    # Wall-clock age alone calls the model stale every night. It is rebuilt by the daily
+    # refresh and whenever a result settles, so between the last final whistle and the next
+    # one there is nothing to rebuild FROM: on 2026-09-14 at 15:31 the model was 3.7h old
+    # and flagged, while the most recent finished fixture had kicked off at 00:30 — the model
+    # was newer than every input it has. Ageing out on a quiet morning would leave this check
+    # lit all day and hide a model that genuinely stopped refreshing during the matches.
     if age is None:
         rep.checks.append(Check("model_freshness", "ALERT", None,
                                 "no model run recorded — no soccer_model.json/latest.json "
                                 "carries meta.run_ts"))
+    elif age > MODEL_AGE_WARN_H and _model_covers_latest_result(conn, run_ts):
+        rep.checks.append(Check("model_freshness", "OK", round(age, 2),
+                                f"model run {age:.1f}h ago ({run_src} meta.run_ts), newer than the last "
+                                f"finished fixture — nothing has settled since"))
     else:
         rep.checks.append(Check("model_freshness", _level(age, MODEL_AGE_WARN_H, MODEL_AGE_ALERT_H),
                                 round(age, 2), f"last model run {age:.1f}h ago ({run_src} meta.run_ts)"))
@@ -292,14 +333,35 @@ def _gate_check() -> Check:
     keys = [c.key for c in active()]
     open_ = [k for k in keys if gate_open_for(cal, k)]
     cold = [k for k in keys if (per.get(k) or {}).get("cold_start")]
-    regressed = [k for k in keys
-                 if (per.get(k) or {}) and not (per.get(k) or {}).get("cold_start")
-                 and not (per.get(k) or {}).get("trade_grade")]
-    lvl = "ALERT" if regressed else ("WARN" if not open_ else "OK")
+    # A shut gate is not one condition. trade_grade requires the calibrated model to beat
+    # uniform by MORE THAN ONE STANDARD ERROR (probability_calibration.py:196), so a
+    # competition can fail it while still being better than the baseline — it simply has
+    # too few settled matches to prove it. Reporting all three causes as "worse than
+    # uniform" was wrong on the facts (ligue1 on 2026-09-14: margin +0.0236, se 0.0307,
+    # i.e. ahead of uniform, not behind) and it pinned this check to ALERT for a condition
+    # that resolves itself as the sample grows — which is exactly how a real regression
+    # would have been hidden.
+    regressed, unproven, degenerate = [], [], []
+    for k in keys:
+        entry = per.get(k) or {}
+        if not entry or entry.get("cold_start") or entry.get("trade_grade"):
+            continue
+        margin, se = entry.get("gate_margin"), entry.get("gate_margin_se")
+        if entry.get("gate_degenerate"):
+            degenerate.append(k)
+        elif margin is None or margin <= 0:
+            regressed.append(k)
+        else:
+            unproven.append(f"{k} (+{margin:.4f} vs se {se:.4f})" if se is not None else k)
+    lvl = "ALERT" if (regressed or degenerate) else ("WARN" if (unproven or not open_) else "OK")
     detail = (f"{len(open_)}/{len(keys)} gates open; {len(cold)} cold-start "
               f"(<{PER_LEAGUE_MIN_N} settled)")
     if regressed:
-        detail += f"; REGRESSED (mature but worse than uniform): {', '.join(sorted(regressed))}"
+        detail += f"; REGRESSED (worse than uniform): {', '.join(sorted(regressed))}"
+    if degenerate:
+        detail += f"; DEGENERATE fit (calibrator discarded the model): {', '.join(sorted(degenerate))}"
+    if unproven:
+        detail += f"; edge not yet distinguishable from uniform: {', '.join(sorted(unproven))}"
     return Check("calibration_gates", lvl, float(len(open_)), detail)
 
 
