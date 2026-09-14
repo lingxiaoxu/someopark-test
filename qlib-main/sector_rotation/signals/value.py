@@ -363,14 +363,38 @@ def build_pe_series_from_constituents(
         Monthly TTM P/E ratios. index = month-end DatetimeIndex, cols = ETF tickers.
     """
     # --- Cache check ---
+    # 2026-09-13:此处原为"存在即返回",没有任何陈旧判定 —— 于是 weekly STEP 1
+    # 每周更新的 eps_history.json 在首次生成 pkl 之后就再没被读过。实测生产缓存
+    # 停在 2026-03-31、已 5.5 个月未动,而 value 分量(composite 权重 0.20)被
+    # 前向填充,2026-04~09 六个月逐位相同 —— 设计要的数据在,只是被缓存挡住了。
+    # 两条失效判据,任一命中即重建:
+    #   (a) eps_history.json 比缓存新 —— 上游有新季报进来了
+    #   (b) 缓存覆盖不到请求的 end 所在月 —— 缓存本身就不够长
     if cache_path is not None and cache_path.exists():
+        _stale_reason = None
         try:
-            with open(cache_path, "rb") as f:
-                cached = pickle.load(f)
-            logger.info(f"Loaded constituent P/E from cache: {cache_path}")
-            return cached
-        except Exception as e:
-            logger.warning(f"Cache load failed ({e}), re-fetching...")
+            _store = eps_store_path or _EPS_HISTORY_DEFAULT
+            if _store.exists() and _store.stat().st_mtime > cache_path.stat().st_mtime:
+                _stale_reason = (f"eps_history.json 比缓存新 "
+                                 f"({_store.name} 更新于上游)")
+        except Exception:
+            pass
+        if _stale_reason is None:
+            try:
+                with open(cache_path, "rb") as f:
+                    cached = pickle.load(f)
+                _want_end = pd.Timestamp(end).to_period("M").to_timestamp("M")
+                _have_end = (pd.Timestamp(cached.index[-1]) if len(cached) else None)
+                if _have_end is None or _have_end < _want_end:
+                    _stale_reason = (f"缓存覆盖到 {str(_have_end)[:10]},"
+                                     f"不足请求的 {str(_want_end)[:10]}")
+                else:
+                    logger.info(f"Loaded constituent P/E from cache: {cache_path}")
+                    return cached
+            except Exception as e:
+                logger.warning(f"Cache load failed ({e}), re-fetching...")
+        if _stale_reason:
+            logger.info(f"Constituent P/E 缓存已过期({_stale_reason}),重建中: {cache_path}")
 
     try:
         import yfinance as yf

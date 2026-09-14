@@ -252,7 +252,22 @@ class SectorRotationBacktest:
         # value_source: "constituents" builds TTM P/E from yfinance quarterly earnings;
         #               "proxy" is the price-based fallback (used in tests / offline).
         value_source = self.sig_cfg.get("value_source", "constituents")
-        value_cache_dir = self.cfg.get("data", {}).get("cache_dir")
+        # 2026-09-13:此前直接把 config 里的**相对**串
+        # `../../price_data/sector_etfs` 原样传下去,于是解析结果取决于 CWD。
+        # 生产 pipeline 在 sector_rotation_pipeline.sh:180 `cd "$REPO"`,从仓库根
+        # 解析出来是 /Users/xuling/price_data/sector_etfs —— 仓库**外**的一个影子
+        # 目录(实测存在,pe_constituents 停在 04-25)。而实盘 DailySignal 用的是
+        # 绝对的 CACHE_DIR = _PROJECT_DIR/"price_data"/"sector_etfs"(仓库内,04-27)。
+        # 也就是说回测与实盘一直在读**两份不同的 P/E 缓存**,且都过期。
+        # 按 data/loader.py:673 `load_all` 的同一套逻辑锚定到 config 所在目录,
+        # 与 config.yaml 里 "relative to qlib-main/sector_rotation/" 的注释一致。
+        _raw_vcd = self.cfg.get("data", {}).get("cache_dir")
+        value_cache_dir = _raw_vcd
+        if _raw_vcd:
+            _vcd = Path(_raw_vcd)
+            if not _vcd.is_absolute():
+                _vcd = (Path(__file__).resolve().parent.parent / _vcd).resolve()
+            value_cache_dir = _vcd
 
         # Build signal_kwargs for new bonus signals
         stm_cfg = self.sig_cfg.get("short_term_momentum", {})

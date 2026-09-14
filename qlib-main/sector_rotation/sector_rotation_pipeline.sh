@@ -418,6 +418,74 @@ PYEOF
     run_python 1 "EPS incremental update (55 symbols, skips fresh)" \
         qlib-main/sector_rotation/update_eps_history.py
 
+    # ── Step 1.5: 成分股 P/E 缓存重建 + 覆盖体检 ───────────────────────────────
+    # 2026-09-13 新增。背景:pe_constituents_*.pkl 是 value 信号(composite 权重
+    # 0.20)的唯一数据源,而 build_pe_series_from_constituents 此前"存在即返回",
+    # 没有任何陈旧判定 —— 实测生产缓存停在 2026-03-31 整整 5.5 个月没动,Step 1
+    # 每周辛苦更新的 eps_history.json 在首次生成 pkl 之后再没被读过,value 分量
+    # 被前向填充、2026-04~09 六个月逐位相同。
+    #
+    # 现在 value.py 有了两条失效判据(eps_history.json 更新 / 覆盖不足),缓存会
+    # 自行重建 —— 但那是**惰性**的,会掉进周一 16:20 回测或 17:30 daily run 的
+    # 时间关键路径。这一步把重建成本主动拉到周日凌晨的维护窗口里,并把覆盖情况
+    # 打成一条人能一眼看见的体检行。
+    #
+    # 措辞里的 "FAILED" 是必须的:跑 weekly 的 openclaw cron 判"干净成功"的条件是
+    # 「没有明显的 ERROR / FAILED / traceback」,STALE 一词不在那串关键词里
+    # (AEUS 已经吃过这个亏,见 aeus_pipeline.sh 同名注释)。
+    log_section "STEP 1.5: 成分股 P/E 缓存重建 + 覆盖体检"
+    set -a && source "$REPO/.env" && set +a
+    PE_RC=0
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python - <<'PYEOF' 2>&1 | tee -a "$LOGFILE" || PE_RC=1
+import sys, pathlib, datetime
+sys.path.insert(0, 'qlib-main')
+import pandas as pd
+from sector_rotation.data.loader import load_config, load_all
+from sector_rotation.signals.value import build_pe_series_from_constituents
+
+cfg = load_config()
+prices, _ = load_all(config=cfg)
+etfs = [t for t in cfg['universe']['etfs'] if t in prices.columns]
+# cache_dir 在 config 里是相对串 "../../price_data/sector_etfs",注释写明是
+# 相对 qlib-main/sector_rotation/。本脚本从仓库根跑,直接用会解析到仓库外的
+# 影子目录,所以按 data/loader.py:673 的同一套逻辑锚定。
+cache_dir = pathlib.Path(cfg.get('data', {}).get('cache_dir', 'price_data/sector_etfs'))
+if not cache_dir.is_absolute():
+    cache_dir = (pathlib.Path('qlib-main/sector_rotation').resolve() / cache_dir).resolve()
+cache_path = cache_dir / f"pe_constituents_{'_'.join(sorted(etfs))}.pkl"
+p = prices[etfs]
+
+# 失效判据由 build_pe_series_from_constituents 自己判;缓存新鲜时它直接命中返回。
+pe = build_pe_series_from_constituents(
+    etf_tickers=etfs,
+    start=p.index[0].strftime('%Y-%m-%d'),
+    end=p.index[-1].strftime('%Y-%m-%d'),
+    cache_path=cache_path,
+)
+
+print('=' * 60)
+print('CONSTITUENT P/E COVERAGE (value 信号,composite 权重 0.20)')
+last = pd.Timestamp(pe.index[-1])
+lag = (pd.Timestamp.today().normalize() - last).days
+# 阈值 100 天 ≈ 一个季度 + 财报披露滞后;超过就说明上游没有新季报进来了
+stale = lag > 100
+for t in etfs:
+    n = int(pe[t].notna().sum()) if t in pe.columns else 0
+    print(f"  {'ok ' if n else '!! '}{t:5} 有效月份 {n}/{len(pe)}")
+print(f"  覆盖至 {last.date()}  滞后 {lag} 天  阈值 100 天")
+print('=' * 60)
+print('RESULT:', 'OK' if not stale else f'← STALE ({lag}天 > 100天)')
+sys.exit(1 if stale else 0)
+PYEOF
+    if [[ "$PE_RC" -ne 0 ]]; then
+        log "!!! ════════════════════════════════════════════════════════"
+        log "!!! P/E DATA HEALTH FAILED — 成分股 P/E 覆盖已过期。它是 value 信号的"
+        log "!!! 唯一数据源(composite 权重 0.20),过期会让该分量被前向填充冻住。"
+        log "!!! 先查 update_eps_history.py 是否还能取到新季报,再查上游是否仍在发布。"
+    else
+        log "  STEP 1.5 OK: P/E 缓存已就绪"
+    fi
+
     # Step 2: Weekly review (P7): multi-horizon backtest + drift + regime analysis
     set -a && source "$REPO/.env" && set +a
     PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python \
