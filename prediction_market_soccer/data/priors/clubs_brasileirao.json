@@ -1,11 +1,11 @@
 {
- "prior_id": "clubs_brasileirao_2026-09-13",
+ "prior_id": "clubs_brasileirao_2026-09-14",
  "source": "api-football standings (s & s-1) + ClubElo + Kalshi champion book (Shin de-vig)",
- "as_of": "2026-09-13",
+ "as_of": "2026-09-14",
  "is_stale": true,
  "league": "brasileirao",
  "point_in_time": false,
- "elo_as_of": "2026-09-13",
+ "elo_as_of": "2026-09-14",
  "notes": [
   "anchor_points = expected points-per-round; 0.5*Elo-implied + 0.5*table ppr;",
   "promoted clubs default 0.75x league mean; SA comps use CURRENT-season table",
@@ -20,12 +20,12 @@
    "league": "brasileirao",
    "api_team_id": 1062,
    "elo": null,
-   "elo_rank": 204,
+   "elo_rank": 205,
    "last_pts": 1.2632,
    "last_rank": 11,
    "promoted": false,
-   "anchor_points": 1.4231,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.4243,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -39,8 +39,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.6833,
-   "market_p_champion": 0.02093,
+   "anchor_points": 1.6857,
+   "market_p_champion": 0.02585,
    "anchor_source": "table+market"
   },
   {
@@ -50,12 +50,12 @@
    "league": "brasileirao",
    "api_team_id": 118,
    "elo": null,
-   "elo_rank": 217,
+   "elo_rank": 216,
    "last_pts": 1.5789,
    "last_rank": 7,
    "promoted": false,
-   "anchor_points": 1.5384,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.5396,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -65,12 +65,12 @@
    "league": "brasileirao",
    "api_team_id": 120,
    "elo": null,
-   "elo_rank": 221,
+   "elo_rank": 220,
    "last_pts": 1.6579,
    "last_rank": 6,
    "promoted": false,
-   "anchor_points": 1.2211,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.2223,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -80,12 +80,12 @@
    "league": "brasileirao",
    "api_team_id": 132,
    "elo": null,
-   "elo_rank": 291,
+   "elo_rank": 293,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.7884,
-   "market_p_champion": 0.00193,
+   "anchor_points": 0.7896,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -95,12 +95,12 @@
    "league": "brasileirao",
    "api_team_id": 131,
    "elo": null,
-   "elo_rank": 172,
+   "elo_rank": 171,
    "last_pts": 1.2368,
    "last_rank": 13,
    "promoted": false,
-   "anchor_points": 1.2211,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.2223,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -110,12 +110,12 @@
    "league": "brasileirao",
    "api_team_id": 147,
    "elo": null,
-   "elo_rank": 145,
+   "elo_rank": 144,
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 1.3536,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.3548,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -125,12 +125,12 @@
    "league": "brasileirao",
    "api_team_id": 135,
    "elo": null,
-   "elo_rank": 196,
+   "elo_rank": 195,
    "last_pts": 1.8421,
    "last_rank": 3,
    "promoted": false,
-   "anchor_points": 1.6562,
-   "market_p_champion": 0.12298,
+   "anchor_points": 1.601,
+   "market_p_champion": 0.04318,
    "anchor_source": "table+market"
   },
   {
@@ -140,12 +140,12 @@
    "league": "brasileirao",
    "api_team_id": 127,
    "elo": null,
-   "elo_rank": 161,
+   "elo_rank": 160,
    "last_pts": 2.0789,
    "last_rank": 1,
    "promoted": false,
-   "anchor_points": 2.1446,
-   "market_p_champion": 0.55333,
+   "anchor_points": 2.1661,
+   "market_p_champion": 0.59871,
    "anchor_source": "table+market"
   },
   {
@@ -155,12 +155,12 @@
    "league": "brasileirao",
    "api_team_id": 124,
    "elo": null,
-   "elo_rank": 165,
+   "elo_rank": 164,
    "last_pts": 1.6842,
    "last_rank": 5,
    "promoted": false,
-   "anchor_points": 1.5481,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.5493,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -170,12 +170,12 @@
    "league": "brasileirao",
    "api_team_id": 130,
    "elo": null,
-   "elo_rank": 268,
+   "elo_rank": 269,
    "last_pts": 1.2895,
    "last_rank": 9,
    "promoted": false,
-   "anchor_points": 1.1057,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.107,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -189,8 +189,8 @@
    "last_pts": 1.1579,
    "last_rank": 16,
    "promoted": false,
-   "anchor_points": 1.0758,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.077,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -200,12 +200,12 @@
    "league": "brasileirao",
    "api_team_id": 7848,
    "elo": null,
-   "elo_rank": 235,
+   "elo_rank": 234,
    "last_pts": 1.7632,
    "last_rank": 4,
    "promoted": false,
-   "anchor_points": 1.1057,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.1048,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -219,8 +219,8 @@
    "last_pts": 2.0,
    "last_rank": 2,
    "promoted": false,
-   "anchor_points": 2.0889,
-   "market_p_champion": 0.27196,
+   "anchor_points": 2.0982,
+   "market_p_champion": 0.28455,
    "anchor_source": "table+market"
   },
   {
@@ -230,12 +230,12 @@
    "league": "brasileirao",
    "api_team_id": 794,
    "elo": null,
-   "elo_rank": 284,
+   "elo_rank": 285,
    "last_pts": 1.2632,
    "last_rank": 10,
    "promoted": false,
-   "anchor_points": 1.3365,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.3377,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -249,8 +249,8 @@
    "last_pts": null,
    "last_rank": null,
    "promoted": true,
-   "anchor_points": 0.9615,
-   "market_p_champion": 0.00193,
+   "anchor_points": 0.9627,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -264,8 +264,8 @@
    "last_pts": 1.2368,
    "last_rank": 12,
    "promoted": false,
-   "anchor_points": 1.3077,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.3089,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -275,12 +275,12 @@
    "league": "brasileirao",
    "api_team_id": 126,
    "elo": null,
-   "elo_rank": 207,
+   "elo_rank": 208,
    "last_pts": 1.3421,
    "last_rank": 8,
    "promoted": false,
-   "anchor_points": 1.25,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.2512,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -290,12 +290,12 @@
    "league": "brasileirao",
    "api_team_id": 133,
    "elo": null,
-   "elo_rank": 208,
+   "elo_rank": 209,
    "last_pts": 1.1842,
    "last_rank": 14,
    "promoted": false,
-   "anchor_points": 1.1057,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.107,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   },
   {
@@ -305,12 +305,12 @@
    "league": "brasileirao",
    "api_team_id": 136,
    "elo": null,
-   "elo_rank": 157,
+   "elo_rank": 159,
    "last_pts": 1.1842,
    "last_rank": 15,
    "promoted": false,
-   "anchor_points": 1.2211,
-   "market_p_champion": 0.00193,
+   "anchor_points": 1.2159,
+   "market_p_champion": 0.00298,
    "anchor_source": "table+market"
   }
  ]
