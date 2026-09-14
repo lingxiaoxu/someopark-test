@@ -118,9 +118,15 @@ else:
             stop_loss_cfg: Optional[dict] = None,
             **kwargs,
         ) -> None:
-            # WeightStrategyBase requires `signal` kwarg; we pass None because
-            # we override generate_trade_decision() and fetch scores ourselves.
-            super().__init__(signal=None, **kwargs)
+            # WeightStrategyBase requires a `signal` it can wrap; newer qlib
+            # (0.9.99) rejects None in create_signal_from().  We override the
+            # weight generation and never read self.signal, so pass an empty
+            # DataFrame purely to satisfy the base constructor.
+            # (2026-09-13 C5.a: 此前这里传 None,create_signal_from(None) 抛
+            #  NotImplementedError，被 _run_qlib 的宽 try/except 吞成静默降级。
+            #  逐字对齐 AISS/AEUS 的同名两行。)
+            import pandas as _pd
+            super().__init__(signal=_pd.DataFrame(), **kwargs)
 
             self._composite_signals = composite_signals
             self._etf_prices = etf_prices

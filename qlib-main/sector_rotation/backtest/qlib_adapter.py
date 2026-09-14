@@ -38,6 +38,25 @@ try:
     from qlib.backtest.executor import SimulatorExecutor
     from qlib.backtest.decision import Order, OrderDir, TradeDecisionWO
     from qlib.backtest.backtest import backtest_loop
+    # SSRS runs qlib WITHOUT qlib.init() (no CN data provider needed).  In this
+    # qlib build the US region defaults are not in the global config, so
+    # ``Exchange.__init__`` lines like ``kwargs.pop("trade_unit", C.trade_unit)``
+    # eagerly evaluate ``C.<key>`` and raise ``No such '<key>'`` (even though we
+    # pass the kwarg).  Register the standard US-market defaults (REG_US) so the
+    # qlib execution path runs instead of silently falling back to the native loop.
+    # (2026-09-13 C5.a: 此前 SSRS 缺这一段而 AISS/AEUS 有 —— 于是 SSRS 每个参数组
+    #  都在 SectorETFExchange 构造处抛 No such `trade_unit` 被吞掉,qlib 路径
+    #  从未真正执行过一次。逐字对齐双胞胎。)
+    from qlib.config import C as _QLIB_C
+    _US_DEFAULTS = {"trade_unit": 1, "limit_threshold": None, "deal_price": "close", "region": "us"}
+    for _k, _v in _US_DEFAULTS.items():
+        try:
+            getattr(_QLIB_C, _k)
+        except Exception:
+            try:
+                _QLIB_C[_k] = _v
+            except Exception:
+                _QLIB_C.update({_k: _v})
     _QLIB_BACKTEST_AVAILABLE = True
 except Exception as _e:
     _QLIB_BACKTEST_AVAILABLE = False
