@@ -244,9 +244,20 @@ def _unmapped_check(conn) -> Check:
         return Check("unmapped_markets", "WARN", None,
                      "no venue alias scan on record — run `ops.health_export --scan-venues` "
                      "(until then an unmapped listing is invisible, not absent)")
+    # A label recorded here is history, not a verdict: once its alias lands the row stays
+    # until it ages out of the window, and a fixed label would keep alerting for hours while
+    # hiding any listing that broke since (2026-09-14: the first scan ever run reported 17,
+    # all of them resolved the same hour, and the stale rows kept the ALERT lit). Report what
+    # is STILL unresolved, against the catalog as it stands right now.
+    try:
+        from prediction_market_soccer.util.club_identity import ClubIdentityIndex
+        index = ClubIdentityIndex()
+        rows = [r for r in rows if not index.resolve(r["label"])]
+    except Exception:  # noqa: BLE001 — an unreadable catalog must not mute the check
+        pass
     if not rows:
         return Check("unmapped_markets", "OK", 0.0,
-                     f"every venue listing resolved to a club in the last {UNMAPPED_WINDOW_H:.0f}h")
+                     f"every venue listing seen in the last {UNMAPPED_WINDOW_H:.0f}h resolves to a club")
     per_comp: dict[tuple, int] = {}
     for r in rows:
         per_comp[(r["venue"], r["comp"])] = per_comp.get((r["venue"], r["comp"]), 0) + 1
