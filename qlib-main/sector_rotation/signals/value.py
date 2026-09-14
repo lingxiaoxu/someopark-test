@@ -383,11 +383,21 @@ def build_pe_series_from_constituents(
             try:
                 with open(cache_path, "rb") as f:
                     cached = pickle.load(f)
-                _want_end = pd.Timestamp(end).to_period("M").to_timestamp("M")
+                # ⚠️ 判据 (b) 必须是**带容差**的。P/E 天然滞后于请求日期 ——
+                # 季报要等披露,所以缓存最新月份永远 ≤ 请求月份。最初写成
+                # `_have_end < 请求月末` 就判过期,结果是**每次调用都重建**:
+                # 单个回测从 4s 涨到 30s,66 个参数组的跑批要多出近半小时,
+                # 而且 daily run 也会中招。这里改成只在滞后超过一个季度+披露
+                # 滞后(100 天,与 weekly STEP 1.5 体检同阈值)时才重建 ——
+                # 那种程度的滞后说明上游真的断供了,不是正常的财报节奏。
                 _have_end = (pd.Timestamp(cached.index[-1]) if len(cached) else None)
-                if _have_end is None or _have_end < _want_end:
+                _lag_days = (None if _have_end is None
+                             else (pd.Timestamp(end) - _have_end).days)
+                if _have_end is None:
+                    _stale_reason = "缓存为空"
+                elif _lag_days is not None and _lag_days > 100:
                     _stale_reason = (f"缓存覆盖到 {str(_have_end)[:10]},"
-                                     f"不足请求的 {str(_want_end)[:10]}")
+                                     f"较请求的 {str(end)[:10]} 滞后 {_lag_days} 天 (>100)")
                 else:
                     logger.info(f"Loaded constituent P/E from cache: {cache_path}")
                     return cached
