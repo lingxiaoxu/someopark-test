@@ -145,6 +145,7 @@ prediction_market_soccer/**/*.key
 prediction_market_soccer/**/*.pem
 prediction_market_soccer/data/*.lock
 prediction_market_soccer/data/output/
+prediction_market_soccer/data/view_cache/
 prediction_market_soccer/data/raw/
 prediction_market_soccer/data/logs/
 prediction_market_soccer/data/soccer.db

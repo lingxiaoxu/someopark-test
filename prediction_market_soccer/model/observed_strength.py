@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 import hashlib
+import sqlite3
 from pathlib import Path
 
 from prediction_market_soccer.config import CONFIG
@@ -48,8 +49,12 @@ def _restore(conn, record, available_at):
         comp=frozen['comp'], base_mu=frozen['base_mu'], home_adv=frozen['home_adv'])
     weights = record['altdata_weights']
     sm._altdata_w = lambda: dict(weights)
-    view, view_manifest = history.project_asof(conn, record['input_manifest']['cutoff'],
-        required_tables=history.MODEL_TABLES)
+    # A restore re-projects a cutoff whose manifest this record already carries, so the
+    # projection can be reused while the source tables provably have not gained a row inside
+    # that cutoff. The comparison below is unchanged and still decides: on a reuse it holds
+    # because the inputs were proven identical, not because the check was skipped.
+    view, view_manifest = history.project_asof_cached(conn, record['input_manifest']['cutoff'],
+        record.get('view_manifest_id'), required_tables=history.MODEL_TABLES)
     if view_manifest['manifest_id'] != record['view_manifest_id']:
         view.close()
         raise ObservedInputsUnavailable('Frozen model inputs changed; refusing to silently rebuild the day')
@@ -101,8 +106,22 @@ def build_observed_strength(conn, cutoff, comp):
             if history._utc(current[0]['available_at']) > history._utc(cutoff):
                 raise ObservedInputsUnavailable('Concurrent daily model was not available by this decision cutoff')
             return _restore(conn, current[0]['payload'], current[0]['available_at'])
-        revision = history.stage_version(conn, 'derived:daily_strength', key, payload)
-        conn.commit()
+        try:
+            revision = history.stage_version(conn, 'derived:daily_strength', key, payload)
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # Another process staged the identical day/comp/epoch model between the read
+            # above and this write. That is the same race the `current` branch handles, and
+            # its answer is the same: use the winner. Letting the IntegrityError escape cost
+            # a whole decision (observed 2026-09-14 as 'immutable observation identity').
+            conn.rollback()
+            winner = history._read_versions(conn, 'derived:daily_strength', entity_key=key)
+            if not winner:
+                raise
+            view.close()
+            if history._utc(winner[0]['available_at']) > history._utc(cutoff):
+                raise ObservedInputsUnavailable('Concurrent daily model was not available by this decision cutoff')
+            return _restore(conn, winner[0]['payload'], winner[0]['available_at'])
         history.finalize_versions(conn, [revision])
         saved = history._read_versions(conn, 'derived:daily_strength', entity_key=key)[0]
         if history._utc(saved['available_at']) > history._utc(cutoff):

@@ -361,6 +361,101 @@ def dependency_manifest(conn, cutoff):
     return {**result, 'manifest_id': digest(result)}
 
 
+def _view_cache_dir():
+    from prediction_market_soccer.config import CONFIG
+    return CONFIG.paths.data / "view_cache"
+
+
+def _reusable(conn, cutoff, meta):
+    """True when no row that the projection would have to see has appeared since caching.
+
+    Both source tables are append-only (their UPDATE/DELETE triggers enforce it), so the
+    input set for a fixed cutoff can only GROW. A revision becomes visible to project_asof
+    when its availability row exists, so one bounded scan over availability rows newer than
+    the cached high-water mark settles it: if none of them is available at or before the
+    cutoff, the inputs are byte-identical to when the view was built and the projection —
+    and its manifest id — cannot have changed.
+    """
+    if meta.get("cutoff") != cutoff or "max_availability_rowid" not in meta:
+        return False
+    try:
+        row = conn.execute("SELECT 1 FROM source_availability_v1 WHERE rowid>? AND available_at<=? LIMIT 1",
+                           (meta["max_availability_rowid"], cutoff)).fetchone()
+    except sqlite3.OperationalError:
+        return False
+    return row is None
+
+
+def project_asof_cached(conn, cutoff, expected_manifest_id, *, tables=MODEL_TABLES, required_tables=()):
+    """project_asof for a cutoff whose manifest is already known, reusing a persisted view.
+
+    Re-projecting reads every revision of every model table — 99 s on 2026-09-14 — and a
+    daily model is restored on every decision of the day, which is what pushed decisions
+    past the 120 s observation-freshness rule. The projection is deterministic in its
+    inputs, so it is persisted next to its manifest id and reused while `_reusable` can
+    prove the inputs unchanged. The caller's manifest comparison is kept and still runs;
+    on a reuse it holds by construction rather than by recomputation.
+
+    Any doubt falls back to a full projection: missing/corrupt cache, a changed cutoff, a
+    new row inside the cutoff, or a manifest that does not match what the caller expected.
+    """
+    directory = _view_cache_dir()
+    db_path = directory / f"{expected_manifest_id}.db"
+    meta_path = directory / f"{expected_manifest_id}.json"
+    if expected_manifest_id and db_path.exists() and meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+            if _reusable(conn, cutoff, meta):
+                view = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+                view.row_factory = sqlite3.Row
+                view.execute('PRAGMA query_only=ON')
+                return view, meta["manifest"]
+        except (OSError, ValueError, KeyError, sqlite3.DatabaseError):
+            pass                      # an unusable cache is simply a miss
+    # Sample the high-water mark BEFORE reading any source, so a row inserted while the
+    # projection runs counts as new and invalidates the cache rather than being missed.
+    try:
+        mark = conn.execute("SELECT COALESCE(MAX(rowid),0) FROM source_availability_v1").fetchone()[0]
+    except sqlite3.OperationalError:
+        mark = None
+    view, manifest = project_asof(conn, cutoff, tables=tables, required_tables=required_tables)
+    if mark is not None and expected_manifest_id and manifest['manifest_id'] == expected_manifest_id:
+        _persist_view(view, manifest, cutoff, mark, db_path, meta_path)
+    return view, manifest
+
+
+def _persist_view(view, manifest, cutoff, mark, db_path, meta_path):
+    """Write the projection beside its manifest; never let a cache failure break a decision."""
+    import os
+    import tempfile
+    try:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        handle, tmp = tempfile.mkstemp(dir=str(db_path.parent), suffix=".tmp")
+        os.close(handle)
+        os.unlink(tmp)
+        view.execute('PRAGMA query_only=OFF')          # project_asof seals the view read-only
+        view.execute(f"VACUUM INTO '{tmp}'")
+        view.execute('PRAGMA query_only=ON')
+        os.replace(tmp, db_path)
+        meta_path.write_text(json.dumps({'cutoff': cutoff, 'max_availability_rowid': mark,
+                                         'manifest': manifest,
+                                         'written_at': datetime.now(timezone.utc).isoformat()}))
+        _trim_view_cache(db_path.parent)
+    except Exception as exc:                            # noqa: BLE001 — caching is optional
+        print(f"[source_history] view cache skipped: {type(exc).__name__}: {str(exc)[:100]}")
+
+
+def _trim_view_cache(directory, keep=8):
+    """Keep the newest few projections; a view is ~41 MB and one is written per cutoff."""
+    try:
+        files = sorted(directory.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for stale in files[keep:]:
+            stale.unlink(missing_ok=True)
+            stale.with_suffix(".json").unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def project_asof(conn, cutoff, *, tables=MODEL_TABLES, required_tables=()):
     """Build a read-only model database from known versions; no current-value fallback.
 
