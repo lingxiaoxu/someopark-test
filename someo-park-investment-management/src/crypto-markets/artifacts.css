@@ -1,0 +1,494 @@
+[data-crypto-markets] .cm-artifact {
+  font-family: var(--font-mono);
+  color: var(--ink);
+  min-width: 0;
+}
+[data-crypto-markets] .cm-artifact * {
+  box-sizing: border-box;
+}
+[data-crypto-markets] .cm-section {
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  padding: 14px;
+  margin: 14px 0;
+  min-width: 0;
+}
+[data-crypto-markets] .cm-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+[data-crypto-markets] .cm-section-heading h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+[data-crypto-markets] .cm-meta {
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+[data-crypto-markets] .cm-prose {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-note {
+  font-size: 10px;
+  color: var(--ink-dim);
+  line-height: 1.8;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-source-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  border-left: 3px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 10px 12px;
+  margin: 10px 0;
+  font: 10px/1.8 var(--font-mono);
+}
+[data-crypto-markets] .cm-source-banner > span { color: var(--ink-dim); }
+[data-crypto-markets] .cm-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 9px;
+  margin: 10px 0;
+}
+[data-crypto-markets] .cm-metric {
+  border: 1px solid var(--hairline);
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  background: var(--paper);
+}
+[data-crypto-markets] .cm-metric > span {
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+[data-crypto-markets] .cm-metric > strong {
+  font-size: 20px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-metric > small {
+  color: var(--ink-dim);
+  font-size: 9px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-positive {
+  color: var(--success) !important;
+}
+[data-crypto-markets] .cm-negative {
+  color: var(--error) !important;
+}
+[data-crypto-markets] .cm-status {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ink-mute);
+  padding: 2px 5px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-status-good {
+  color: var(--success);
+  border-color: var(--success);
+}
+[data-crypto-markets] .cm-status-bad {
+  color: var(--error);
+  border-color: var(--error);
+}
+[data-crypto-markets] .cm-empty {
+  padding: 20px 12px;
+  border: 1px dashed var(--ink-mute);
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+[data-crypto-markets] .cm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+[data-crypto-markets] .cm-segments {
+  /* Mirror SoccerArtifact's LeagueChips; these stay private to Crypto. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+[data-crypto-markets] .cm-segments button {
+  border: 1px solid var(--text-primary);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 2px 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transition: all .1s;
+  cursor: pointer;
+}
+[data-crypto-markets] .cm-segments button.is-active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+[data-crypto-markets] .cm-filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--ink-dim);
+  min-width: 0;
+}
+[data-crypto-markets] .cm-filter select,
+[data-crypto-markets] .cm-filter input {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  /* Match the artifact strategy selector's text-xs / py-1 / px-2.5 scale. */
+  height: calc(1.75rem + 2px);
+  padding: .25rem .625rem;
+  font: 400 .75rem/1rem var(--font-mono);
+  letter-spacing: normal;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 0;
+}
+[data-crypto-markets] .cm-search {
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+[data-crypto-markets] .cm-search input {
+  flex: 1 1 220px;
+}
+[data-crypto-markets] .cm-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0;
+  overscroll-behavior-x: contain;
+}
+[data-crypto-markets] .cm-table {
+  width: 100%;
+  font-size: 10px;
+  border-collapse: collapse;
+}
+[data-crypto-markets] .cm-table th {
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-align: right;
+  color: var(--ink-dim);
+  padding: 10px 8px;
+  border-bottom: 2px solid var(--ink);
+  white-space: nowrap;
+}
+[data-crypto-markets] .cm-table td {
+  text-align: right;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  white-space: nowrap;
+}
+[data-crypto-markets] .cm-table th:first-child,
+[data-crypto-markets] .cm-table td:first-child {
+  text-align: left;
+}
+[data-crypto-markets] .cm-table tr:hover td {
+  background: var(--page);
+}
+[data-crypto-markets] .cm-ticker {
+  display: inline-block;
+  max-width: min(100%, 260px);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+[data-crypto-markets] .cm-cell-note {
+  display: block;
+  font-size: 9px;
+  color: var(--ink-dim);
+  line-height: 1.8;
+}
+[data-crypto-markets] .cm-link-button {
+  background: none;
+  color: var(--ink);
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  padding: 2px 0;
+  font: 10px var(--font-mono);
+  cursor: pointer;
+}
+[data-crypto-markets] .cm-pagination {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--ink-dim);
+  margin: 12px 0;
+}
+[data-crypto-markets] .cm-pagination > div {
+  display: flex;
+  gap: 8px;
+}
+[data-crypto-markets] .cm-pagination button {
+  padding: 5px 9px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 10px var(--font-mono);
+  cursor: pointer;
+}
+[data-crypto-markets] .cm-pagination button:disabled {
+  color: var(--ink-dim);
+  border-color: var(--hairline);
+  cursor: default;
+  opacity: 1;
+}
+[data-crypto-markets] .cm-chart {
+  width: 100%;
+  height: 260px;
+  min-width: 0;
+}
+[data-crypto-markets] .cm-chart-short {
+  height: 200px;
+}
+[data-crypto-markets] .cm-details {
+  display: grid;
+  grid-template-columns: minmax(100px, 32%) minmax(0, 1fr);
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+[data-crypto-markets] .cm-details dt {
+  color: var(--ink-dim);
+  padding: 7px 8px 7px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+[data-crypto-markets] .cm-details dd {
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-crypto-markets] .cm-detail-row {
+  display: contents;
+}
+[data-crypto-markets] .cm-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+[data-crypto-markets] .cm-env-note {
+  border-left: 3px solid var(--ink);
+  padding: 10px 12px;
+  background: var(--page);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 10px;
+}
+[data-crypto-markets] .cm-runtime {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+[data-crypto-markets] .cm-runtime:last-child {
+  border-bottom: 0;
+}
+[data-crypto-markets] .cm-runtime-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+[data-crypto-markets] .cm-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+[data-crypto-markets] .cm-issue {
+  border-left: 3px solid var(--warning);
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--warning) 6%, var(--paper));
+}
+[data-crypto-markets] .cm-issue-current {
+  border-left-color: var(--error);
+  background: color-mix(in srgb, var(--error) 9%, var(--paper));
+}
+[data-crypto-markets] .cm-issue-pending .cm-status,
+[data-crypto-markets] .cm-issue-recent .cm-status {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+[data-crypto-markets] .cm-issue-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-crypto-markets] .cm-issue-group h4 {
+  margin: 4px 0 0;
+  color: var(--ink-dim);
+  font-size: 10px;
+  font-weight: 400;
+}
+[data-crypto-markets] .cm-artifact button:focus-visible,
+[data-crypto-markets] .cm-artifact input:focus-visible,
+[data-crypto-markets] .cm-artifact select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  [data-crypto-markets] .cm-section {
+    padding: 10px;
+  }
+  [data-crypto-markets] .cm-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-crypto-markets] .cm-metric > strong {
+    font-size: 18px;
+  }
+  [data-crypto-markets] .cm-chart {
+    height: 225px;
+  }
+  [data-crypto-markets] .cm-chart-short {
+    height: 185px;
+  }
+  [data-crypto-markets] .cm-ticker {
+    max-width: 200px;
+  }
+}
+
+/* Artifact-only adaptations; all colors inherit the existing application theme. */
+[data-crypto-markets].cm-panel-content {
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+[data-crypto-markets] .cm-panel-selector {
+  /* Stock artifact header: text-xs line + py-1 + p-0.5 + 1px borders.
+     Reserve the same single row in every Crypto artifact, including loading. */
+  height: calc(1.75rem + 2px);
+  flex-wrap: nowrap;
+  margin: 0 0 1rem;
+}
+[data-crypto-markets] .cm-panel-strategy-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-crypto-markets] .cm-panel-source {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+[data-crypto-markets] .cm-panel-alert {
+  margin: 12px 0;
+  font-size: 11px;
+}
+[data-crypto-markets] .cm-link-button:disabled {
+  color: var(--ink-dim);
+  border-bottom-color: var(--hairline);
+  opacity: 1;
+  cursor: default;
+}
+[data-crypto-markets] .cm-chart .recharts-tooltip-wrapper {
+  font-size: 10px;
+}
+[data-crypto-markets] .cm-panel-content button:focus-visible,
+[data-crypto-markets].cm-panel-content button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* The shared input rules use !important inside @layer base. Important layer
+   declarations outrank unlayered !important declarations, so a normal dark-mode
+   override cannot beat the shared #111 text or 13px size. Stay in that layer and scope
+   every override to crypto contents; never change the shared shell or modules. */
+@layer base {
+  [data-crypto-markets] :is(input, textarea, select) {
+    font-size: .75rem !important;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: currentColor;
+    caret-color: var(--ink);
+  }
+
+  [data-crypto-markets] :is(input, textarea)::placeholder {
+    color: var(--ink-dim) !important;
+    -webkit-text-fill-color: var(--ink-dim);
+    opacity: 1;
+  }
+
+  [data-crypto-markets] :is(input, textarea, select):focus {
+    border-color: var(--ink) !important;
+  }
+
+  [data-crypto-markets] :is(input, textarea, select):disabled {
+    color: var(--ink-dim) !important;
+    -webkit-text-fill-color: currentColor;
+    opacity: 1;
+  }
+}
+
+/* Native select arrows, dropdown options and disabled controls need the same
+   dark palette as the existing prediction shell, including Safari on iOS. */
+[data-mode="prediction"] [data-crypto-markets] :is(input, textarea, select) {
+  color-scheme: dark;
+}
+[data-crypto-markets] select :is(option, optgroup) {
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-text-fill-color: currentColor;
+}
+[data-crypto-markets] select :is(option, optgroup):disabled {
+  color: var(--ink-dim);
+}
+
+/* Shared Recharts rules also contain layer-scoped !important declarations.
+   Override their white tooltip and fixed grey axes within the same layer.
+   Tooltip item colors remain the series colors (including loss/red). */
+@layer components {
+  [data-crypto-markets] .cm-chart :is(.recharts-text, .recharts-cartesian-axis-tick-value) {
+    fill: var(--ink-dim) !important;
+  }
+  [data-crypto-markets] .cm-chart .recharts-cartesian-grid line {
+    stroke: var(--hairline) !important;
+  }
+  [data-crypto-markets] .cm-chart .recharts-tooltip-wrapper .recharts-default-tooltip {
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    border-color: var(--ink) !important;
+  }
+}
+[data-crypto-markets] .cm-chart .recharts-legend-item-text {
+  color: var(--ink) !important;
+}

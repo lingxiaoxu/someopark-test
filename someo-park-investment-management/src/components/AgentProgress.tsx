@@ -31,6 +31,8 @@ const TOOL_DISPLAY: Record<string, string> = {
   list_files: '列出文件',
   query_json: 'JSON 查询',
   http_request: 'HTTP 请求',
+  web_fetch: '读取网页',
+  read_tool_result: '读取完整工具结果',
   get_datetime: '获取时间',
   compare_strategies: '策略对比',
   get_pair_stats: '配对详细统计',

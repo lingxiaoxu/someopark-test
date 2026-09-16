@@ -1,0 +1,116 @@
+/* Module contents only. Theme, sidebar, header, artifact drawer and grid-card
+   chrome come from the main application's existing prediction-mode styles. */
+.crypto-home.crypto-upcoming {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-pixel-sm);
+}
+.crypto-home .crypto-corner {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--ink);
+}
+.crypto-home .crypto-corner-tl { top: -2px; left: -2px; }
+.crypto-home .crypto-corner-tr { top: -2px; right: -2px; }
+.crypto-home .crypto-corner-bl { bottom: -2px; left: -2px; }
+.crypto-home .crypto-corner-br { bottom: -2px; right: -2px; }
+.crypto-home .crypto-overview-heading { gap: 10px; }
+.crypto-home .crypto-overview-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+.crypto-home .crypto-overview-environment,
+.crypto-home .crypto-overview-controls,
+.crypto-home .crypto-overview-footer {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.crypto-home .crypto-overview-controls,
+.crypto-home .crypto-overview-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.crypto-home .crypto-overview-controls { margin-bottom: 8px; }
+.crypto-home .crypto-overview-footer { margin-top: 10px; }
+.crypto-home .crypto-overview-footer button { cursor: pointer; }
+.crypto-home .crypto-overview-footer button:disabled { cursor: wait; opacity: .55; }
+.crypto-home .crypto-view-tabs { display: flex; border: 1px solid var(--ink); }
+.crypto-home .crypto-view-tabs button {
+  padding: 2px 7px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.crypto-home .crypto-view-tabs button + button { border-left: 1px solid var(--ink); }
+.crypto-home .crypto-view-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.crypto-home .crypto-market-list { display: flex; flex-direction: column; gap: 8px; }
+.crypto-home .crypto-market-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.crypto-home .crypto-market-row-heading,
+.crypto-home .crypto-market-row-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.crypto-home .crypto-market-row-heading > span { display: flex; gap: 6px; align-items: center; }
+.crypto-home .crypto-market-row-heading strong { font-size: 13px; color: var(--text-primary); letter-spacing: .03em; }
+.crypto-home .crypto-market-row-heading time { font-size: 10px; color: var(--text-muted); }
+.crypto-home .crypto-market-row-detail:last-child { font-size: 10px; }
+.crypto-home .crypto-home-muted { color: var(--text-muted); }
+.crypto-home .crypto-positive { color: var(--success); }
+.crypto-home .crypto-negative { color: var(--error); }
+.crypto-home .crypto-caution { color: var(--warning, #d08b00); }
+.crypto-home .crypto-home-status { font-size: 10px; line-height: 1.6; margin-top: 8px; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.crypto-home button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.crypto-home .crypto-result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.crypto-home .crypto-result-summary button {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-muted);
+  font: inherit;
+  padding: 2px 0;
+}
+.crypto-home .crypto-result-summary button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.crypto-home .crypto-result-summary strong {
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.crypto-home .crypto-result-divider { color: var(--text-muted); }
+@media (max-width: 520px) {
+  .crypto-home .crypto-overview-environment { display: none; }
+  .crypto-home .crypto-market-row-heading > span { flex-wrap: wrap; }
+}

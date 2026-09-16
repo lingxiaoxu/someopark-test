@@ -215,6 +215,7 @@ import MacroArtifactGrid from './macro/MacroArtifactGrid'
 import MacroUpcoming from './macro/MacroUpcoming'
 import SoccerArtifactGrid from './soccer/SoccerArtifactGrid'
 import SoccerUpcoming from './soccer/SoccerUpcoming'
+import { CryptoUpcoming, CryptoArtifactGrid } from '../crypto-markets/CryptoHome'
 import { useApi } from '../hooks/useApi'
 import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
@@ -246,7 +247,7 @@ export default function ChatArea({
   onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
-  appMode: 'stock' | 'prediction' | 'macro' | 'soccer'
+  appMode: 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto'
   isLocalConnected: boolean
   cardCategorized?: boolean
   setActiveArtifact: (a: any) => void
@@ -266,6 +267,7 @@ export default function ChatArea({
   onMessagesChange?: (messages: Message[]) => void
 }) {
   const { t } = useTranslation()
+  const usesPredictionLayout = appMode === 'prediction' || appMode === 'crypto'
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -531,7 +533,7 @@ export default function ChatArea({
       setIsAgentRunning(false)
       setIsLoading(false)
     }
-  }, [input, isLoading, isAgentRunning, messages, languageModel, onFirstMessage])
+  }, [input, isLoading, isAgentRunning, messages, languageModel, onFirstMessage, appMode])
 
   const handleAskUserAnswer = useCallback(async (answer: string) => {
     await answerAgentQuestion(sessionIdRef.current, answer)
@@ -732,7 +734,7 @@ export default function ChatArea({
       setIsLoading(false)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview, isAgentMode, thinkingOn, handleAgentSubmit])
+  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview, isAgentMode, thinkingOn, handleAgentSubmit, appMode])
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort()
@@ -782,7 +784,7 @@ export default function ChatArea({
   return (
     <div className="flex flex-col h-full relative" style={{ background: 'var(--color-bg)' }}>
       {/* Header */}
-      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid var(--ink)', background: appMode === 'prediction' ? 'var(--bg-secondary)' : 'var(--paper)' }}>
+      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid var(--ink)', background: usesPredictionLayout ? 'var(--bg-secondary)' : 'var(--paper)' }}>
         <div className="flex items-center gap-3">
           <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
           <div className="relative" ref={runtimeDropdownRef}>
@@ -826,7 +828,7 @@ export default function ChatArea({
 
       {/* Messages or Welcome */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto scrollbar-autohide px-6 pt-4 pb-6 flex flex-col items-center">
-        <div className={`w-full max-w-3xl flex flex-col gap-4 ${appMode === 'prediction' ? 'pb-16' : 'pb-8'}`}>
+        <div className={`w-full max-w-3xl flex flex-col gap-4 ${usesPredictionLayout ? 'pb-16' : 'pb-8'}`}>
           {!hasMessages ? (
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
@@ -845,6 +847,8 @@ export default function ChatArea({
                 <MacroUpcoming />
               ) : appMode === 'soccer' ? (
                 <SoccerUpcoming />
+              ) : appMode === 'crypto' ? (
+                <CryptoUpcoming />
               ) : (
               <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                 {/* Corner dots */}
@@ -913,11 +917,11 @@ export default function ChatArea({
                 /* Prediction artifacts are public static data → open directly (no sign-in gate). */
                 <PredictionArtifactGrid onOpen={(a) => setActiveArtifact(a)} categorized={cardCategorized} />
               ) : appMode === 'macro' ? (
-                /* Macro artifacts are public static data too → open directly. */
-                <MacroArtifactGrid onOpen={(a) => setActiveArtifact(a)} categorized={cardCategorized} />
+                <MacroArtifactGrid onOpen={guardedSetArtifact} categorized={cardCategorized} />
               ) : appMode === 'soccer' ? (
-                /* Soccer artifacts are public static data too → open directly. */
-                <SoccerArtifactGrid onOpen={(a) => setActiveArtifact(a)} categorized={cardCategorized} />
+                <SoccerArtifactGrid onOpen={guardedSetArtifact} categorized={cardCategorized} />
+              ) : appMode === 'crypto' ? (
+                <CryptoArtifactGrid categorized={cardCategorized} />
               ) : (
                 <StockArtifactGrid onOpen={guardedSetArtifact} strategy={selectedStrategy} categorized={cardCategorized} />
               )}
@@ -989,7 +993,7 @@ export default function ChatArea({
       </div>
 
       {/* Input Area */}
-      <div className={`p-6 ${appMode === 'prediction' ? 'pt-4' : 'pt-0'} shrink-0 flex justify-center`}>
+      <div className={`p-6 ${usesPredictionLayout ? 'pt-4' : 'pt-0'} shrink-0 flex justify-center`}>
         <div className="w-full max-w-3xl">
           <ChatInput
             retry={retry}

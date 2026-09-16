@@ -4,6 +4,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useState, useRef, useEffect } from 'react';
 import i18n from '../i18n';
+import CryptoNavEntry from '../crypto-markets/CryptoNavEntry';
 
 const LANGUAGES = [
   { code: 'en', flag: 'EN', label: 'EN' },
@@ -35,8 +36,8 @@ export default function Sidebar({
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
-  appMode: 'stock' | 'prediction' | 'macro' | 'soccer',
-  onSetAppMode: (mode: 'stock' | 'prediction' | 'macro' | 'soccer') => void,
+  appMode: 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto',
+  onSetAppMode: (mode: 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto') => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
   cardCategorized?: boolean,
@@ -219,6 +220,7 @@ export default function Sidebar({
             </span>
           </div>
         </button>
+        <CryptoNavEntry active={appMode === 'crypto'} onSelect={() => onSetAppMode('crypto')} />
       </div>
 
       {/* Agent Mode Selector */}

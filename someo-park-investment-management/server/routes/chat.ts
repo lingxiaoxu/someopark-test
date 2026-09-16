@@ -90,7 +90,7 @@ router.post('/', async (req: Request, res: Response) => {
     model: LLMModel
     config: LLMModelConfig
     selectedTemplate?: string
-    appMode?: 'stock' | 'prediction' | 'macro' | 'soccer'
+    appMode?: 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto'
     think?: boolean   // local (ollama) reasoning toggle; undefined/true = thinking ON (default)
   } = req.body
 
@@ -182,7 +182,14 @@ router.post('/', async (req: Request, res: Response) => {
     // Grounding: if a World Cup view was detected, hand the model the SAME real data the
     // panel shows so its prose matches the numbers (the non-agent chat has no real
     // tool-calling). Only the chat prompt is augmented — the coding path is untouched.
-    let chatSystem = toChatPrompt()
+    const { withConversationStructure, cryptoConversationContext } = await import('../utils/conversationPrompt.js')
+    let chatSystem = withConversationStructure(toChatPrompt(), appMode)
+
+    // Crypto grounding is a sibling of Macro / Soccer below and belongs ONLY
+    // to conversational QA. Both thinking transports receive this same system.
+    if (appMode === 'crypto') {
+      chatSystem += await cryptoConversationContext(lastContent, detectedArtifacts)
+    }
 
     // Blog grounding: inject latest article titles+links so the model can cite them
     // when the user asks about macro research, market views, or Someo Park publications.

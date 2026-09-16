@@ -2427,7 +2427,10 @@
       "matchedCoverage": "一致した戦略ポジション {{matched}} / {{legs}} 件（{{ratio}}）、{{fixtures}} 試合",
       "outsideLedger": "ほかに {{count}} 件は台帳外、またはポジション方向が異なるため、一致率に含めません。",
       "coverageUnavailable": "試合・試合前/試合中・ポジション方向で照合したカバー率は未取得です。"
-    }
+    },
+    "quoteCarriedForward": "{{age}}前の価格を継続",
+    "quoteAgeMinutes": "{{n}} 分",
+    "quoteAgeHours": "{{n}} 時間"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(リアルタイム · {{time}} ET)",

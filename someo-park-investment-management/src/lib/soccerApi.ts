@@ -26,7 +26,10 @@ export type SoccerSnapshot = {
   data_status?: { state: 'ok' | 'degraded' | 'unavailable'; issues: { code: string; fixture_id?: number; league?: string }[] };
 };
 export type SoccerPricingStatus = { pricing_state?: 'ok' | 'unavailable'; unavailable_reason?: string; source_as_of?: string | null;
-  quote_status?: Record<string, 'ok' | 'not_listed' | 'unavailable' | 'not_requested'>; };
+  // 'reused' = the budget could not afford this venue's read on this pass, so the
+  // card shows the price we already had, labelled with its age. Display only —
+  // the backend never lets a carried-forward quote reach a decision.
+  quote_status?: Record<string, 'ok' | 'not_listed' | 'unavailable' | 'not_requested' | 'reused'>; };
 export type SoccerOddsState = 'ok' | 'pending_draw' | 'pending_bracket' | 'incomplete_data' | 'champion_unavailable';
 
 export type SoccerLeagueKind = 'league' | 'league_playoffs' | 'swiss_ucl' | 'cup_two_leg';

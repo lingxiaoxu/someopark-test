@@ -86,6 +86,18 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
   const vModel: any = twoWay ? adv!.model : m.model;
   const vKalshi = twoWay ? adv!.kalshi : m.kalshi;
   const vPoly = twoWay ? adv!.poly_us : m.poly_us;
+  // A carried-forward price says how old it is. The venues meter one read budget per
+  // account, so a pass that cannot afford every fixture keeps the price it already
+  // had rather than blanking the card — but never silently. Display only: the backend
+  // does not let a carried-forward quote reach a decision, an edge or a devig.
+  const carried = vPoly as { reused?: boolean; quote_age_s?: number } | null | undefined;
+  const carriedNote = carried?.reused && Number.isFinite(carried?.quote_age_s)
+    ? t('soccer.quoteCarriedForward', {
+        age: (carried!.quote_age_s as number) < 3600
+          ? t('soccer.quoteAgeMinutes', { n: Math.max(1, Math.round((carried!.quote_age_s as number) / 60)) })
+          : t('soccer.quoteAgeHours', { n: Math.round((carried!.quote_age_s as number) / 360) / 10 }),
+      })
+    : null;
   const best = (twoWay ? adv!.edge?.best : m.edge?.best) || null;
   const dec = (twoWay ? adv!.decision : m.decision) || null;
 
@@ -218,7 +230,13 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.kalshiPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.kalshi === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {vPoly
             ? <><Line label={t('soccer.polyPrice')} h={vPoly.home?.ask} d={twoWay ? null : vPoly.draw?.ask} a={vPoly.away?.ask} fmt={px}
-                hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} /><VigNote q={vPoly} twoWay={twoWay} /></>
+                hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} />
+                {carriedNote && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {carriedNote}
+                  </div>
+                )}
+                <VigNote q={vPoly} twoWay={twoWay} /></>
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.polyPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.poly_us === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {edgeView && (
             <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>

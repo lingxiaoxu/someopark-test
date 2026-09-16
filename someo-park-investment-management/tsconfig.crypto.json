@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "types": ["node"],
+    "typeRoots": [
+      "./scripts/crypto_prediction/typecheck-runtime/node_modules/@types",
+      "./node_modules/@types"
+    ],
+    "paths": {
+      "react": [
+        "./scripts/crypto_prediction/typecheck-runtime/node_modules/@types/react"
+      ],
+      "react/*": [
+        "./scripts/crypto_prediction/typecheck-runtime/node_modules/@types/react/*"
+      ],
+      "react-dom/*": [
+        "./scripts/crypto_prediction/typecheck-runtime/node_modules/@types/react-dom/*"
+      ]
+    }
+  },
+  "include": [
+    "src/crypto-markets/**/*.ts",
+    "src/crypto-markets/**/*.tsx"
+  ],
+  "exclude": ["node_modules", "dist", "dist-crypto", "src/crypto-markets/main.tsx"]
+}

@@ -1023,6 +1023,37 @@ function MilestonePrices({ marks }: { marks: any[] }) {
   </div>;
 }
 
+/** Match-list dates only; keep the complete ledger and its cumulative values intact. */
+function MatchDateFilter({ records, children }: { records: any[]; children: (records: any[]) => ReactNode }) {
+  const { t } = useTranslation();
+  const dates = records.map(record => record.date)
+    .filter((date): date is string => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  const earliest = dates[0] ?? '';
+  const latest = dates[dates.length - 1] ?? '';
+  const [range, setRange] = useState<{ start: string; end: string } | null>(null);
+  const startDate = range?.start ?? latest;
+  const endDate = range?.end ?? latest;
+  const visible = dates.length ? records.filter(record => record.date >= startDate && record.date <= endDate) : records;
+  // Match the AI stock StrategyPerformanceViewer date picker exactly.
+  const inputStyle: CSSProperties = {
+    padding: '3px 6px', fontSize: '10px', fontFamily: 'var(--font-mono)',
+    border: '1px solid #ccc', background: '#fff', color: '#333', width: '110px',
+  };
+  return <>
+    {!!dates.length && <div className="flex items-center gap-2 shrink-0 flex-wrap" data-soccer-date-filter="true" style={{ marginBottom: 12 }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <input type="date" value={startDate} min={earliest} max={endDate}
+          onChange={e => setRange({ start: e.target.value, end: endDate })} style={inputStyle} />
+        <span style={{ fontSize: '10px', color: '#999' }}>—</span>
+        <input type="date" value={endDate} min={startDate} max={latest}
+          onChange={e => setRange({ start: startDate, end: e.target.value })} style={inputStyle} />
+      </div>
+    </div>}
+    {visible.length ? children(visible) : <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{t('soccer.empty')}</div>}
+  </>;
+}
+
 function PriceTrack() {
   const { t, i18n } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getSoccerMilestones(), []);
@@ -1035,9 +1066,9 @@ function PriceTrack() {
     <Title sub={t('soccer.strategyLedger.priceSubtitle')} />
     {ledger ? <>
       <SoccerStrategyLedgerSummary ledger={ledger} />
-      {ledger.records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b}>
+      <MatchDateFilter records={ledger.records}>{records => records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b}>
         <MilestonePrices marks={byFixture.get(b.fixture_id)?.marks ?? []} />
-      </SoccerStrategyRecord></div>)}
+      </SoccerStrategyRecord></div>)}</MatchDateFilter>
     </> : <StrategyLedgerUnavailable />}
     {!!priceOnly.length && <section data-price-only="true" style={{ marginTop: 16 }}>
       <h3 style={{ fontSize: 12 }}>{t('soccer.strategyLedger.priceOnlyTitle', { count: priceOnly.length })}</h3>
@@ -1074,7 +1105,7 @@ function PerformanceCard() {
           [t('soccer.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)' }}>{t(pass ? 'soccer.gradePass' : 'soccer.gradeBlock')}</span>],
         ]} />
       </details>
-      {ledger.records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b} /></div>)}
+      <MatchDateFilter records={ledger.records}>{records => records.map(b => <div key={b.fixture_id}><SoccerStrategyRecord record={b} /></div>)}</MatchDateFilter>
     </> : <StrategyLedgerUnavailable />}
   </div>;
 }

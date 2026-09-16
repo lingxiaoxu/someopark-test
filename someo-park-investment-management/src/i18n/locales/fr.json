@@ -2427,7 +2427,10 @@
       "matchedCoverage": "Positions de stratégie rapprochées : {{matched}} / {{legs}} ({{ratio}}), sur {{fixtures}} matchs",
       "outsideLedger": "{{count}} autres exécutions sont absentes du registre ou de sens différent ; elles sont exclues de cette couverture.",
       "coverageUnavailable": "La couverture vérifiée par match, volet avant-match/en cours et sens de position est indisponible."
-    }
+    },
+    "quoteCarriedForward": "cours d’il y a {{age}}",
+    "quoteAgeMinutes": "{{n}} min",
+    "quoteAgeHours": "{{n}} h"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en direct · {{time}} ET)",

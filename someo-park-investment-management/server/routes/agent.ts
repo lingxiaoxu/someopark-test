@@ -11,11 +11,12 @@ import { createSendMessageTool } from '../tools/sendMessageTool.js'
 import { supabaseAdmin, emailFromToken } from '../utils/supabaseAdmin.js'
 import { detectArtifacts } from '../utils/artifactDetector.js'
 import type { AgentTool } from '../tools/index.js'
+import { createToolResultStore } from '../utils/toolResultStorage.js'
 
 // === Someo Agent usage gate ===
 // Non-owner users get a small number of free Someo Agent questions; the next is blocked.
 // Emails in UNLIMITED_EMAILS are unlimited. Count persists server-side in Supabase `agent_usage`.
-const UNLIMITED_EMAILS = new Set(['lxu912@gmail.com', 'yxc924@gmail.com'])
+const UNLIMITED_EMAILS = new Set(['lxu912@gmail.com', 'yxc924@gmail.com', 'ethanyin2000@gmail.com'])
 const FREE_AGENT_QUESTIONS = 2   // allow 2 per week; block on the 3rd until Monday reset
 
 // Quota-exhausted message, localized into the app's 5 languages (en/zh/ja/fr/es).
@@ -123,20 +124,6 @@ function normalizeMessagesForAPI(messages: Anthropic.MessageParam[]): Anthropic.
     result.shift()
   }
   return result
-}
-
-// === Tool result truncation (reference: CC src/utils/toolResultStorage.ts) ===
-const MAX_TOOL_RESULT_CHARS = 8000
-
-function truncateResult(result: string, toolName: string): string {
-  // Don't truncate results containing base64 images — they need full content to render
-  if (result.includes('data:image/png;base64,') || result.includes('data:image/jpeg;base64,')) {
-    return result
-  }
-  if (result.length <= MAX_TOOL_RESULT_CHARS) return result
-  const omitted = result.length - MAX_TOOL_RESULT_CHARS
-  return result.slice(0, MAX_TOOL_RESULT_CHARS) +
-    `\n\n[TRUNCATED: ${omitted} chars omitted. Tool: ${toolName}]`
 }
 
 // === ask_user pause/resume mechanism (reference: CC AskUserQuestionTool) ===
@@ -307,26 +294,34 @@ router.post('/', async (req, res) => {
     }
 
     // Build tools: static + stateful factories
-    const staticTools = getAgentTools()
+    const staticTools = getAgentTools().filter(tool =>
+      (req.body as any)?.appMode === 'crypto' || !tool.definition.name.startsWith('get_crypto_'))
     const askUser = createAskUserTool(sessionId, send)
     const manageTasks = createManageTasksTool(send)
     const sendMessage = createSendMessageTool(send)
+    const resultStore = createToolResultStore()
+    const resultReader = resultStore.readTool
+    const toolSizes = new Map([...staticTools, askUser, manageTasks, sendMessage, resultReader]
+      .map(tool => [tool.definition.name, tool.maxResultSizeChars]))
 
     const allToolDefs: Anthropic.Tool[] = [
       ...staticTools.map(t => t.definition as Anthropic.Tool),
       askUser.definition as Anthropic.Tool,
       manageTasks.definition as Anthropic.Tool,
       sendMessage.definition as Anthropic.Tool,
+      resultReader.definition as Anthropic.Tool,
     ]
 
     async function executeToolWithContext(name: string, input: any): Promise<string | object> {
       if (name === 'ask_user') return askUser.execute(input)
       if (name === 'manage_tasks') return manageTasks.execute(input)
       if (name === 'send_message') return sendMessage.execute(input)
-      return executeTool(name, input)
+      if (name === resultReader.definition.name) return resultReader.execute(input)
+      return executeTool(name, input, { signal: abortController.signal })
     }
 
-    const systemPrompt = await getSomeoAgentSystemPrompt()
+    const { withConversationStructure, cryptoConversationContext } = await import('../utils/conversationPrompt.js')
+    let systemPrompt = withConversationStructure(await getSomeoAgentSystemPrompt(), (req.body as any)?.appMode)
 
     // Prepare conversation messages
     const conversationMessages: Anthropic.MessageParam[] = [...messages]
@@ -341,6 +336,14 @@ router.post('/', async (req, res) => {
     const DEFAULT_AGENT_MODEL = 'claude-sonnet-4-6'
     const requestedModelId = model?.id || DEFAULT_AGENT_MODEL
     const modelId = requestedModelId.startsWith('claude') ? requestedModelId : DEFAULT_AGENT_MODEL
+    if ((req.body as any)?.appMode === 'crypto') {
+      const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')
+      const text = typeof lastUser?.content === 'string' ? lastUser.content
+        : Array.isArray(lastUser?.content)
+          ? lastUser.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join(' ')
+          : ''
+      systemPrompt += await cryptoConversationContext(text, detectArtifacts(text, 'crypto'), true)
+    }
     if (modelId !== requestedModelId) {
       console.warn(`[Agent] '${requestedModelId}' is not Anthropic-compatible; agent mode requires Claude. Falling back to ${modelId}.`)
       send({ type: 'brief', text: `Someo Agent 模式需要 Claude,已自动切回 ${modelId}(开源模型仅用于普通聊天)。` })
@@ -381,7 +384,7 @@ router.post('/', async (req, res) => {
         tools: allToolDefs,
         max_tokens: 16384,
         stream: true,
-      })
+      }, { signal: abortController.signal })
 
       // === STEP 2: Collect streaming response ===
       let currentText = ''
@@ -512,8 +515,9 @@ router.post('/', async (req, res) => {
           apiResult = result.replace(imageRegex, '![Chart generated — displayed to user]')
         }
 
-        // Truncate for API (sans images)
-        apiResult = truncateResult(apiResult, toolUse.name)
+        // CC pattern: retain the complete output on disk and offer a scoped,
+        // paged reader. Never cut away the tail of a serialized JSON result.
+        apiResult = await resultStore.prepare(apiResult, toolUse.id, toolUse.name, toolSizes.get(toolUse.name))
 
         // Send full result (with images) to frontend via SSE
         send({ type: 'tool_result', toolName: toolUse.name, toolResult: result, isError, toolUseId: toolUse.id })
