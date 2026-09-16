@@ -3,6 +3,7 @@
 // Uses E2B Code Interpreter SDK v2: Sandbox.create() + sandbox.runCode() + sandbox.kill()
 
 import { createTask, updateTaskStatus, getTask } from '../utils/taskManager.js'
+import { buildPythonChartCode } from '../utils/pythonChartCapture.js'
 import type { AgentTool } from './index.js'
 
 // CJK font preamble — best-effort transparent fix.
@@ -180,7 +181,7 @@ Requires E2B_API_KEY environment variable.`,
     // Common packages + CJK font for Chinese chart labels
     const PREINSTALL = 'pip install -q yfinance pandas numpy requests seaborn plotly kaleido scipy 2>/dev/null; apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq fonts-noto-cjk >/dev/null 2>&1; fc-cache -f >/dev/null 2>&1'
 
-    const fullCode = CJK_PREAMBLE + '\n' + code
+    const fullCode = buildPythonChartCode(code, CJK_PREAMBLE)
 
     if (!background) {
       // Synchronous mode
@@ -199,7 +200,7 @@ Requires E2B_API_KEY environment variable.`,
         // Auto-retry if font warning detected and there are images
         if (hasFontWarning(stderr) && images.length > 0) {
           try {
-            const retryCode = FONT_RETRY_PREAMBLE + '\n' + code
+            const retryCode = buildPythonChartCode(code, FONT_RETRY_PREAMBLE)
             const retryResult = await sandbox.runCode(retryCode)
             const retryStdout = (retryResult.logs?.stdout ?? []).join('\n')
             const retryStderr = (retryResult.logs?.stderr ?? []).join('\n')
@@ -261,7 +262,7 @@ Requires E2B_API_KEY environment variable.`,
           // Auto-retry if font warning detected and there are images
           if (hasFontWarning(stderr) && images.length > 0) {
             try {
-              const retryCode = FONT_RETRY_PREAMBLE + '\n' + code
+              const retryCode = buildPythonChartCode(code, FONT_RETRY_PREAMBLE)
               const retryResult = await sandbox.runCode(retryCode)
               const retryImages = extractImages(retryResult)
               if (retryImages.length > 0) {

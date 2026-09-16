@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
-import { createWebFetchTool, prepareWebContent, MAX_MARKDOWN_LENGTH, TRUNCATION_MARKER } from '../tools/webFetchTool.js'
+import { createWebFetchTool, prepareWebContent, MAX_MARKDOWN_LENGTH, TRUNCATION_MARKER, WEB_FETCH_HEADERS } from '../tools/webFetchTool.js'
 import { fetchSafeText, isPublicAddress, MAX_HTTP_BYTES, type SafeFetchDependencies } from '../tools/safeWebFetch.js'
 import { formatHttpResponse } from '../tools/httpTool.js'
 
@@ -10,6 +10,31 @@ const page = (text: string, contentType = 'text/html') => ({ status: 200, url: s
 const hop = (body = 'public page') => ({ status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from(body) })
 const safeDependencies = (request: SafeFetchDependencies['request'] = async () => hop()): SafeFetchDependencies => ({
   lookup: async () => [{ address: '8.8.8.8', family: 4 }], request,
+})
+
+test('web_fetch sends compatible webpage headers while preserving the timeout and cancellation signal', async () => {
+  const controller = new AbortController()
+  let calls = 0
+  const tool = createWebFetchTool({
+    fetch: async (url, options) => {
+      calls++
+      assert.equal(url, sourceURL)
+      assert.equal(options.timeout, 60_000)
+      assert.equal(options.signal, controller.signal)
+      assert.deepEqual(options.headers, {
+        Accept: 'text/markdown, text/html, */*',
+        'User-Agent': 'Mozilla/5.0',
+      })
+      // A transport must not be able to mutate defaults for later requests.
+      options.headers.Accept = 'changed by transport'
+      return page('<p>Readable public page</p>')
+    },
+    summarize: async () => ({ text: 'Readable public page' }),
+  })
+  await tool.execute({ url: sourceURL, prompt: 'Summarize' }, { signal: controller.signal })
+  await tool.execute({ url: sourceURL, prompt: 'Summarize' }, { signal: controller.signal })
+  assert.equal(calls, 2)
+  assert.equal(WEB_FETCH_HEADERS.Accept, 'text/markdown, text/html, */*')
 })
 
 test('web_fetch converts HTML, excludes scripts/styles, and retains source and readable facts', async () => {

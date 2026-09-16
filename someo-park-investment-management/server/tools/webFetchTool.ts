@@ -8,6 +8,13 @@ import { fetchSafeText, type SafeResponse } from './safeWebFetch.js'
 export const MAX_MARKDOWN_LENGTH = 100_000
 export const WEB_FETCH_MODEL = 'claude-haiku-4-5-20251001'
 export const TRUNCATION_MARKER = '\n\n[Content truncated due to length...]'
+// Public webpage requests need explicit content negotiation and a compatible
+// User-Agent. Some sites accept TLS but never send HTTP headers without both.
+// Keep these defaults local to web_fetch; raw API requests are unchanged.
+export const WEB_FETCH_HEADERS = {
+  Accept: 'text/markdown, text/html, */*',
+  'User-Agent': 'Mozilla/5.0',
+} as const
 const markdown = new TurndownService()
 markdown.remove(['script', 'style', 'noscript', 'template'])
 
@@ -31,7 +38,7 @@ export function prepareWebContent(text: string, contentType: string) {
 
 type SummaryInput = { url: string; prompt: string; content: string; signal?: AbortSignal }
 export interface WebFetchDependencies {
-  fetch: (url: string, options: { timeout: number; signal?: AbortSignal }) => Promise<SafeResponse>
+  fetch: (url: string, options: { timeout: number; signal?: AbortSignal; headers: Record<string, string> }) => Promise<SafeResponse>
   summarize: (input: SummaryInput) => Promise<{ text: string; stopReason?: string | null }>
 }
 
@@ -75,7 +82,7 @@ export function createWebFetchTool(dependencies: WebFetchDependencies = { fetch:
       if (typeof url !== 'string' || !url.trim()) throw new Error('A webpage URL is required')
       if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 10_000) throw new Error('Prompt must contain 1–10,000 characters')
       context?.signal?.throwIfAborted()
-      const response = await dependencies.fetch(url, { timeout: 60_000, signal: context?.signal })
+      const response = await dependencies.fetch(url, { timeout: 60_000, signal: context?.signal, headers: { ...WEB_FETCH_HEADERS } })
       if (response.status < 200 || response.status >= 300) throw new Error(`Web fetch failed: HTTP ${response.status} at ${response.url}`)
       if (response.contentType && !/(?:text\/|html|json|xml)/i.test(response.contentType)) {
         throw new Error(`Unsupported webpage content type: ${response.contentType}`)
