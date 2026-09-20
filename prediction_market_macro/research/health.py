@@ -275,14 +275,14 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
     label is directly in contract units (_FUSE_SERIES). A mismatch means our
     settlement understanding (or the label pipe) is wrong — global breaker."""
     from prediction_market_macro.config.registry import REGISTRY
-    from prediction_market_macro.ops.pnl import _realized_print
+    from prediction_market_macro.ops.pnl import _realized_print, label_is_settled_final
     from prediction_market_macro.util.periods import kalshi_period_to_key
     bad = []
     rows = []
     for _s in _FUSE_SERIES:                      # one budget each — see _FUSE_PER_SERIES
         rows += conn.execute(
-            "SELECT s.series, s.period, s.ticker, s.result, c.floor_strike,"
-            " c.cap_strike, c.strike_type FROM settlements s"
+            "SELECT s.series, s.period, s.ticker, s.result, s.settled_ts,"
+            " c.floor_strike, c.cap_strike, c.strike_type FROM settlements s"
             " JOIN contracts c ON c.ticker=s.ticker"
             " WHERE s.result IN ('yes','no') AND s.series=?"
             " ORDER BY s.settled_ts DESC LIMIT ?", (_s, _FUSE_PER_SERIES)).fetchall()
@@ -296,6 +296,9 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
             cache[ck] = _realized_print(conn, r["series"], key)
         y = cache[ck]
         if y is None:
+            continue
+        # A label that can still move is not evidence of anything (2026-09-17, KXFED).
+        if not label_is_settled_final(conn, r["series"], key, r["settled_ts"]):
             continue
         expected = _leg_expected(y, r["strike_type"], r["floor_strike"],
                                  r["cap_strike"], REGISTRY[r["series"]].strict_gt)

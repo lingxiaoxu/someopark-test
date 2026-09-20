@@ -499,3 +499,77 @@ def test_release_sweeps_a_resolved_breaker_older_than_the_blocking_window():
                   "KXNATGASW: health_red:pred_stale:39h"))
     assert len(risk.release_resolved(conn, set(), now)) == 1
     assert conn.execute("SELECT acked FROM alerts WHERE level='error'").fetchone()[0] == 1
+
+
+def _fuse_db():
+    """The production shape the settle-label fuse reads."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        "CREATE TABLE settlements(ticker TEXT PRIMARY KEY, series TEXT, period TEXT,"
+        " result TEXT, settled_ts TEXT, first_seen_ts TEXT);"
+        "CREATE TABLE contracts(ticker TEXT PRIMARY KEY, series TEXT, period TEXT,"
+        " strike_type TEXT, floor_strike REAL, cap_strike REAL);"
+        "CREATE TABLE fred_obs(sid TEXT, event_time TEXT, value REAL, vintage_date TEXT,"
+        " knowledge_time TEXT, first_seen_ts TEXT,"
+        " PRIMARY KEY(sid, event_time, vintage_date))")
+    return conn
+
+
+def _seed_kxfed_september(conn, through: str):
+    """KXFED-26SEP as it really settled: FOMC took the upper bound to 4.00 on 09-16
+    17:55Z, so 'Above 3.75' paid YES. DFEDTARU carries the EFFECTIVE rate, which only
+    shows 4.00 from 09-17 — `through` is how far our copy has advanced."""
+    conn.execute("INSERT INTO settlements VALUES('KXFED-26SEP-T3.75','KXFED','26SEP',"
+                 "'yes','2026-09-16T17:55:00Z','2026-09-17T09:05:33')")
+    conn.execute("INSERT INTO contracts VALUES('KXFED-26SEP-T3.75','KXFED','26SEP',"
+                 "'greater',3.75,NULL)")
+    for d, v in (("2026-09-15", 3.75), ("2026-09-16", 3.75), ("2026-09-17", 4.0)):
+        if d <= through:
+            conn.execute("INSERT INTO fred_obs VALUES('DFEDTARU',?,?,?,?,?)",
+                         (d, v, d, d + "T18:00:00+00:00", d + "T18:04:00"))
+    conn.commit()
+
+
+def test_a_label_that_has_not_caught_up_to_the_settlement_does_not_fuse_the_breaker():
+    """2026-09-17: our newest DFEDTARU was 09-16 = 3.75 while the venue had already
+    settled on the 4.00 decision. The fuse compared a correct settlement against a
+    pre-meeting label, tripped the GLOBAL breaker, force-exited three positions and
+    blocked 226 opens until the 09-17 observation arrived the next morning."""
+    from datetime import datetime, timezone
+    from prediction_market_macro.ops.pnl import label_is_settled_final
+    from prediction_market_macro.research.health import _settle_label_check
+    conn = _fuse_db()
+    _seed_kxfed_september(conn, through="2026-09-16")
+    assert label_is_settled_final(conn, "KXFED", "2026-09", "2026-09-16T17:55:00Z") is False
+    assert _settle_label_check(conn, datetime(2026, 9, 17, 9, 15, tzinfo=timezone.utc)) == []
+
+
+def test_once_the_label_advances_past_the_settlement_the_fuse_judges_again():
+    """The guard must not switch the fuse off for KXFED — only defer it."""
+    from datetime import datetime, timezone
+    from prediction_market_macro.ops.pnl import label_is_settled_final
+    from prediction_market_macro.research.health import _settle_label_check
+    conn = _fuse_db()
+    _seed_kxfed_september(conn, through="2026-09-17")
+    assert label_is_settled_final(conn, "KXFED", "2026-09", "2026-09-16T17:55:00Z") is True
+    # 4.00 > 3.75 -> YES, which is what the venue paid: judged, and agrees
+    assert _settle_label_check(conn, datetime(2026, 9, 18, 9, 15, tzinfo=timezone.utc)) == []
+    # and a genuinely wrong label is still caught
+    conn.execute("UPDATE settlements SET result='no' WHERE ticker='KXFED-26SEP-T3.75'")
+    conn.commit()
+    out = _settle_label_check(conn, datetime(2026, 9, 18, 9, 15, tzinfo=timezone.utc))
+    assert out and out[0].startswith("settle_label_mismatch:KXFED-26SEP-T3.75")
+
+
+def test_series_whose_print_lands_with_the_settlement_are_never_deferred():
+    """Only the month-end branch can move after settlement; deferring the others would
+    silently narrow the fuse."""
+    from prediction_market_macro.ops.pnl import label_is_settled_final
+    conn = _fuse_db()
+    for s in ("KXJOBLESSCLAIMS", "KXU3", "KXPAYROLLS", "KXAAAGASW"):
+        assert label_is_settled_final(conn, s, "2026-09", "2026-09-16T17:55:00Z") is True
+    # unknown provenance or no label at all: judge, exactly as before
+    assert label_is_settled_final(conn, "KXFED", "2026-09", "") is True
+    assert label_is_settled_final(conn, "KXFED", "2026-09-18", "2026-09-18T21:00:00Z") is True

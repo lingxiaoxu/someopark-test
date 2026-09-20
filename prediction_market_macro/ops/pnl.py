@@ -85,6 +85,37 @@ _DAILY_MONTH_END = {"KXFED"}            # DFEDTARU is daily; the month key needs
 _DAILY_SID = {"KXAAAGASW": "AAA_DAILY"}  # AAA national average, not the EIA weekly
 
 
+def label_is_settled_final(conn, series: str, period: str, settled_ts: str) -> bool:
+    """Can `_realized_print`'s label for this period still change after `settled_ts`?
+
+    Only the month-end branch can. `_DAILY_MONTH_END` reads the LAST daily value in the
+    month, and an FOMC decision reaches DFEDTARU on the day the new target takes EFFECT —
+    the day AFTER the announcement the venue settles on. On 2026-09-16 17:55Z the FOMC
+    went to 4.00 and Kalshi settled KXFED-26SEP accordingly; our newest in-month DFEDTARU
+    was still 09-16 = 3.75, so at 09-17 09:15Z the settle-label fuse compared a correct
+    settlement against a pre-meeting label, tripped the GLOBAL breaker, force-exited three
+    positions and blocked 226 opens until the 09-17 observation (4.00) arrived the next
+    morning and the self-healing release cleared it.
+
+    The label is final once the source series has advanced strictly PAST the settlement
+    day; until then there is no honest comparison to make. Every other branch reads a
+    print that is published with (or before) the settlement, so they are always final —
+    returning True for them keeps the fuse's coverage exactly as it was.
+    """
+    from prediction_market_macro.config.registry import REGISTRY
+    if series not in _DAILY_MONTH_END or len(period) != 7:
+        return True
+    spec = REGISTRY.get(series)
+    sid = spec.fred_first_release if spec else None
+    if not sid or not settled_ts:
+        return True                      # unknown provenance: judge, as before
+    r = conn.execute("SELECT MAX(event_time) m FROM fred_obs WHERE sid=? AND"
+                     " event_time LIKE ?", (sid, period + "%")).fetchone()
+    if r is None or r["m"] is None:
+        return True                      # no label at all — _realized_print returns None
+    return str(r["m"])[:10] > str(settled_ts)[:10]
+
+
 def _daily_value_on(conn, sid: str, day: str) -> float | None:
     r = conn.execute(
         "SELECT value FROM fred_obs WHERE sid=? AND event_time LIKE ?"
