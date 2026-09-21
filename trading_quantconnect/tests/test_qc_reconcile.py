@@ -253,6 +253,67 @@ def test_historical_sid_names_use_current_symbols_for_official_valuation(
     assert out["Q"] == pytest.approx(200_000.0 - 394 * 218.0 - 432 * 120.0)
 
 
+@pytest.fixture()
+def qc_september_historical_name_snapshot():
+    """9/17 按订单核实的完整 SID;股数/价取 9/15 留档,现金是合成测试值。"""
+    class Client:
+        def live_read(self, pid):
+            return {"status": "Running", "deployId": "test-deploy"}
+
+        def live_portfolio(self, pid):
+            return {"portfolio": {
+                "holdings": {
+                    "AOC R735QTJ8XC9X": {
+                        "q": -122, "p": 308.25, "v": -37606.5},
+                    "AHA R735QTJ8XC9X": {
+                        "q": 1239, "p": 89.88, "v": 111361.32},
+                    "ARNC WF6J1S513QZP": {
+                        "q": -216, "p": 224.95, "v": -48589.2},
+                },
+                "cash": {"USD": {"amount": 200_000.0}},
+            }}
+
+    return rolloff.qc_snapshot(client=Client(), pid=1)
+
+
+@pytest.mark.parametrize("raw,current", [
+    ("AOC", "AON"), ("AHA", "SWKS"), ("ARNC", "HWM"),
+])
+def test_september_sid_names_match_targets_but_keep_real_share_breaches(
+        target_file, qc_september_historical_name_snapshot, raw, current):
+    qc = qc_september_historical_name_snapshot
+    targets = {"AON": -122, "SWKS": 1239, "HWM": -216}
+    target_file(42, targets)
+    row = qr.holdings_plane(qc, 42)
+    assert row["status"] == "ok" and row["diffs"] == []
+    assert row["n_matched"] == row["n_tickers"] == 3
+
+    qc["shares"][raw] += 1
+    row = qr.holdings_plane(qc, 42)
+    assert row["status"] == "breach"
+    assert row["diffs"] == [{"ticker": current, "qc": targets[current] + 1,
+                             "target": targets[current], "diff": 1}]
+
+
+@pytest.mark.parametrize("stored_raw_prices", [False, True])
+def test_september_sid_names_value_live_and_archived_prices_consistently(
+        monkeypatch, qc_september_historical_name_snapshot, stored_raw_prices):
+    """新快照与修复前留档都取现行代码收盘价;不改历史股数、现金或原始价格。"""
+    qc = qc_september_historical_name_snapshot
+    assert qc["shares"] == {"AOC": -122, "AHA": 1239, "ARNC": -216}
+    assert qc["prices"] == {"AON": 308.25, "SWKS": 89.88, "HWM": 224.95}
+    if stored_raw_prices:
+        qc["prices"] = {"AOC": 308.25, "AHA": 89.88, "ARNC": 224.95}
+    before = json.dumps(qc, sort_keys=True)
+    closes = {"AON": 310.0, "SWKS": 90.0, "HWM": 225.0}
+    monkeypatch.setattr(official_close, "grouped_closes", lambda s: closes)
+    out = rolloff.official_q("2026-09-15", qc)
+    assert out["closes"] == closes
+    assert out["Q"] == pytest.approx(200_000.0 - 122 * 310.0
+                                     + 1239 * 90.0 - 216 * 225.0)
+    assert json.dumps(qc, sort_keys=True) == before
+
+
 def test_holdings_pending_when_pushed_ahead_of_applied(target_file):
     """夜间换书后的常态:新 target 已推、QC 要等明早开盘 —— 不出裁决而非 breach。"""
     target_file(14, {"AAPL": 100})
@@ -1484,3 +1545,89 @@ def test_conflicting_pass_keeps_prior_and_refuses_verdict(monkeypatch, eq_env):
     assert "deploy_id" in rep["close_snapshot_conflict"]["why"]
     assert rep["equity_check"]["status"] == "pending"
     assert "重部署" in rep["equity_check"]["note"]
+
+
+def _fixed_minute_with_shares(monkeypatch, prices, directory, prev_cash,
+                              prev_shares):
+    monkeypatch.setattr(qr, "REPORT_DIR", directory)
+    (directory / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "session": "2026-08-26", "close_snapshot": {"qc": {
+            "cash": prev_cash, "deploy_id": "L-cur", "shares": prev_shares}}}))
+    monkeypatch.setattr(official_close, "qc_reference_prices", lambda session, tickers: {
+        "bar_start_et": f"{session}T15:58:00-04:00", "source": "test exact minute",
+        "prices": prices})
+
+
+def test_time_bridge_admits_cash_step_verified_as_ex_date_dividends(monkeypatch, eq_env):
+    """除息日分红净额与非成交现金逐分吻合 → 放行并留证(2026-09-15 形态)。
+
+    上一收盘持仓 X 多 100 股 @0.50、Y 空 −40 股 @0.25:净额 +40.00。今日现金
+    比上一收盘多出同样的 +40.00(无成交)。守卫须核对通过、桥照常 verified,
+    且把逐腿证据(含空头借记)写进 book_check。
+    """
+    _fixed_minute_with_shares(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env,
+                              prev_cash=348.0, prev_shares={"X": 100, "Y": -40})
+    monkeypatch.setattr(official_close, "ex_date_dividends",
+                        lambda session: {"X": 0.50, "Y": 0.25, "ZZZ": 9.99})
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "verified"
+    bc = b["book_check"]
+    assert bc["nonfill_cash_usd"] == 40.0
+    dv = bc["dividends_verified"]
+    assert dv["usd"] == 40.0
+    assert {(l["ticker"], l["shares_prev_close"], l["usd"]) for l in dv["per_leg"]} == \
+        {("X", 100.0, 50.0), ("Y", -40.0, -10.0)}
+
+
+def test_time_bridge_rejects_cash_step_that_mismatches_dividends(monkeypatch, eq_env):
+    """差一分也不放行:非成交现金与分红净额对不上 → 桥保持 unavailable。"""
+    _fixed_minute_with_shares(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env,
+                              prev_cash=348.0, prev_shares={"X": 100, "Y": -40})
+    monkeypatch.setattr(official_close, "ex_date_dividends",
+                        lambda session: {"X": 0.50})  # 少了 Y 的借记 → 期望 +50 ≠ +40
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "pending"
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "unavailable" and "对不上" in b["note"]
+
+
+def test_time_bridge_dividend_fetch_failure_keeps_gate_closed(monkeypatch, eq_env):
+    """取不到分红数据 ≠ 当天没有分红:SourceError 必须保持保守闭门。"""
+    _fixed_minute_with_shares(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env,
+                              prev_cash=348.0, prev_shares={"X": 100})
+    def boom(session):
+        raise qr.SourceError("除息分红 HTTP 500")
+    monkeypatch.setattr(official_close, "ex_date_dividends", boom)
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert row["valuation_time_bridge"]["status"] == "unavailable"
+
+
+def test_time_bridge_cash_step_without_prev_shares_stays_closed(monkeypatch, eq_env):
+    """老存档没有 shares 字段时不能核分红 → 照旧闭门,不猜。"""
+    _fixed_minute(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env)
+    (eq_env / "qc_reconcile_2026-08-26.json").write_text(json.dumps({
+        "session": "2026-08-26",
+        "close_snapshot": {"qc": {"cash": 348.0, "deploy_id": "L-cur"}}}))
+    monkeypatch.setattr(official_close, "ex_date_dividends",
+                        lambda session: {"X": 0.50})
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    assert row["status"] == "pending"
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "unavailable" and "缺上一交易日" in b["note"]
+
+
+def test_time_bridge_dividend_entitlement_maps_historical_first_names(monkeypatch, eq_env):
+    """上一收盘持仓存的是 QC 历史首名(如 AOC),分红键是现行代码(AON):
+    守卫必须经 _canon 聚合后再配分红,否则老名持仓的分红会被漏算成 mismatch。"""
+    _fixed_minute_with_shares(monkeypatch, {"X": 9.4, "Y": 1.0}, eq_env,
+                              prev_cash=338.0, prev_shares={"AOC": 100})
+    monkeypatch.setattr(official_close, "ex_date_dividends",
+                        lambda session: {"AON": 0.50})
+    row = qr.equity_plane("2026-08-27", _qc(388, equity_reported=5899400), [], {}, {}, {})
+    b = row["valuation_time_bridge"]
+    assert b["status"] == "verified"
+    assert b["book_check"]["dividends_verified"]["per_leg"] == [
+        {"ticker": "AON", "shares_prev_close": 100.0,
+         "cash_per_share": 0.50, "usd": 50.0}]

@@ -796,12 +796,45 @@ def _reference_book_guard(session: str, qc: dict, fills: list[dict], bar_start: 
                              for f in fills))
     except KeyError:
         raise SourceError("成交金额字段缺失,不能验证分钟参考簿") from None
+    # 已核实分红可放行(2026-09-21,方案 A):QC(LEAN)在**除息日盘前**把
+    # 分红现金入账 —— 上一收盘持仓 × 每股金额,多头贷记、空头借记,时点早于
+    # 参考分钟,所以这笔非成交现金不影响"用收盘现金验证 15:58 估值"的前提。
+    # 2026-09-15 实测:+921.00 与 ex=09-15 三腿(ARCC/TSLX 多头、VRSK 空头)
+    # 逐分吻合。判据是**逐分相等**(±0.01):对得上才放行并留证;对不上
+    # (哪怕只差一分)仍按原样闭门 —— 差额的入账时点无从知晓。
+    div_expected, div_legs = 0.0, []
     if abs(nonfill) > 0.01:
-        raise SourceError(f"存在非成交现金变动 {nonfill:+,.2f},其入账时点未知,"
-                          "不能用收盘现金验证较早分钟估值")
-    return {"previous_session": previous.get("session") or prev_trading_session(session),
+        prev_shares = prev_qc.get("shares")
+        if not isinstance(prev_shares, dict) or not prev_shares:
+            raise SourceError(f"存在非成交现金变动 {nonfill:+,.2f},且缺上一交易日"
+                              "持仓存档,无法核对除息分红,不能用收盘现金验证较早分钟估值")
+        per_share = official_close.ex_date_dividends(session)
+        canon_book: dict[str, float] = {}
+        for t, s in prev_shares.items():
+            c = rolloff._canon(t)          # QC 历史首名 → 现行代码,与分红键一致
+            canon_book[c] = canon_book.get(c, 0.0) + number(s)
+        for c in sorted(canon_book):
+            amt = per_share.get(c)
+            if amt:
+                usd = canon_book[c] * amt
+                div_expected += usd
+                div_legs.append({"ticker": c, "shares_prev_close": canon_book[c],
+                                 "cash_per_share": amt, "usd": round(usd, 6)})
+        if abs(nonfill - div_expected) > 0.01:
+            raise SourceError(
+                f"存在非成交现金变动 {nonfill:+,.2f},与当日除息分红净额 "
+                f"{div_expected:+,.2f}(上一收盘持仓×每股,多头贷记/空头借记)"
+                f"对不上,差 {nonfill - div_expected:+,.2f} 的入账时点未知,"
+                "不能用收盘现金验证较早分钟估值")
+    info = {"previous_session": previous.get("session") or prev_trading_session(session),
             "nonfill_cash_usd": round(nonfill, 6),
             "all_fills_before_reference": True, "same_deployment": True}
+    if div_legs:
+        info["dividends_verified"] = {
+            "usd": round(div_expected, 6), "per_leg": div_legs,
+            "basis": "ex_dividend_date == session;上一收盘持仓 × 每股(空头借记);"
+                     "QC 在除息日盘前入账(2026-09-15 实测逐分吻合),早于参考分钟"}
+    return info
 
 
 def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
@@ -1096,7 +1129,10 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
         "usd": (None if qc_div is None else round(loc_div - qc_div, 2)),
         "missing_prev": sorted(div_missing),
         "transition_contaminated": bool(q["per_pair"]),
-        "note": "本地按除息日入账、QC 按付息日到现金,差额即时点项;过渡期内 "
+        "note": "本地与 QC 均按除息日入账(2026-09-21 实测更正:QC/LEAN 在除息日"
+                "盘前按上一收盘持仓入现金,ex=09-15 三腿 +921.00 逐分吻合;此前"
+                "\"QC 按付息日\"的说法有误),差额来自两侧口径/幅度而非付息日滞后;"
+                "过渡期内 "
                 "L/S 队列的股息也落在这里(QC 根本没持有那些腿)"}
     # 挂载台阶:QC 无活的入金通道,新策略是保证金建仓 —— 本场次起 P 多出该策略
     # 官方净值而 Q 不变,ΔD 里因此坐着一整个台阶。它必须和 lag/slip 一样进 known:

@@ -220,3 +220,52 @@ def assert_prices_sane(closes: dict[str, float], qc_prices: dict | None,
             "官方收盘价与 QC 逐票价严重不符,多半是 QC 历史首名映射到了**别的"
             "证券**(如 EGG=EG&G/Revvity,而 Polygon 的 EGG 是 Enigmatig):"
             + "; ".join(bad) + " —— 补 rolloff.QC_SYMBOL_ALIAS 后重跑")
+
+
+_DIVIDENDS = "https://api.polygon.io/v3/reference/dividends"
+
+
+def ex_date_dividends(session: str) -> dict[str, float]:
+    """session 当天除息(ex_dividend_date == session)的每股现金分红,按票聚合。
+
+    给 _reference_book_guard 的"已核实分红可放行"判据用。QC(LEAN)在除息日的
+    **盘前**数据切片里应用 Dividend 事件:现金按上一交易日收盘持仓 × 每股金额
+    入账(多头贷记、空头借记),时点早于任何盘中分钟,所以收盘现金可以用来
+    验证 15:58 参考估值。2026-09-15 实测:非成交现金 +921.00 与 ex=09-15 三腿
+    (ARCC +587.04 / TSLX +488.46 多头、VRSK −154.50 空头)逐分吻合;而付息日
+    口径(pay_date=09-15 的 ADI/OBDC/NEE,合计 339.88 或按现仓 1,667.96)完全
+    没有进当日现金 —— dividend_timing 注释里"QC 按付息日到现金"的假设是错的。
+
+    同票多笔(普通+特别股息同日除息)累加。只收 USD(currency 缺省视为 USD)。
+    任何取数失败都抛 SourceError:守卫据此保持"桥不可用"的保守闭门,
+    绝不把取不到数当成"当天没有分红"。
+    """
+    key = os.environ.get("POLYGON_API_KEY")
+    if not key:
+        raise SourceError("POLYGON_API_KEY 不可见,无法取除息分红")
+    out: dict[str, float] = {}
+    url: str | None = _DIVIDENDS
+    params = {"ex_dividend_date": session, "limit": 1000, "apiKey": key}
+    while url:
+        try:
+            r = requests.get(url, params=params, timeout=_TIMEOUT)
+        except requests.RequestException as e:
+            raise SourceError(f"除息分红请求失败({type(e).__name__})") from None
+        if r.status_code != 200:
+            raise SourceError(f"除息分红 HTTP {r.status_code}")
+        j = r.json() or {}
+        for d in j.get("results") or []:
+            if d.get("currency") not in (None, "", "USD"):
+                continue
+            t = d.get("ticker")
+            if not t:
+                continue
+            try:
+                amt = float(d["cash_amount"])
+                if not math.isfinite(amt):
+                    raise ValueError("non-finite")
+            except (KeyError, ValueError, TypeError):
+                raise SourceError(f"{t} 除息记录缺有效 cash_amount") from None
+            out[t] = out.get(t, 0.0) + amt
+        url, params = j.get("next_url"), {"apiKey": key}
+    return out
