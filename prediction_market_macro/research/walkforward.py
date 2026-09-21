@@ -592,6 +592,13 @@ class _GateBook:
         from prediction_market_macro.research import param_argmin as _pa
         from prediction_market_macro.research import pnl_score as _psc
         from prediction_market_macro.util.periods import kalshi_period_to_key
+        # A shared model module does not register a market for argmin adoption.
+        # KXFEDDECISION shares fed's space but is absent from the daily selector's
+        # MARKETS/CAP. Keep that registered series on defaults in this replay;
+        # inventing a cap would introduce a search policy production never runs.
+        if series in REGISTRY and series not in _pa.MARKETS:
+            hit = self._amx[series] = ([{}], [], [])
+            return hit
         grid, _rep = _pa.build(self.conn, series, self.argmin_start)
         kept, mat = [], []
         if len(grid) > 1:
