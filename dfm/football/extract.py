@@ -108,6 +108,9 @@ TEAM_STRENGTH = {
     # a missing row at <2dp on anchored W/D/L, so this is hygiene and the never-simmed
     # ridge path, done in the cheap order. Same FIFA-flavored scale.
     'Colombia': 0.6, 'Switzerland': 0.4, 'Algeria': 0.2, 'Ghana': -0.2,
+    # 2026-09-21 (England_vs_DR Congo batch): added before the run, as on 09-12. Same
+    # FIFA-flavored scale; DR Congo sits with the Ghana / South Africa tier.
+    'DR Congo': -0.2,
 }
 
 RE_GOAL = re.compile(r'^Goal Scored by - (.+) - \((.+)\)$')
