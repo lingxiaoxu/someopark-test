@@ -2427,7 +2427,10 @@
       "matchedCoverage": "Posiciones de estrategia coincidentes: {{matched}} / {{legs}} ({{ratio}}), en {{fixtures}} partidos",
       "outsideLedger": "Otras {{count}} ejecuciones están fuera del registro o tienen una dirección distinta; se excluyen de la cobertura coincidente.",
       "coverageUnavailable": "No hay cobertura verificada por partido, modalidad previa/en curso y dirección de la posición."
-    }
+    },
+    "quoteCarriedForward": "precio de hace {{age}}",
+    "quoteAgeMinutes": "{{n}} min",
+    "quoteAgeHours": "{{n}} h"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",

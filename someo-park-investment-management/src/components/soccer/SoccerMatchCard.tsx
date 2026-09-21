@@ -86,6 +86,18 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
   const vModel: any = twoWay ? adv!.model : m.model;
   const vKalshi = twoWay ? adv!.kalshi : m.kalshi;
   const vPoly = twoWay ? adv!.poly_us : m.poly_us;
+  // A carried-forward price says how old it is. The venues meter one read budget per
+  // account, so a pass that cannot afford every fixture keeps the price it already
+  // had rather than blanking the card — but never silently. Display only: the backend
+  // does not let a carried-forward quote reach a decision, an edge or a devig.
+  const carried = vPoly as { reused?: boolean; quote_age_s?: number } | null | undefined;
+  const carriedNote = carried?.reused && Number.isFinite(carried?.quote_age_s)
+    ? t('soccer.quoteCarriedForward', {
+        age: (carried!.quote_age_s as number) < 3600
+          ? t('soccer.quoteAgeMinutes', { n: Math.max(1, Math.round((carried!.quote_age_s as number) / 60)) })
+          : t('soccer.quoteAgeHours', { n: Math.round((carried!.quote_age_s as number) / 360) / 10 }),
+      })
+    : null;
   const best = (twoWay ? adv!.edge?.best : m.edge?.best) || null;
   const dec = (twoWay ? adv!.decision : m.decision) || null;
 
@@ -158,7 +170,33 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
 
   return (
     <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
-      <SoccerDataStatus source="quotes" data={{ data_status: { issues: Object.entries((twoWay ? adv?.quote_status : m.quote_status) ?? {}).filter(([, state]) => state === 'unavailable').map(([venue]) => ({ code: 'quote_unavailable', venue })) } }} />
+      {/* An "unavailable" venue is only worth a warning when it says something is
+          actually wrong. Two states the backend still files under 'unavailable' are
+          benign and would otherwise keep the board permanently yellow:
+          - rate_limit_budget_exhausted (also surfaced as a probe error, where the
+            discovery's probe branch misfiles it as request_failed): the shared read
+            budget deliberately skipped this fixture this pass; near-kickoff sweeps
+            re-price it with top priority.
+          - event_not_found_in_complete_catalog on a far-out kickoff: the venue simply
+            has not listed a match that far ahead (Kalshi lists roughly a week out).
+            The same reason NEAR kickoff stays a real warning.
+          Proper reclassification lives in pinned backend code (epoch-gated); this is
+          the display layer reading the reasons the backend already publishes. */}
+      <SoccerDataStatus source="quotes" data={{ data_status: { issues: (() => {
+        const details = ((twoWay ? (adv as any)?.quote_status_details : (m as any).quote_status_details) ?? {}) as Record<string, any>;
+        const kickoffMs = Date.parse((m as any).kickoff ?? '');
+        const farOut = Number.isFinite(kickoffMs) && kickoffMs - Date.now() > 7 * 86400e3;
+        const benign = (venue: string): boolean => {
+          const det = details[venue] ?? {};
+          if (det.reason === 'rate_limit_budget_exhausted') return true;
+          if (det.probe?.error === 'BudgetExhausted') return true;
+          if (det.reason === 'event_not_found_in_complete_catalog' && farOut) return true;
+          return false;
+        };
+        return Object.entries((twoWay ? adv?.quote_status : m.quote_status) ?? {})
+          .filter(([venue, state]) => state === 'unavailable' && !benign(venue))
+          .map(([venue]) => ({ code: 'quote_unavailable', venue }));
+      })() } }} />
       <div onClick={() => setOpen(o => !o)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
@@ -218,7 +256,13 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.kalshiPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.kalshi === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {vPoly
             ? <><Line label={t('soccer.polyPrice')} h={vPoly.home?.ask} d={twoWay ? null : vPoly.draw?.ask} a={vPoly.away?.ask} fmt={px}
-                hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} /><VigNote q={vPoly} twoWay={twoWay} /></>
+                hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} />
+                {carriedNote && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {carriedNote}
+                  </div>
+                )}
+                <VigNote q={vPoly} twoWay={twoWay} /></>
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('soccer.polyPrice')}: {t((twoWay ? adv?.quote_status : m.quote_status)?.poly_us === 'not_listed' ? 'soccer.notListed' : 'soccer.dataHealth.quoteUnavailable')}</div>}
           {edgeView && (
             <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>

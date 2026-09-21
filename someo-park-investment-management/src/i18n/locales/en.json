@@ -2429,7 +2429,10 @@
       "matchedCoverage": "Matched strategy positions: {{matched}} / {{legs}} ({{ratio}}), across {{fixtures}} matches",
       "outsideLedger": "Another {{count}} fills are outside this ledger or on a different side; they are excluded from matched coverage.",
       "coverageUnavailable": "Verified coverage by fixture, pre-match/in-play track and position side is not available."
-    }
+    },
+    "quoteCarriedForward": "carried forward {{age}} ago",
+    "quoteAgeMinutes": "{{n}} min",
+    "quoteAgeHours": "{{n}} h"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (live · {{time}} ET)",

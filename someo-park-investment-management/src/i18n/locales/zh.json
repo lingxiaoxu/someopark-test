@@ -2429,7 +2429,10 @@
       "matchedCoverage": "已匹配策略仓位 {{matched}} / {{legs}} 笔（{{ratio}}），涉及 {{fixtures}} 场比赛",
       "outsideLedger": "另有 {{count}} 笔成交不在此账本中或持仓方向不同；不计入匹配覆盖。",
       "coverageUnavailable": "尚无按比赛、赛前/赛中及持仓方向核验的成交覆盖数据。"
-    }
+    },
+    "quoteCarriedForward": "沿用 {{age}}前报价",
+    "quoteAgeMinutes": "{{n}} 分钟",
+    "quoteAgeHours": "{{n}} 小时"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(实时 · {{time}} ET)",
