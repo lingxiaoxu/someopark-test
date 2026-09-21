@@ -333,6 +333,14 @@ QC_SYMBOL_ALIAS = {
     # 与 portfolio 的 key 一致。身份由订单和完整 SID 核实,不是按股数猜测。
     "RESM": "RMD",
     "CBRNA": "STZ",
+    # 2026-09-17 核实 9/14–16 对账缺口:订单 214/237/246 的现名 AON
+    # 对应完整 SID "AOC R735QTJ8XC9X";232/241/247 的 SWKS 对应
+    # "AHA R735QTJ8XC9X";233/239 的 HWM 对应 "ARNC WF6J1S513QZP"。
+    # 三者均与 portfolio 键逐字一致。只修 QC 历史首名,不写根别名表;
+    # 尤其 ARNC 还可指另一只证券,不可作为全市场 ARNC→HWM 改名规则。
+    "AOC": "AON",
+    "AHA": "SWKS",
+    "ARNC": "HWM",
 }
 
 
