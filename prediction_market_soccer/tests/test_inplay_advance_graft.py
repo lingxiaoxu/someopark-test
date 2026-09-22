@@ -18,6 +18,32 @@ def _three_way_doc():
     ]}
 
 
+def _advance_kalshi():
+    """Receipted 2-way kalshi book, shaped exactly as the advance export ships it:
+    qualify_source_block keeps 'receipt' inside each side and _q2c adds the *_c
+    display keys. graft_advance prices the edge through _best_buy_edge_2way, which
+    since the leak-correction commit rejects any side without a valid, FRESH
+    QuoteReceiptV1 — so the receipt clocks must derive from the real clock."""
+    from datetime import datetime, timezone
+
+    from prediction_market_soccer.ops.inplay_export_advance import _q2c
+    from prediction_market_soccer.util.market_identity import make_binding
+    from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt
+    now = datetime.now(timezone.utc).isoformat()
+    fixture = {"fixture_api_id": 111, "comp": "ucl", "season": 2026,
+               "home_api_id": 80, "away_api_id": 247, "home_id": "lyon", "away_id": "celtic",
+               "kickoff_ts": "2026-08-27T19:00:00+00:00", "tie_id": "t111", "leg": 2}
+
+    def q(side, ask, bid):
+        b = make_binding(fixture=fixture, provider="kalshi", environment="public",
+                         event_id="KXUCLADV-TEST", market_id=f"KXUCLADV-TEST-{side.upper()}",
+                         side=side, market_kind="advance")
+        return quote_from_receipt(make_receipt(b, ask=ask, bid=bid, raw={"side": side},
+                                               request_started_at=now, received_at=now))
+
+    return _q2c({"home": q("home", 0.55, 0.53), "away": q("away", 0.48, 0.46)})
+
+
 def _advance_doc():
     return {"ts": "2026-08-27T19:00:00+00:00", "n_live": 1, "matches": [
         {"fixture_id": 111,
@@ -25,8 +51,7 @@ def _advance_doc():
                    "p_reg_decides": 0.6, "p_et_decides": 0.25, "p_pens_decides": 0.15},
          "prices": {
              "model_c": {"home": 72.0, "away": 28.0},
-             "kalshi": {"home": {"ask": 0.55, "bid": 0.53, "ask_c": 55.0, "bid_c": 53.0, "mid_c": 54.0},
-                        "away": {"ask": 0.48, "bid": 0.46, "ask_c": 48.0, "bid_c": 46.0, "mid_c": 47.0}}},
+             "kalshi": _advance_kalshi()},
          "opportunities": [{"reason_key": "relative_value"}],
          "hedge_advance": None},
     ]}

@@ -44,16 +44,28 @@ def test_broker_refuses_a_non_demo_soccer_env(monkeypatch):
         km.DemoBroker()
 
 
+class _FakeResponse:
+    def __init__(self, body):
+        self.status_code, self._body, self.text = 201, body, repr(body)
+
+    def json(self):
+        return self._body
+
+
 class _FakeClient:
     base = "https://external-api.demo.kalshi.co/trade-api/v2"
+    # The REAL documented translation (a pure staticmethod, no auth, no network): the wire
+    # body the tests inspect is produced by the reused crypto_trading client itself.
+    from crypto_trading.crypto_common.kalshi.rest_event import KalshiEventOrderClient as _real
+    v2_body = staticmethod(_real.v2_body)
 
     def __init__(self):
         self.calls = []
 
-    def create_order(self, **kw):
-        self.calls.append(kw)
-        return {"status_code": 201, "response": '{"order_id":"o1","fill_count":"2.00","remaining_count":"0.00",'
-                                                '"average_fill_price":"0.4100"}', "body_sent": kw}
+    def _authed(self, method, path, body=None):
+        self.calls.append({"method": method, "path": path, **(body or {})})
+        return _FakeResponse({"order_id": "o1", "fill_count": body["count"],
+                              "remaining_count": "0.00", "average_fill_price": body["price"]})
 
 
 class _NoLimiter:
@@ -71,8 +83,9 @@ def test_buy_yes_takes_the_ask_as_a_yes_contract():
     b = _fake_broker()
     res = b.buy_yes("KXEPLGAME-X-ABC", 2, 0.41, "cid")
     kw = b.c.calls[-1]
-    assert kw["side"] == "yes" and kw["price_dollars"] == 0.41 and kw["count"] == 2
-    assert kw["tif"] == "immediate_or_cancel"       # nothing may rest
+    assert kw["method"] == "POST" and kw["path"] == "/portfolio/events/orders"
+    assert kw["side"] == "bid" and kw["price"] == "0.4100" and kw["count"] == "2.00"
+    assert kw["time_in_force"] == "immediate_or_cancel"       # nothing may rest
     assert res["ok"] and res["fill_count"] == 2.0 and res["avg_fill"] == 0.41
 
 
@@ -82,8 +95,8 @@ def test_sell_yes_is_expressed_as_buying_no_at_one_minus_bid():
     b = _fake_broker()
     b.sell_yes("KXEPLGAME-X-ABC", 3, 0.62, "cid")
     kw = b.c.calls[-1]
-    assert kw["side"] == "no" and kw["count"] == 3
-    assert abs(kw["price_dollars"] - 0.38) < 1e-9
+    assert kw["side"] == "ask" and kw["count"] == "3.00"
+    assert kw["price"] == "0.6200"     # buy-NO @ 0.38 wired as ask @ 0.62: our YES sold at the bid
 
 
 def test_orders_are_refused_outside_the_unit_interval():
@@ -108,17 +121,24 @@ def test_schema_has_the_mirror_tables():
 def test_the_live_loop_calls_the_mirror_after_milestone_capture():
     from prediction_market_soccer.ops import live_refresh
     src = inspect.getsource(live_refresh.refresh_once)
-    assert "kalshi_mirror.run_cycle(conn, inplay)" in src
-    assert src.index("_capture_milestones(conn, inplay)") < src.index("kalshi_mirror.run_cycle")
+    assert "_paper_and_demo(conn, inplay, issues)" in src
+    assert src.index("_capture_milestones(conn, inplay)") < src.index("_paper_and_demo(conn, inplay")
+    hook = inspect.getsource(live_refresh._paper_and_demo)
+    assert "kalshi_mirror.run_cycle(conn, inplay or {'matches': []})" in hook
+    assert hook.index("paper_trading.run_cycle(conn, inplay)") < hook.index("kalshi_mirror.run_cycle")
 
 
 def test_exit_trigger_matches_the_ledger_rule():
-    """The mirror sells when bid ≥ fair + min(OVERSHOOT_MARGIN, overshoot_trigger(fair)) —
-    the identical expression strategy/smart_exit evaluates on recorded price points."""
+    """The mirror sells when the milestone price ≥ fair + min(OVERSHOOT_MARGIN,
+    overshoot_trigger(fair)) — the identical expression strategy/smart_exit evaluates on
+    its candidate exit path. Since the 09-11 leak correction both sides work in 0-1
+    probabilities (no /100 rescale), price the fair red-card-aware, and read BIDS only
+    (never bid←ask)."""
     from prediction_market_soccer.model.inplay_constants import OVERSHOOT_MARGIN, overshoot_trigger
     from prediction_market_soccer.strategy import smart_exit
     src = inspect.getsource(smart_exit.smart_exit_cashout)
-    assert "min(margin, overshoot_trigger(fair / 100.0))" in src
+    assert "min(margin, overshoot_trigger(fair))" in src
+    assert "fair / 100.0" not in src                # the ledger rule is in probabilities now
     for fair in (0.30, 0.60, 0.85, 0.95):
         trig = min(OVERSHOOT_MARGIN, overshoot_trigger(fair))
         assert 0.0 <= trig <= OVERSHOOT_MARGIN
@@ -126,17 +146,18 @@ def test_exit_trigger_matches_the_ledger_rule():
     msrc = inspect.getsource(km._scan_exits)
     assert "min(OVERSHOOT_MARGIN, overshoot_trigger(fair))" in msrc
     # decided on the MILESTONE row (the ledger's price points), the ledger's price order,
-    # knockout-scaled lambdas, no red-card term — exactly strategy/smart_exit
-    assert "live_match_prob(lam[0], lam[1], mn, sh, sa)" in msrc
+    # knockout-scaled lambdas, the OBSERVED red-card state — exactly strategy/smart_exit
+    assert "live_match_prob(lam[0], lam[1], mn, sh, sa, red_home=rh, red_away=ra)" in msrc
+    assert 'red_home=state["reds_home"], red_away=state["reds_away"]' in src
     assert "pair_lambdas(hi, ai, knockout=is_knockout(fx[\"round\"]))" in msrc
-    assert '(m[f"kalshi_{side}_bid"], m[f"kalshi_{side}_ask"]' in msrc
-    assert "_state_at(goals, mn)" in msrc
-    assert "kalshi_{s}_bid kb, kalshi_{s}_ask ka, poly_{s}_bid pb, poly_{s}_ask pa" in inspect.getsource(smart_exit._milestone_ticks)
+    assert '(m[f"kalshi_{side}_bid"], m[f"poly_{side}_bid"]' in msrc   # bids only — never bid←ask
+    assert "('home_goals','away_goals','reds_home','reds_away')" in msrc
+    assert "kalshi_{pick}_bid AS kb,poly_{pick}_bid AS pb" in inspect.getsource(smart_exit._milestone_ticks)
 
 
 def test_pre_and_inplay_reuse_the_ledgers_own_functions():
     src = inspect.getsource(km._scan_inplay)
-    assert "_inplay_entry(conn, fx, hi, ai)" in src
+    assert "_inplay_entry(conn, fx, hi, ai, decision_at=_iso(_now()))" in src
     src = inspect.getsource(km.pre_decision)
     for needle in ("quotes_from_milestone_row(pre_row)", "price_match_calibrated(sm, hi, ai, knockout=False",
                    "host_neutral=knockout", "motivation_multipliers(conn, _fifa_ranks()", "_pit_cal(records"):
@@ -208,11 +229,13 @@ def test_a_lost_send_response_stays_pending_and_is_never_re_sent_blind(monkeypat
     happened, not that nothing happened. Marking it 'error' would make the row retryable and
     a second order could land on top of a live one, leaving a contract our books never exit."""
     import sqlite3
+    from datetime import datetime, timedelta, timezone
     from prediction_market_soccer.ingest import store
     c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row
     store.init_db(c)
+    kickoff = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(timespec="seconds")
     c.execute("INSERT INTO fixture (api_id, league_id, season, home_api_id, away_api_id, kickoff_ts, status_short) "
-              "VALUES (11,61,2026,1,2,'2026-09-04T17:00:00+00:00','NS')")
+              "VALUES (11,61,2026,1,2,?,'NS')", (kickoff,))
     c.commit()
     fx = c.execute("SELECT * FROM fixture WHERE api_id=11").fetchone()
 
@@ -225,12 +248,14 @@ def test_a_lost_send_response_stays_pending_and_is_never_re_sent_blind(monkeypat
 
     class _Broker:
         def book(self, t): return _Book()
+        def estimate_taker_fee(self, t, n, price): return {"fee_per_contract": 0.007,
+                                                           "fee_usd": round(0.007 * n, 4)}
         def buy_yes(self, *a, **k): raise TimeoutError("read timeout")
 
     monkeypatch.setattr(km, "_log", lambda *a, **k: None)
     out = km._place_entry(c, _Broker(), _Tk(), fx, "a", "b", track="pre", side="home", stake=1.0,
                           bet_kind="value", entry_min=0, ledger_c=30.0, ledger_venue="kalshi",
-                          ledger_edge=0.05, comp="ligue1")
+                          ledger_edge=0.05, comp="ligue1", extra={"fair": 0.45})
     assert out == {"terminal": False}
     r = c.execute("SELECT status, note, client_order_id FROM kalshi_mirror").fetchone()
     assert r["status"] == "pending", "a lost response must stay pending for reconciliation"
@@ -239,7 +264,7 @@ def test_a_lost_send_response_stays_pending_and_is_never_re_sent_blind(monkeypat
     # a second attempt must NOT replace the row while it is pending
     out2 = km._place_entry(c, _Broker(), _Tk(), fx, "a", "b", track="pre", side="home", stake=1.0,
                            bet_kind="value", entry_min=0, ledger_c=30.0, ledger_venue="kalshi",
-                           ledger_edge=0.05, comp="ligue1")
+                           ledger_edge=0.05, comp="ligue1", extra={"fair": 0.45})
     assert out2 == {"terminal": True}
     rows = c.execute("SELECT client_order_id FROM kalshi_mirror").fetchall()
     assert len(rows) == 1 and rows[0]["client_order_id"] == coid, "no blind re-send"
@@ -263,13 +288,21 @@ def test_reconcile_releases_a_pending_row_only_when_the_venue_has_no_such_order(
     # venue knows nothing about it → released to the retry path
     km._reconcile_pending(c, _B([]))
     assert c.execute("SELECT status FROM kalshi_mirror").fetchone()["status"] == "error"
-    # a filled order is adopted, not retried
+    # a terminal filled order is adopted, not retried — priced from its VERIFIED fill
+    # receipts (the order's own limit price is never a fill price)
     c.execute("UPDATE kalshi_mirror SET status='pending'")
     c.commit()
-    km._reconcile_pending(c, _B([{"client_order_id": "coid-1", "order_id": "o1",
-                                  "fill_count_fp": "1.00", "yes_price_dollars": "0.31"}]))
+
+    class _Filled(_B):
+        def fills_for_order(self, t, oid):
+            return [{"fill_id": "f1", "order_id": "o1", "ticker": "TK-H", "action": "buy",
+                     "count_fp": "1.00", "yes_price_dollars": "0.31", "fee_cost": "0.00",
+                     "created_time": datetime.now(timezone.utc).isoformat(timespec="seconds")}]
+    km._reconcile_pending(c, _Filled([{"client_order_id": "coid-1", "order_id": "o1",
+                                       "status": "executed", "fill_count_fp": "1.00"}]))
     r = c.execute("SELECT status, fill_count, avg_fill_c FROM kalshi_mirror").fetchone()
-    assert r["status"] == "open" and r["fill_count"] == 1.0 and r["avg_fill_c"] == 31.0
+    assert r["status"] == "open" and r["fill_count"] == 1.0
+    assert abs(r["avg_fill_c"] - 31.0) < 1e-9
 
 
 def test_book_observation_decimal_depth_serializes(monkeypatch):

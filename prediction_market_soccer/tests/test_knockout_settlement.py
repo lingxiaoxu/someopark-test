@@ -162,13 +162,21 @@ def test_milestone_export_knockout_reconciles_with_bet_log():
         "elapsed": 0, "status_short": "NS", "home_goals": 0, "away_goals": 0,
         "poly_home_ask": 0.50, "poly_draw_ask": 0.28, "poly_away_ask": 0.30,
         "price_source": "live"}, pk=["fixture_api_id", "milestone"])
-    doc = milestone_export.build(conn=c)
+    # bf13bb71: the bet log IS the frozen book; the export renders that same ledger
+    # (passed explicitly — a standalone call would read the published production file).
+    rec = clubctx.book_record(1, pick="home", won=True, entry_cents=50.0,
+                              result="home", score="2-1", home="Lyon", away="Celtic",
+                              home_id="lyon", away_id="celtic", league="ucl")
+    book = clubctx.seed_book(c, [rec], n_settled=1)
+    doc = milestone_export.build(conn=c, ledger=book["ledger"])
     assert doc["n"] == 1
     m = doc["matches"][0]
     assert m["round"] == clubctx.KO_ROUND and m["settled"] is True
     assert m["result"] == "home"                        # 2-1 at 90' → home (90-min 3-way)
-    # The pick comes from the SAME match_pick the bet log uses → 3-way, never a 2-way advance.
-    assert m["our_bet"]["side"] in ("home", "draw", "away")
+    # The pick is the SAME frozen record the bet log serves → 3-way, still settled on
+    # the 90-min market, never rewritten to a 2-way advance side.
+    assert m["strategy_record"] == rec
+    assert m["our_bet"]["side"] == rec["pick"]
 
 
 def test_full_report_builds_with_knockout_fixture():
@@ -176,6 +184,8 @@ def test_full_report_builds_with_knockout_fixture():
     count the knockout match in the headline accuracy sample."""
     c = _mem_db()
     _ko_fixture(c, gh=2, ga=1, status="AET", round_name="Quarter-finals")
+    clubctx.seed_book(c, [clubctx.book_record(1, result="home", score="2-1", league="ucl")],
+                      n_settled=1, brier=0.42, brier_uniform=round(2 / 3, 4))
     rep = PR.build(conn=c)
     assert rep.n_settled == 1
     assert 0.0 <= rep.brier <= 2.0

@@ -27,7 +27,12 @@ def test_the_merged_prior_follows_the_suffix():
     import inspect
 
     from prediction_market_soccer.ingest import club_prior
-    src = inspect.getsource(club_prior.build_all)
+    # bf13bb71 split build_all into an observation-snapshot wrapper that delegates to
+    # _build_all_impl; the merged write now lives in the impl. Inspect the whole path,
+    # so a rerouted wrapper or a hard-coded write in either half still trips.
+    wrapper = inspect.getsource(club_prior.build_all)
+    assert "_build_all_impl" in wrapper, "build_all no longer delegates to _build_all_impl"
+    src = wrapper + inspect.getsource(club_prior._build_all_impl)
     assert 'f"clubs_all{suffix}.json"' in src, "the merged write must interpolate the suffix"
     # The WRITE expression, not the bare filename — the explanatory comment names the
     # file too, and a test that cannot tell prose from code is a test that will lie.
@@ -40,7 +45,9 @@ def test_the_merged_prior_is_written_after_the_domestic_loan():
     import inspect
 
     from prediction_market_soccer.ingest import club_prior
-    src = inspect.getsource(club_prior.build_all)
+    # bf13bb71: the build body moved into _build_all_impl; both the loan pass and the
+    # merged write live there, so the ordering to guard is the impl's.
+    src = inspect.getsource(club_prior._build_all_impl)
     assert src.index("domestic anchors") < src.index('f"clubs_all{suffix}.json"')
 
 

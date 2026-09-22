@@ -287,78 +287,72 @@ def test_top_scorer_does_not_count_a_walkover_as_a_chance_to_score():
 
 
 # ── smart_exit: regulation-window cash-out (no extra-time ticks) ──────────────
-def _seed_smart_exit_fixture(c, fid, round_name, *, et_ticks: bool):
-    """A knockout fixture level 0-0 through 90' with a price overshoot ONLY in extra time.
-
-    NB: price_tick.rel_min is WALL-CLOCK minutes since kickoff (not match minutes), so a
-    90' regulation game — 90 play + ~15 half-time + stoppage — runs to rel_min ~110-115,
-    and real extra time lands at rel_min ~120-150. smart_exit scans up to _CASHOUT_MAX_RELMIN
-    (~115, regulation) so the ET overshoot (seeded beyond 120 below) must NOT trigger a
-    cash-out. The pre-regulation ticks sit calm near fair, so nothing fires inside 90'."""
-    store.upsert(c, "fixture", {
-        "api_id": fid, "round": round_name, "status_short": "AET" if et_ticks else "FT",
-        "home_api_id": 1, "away_api_id": 2,
-        "home_goals": 1 if et_ticks else 0, "away_goals": 0,  # AET: ET goal makes it 1-0 final
-        "updated_at": store.utcnow()}, pk=["api_id"])
-    # Goal event only in extra time (minute 105) — regulation score is 0-0.
-    if et_ticks:
-        c.execute("INSERT INTO fixture_event (fixture_api_id, seq, minute, team_api_id, type, detail) "
-                  "VALUES (?,?,?,?,?,?)", (fid, 0, 105, 1, "Goal", None))
-    # Pre-90' ticks: a CALM market that tracks the declining 0-0 fair (the favourite's home
-    # price falls as a level game runs down and the draw mass rises) — so it never overshoots
-    # fair+margin inside regulation. Kept comfortably UNDER the live fair at every minute.
-    base_ts = 1_700_000_000
-    rows = []
-    for m in range(5, 91, 5):                 # 5'..90'
-        calm = max(0.02, 0.28 - 0.0030 * m)   # 0.27 @5' → 0.01-floored late; always < fair
-        rows.append((fid, "home", base_ts + m * 60, m, calm, "poly_global"))
-    # Extra-time overshoot ticks at WALL-CLOCK rel_min 120..150 (real ET window; post-90'
-    # settlement / stale for the 90' market). The ~115 regulation cap must exclude these.
-    if et_ticks:
-        for m in range(120, 151, 5):
-            rows.append((fid, "home", base_ts + m * 60, m, 0.95, "poly_global"))
-    c.executemany("INSERT INTO price_tick (fixture_api_id, side, ts, rel_min, price, venue) "
-                  "VALUES (?,?,?,?,?,?)", rows)
-    c.commit()
+_SE_BASE = 1_700_000_000.0   # candidate epoch origin; every clock below derives from it
 
 
-def test_smart_exit_ignores_extra_time_overshoot():
-    """KNOCKOUT BUG FIX: a price overshoot that happens only in EXTRA TIME (wall-clock
-    rel_min>120) must never fire the cash-out — the 90' 3-way contract already settled at
-    90'. With the scan capped at the regulation window (~115), the ET spike stays invisible."""
-    c = _mem_db()
-    _seed_smart_exit_fixture(c, 200, "Round of 16", et_ticks=True)
-    sm = _toy_strength({"home": 0.2, "away": 0.0})  # near-even toy ratings (keys are team ids)
+def _seed_smart_exit_candidate(tmp_path, fid, *, ticks):
+    """A frozen research candidate seeded through the module's own public path
+    (CandidateWriter → finish → CandidateMarketData), replacing the pre-bf13bb71
+    price_tick/fixture_event fixture: smart_exit_cashout no longer reads the live DB —
+    legacy price_tick/milestone fallbacks were exactly what the leak correction removed.
+
+    ticks: [(minute, period, price, home_goals, away_goals)], one quote+state pair per
+    wall minute — 60s spacing keeps every exit-path gap under the 180s coverage cap,
+    and pairing state at the exact quote target_at keeps each state PIT-valid."""
+    from prediction_market_soccer.util.research_inputs import CandidateMarketData, CandidateWriter
+    path = tmp_path / f"candidate_{fid}.db"
+    until = _SE_BASE + ticks[-1][0] * 60
+    manifest = {"scope_id": "scope-se", "fixture_ids": [fid], "tracks": ["inplay"],
+                "exit_path_until": {str(fid): {"home": until}}}
+    w = CandidateWriter(str(path), root=str(tmp_path), run_id=f"run-se-{fid}",
+                        input_manifest=manifest)
+    w.add("features", fid, _SE_BASE, {"available_at": _SE_BASE, "base_lambdas": [1.35, 1.05]})
+    for minute, period, price, hg, ag in ticks:
+        at = _SE_BASE + minute * 60
+        w.add("quote", fid, at, {"price": price, "sample_ts": at}, side="home")
+        w.add("state", fid, at, {"available_at": at, "certainty": "verified",
+                                 "period": period, "elapsed": minute,
+                                 "home_goals": hg, "away_goals": ag,
+                                 "reds_home": 0, "reds_away": 0})
+    w.finish([{"fixture_id": fid, "track": "inplay", "status": "reconstructed_usable"}])
+    w.close()
+    return CandidateMarketData(str(path), root=str(tmp_path), run_id=f"run-se-{fid}",
+                               scope_id="scope-se"), until
+
+
+def test_smart_exit_ignores_extra_time_overshoot(tmp_path):
+    """KNOCKOUT BUG FIX (re-pinned on the candidate contract): a price overshoot that
+    exists only in EXTRA TIME must never fire the cash-out — the 90' 3-way contract
+    already settled at 90'. The ET points carry period='ET', so the regulation window
+    (1H/HT/2H, elapsed ≤ 95) excludes them and the spike stays invisible."""
+    ticks = []
+    for m in range(1, 91):                    # calm regulation: always under fair+margin
+        calm = max(0.02, 0.28 - 0.0030 * m)
+        ticks.append((m, "1H" if m <= 45 else "2H", calm, 0, 0))
+    for m in range(91, 121):                  # ET: 0.95 overshoot + the 105' goal
+        ticks.append((m, "ET", 0.95, 1 if m >= 105 else 0, 0))
+    cand, until = _seed_smart_exit_candidate(tmp_path, 200, ticks=ticks)
     from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
-    # pick 'home' entered at 34¢; regulation ticks ~0.34 never overshoot fair+margin → None.
-    out = smart_exit_cashout(c, sm, 200, "home", 34.0, "home", "away", "Round of 16", won=True)
-    assert out is None, out   # ET overshoot ignored → held to FT (no phantom cash-out)
+    out = smart_exit_cashout(None, None, 200, "home", 34.0, "home", "away", "Round of 16",
+                             won=True, candidate=cand, entry_at=_SE_BASE, until=until)
+    # ET overshoot ignored → held to FT (no phantom cash-out)
+    assert out["status"] == "held_no_trigger", out
 
 
-def test_smart_exit_fires_inside_regulation():
-    """Positive control: a genuine in-regulation overshoot (price >> fair+margin before 90')
-    DOES fire the cash-out, locking the overshoot. Confirms the window cap didn't disable it."""
-    c = _mem_db()
-    store.upsert(c, "fixture", {
-        "api_id": 201, "round": "Round of 32", "status_short": "FT",
-        "home_api_id": 1, "away_api_id": 2, "home_goals": 1, "away_goals": 0,
-        "updated_at": store.utcnow()}, pk=["api_id"])
-    # Real regulation goal at 20' → home leads; market overshoots to 0.97 at 60'.
-    c.execute("INSERT INTO fixture_event (fixture_api_id, seq, minute, team_api_id, type, detail) "
-              "VALUES (?,?,?,?,?,?)", (201, 0, 20, 1, "Goal", None))
-    base_ts = 1_700_000_000
-    # Calm ticks BELOW fair (market under-pricing home) → never a sell, at any margin; only
-    # the genuine 0.97 overshoot should fire. (0.55 sat right at fair+margin for a tuned margin
-    # and fired spuriously once the margin tightened — keep the control unambiguous.)
-    rows = [(201, "home", base_ts + m * 60, m, 0.40, "poly_global") for m in range(5, 56, 5)]
-    rows += [(201, "home", base_ts + 60 * 60, 60, 0.97, "poly_global")]   # 60' overshoot
-    rows += [(201, "home", base_ts + m * 60, m, 0.9, "poly_global") for m in range(65, 91, 5)]
-    c.executemany("INSERT INTO price_tick (fixture_api_id, side, ts, rel_min, price, venue) "
-                  "VALUES (?,?,?,?,?,?)", rows)
-    c.commit()
-    sm = _toy_strength({"home": 0.6, "away": 0.0})   # home favoured + 1-0 up → fair well below 0.97
+def test_smart_exit_fires_inside_regulation(tmp_path):
+    """Positive control: a genuine in-regulation overshoot (price >> fair+margin before
+    90') DOES fire the cash-out, locking the overshoot. Confirms the window gate didn't
+    disable it. Calm ticks sit BELOW fair (home favoured + 1-0 up from 20') so only the
+    0.97 spike at 60' can trigger, at any margin."""
+    ticks = []
+    for m in range(1, 91):
+        hg = 1 if m >= 20 else 0              # real regulation goal at 20'
+        price = 0.97 if m == 60 else (0.40 if m < 60 else 0.90)
+        ticks.append((m, "1H" if m <= 45 else "2H", price, hg, 0))
+    cand, until = _seed_smart_exit_candidate(tmp_path, 201, ticks=ticks)
     from prediction_market_soccer.strategy.smart_exit import smart_exit_cashout
-    out = smart_exit_cashout(c, sm, 201, "home", 55.0, "home", "away", "Round of 32", won=True)
-    assert out is not None
+    out = smart_exit_cashout(None, None, 201, "home", 55.0, "home", "away", "Round of 32",
+                             won=True, candidate=cand, entry_at=_SE_BASE, until=until)
+    assert out["status"] == "exited", out
     assert out["sold_min"] <= 95                 # sold inside regulation
     assert out["sold_c"] >= 90.0                 # locked the overshoot

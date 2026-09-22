@@ -41,8 +41,12 @@ def test_the_market_anchor_is_gated_on_the_date():
     """A live venue read has no history; for a past date the anchor must be OMITTED rather
     than approximated with today's book."""
     from prediction_market_soccer.ingest import club_prior
-    src = inspect.getsource(club_prior.build_all)
+    # bf13bb71 moved the build body (and this gate) into _build_all_impl behind the
+    # observation-snapshot wrapper, and strengthened the gate with point_in_time.
+    src = inspect.getsource(club_prior._build_all_impl)
     assert "_is_today(as_of)" in src, "the market anchor must be gated on as_of"
+    assert "not point_in_time and _is_today(as_of)" in src, (
+        "an explicit point-in-time build must never take the live venue read")
     assert club_prior._is_today(None) is True
     assert club_prior._is_today("2020-01-01") is False
 

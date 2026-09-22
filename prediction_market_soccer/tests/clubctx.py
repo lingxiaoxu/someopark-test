@@ -147,3 +147,34 @@ def ucl_strength():
 def all_comps_strength():
     """The merged cross-league model (the one the global/backtest paths use)."""
     return strength_for(None)
+
+
+def book_record(fid, *, pick="home", won=True, entry_cents=40.0, stake_usd=1.0,
+                prev_cum=0.0, **extra) -> dict:
+    """One frozen strategy-book row in the store's own record shape: position-sized
+    ¢ P&L plus the four cumulative fields ``_validate_cumulatives`` checks (shape
+    mirrors test_leak_corrected_book._records / the bf13bb71 v7 rows)."""
+    contracts = stake_usd / (entry_cents / 100.0)
+    pnl = round(contracts * ((100.0 - entry_cents) if won else -entry_cents), 1)
+    cum = round(prev_cum + pnl, 1)
+    record = {"fixture_id": fid, "bet": True, "pick": pick, "won": won,
+              "stake_usd": stake_usd, "entry_cents": entry_cents, "entry_source": "poly",
+              "realized_pnl_cents": pnl, "pnl_cents": pnl, "cum_pnl_cents": cum,
+              "settle_cents": 100.0 if won else 0.0,
+              "inplay_side": None, "inplay_pnl_cents": None,
+              "evidence_level": "forward_observed_paper",
+              "pre_cum_pnl_cents": cum, "inplay_cum_pnl_cents": 0.0,
+              "combined_cum_pnl_cents": cum, "combined_pnl_cents": pnl}
+    record.update(extra)
+    return record
+
+
+def seed_book(conn, records=(), *, as_of=None, **metadata):
+    """Seed + activate a frozen strategy book through the store's own release path
+    (``seed_published_report``), never by writing its tables directly. Since
+    bf13bb71 every report/price export is a projection of this book. ``as_of``
+    derives from the real clock (ts_ago) so the fixture cannot age out."""
+    from prediction_market_soccer.util.frozen_strategy_store import seed_published_report
+    report = {"bet_log": list(records), "as_of": as_of or ts_ago(1), **metadata}
+    return seed_published_report(conn, report, model_version="test-model-v1",
+                                 method_version="test-method-v1")

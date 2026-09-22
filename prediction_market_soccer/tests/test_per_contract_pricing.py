@@ -220,18 +220,23 @@ def test_milestone_export_builds_marks_and_mtm():
               "(1,'PRE',0,0,0,0.40,0.30,0.30,'candlestick'),"
               "(1,'FT',90,3,0,1.0,0.0,0.0,'candlestick')")
     c.commit()
-    doc = milestone_export.build(conn=c)
+    # bf13bb71: the export projects the frozen book record entered at 40¢; it never
+    # re-picks a side from the model at build time.
+    rec = clubctx.book_record(1, pick="home", won=True, entry_cents=40.0,
+                              result="home", score="3-0", home="Arsenal", away="Ipswich",
+                              league="epl")
+    book = clubctx.seed_book(c, [rec], n_settled=1)
+    doc = milestone_export.build(conn=c, ledger=book["ledger"])
     assert doc["n"] == 1
     m = doc["matches"][0]
     assert m["settled"] is True and m["result"] == "home" and m["score"] == "3-0"
     # marks carry ¢ (poly_c = price×100)
     pre = next(x for x in m["marks"] if x["milestone"] == "PRE")
     assert pre["poly_c"]["home"] == 40.0
-    # our_bet pick is the model's pick; mtm present + sign consistent with the result
-    assert m["our_bet"]["side"] in ("home", "draw", "away")
+    # our_bet is the frozen record's pick; mtm present + sign consistent with the result
+    assert m["our_bet"]["side"] == "home"
     assert m["mtm"] is not None
-    if m["our_bet"]["side"] == "home":
-        assert m["mtm"]["won"] is True and m["mtm"]["pnl_c"] > 0 and m["mtm"]["path_direction"] == "converging"
+    assert m["mtm"]["won"] is True and m["mtm"]["pnl_c"] > 0 and m["mtm"]["path_direction"] == "converging"
 
 
 # ── 7. PnL report ¢ reconciliation ────────────────────────────────────────────
@@ -242,9 +247,13 @@ def test_bet_log_cents_reconciliation():
     clubctx.seed_teams(c, _HOME, _AWAY, clubctx.BRIGHTON, clubctx.BRENTFORD)
     clubctx.seed_fixture(c, 1, _HOME, _AWAY, hg=3, ag=1, days_ago=4)
     clubctx.seed_fixture(c, 2, clubctx.BRIGHTON, clubctx.BRENTFORD, hg=0, ag=1, days_ago=7)
-    c.execute("INSERT INTO milestone_snapshot(fixture_api_id,milestone,poly_home_ask,poly_draw_ask,poly_away_ask) VALUES "
-              "(1,'PRE',0.655,0.215,0.135),(2,'PRE',0.58,0.25,0.30)")
-    c.commit()
+    # bf13bb71: entry prices live in the frozen book records (won home @65.5¢,
+    # lost home @58.0¢), not in a report-time replay of milestone quotes.
+    r1 = clubctx.book_record(1, pick="home", won=True, entry_cents=65.5,
+                             result="home", score="3-1")
+    r2 = clubctx.book_record(2, pick="home", won=False, entry_cents=58.0,
+                             result="away", score="0-1", prev_cum=r1["pre_cum_pnl_cents"])
+    clubctx.seed_book(c, [r1, r2], n_settled=2)
     rep = pr.build(conn=c)
     assert rep.n_settled == 2
     log = rep.bet_log
@@ -290,9 +299,18 @@ def test_pricetrack_and_betlog_reconcile():
     c.execute("INSERT INTO milestone_snapshot(fixture_api_id,milestone,poly_home_ask,poly_draw_ask,poly_away_ask) VALUES "
               "(1,'PRE',0.655,0.215,0.135),(2,'PRE',0.62,0.0,0.38)")
     c.commit()
-    bl = {(b["home"], b["away"]): (b["pick"], b["won"]) for b in pr.build(conn=c).bet_log}
+    # bf13bb71: both views project ONE frozen book — seed it, then check the two
+    # projections agree row by row (league round AND knockout leg).
+    r1 = clubctx.book_record(1, pick="home", won=True, entry_cents=65.5, result="home",
+                             score="3-1", home="Arsenal", away="Ipswich", league="epl")
+    r2 = clubctx.book_record(2, pick="home", won=False, entry_cents=62.0, result="draw",
+                             score="1-1", home="Lyon", away="Celtic", league="ucl",
+                             prev_cum=r1["pre_cum_pnl_cents"])
+    clubctx.seed_book(c, [r1, r2], n_settled=2)
+    rep = pr.build(conn=c)
+    bl = {(b["home"], b["away"]): (b["pick"], b["won"]) for b in rep.bet_log}
     mm = {(m["home"]["name"], m["away"]["name"]): (m["our_bet"]["side"], (m["mtm"] or {}).get("won"))
-          for m in milestone_export.build(conn=c)["matches"] if m.get("settled")}
+          for m in milestone_export.build(conn=c, ledger=rep.strategy_ledger)["matches"] if m.get("settled")}
     assert bl and mm
     for k in set(bl) | set(mm):
         assert bl.get(k) == mm.get(k), f"reconcile fail {k}: betlog {bl.get(k)} vs pricetrack {mm.get(k)}"

@@ -10,7 +10,10 @@ from prediction_market_soccer.ops import (
     risk_report,
     upcoming_export,
 )
+import pytest
+
 from prediction_market_soccer.tests import clubctx
+from prediction_market_soccer.util.strategy_ledger import StrategyLedgerUnavailable
 
 _mem_db = clubctx.mem_db
 _HOME, _AWAY = clubctx.ARSENAL, clubctx.IPSWICH
@@ -26,19 +29,33 @@ def _settled_epl(c, api=1, hg=2, ag=0, days_ago=3.0):
 # ── performance / P&L ─────────────────────────────────────────────────────────
 def test_performance_report_no_settled_matches():
     c = _mem_db()
+    # bf13bb71: a report is a projection of the frozen strategy book. Without a
+    # seeded book it must refuse loudly rather than replay bets from the DB.
+    with pytest.raises(StrategyLedgerUnavailable):
+        performance_report.build(conn=c)
+    clubctx.seed_book(c, [], n_settled=0, settled_signal_pnl=0.0,
+                      notes=["no settled matches yet — forward paper only"])
     rep = performance_report.build(conn=c)
     assert rep.n_settled == 0
     assert rep.settled_signal_pnl == 0.0
-    assert any("no settled" in n for n in rep.notes)
+    assert rep.bet_log == [] and rep.pnl_cents_total == 0.0   # recomputed, not echoed
+    assert any("no settled" in n for n in rep.notes)          # frozen metadata round-trip
 
 
 def test_performance_report_with_settled_match():
     c = _mem_db()
     _settled_epl(c)
+    # bf13bb71: the settled match reaches the report only as its frozen book record;
+    # accuracy metrics ride along as frozen metadata, never a report-time replay.
+    rec = clubctx.book_record(1, pick="home", won=True, entry_cents=65.5,
+                              result="home", score="2-0")
+    clubctx.seed_book(c, [rec], n_settled=1, brier=0.42, brier_uniform=round(2 / 3, 4))
     rep = performance_report.build(conn=c)
     assert rep.n_settled == 1
     assert rep.brier_uniform == round(2 / 3, 4)          # uniform baseline reference
     assert 0.0 <= rep.brier <= 2.0
+    assert rep.bet_log == [rec]                          # the frozen record, byte-identical
+    assert rep.realized_pnl_cents_total == rec["realized_pnl_cents"]
     assert rep.n_settled_signals == 0
 
 
@@ -62,6 +79,7 @@ def test_risk_report_gates_and_caps():
 def test_performance_pdf_renders(tmp_path):
     c = _mem_db()
     _settled_epl(c)
+    clubctx.seed_book(c, [clubctx.book_record(1, result="home", score="2-0")], n_settled=1)
     rep = performance_report.build(conn=c)
     out = tmp_path / "perf.pdf"
     performance_report.build_pdf(rep, str(out), as_of="2026-06-16")
@@ -107,16 +125,37 @@ def test_upcoming_venue_devig():
     assert upcoming_export._venue_devig({"home": {"ask": None}}) is None
 
 
+def _receipt_quotes(prices, venue):
+    """Receipt-backed venue quotes (QuoteReceiptV1) — since bf13bb71 an edge/lock is
+    only computed over durable BBO receipts, never bare ask/bid dicts."""
+    from datetime import datetime, timezone
+    from prediction_market_soccer.util.market_identity import make_binding
+    from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt
+    fixture = {"fixture_api_id": 1, "comp": "epl", "season": clubctx.EPL.season,
+               "home_api_id": _HOME[0], "away_api_id": _AWAY[0],
+               "home_id": _HOME[1], "away_id": _AWAY[1],
+               "kickoff_ts": clubctx.ts_ago(-1.0)}
+    now = datetime.now(timezone.utc).isoformat()
+    out = {}
+    for side, (ask, bid) in prices.items():
+        binding = make_binding(fixture=fixture, provider=venue, environment="demo",
+                               event_id=f"ev-{side}", market_id=f"mk-{venue}-{side}", side=side)
+        out[side] = quote_from_receipt(make_receipt(binding, ask=ask, bid=bid,
+                                                    request_started_at=now, received_at=now,
+                                                    raw={"ask": ask, "bid": bid}))
+    return out
+
+
 def test_upcoming_best_buy_edge_and_lock():
     model = {"home": 0.55, "draw": 0.24, "away": 0.21}
     # Venue cheap on home → model 0.55 vs ask 0.30 = big buy edge.
-    vq = {"home": {"ask": 0.30, "bid": 0.29}, "draw": {"ask": 0.25, "bid": 0.24},
-          "away": {"ask": 0.50, "bid": 0.49}}
+    vq = _receipt_quotes({"home": (0.30, 0.29), "draw": (0.25, 0.24),
+                          "away": (0.50, 0.49)}, "kalshi")
     be = upcoming_export._best_buy_edge(model, vq, "kalshi", theta=0.03)
     assert be["side"] == "home" and be["tradable"] is True
     # Lock arb: buy home cheap on kalshi (0.30) + sell home high bid on poly (0.41) → locks.
-    kq = {"home": {"ask": 0.30, "bid": 0.29}}
-    pq = {"home": {"ask": 0.42, "bid": 0.41}}
+    kq = _receipt_quotes({"home": (0.30, 0.29)}, "kalshi")
+    pq = _receipt_quotes({"home": (0.42, 0.41)}, "poly_us")
     lock = upcoming_export._lock_arb(kq, pq)
     assert lock["buy_venue"] == "kalshi" and lock["sell_venue"] == "poly_us"
     assert lock["net_lock"] > 0 and lock["tradable"] is True

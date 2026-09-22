@@ -25,7 +25,13 @@ def test_shootout_not_flat_and_clamped():
     assert abs(shootout_win_prob(sm, "arsenal", "ipswich") +
                shootout_win_prob(sm, "ipswich", "arsenal") - 1.0) < 1e-9
     # An evenly-rated pair stays a coin flip — the edge comes from strength, not noise.
-    assert abs(shootout_win_prob(sm, _H, _A) - 0.5) < 0.02
+    # The nightly prior rebuild moves real club ratings (b8fd6341: contents follow real
+    # results), so no real pair stays pinned as "even" — the Brighton/Brentford gap has
+    # drifted 0.016→0.16 since this file was written. Construct the even pair from the
+    # same live model instead of hoping the data keeps supplying one.
+    import dataclasses
+    even = dataclasses.replace(sm, ratings={**sm.ratings, _A: sm.ratings[_H]})
+    assert abs(shootout_win_prob(even, _H, _A) - 0.5) < 1e-9
     first, second = kick_order_band(0.5)
     assert first > 0.5 > second   # kick-order advantage to first
 
@@ -111,15 +117,49 @@ def test_xg_shades_live_lambda():
     assert hot.p_home > base.p_home
 
 
+def _receipt_quotes(venue, fixture_api_id, home, away, kickoff_ts, sides, *,
+                    comp=clubctx.EPL, environment="prod"):
+    """A find_opportunities quote source returning RECEIPT-BACKED quotes.
+
+    Since the leak-correction epoch (bf13bb71) the in-play finder only prices quotes
+    carrying a QuoteReceiptV1 — a bare float can no longer certify an executable
+    price, and the sell leg needs a real BID. Built through the module's own public
+    constructors (make_binding / make_receipt / quote_from_receipt) so the test
+    speaks the production contract instead of bypassing it. ``sides`` maps
+    side -> (ask, bid).
+    """
+    from datetime import datetime, timezone
+    from prediction_market_soccer.util.market_identity import make_binding
+    from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt
+    fixture = {"fixture_api_id": fixture_api_id, "comp": comp.key, "season": comp.season,
+               "home_api_id": home[0], "away_api_id": away[0],
+               "home_id": home[1], "away_id": away[1], "kickoff_ts": kickoff_ts}
+
+    def source(fid):
+        now = datetime.now(timezone.utc).isoformat()
+        out = {}
+        for side, (ask, bid) in sides.items():
+            binding = make_binding(fixture=fixture, provider=venue, environment=environment,
+                                   event_id=f"{venue}-ev-{fid}", market_id=f"{venue}-{side}",
+                                   side=side, market_kind="match")
+            out[side] = quote_from_receipt(make_receipt(
+                binding, ask=ask, bid=bid,
+                raw={"venue": venue, "side": side, "ask": ask, "bid": bid},
+                request_started_at=now, received_at=now))
+        return out
+    return source
+
+
 def test_inplay_arb_finder():
     from prediction_market_soccer.strategy.inplay_arb import find_opportunities
     c = clubctx.mem_db()
     clubctx.seed_teams(c, clubctx.BRIGHTON, clubctx.BRENTFORD)
-    clubctx.seed_fixture(c, 1, clubctx.BRIGHTON, clubctx.BRENTFORD, status="2H",
-                         hg=0, ag=0, elapsed=78, days_ago=0)
+    ts = clubctx.seed_fixture(c, 1, clubctx.BRIGHTON, clubctx.BRENTFORD, status="2H",
+                              hg=0, ag=0, elapsed=78, days_ago=0)
     sm = clubctx.all_comps_strength()
     # market under-prices the late draw → relative-value BUY draw opportunity.
-    qs = {"kalshi": lambda fid: {"home": 0.30, "draw": 0.45, "away": 0.10}}
+    qs = {"kalshi": _receipt_quotes("kalshi", 1, clubctx.BRIGHTON, clubctx.BRENTFORD, ts,
+                                    {"home": (0.30, 0.28), "draw": (0.45, 0.43), "away": (0.10, 0.08)})}
     opps = find_opportunities(conn=c, sm=sm, quote_sources=qs)
     assert any(o["kind"] == "relative_value" and o["side"] == "draw" for o in opps)
     # no live fixtures → no opportunities.
@@ -130,16 +170,19 @@ def test_inplay_lock_arb_only_on_real_gap():
     from prediction_market_soccer.strategy.inplay_arb import find_opportunities
     c = clubctx.mem_db()
     clubctx.seed_teams(c, clubctx.CHELSEA, clubctx.IPSWICH)
-    clubctx.seed_fixture(c, 1, clubctx.CHELSEA, clubctx.IPSWICH, status="1H",
-                         hg=0, ag=0, elapsed=25, days_ago=0)
+    ts = clubctx.seed_fixture(c, 1, clubctx.CHELSEA, clubctx.IPSWICH, status="1H",
+                              hg=0, ag=0, elapsed=25, days_ago=0)
     sm = clubctx.all_comps_strength()
+    mk = lambda venue, sides: _receipt_quotes(venue, 1, clubctx.CHELSEA, clubctx.IPSWICH, ts, sides)
     # Efficient/agreeing prices → NO lock arb (no free money).
-    agree = {"kalshi": lambda f: {"home": 0.07, "draw": 0.13, "away": 0.82},
-             "poly_us": lambda f: {"home": 0.06, "draw": 0.12, "away": 0.81}}
+    agree = {"kalshi": mk("kalshi", {"home": (0.07, 0.06), "draw": (0.13, 0.12), "away": (0.82, 0.81)}),
+             "poly_us": mk("poly_us", {"home": (0.06, 0.05), "draw": (0.12, 0.11), "away": (0.81, 0.80)})}
     assert [o for o in find_opportunities(conn=c, sm=sm, quote_sources=agree) if o["kind"] == "lock_arb"] == []
-    # Real cross-venue gap on 'away' → lock arb fires.
-    gap = {"kalshi": lambda f: {"home": 0.07, "draw": 0.13, "away": 0.82},
-           "poly_us": lambda f: {"home": 0.20, "draw": 0.12, "away": 0.70}}
+    # Real cross-venue gaps (kalshi bid 0.81 > poly ask 0.70 on 'away'; poly bid 0.19 >
+    # kalshi ask 0.07 on 'home') → lock arb fires, every leg priced off a real receipted
+    # ask/bid, never an ask standing in for a bid.
+    gap = {"kalshi": mk("kalshi", {"home": (0.07, 0.06), "draw": (0.13, 0.12), "away": (0.82, 0.81)}),
+           "poly_us": mk("poly_us", {"home": (0.20, 0.19), "draw": (0.12, 0.11), "away": (0.70, 0.69)})}
     locks = [o for o in find_opportunities(conn=c, sm=sm, quote_sources=gap) if o["kind"] == "lock_arb"]
     assert locks and all(o["edge"] > 0 for o in locks)
 
@@ -148,16 +191,16 @@ def test_lock_arb_uses_bid_for_sell_leg_no_false_positive():
     from prediction_market_soccer.strategy.inplay_arb import find_opportunities
     c = clubctx.mem_db()
     clubctx.seed_teams(c, clubctx.CHELSEA, clubctx.IPSWICH)
-    clubctx.seed_fixture(c, 1, clubctx.CHELSEA, clubctx.IPSWICH, status="1H",
-                         hg=0, ag=0, elapsed=25, days_ago=0)
+    ts = clubctx.seed_fixture(c, 1, clubctx.CHELSEA, clubctx.IPSWICH, status="1H",
+                              hg=0, ag=0, elapsed=25, days_ago=0)
     sm = clubctx.all_comps_strength()
+    mk = lambda venue, ask, bid: _receipt_quotes(venue, 1, clubctx.CHELSEA, clubctx.IPSWICH,
+                                                 ts, {"away": (ask, bid)})
     # Same ask but a spread: selling at the BID (0.81) < buying at the ASK (0.82) → no arb.
-    qs = {"kalshi": lambda f: {"away": {"ask": 0.82, "bid": 0.81}},
-          "poly_us": lambda f: {"away": {"ask": 0.82, "bid": 0.81}}}
+    qs = {"kalshi": mk("kalshi", 0.82, 0.81), "poly_us": mk("poly_us", 0.82, 0.81)}
     assert [o for o in find_opportunities(conn=c, sm=sm, quote_sources=qs) if o["kind"] == "lock_arb"] == []
     # Genuine dislocation: US bid 0.90 >> Kalshi ask 0.82 → real lock.
-    qs2 = {"kalshi": lambda f: {"away": {"ask": 0.82, "bid": 0.81}},
-           "poly_us": lambda f: {"away": {"ask": 0.91, "bid": 0.90}}}
+    qs2 = {"kalshi": mk("kalshi", 0.82, 0.81), "poly_us": mk("poly_us", 0.91, 0.90)}
     locks = [o for o in find_opportunities(conn=c, sm=sm, quote_sources=qs2) if o["kind"] == "lock_arb"]
     assert locks and locks[0]["edge"] > 0
 

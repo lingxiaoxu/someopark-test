@@ -210,23 +210,52 @@ def _live_db_with_totals(gh, ga, minute):
     from prediction_market_soccer.tests import clubctx
     c = clubctx.mem_db()
     clubctx.seed_teams(c, clubctx.BRIGHTON, clubctx.BRENTFORD)
-    clubctx.seed_fixture(c, 1, clubctx.BRIGHTON, clubctx.BRENTFORD, status="2H",
-                         hg=gh, ag=ga, elapsed=minute, days_ago=0)
+    ts = clubctx.seed_fixture(c, 1, clubctx.BRIGHTON, clubctx.BRENTFORD, status="2H",
+                              hg=gh, ag=ga, elapsed=minute, days_ago=0)
     for tid, xg in ((clubctx.BRIGHTON[0], 1.3), (clubctx.BRENTFORD[0], 0.9)):
         store.upsert(c, "fixture_stats", {"fixture_api_id": 1, "team_api_id": tid, "xg": xg,
             "possession": 0.5, "shots_total": 8, "fetched_at": store.utcnow()},
             pk=["fixture_api_id", "team_api_id"])
-    return c
+    return c, ts
+
+
+def _receipted_totals(kickoff_ts, over, under):
+    """QuoteReceiptV1 totals book via the module's own construction path (the same
+    make_binding → make_receipt → quote_from_receipt chain the venue collectors use).
+    Since the leak-correction commit, find_opportunities runs every source through
+    collect_qualified_sources and silently drops receiptless quotes, so a bare
+    {'ask','bid'} dict never trades. Receipt clocks derive from the REAL clock —
+    qualify_quote rejects captures older than its freshness window."""
+    from datetime import datetime, timezone
+
+    from prediction_market_soccer.tests import clubctx
+    from prediction_market_soccer.util.market_identity import make_binding
+    from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt
+    now = datetime.now(timezone.utc).isoformat()
+    fixture = {"fixture_api_id": 1, "comp": clubctx.EPL.key, "season": clubctx.EPL.season,
+               "home_api_id": clubctx.BRIGHTON[0], "away_api_id": clubctx.BRENTFORD[0],
+               "home_id": clubctx.BRIGHTON[1], "away_id": clubctx.BRENTFORD[1],
+               "kickoff_ts": kickoff_ts}
+
+    def q(side, blk):
+        b = make_binding(fixture=fixture, provider="kalshi", environment="public",
+                         event_id="KXEPLTOTAL-TEST", market_id=f"KXEPLTOTAL-TEST-{side.upper()}",
+                         side=side, market_kind="totals", line=2.5)
+        return quote_from_receipt(make_receipt(b, ask=blk["ask"], bid=blk["bid"],
+                                               raw={"test_side": side},
+                                               request_started_at=now, received_at=now))
+
+    return {"over": q("over", over), "under": q("under", under)}
 
 
 def test_totals_relative_value_surfaces():
     from prediction_market_soccer.strategy.inplay_arb import find_opportunities
     from prediction_market_soccer.tests import clubctx
-    c = _live_db_with_totals(0, 0, 55)
+    c, ts = _live_db_with_totals(0, 0, 55)
     sm = clubctx.all_comps_strength()
     # OVER cheap → model (which likes UNDER at 0-0/55') flags a totals relative_value.
-    qs = {"kalshi_totals": lambda fid: {"over": {"ask": 0.30, "bid": 0.28},
-                                        "under": {"ask": 0.72, "bid": 0.70}}}
+    quotes = _receipted_totals(ts, {"ask": 0.30, "bid": 0.28}, {"ask": 0.72, "bid": 0.70})
+    qs = {"kalshi_totals": lambda fid: quotes}
     opps = find_opportunities(conn=c, sm=sm, quote_sources=qs)
     rv = [o for o in opps if o["kind"] == "relative_value" and o["side"] in ("over", "under")]
     assert rv, "totals relative_value should surface"
@@ -236,10 +265,10 @@ def test_totals_relative_value_surfaces():
 def test_finishing_uplift_activates_with_totals_market():
     from prediction_market_soccer.strategy.inplay_arb import find_opportunities
     from prediction_market_soccer.tests import clubctx
-    c = _live_db_with_totals(1, 1, 62)   # 1-1: model P(over 2.5) is high
+    c, ts = _live_db_with_totals(1, 1, 62)   # 1-1: model P(over 2.5) is high
     sm = clubctx.all_comps_strength()
-    qs = {"kalshi_totals": lambda fid: {"over": {"ask": 0.45, "bid": 0.43},
-                                        "under": {"ask": 0.57, "bid": 0.55}}}
+    quotes = _receipted_totals(ts, {"ask": 0.45, "bid": 0.43}, {"ask": 0.57, "bid": 0.55})
+    qs = {"kalshi_totals": lambda fid: quotes}
     opps = find_opportunities(conn=c, sm=sm, quote_sources=qs)
     keys = {o["reason_key"] for o in opps}
     assert "finishing_uplift_mkt" in keys, "signal #9 should activate against a real totals market"

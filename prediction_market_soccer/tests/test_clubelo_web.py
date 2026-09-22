@@ -154,7 +154,8 @@ def test_fetch_clubelo_falls_back_to_the_api_and_refuses_a_frozen_answer(tmp_pat
 
 def test_fetch_clubelo_never_pins_the_site_state_on_another_day(tmp_path, monkeypatch):
     """Tomorrow: served from the latest website file, nothing written. Yesterday: never the
-    website (that would fingerprint today's ratings as yesterday's PIT prior)."""
+    website and never a LATER-dated file — today's ratings must not be fingerprinted as
+    yesterday's PIT prior (the stale-web fallback is bounded at as_of since bf13bb71)."""
     from prediction_market_soccer.ingest import club_prior as CP
     monkeypatch.setattr(CP, "_PRIORS", tmp_path)
     monkeypatch.setattr(W, "PRIORS", tmp_path)
@@ -172,8 +173,17 @@ def test_fetch_clubelo_never_pins_the_site_state_on_another_day(tmp_path, monkey
     assert rows[0]["Club"] == "Bayern" and not (tmp_path / f"clubelo_{tomorrow}.csv").exists()
     assert called["web"] == 0
     monkeypatch.setattr(CP, "_fetch_clubelo_api", lambda as_of: (_ for _ in ()).throw(RuntimeError("502")))
-    rows = CP._fetch_clubelo(yday)          # no histories, API down → latest web file, no fetch
-    assert called["web"] == 0 and rows[0]["Club"] == "Bayern"
+    # yesterday with ONLY today's file on disk: refusing to serve is right — today's
+    # ratings must never come back as yesterday's PIT prior
+    with pytest.raises(RuntimeError, match="ClubElo unavailable"):
+        CP._fetch_clubelo(yday)
+    assert called["web"] == 0 and not (tmp_path / f"clubelo_{yday}.csv").exists()
+    # with an OLDER web file also present, yesterday is served from that one, never today's
+    d2 = (datetime.fromisoformat(today) - timedelta(days=2)).strftime("%Y-%m-%d")
+    W.write_csv([{"Rank": "", "Club": "Bayern", "Country": "GER", "Level": "", "Elo": 1999.0, "From": d2, "To": d2}], d2, source="web")
+    rows = CP._fetch_clubelo(yday)          # no histories, API down → the as_of-bounded web file
+    assert called["web"] == 0 and rows[0]["Club"] == "Bayern" and float(rows[0]["Elo"]) == 1999.0
+    assert not (tmp_path / f"clubelo_{yday}.csv").exists()
 
 
 def test_write_csv_keeps_the_frozen_api_file_as_a_backup(tmp_path, monkeypatch):
