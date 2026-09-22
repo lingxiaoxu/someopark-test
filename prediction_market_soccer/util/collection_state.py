@@ -14,6 +14,15 @@ def _dt(value):
     return d.astimezone(timezone.utc)
 
 
+# One discovery sweep (list_match_events over the 14-day window) costs a fixed ~44 requests:
+# 12 active competitions x 14 tag slugs, paginated. MEASURED 2026-09-22 — a cap of 45 and a
+# cap of 400 both return the same 207 events in 44 HTTP calls, so discovery COMPLETES at 44;
+# it is an overhead, not a truncation. Each (fixture, side) price history then costs exactly
+# one more request, i.e. 3 per fixture.
+DISCOVERY_ALLOWANCE = 60          # 44 measured + headroom for new comps/tags
+REQUESTS_PER_FIXTURE = 3          # home / draw / away price histories
+
+
 @dataclass(frozen=True)
 class CollectionScope:
     scope_id: str
@@ -145,4 +154,11 @@ def daily_scope(conn, *, now=None, since_days=14, limit=12, collector='milestone
     ordered = sorted((r for r in rows if r[0] in due_fixtures),
                      key=lambda row: (serviced.get(row[0], oldest), _dt(row[1]), row[0]))
     ids = tuple(row[0] for row in ordered[:limit])
-    return replace(scope, fixture_ids=ids)
+    # Size the budget to the work: discovery is charged to the SAME budget as the
+    # per-fixture price histories, so the default 48 left 48-44 = 4 requests for the 36
+    # histories a 12-fixture scope needs. Every run therefore ended `partial`, which is
+    # why full_refresh sat `degraded` from 2026-09-10 to 2026-09-22 on price_ticks while
+    # 278 targets recorded `request_budget_exhausted` and one retried 33 times without
+    # ever being serviced. The collector was never broken — it was never funded.
+    budget = DISCOVERY_ALLOWANCE + REQUESTS_PER_FIXTURE * len(ids)
+    return replace(scope, fixture_ids=ids, max_requests=budget)
