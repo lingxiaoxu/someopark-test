@@ -4,7 +4,7 @@ earnings_loader — 财报日历(复用 MRPTFetchEarnings,§6.4)
 主源=根目录 MRPTFetchEarnings 的 Polygon financials 链路(fetch_earnings_for_symbol/
 run_fetch),import 复用一行不改;**自有缓存**(不写共享 price_data/earnings_cache.json)。
 前瞻日历(未来财报日,earn_ 组分桶需要)=Mongo fmp_historical_earning_calendar(→2027)。
-Mongo 日期字段为 BSON datetime——查询必须用 datetime 对象(§6.5 工程要点)。
+Mongo 日期兼容 ISO 字符串及 BSON datetime；同一日期窗查询两种类型，按日去重。
 """
 from __future__ import annotations
 
@@ -124,24 +124,75 @@ def release_timing(symbols: List[str]) -> Dict[str, Dict[str, str]]:
     return out
 
 
+def _calendar_date(value) -> Optional[date]:
+    """Parse a calendar label without shifting its stated day across time zones."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if len(value) < 10 or value[4] != "-" or value[7] != "-":
+        return None
+    try:
+        if len(value) == 10:
+            return date.fromisoformat(value)
+        if value[10] not in ("T", " "):
+            return None
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
 def future_dates(symbols: List[str], horizon_days: int = 400) -> Dict[str, List[date]]:
-    """前瞻日历: Mongo fmp_historical_earning_calendar 未来窗(→2027);datetime 查询。"""
+    """Read future calendar dates, inclusive of today and the horizon's last day.
+
+    The collection currently stores ISO strings, while older integrations used
+    BSON datetimes. Mongo type-brackets range predicates, so a datetime-only
+    query silently returns no string records. Both branches use the same symbol
+    filter and half-open date window. A second client-side check rejects invalid
+    values/out-of-window dates, and sets collapse duplicate vendor snapshots.
+    No calendar/cache/database writes occur. Connection failures propagate with
+    only their class name, so callers cannot log credentials from a driver URL.
+    """
+    if horizon_days < 0:
+        raise ValueError("horizon_days must be nonnegative")
+    symbols = list(dict.fromkeys(symbols))
+    if not symbols:
+        return {}
     from dotenv import load_dotenv
     import os
     load_dotenv(REPO / ".env")
     from pymongo import MongoClient
-    cli = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000,
-                      socketTimeoutMS=60000, connectTimeoutMS=20000)
-    col = cli["someopark"]["fmp_historical_earning_calendar"]
-    t0 = datetime.combine(date.today(), datetime.min.time())
-    t1 = t0 + timedelta(days=horizon_days)
-    out: Dict[str, List[date]] = {s: [] for s in symbols}
-    cur = col.find({"symbol": {"$in": list(symbols)},
-                    "date": {"$gte": t0, "$lte": t1}},
-                   {"symbol": 1, "date": 1})
-    for doc in cur:
-        out[doc["symbol"]].append(doc["date"].date())
-    return {s: sorted(set(v)) for s, v in out.items()}
+    first = date.today()
+    last = first + timedelta(days=horizon_days)
+    stop = last + timedelta(days=1)
+    t0 = datetime.combine(first, datetime.min.time())
+    t1 = datetime.combine(stop, datetime.min.time())
+    query = {"symbol": {"$in": symbols}, "$or": [
+        {"date": {"$gte": t0, "$lt": t1}},
+        {"date": {"$gte": first.isoformat(), "$lt": stop.isoformat()}},
+    ]}
+    out = {s: set() for s in symbols}
+    cli = None
+    try:
+        cli = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000,
+                          socketTimeoutMS=60000, connectTimeoutMS=20000)
+        col = cli["someopark"]["fmp_historical_earning_calendar"]
+        cur = col.find(query, {"_id": 0, "symbol": 1, "date": 1})
+        for doc in cur:
+            symbol = doc.get("symbol")
+            day = _calendar_date(doc.get("date"))
+            if symbol in out and day is not None and first <= day <= last:
+                out[symbol].add(day)
+    except Exception as exc:
+        raise RuntimeError(
+            f"future earnings calendar query failed ({type(exc).__name__})") from None
+    finally:
+        if cli is not None:
+            cli.close()
+    return {s: sorted(days) for s, days in out.items()}
 
 
 def all_dates(symbols: List[str]) -> Dict[str, List[date]]:

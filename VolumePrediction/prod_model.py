@@ -93,10 +93,13 @@ def freeze(panel_path: str | Path, asof: str,
     assert dates.max() == asof_ts, f"panel end {dates.max()} != asof {asof}"
 
     cols = cols_upto(panel, "earn")
-    tr = panel[panel["eta"].notna()]
+    train_mask = panel["eta"].notna()
+    n_train_rows = int(train_mask.sum())
     model = make_model("lgbm", len(cols))
-    model.fit(tr[cols], tr["eta"])
-    log.info(f"freeze: lgbm fit on {len(tr):,} rows × {len(cols)} feats")
+    # Select only model inputs, rather than retaining a second full training
+    # panel (including non-feature columns) throughout fitting and freezing.
+    model.fit(panel.loc[train_mask, cols], panel.loc[train_mask, "eta"])
+    log.info(f"freeze: lgbm fit on {n_train_rows:,} rows × {len(cols)} feats")
 
     # ── 每票预计算 ──
     base = panel[["ret", "v"]]
@@ -148,7 +151,7 @@ def freeze(panel_path: str | Path, asof: str,
         "version": version, "kind": "learned.lgbm",
         "panel": panel_path.name, "trained_through": asof,
         "first_serve_date": first_serve,
-        "n_train_rows": int(len(tr)), "n_tickers": int(len(per_ticker)),
+        "n_train_rows": n_train_rows, "n_tickers": int(len(per_ticker)),
         "feature_cols": cols, "fund_cols": fund_cols,
         "target": "eta", "pred_rule": "pred_v = ma5_v + eta_hat",
         "built_at": datetime.now().isoformat(timespec="seconds"),
@@ -179,6 +182,10 @@ def _tech_and_ma5_from_raw(tickers, asof_freeze: str, target: str,
     尾窗 = target 前 ≥260 个原始日(ma252 需要)。"""
     from VolumePrediction.data import polygon_loader as pl
     from VolumePrediction.data import splits_loader as sl
+    # Validate the market-wide cache once before per-ticker best-effort handling.
+    # A failed fetch with no usable cache must stop learned-model serving rather
+    # than turn every historical split into an unadjusted price discontinuity.
+    sl.refresh()
     tgt = pd.Timestamp(target)
     days = [d for d in pl.trading_days("2024-06-01", str(tgt.date())) if d < target]
     days = days[-330:]           # ma252 需 253 个有效日,留 IPO/停牌余量
@@ -226,6 +233,41 @@ def _tech_and_ma5_from_raw(tickers, asof_freeze: str, target: str,
     return pd.DataFrame(out)
 
 
+def _calendar_and_earnings_features(tickers, target_date: str, historical_dates,
+                                    future_dates=None) -> pd.DataFrame:
+    """Compute target-day flags on a real NYSE calendar, then select that day.
+
+    A one-day shell cannot represent event distances or map non-trading event
+    dates: it collapses all past earnings and future option expiries onto today.
+    A whole calendar year with padding preserves the training feature semantics
+    without constructing a full ticker-by-year panel.
+    """
+    import pandas_market_calendars as mcal
+    from VolumePrediction.features import pipeline as fpipe
+
+    tgt = pd.Timestamp(target_date).normalize()
+    start = pd.Timestamp(year=tgt.year, month=1, day=1) - pd.Timedelta(days=30)
+    end = pd.Timestamp(year=tgt.year, month=12, day=31) + pd.Timedelta(days=30)
+    calendar = mcal.get_calendar("NYSE").schedule(
+        start_date=start, end_date=end).index.normalize()
+    if tgt not in calendar:
+        raise ValueError(f"target_date is not an NYSE trading day: {target_date}")
+
+    calendar_index = pd.MultiIndex.from_product(
+        [calendar, ["__calendar__"]], names=["date", "ticker"])
+    flags = fpipe.add_calendar_flags(pd.DataFrame(index=calendar_index))
+    target_flags = flags.loc[(tgt, "__calendar__")]
+    target_index = pd.MultiIndex.from_product(
+        [[tgt], sorted(tickers)], names=["date", "ticker"])
+    shell = pd.DataFrame(index=target_index)
+    for col, value in target_flags.items():
+        shell[col] = value
+    shell = fpipe.create_earnings_dummies(
+        shell, historical_dates, future_dates=future_dates,
+        trading_calendar=calendar)
+    return shell.droplevel("date")
+
+
 def serve(art_dir: str | Path, target_date: str) -> pd.DataFrame:
     """组装 target_date 的 X → η̂ → forecast 帧。
 
@@ -234,7 +276,6 @@ def serve(art_dir: str | Path, target_date: str) -> pd.DataFrame:
     覆盖: 工件宇宙 ∩ 特征完备票;调用方(refresh)对未覆盖票补 ma5 行。
     """
     model, per_ticker, meta = _load_artifact(art_dir)
-    import VolumePrediction.features.pipeline as fpipe
     from VolumePrediction.data import earnings_loader as el
 
     if "active" in per_ticker.columns:
@@ -255,19 +296,14 @@ def serve(art_dir: str | Path, target_date: str) -> pd.DataFrame:
     X = tech.join(per_ticker[meta["fund_cols"]], how="left")
 
     # cal/earn: 对 target 当日计算(前瞻日历,当日可知)
-    tgt = pd.Timestamp(target_date)
-    idx = pd.MultiIndex.from_product([[tgt], X.index], names=["date", "ticker"])
-    shell = pd.DataFrame(index=idx)
-    shell = fpipe.add_calendar_flags(shell)
     syms = sorted(X.index)
     try:
         earn_fut = el.future_dates(syms)
     except Exception as e:  # noqa: BLE001
         log.warning(f"future earnings calendar unavailable at serve: {e}")
         earn_fut = None
-    shell = fpipe.create_earnings_dummies(shell, el.historical_dates(syms),
-                                          future_dates=earn_fut)
-    caearn = shell.droplevel("date")
+    caearn = _calendar_and_earnings_features(
+        syms, target_date, el.historical_dates(syms), future_dates=earn_fut)
     X = X.join(caearn, how="left")
 
     cols = meta["feature_cols"]

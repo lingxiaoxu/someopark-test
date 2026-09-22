@@ -99,6 +99,8 @@ def create_earnings_dummies(
     panel: pd.DataFrame,
     earnings_dates: Dict[str, Sequence],
     future_dates: Optional[Dict[str, Sequence]] = None,
+    *,
+    trading_calendar: Optional[Sequence] = None,
 ) -> pd.DataFrame:
     """C 组(10 列 one-hot, earn_ 前缀): 距下一次已知财报日的**交易日**距离分桶。
 
@@ -110,6 +112,10 @@ def create_earnings_dummies(
     (历史=MRPTFetchEarnings 缓存派生;未来=FMP 前瞻日历——由 inhouse_loader 提供,
     本函数不拉数据)。财报日若非该票交易日,按"其后第一个交易日=反应日"处理。
     某票完全无财报信息 → 该票 10 列全 0(信息缺失的诚实表达,论文零填充协议一致)。
+
+    trading_calendar: 服务单日/稀疏行时,显式传入覆盖预测日前后至少 5 个交易日
+    的完整交易日历,距离按该日历计算。否则沿用训练面板每票的日期序列。
+    仅有单日行的索引不能表示财报距离: 所有过去日期会被压到位置 0。
     """
     _validate_panel(panel)
     out = panel.copy()
@@ -132,13 +138,18 @@ def create_earnings_dummies(
 
     tickers = out.index.get_level_values("ticker")
     dates_all = out.index.get_level_values("date")
+    calendar = None
+    if trading_calendar is not None:
+        calendar = pd.DatetimeIndex(trading_calendar).normalize().unique().sort_values()
+        if calendar.empty or not dates_all.isin(calendar).all():
+            raise ValueError("trading_calendar must contain every panel date")
     for tk, ann in merged.items():
         mask = tickers == tk
         if not mask.any() or len(ann) == 0:
             continue
-        dts = dates_all[mask].values.astype("M8[ns]")
-        n = len(dts)
-        idx = np.arange(n)
+        row_dates = dates_all[mask].values.astype("M8[ns]")
+        dts = row_dates if calendar is None else calendar.values.astype("M8[ns]")
+        idx = np.arange(len(dts)) if calendar is None else np.searchsorted(dts, row_dates)
         # 每个财报日 → 该票交易日序列中的"反应位"(非交易日财报 → 其后第一个交易日)。
         # 距离一律在**反应位空间**度量,修正周末/假日财报的当日归零语义。
         ann_pos = np.unique(np.searchsorted(dts, ann, side="left"))
@@ -180,17 +191,17 @@ def add_calendar_flags(panel: pd.DataFrame) -> pd.DataFrame:
       double_witching  = 其余月份第 3 个周五
       russell_rebalance= 6 月第 4 个周五
       is_early_close   = NYSE 提前收市日(pandas_market_calendars 实取)
-    规则日若非交易日(如 Juneteenth 撞上周五)→ 标记其前一交易日(文档化选择)。
+    规则日若非交易日(如 Juneteenth 撞上周五)→ 标记其前一 NYSE 交易日。
+    事件映射使用完整年度日历,再筛选请求行;不能把面板末日当成未来事件前一日。
     """
     _validate_panel(panel)
     import pandas_market_calendars as mcal
     out = panel.copy()
     dates = out.index.get_level_values("date")
     d0, d1 = dates.min(), dates.max()
-    all_days = pd.DatetimeIndex(sorted(dates.unique()))
-
     nyse = mcal.get_calendar("NYSE")
-    sched = nyse.schedule(start_date=d0.strftime("%Y-%m-%d"), end_date=d1.strftime("%Y-%m-%d"))
+    sched = nyse.schedule(start_date=f"{d0.year}-01-01", end_date=f"{d1.year}-12-31")
+    all_days = pd.DatetimeIndex(sched.index).normalize()
     closes_et = sched["market_close"].dt.tz_convert("America/New_York")
     early = set(pd.DatetimeIndex(
         sched.index[(closes_et.dt.hour * 60 + closes_et.dt.minute) < 16 * 60]).normalize())
