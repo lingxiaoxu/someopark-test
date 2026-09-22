@@ -1631,3 +1631,29 @@ def test_time_bridge_dividend_entitlement_maps_historical_first_names(monkeypatc
     assert b["book_check"]["dividends_verified"]["per_leg"] == [
         {"ticker": "AON", "shares_prev_close": 100.0,
          "cash_per_share": 0.50, "usd": 50.0}]
+
+
+def test_hou_first_name_maps_to_cnp_and_keeps_real_share_breaches(target_file):
+    """9/21 实测:order 263 成交 CNP −1296,portfolio 键为历史首名 HOU。
+    映射后逐票配平;真实股数差(±1 股)仍必须原样报 breach,别名不吞差。"""
+    class Client:
+        def live_read(self, pid):
+            return {"status": "Running", "deployId": "test-deploy"}
+
+        def live_portfolio(self, pid):
+            return {"portfolio": {
+                "holdings": {"HOU R735QTJ8XC9X": {
+                    "q": -1296, "p": 38.05, "v": -49312.8}},
+                "cash": {"USD": {"amount": 100_000.0}},
+            }}
+
+    qc = rolloff.qc_snapshot(client=Client(), pid=1)
+    assert qc["shares"] == {"HOU": -1296}
+    target_file(47, {"CNP": -1296})
+    row = qr.holdings_plane(qc, 47)
+    assert row["status"] == "ok" and row["diffs"] == []
+    qc["shares"]["HOU"] -= 1
+    row = qr.holdings_plane(qc, 47)
+    assert row["status"] == "breach"
+    assert row["diffs"] == [{"ticker": "CNP", "qc": -1297,
+                             "target": -1296, "diff": -1}]

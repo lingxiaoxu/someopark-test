@@ -341,6 +341,11 @@ QC_SYMBOL_ALIAS = {
     "AOC": "AON",
     "AHA": "SWKS",
     "ARNC": "HWM",
+    # 2026-09-22 核实 9/21 对账 breach:订单 263 的成交记录为 CNP −1296 @38.05
+    # (周一 09:31),portfolio 却把同一笔记在 "HOU" 下(CenterPoint 前身
+    # Houston Industries 的历史首名);Polygon 现今无 HOU 在市,无碰撞。
+    # 三方互证:fill ticker、portfolio 键、本地 target 同为 −1296。
+    "HOU": "CNP",
 }
 
 
