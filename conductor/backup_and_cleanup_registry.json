@@ -1,0 +1,2793 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-12 15:20:54 EDT",
+  "generated_by": "两个只读审计工作流(32 个 agent:取证 → 独立复核 → 完整性批评 → 合成)",
+  "how_to_refresh": "跑 `bash conductor/update_backup_registry.sh` 全面重测并覆盖本文件。该脚本是确定性测量(纯 shell+python,不依赖 LLM),会重新采集:磁盘水位、四组备份/清理脚本的最后运行与 cutoff、本机与外置盘各目录的体积与日期范围、缺口对比、各数据源日增。LLM 判断类字段(status/severity/consumers/评述)不会被脚本覆盖,需要重跑审计工作流才能更新——脚本会把这些字段原样保留并标注 stale_after 天数。",
+  "disk_snapshot": {
+    "local": "171Gi 可用 / 926Gi 共 (81% 已用)",
+    "external": "2.5Ti 可用 / 3.6Ti 共 (33% 已用)",
+    "measured_at": "2026-09-12 16:10:01"
+  },
+  "purpose": "someopark-test 仓库「备份 / 清理 / 归档」的中央记录（取数时点 2026-09-12 14:30–14:40 EDT；由只读审计 + 独立复核 + 完整性批评三轮合成，复核员标 corrected 的一律采用复核值）。用途：动任何清理或回收空间之前，先查本记录确认某路径是否有异地副本、由哪个脚本负责、最后一次真备份与真删除各在何时；并把三种日期口径（脚本运行日期 / 数据覆盖日期 / 清理截止 cutoff）分开固化，防止混用。更新方式：每次跑过 backup_*/clean_* 脚本、或新增/下线任一备份链路后，按本记录字段补一行，并重跑对应 find/du/stat 取新值。凡引用文件数必须注明口径：find -type f 不含符号链接，python os.walk 含符号链接（两者在 .codex 上差 141 个）；活跃目录（soccer/data、crypto price_data、/private/tmp、~/.codex）分钟级就漂移，一律当快照值。",
+  "external_volume": "/Volumes/Someo Park PRO-BLADE（APFS，3.6Ti 总 / 1.2Ti 已用 / 2.5Ti 可用 / 33%，2026-09-12 14:40 在线）。顶层 6 项：code、someopark-sandbox、Macbook Downloads、.codex、tmp、crypto_data_backup。du 分项合计约 1122 GiB、du -sk -x 全卷 1117.61 GiB，而 df Used = 1196.60 GiB（diskutil Volume Used 1284842278912 B），约 79 GiB 未归属（.Spotlight-V100 无读取权限，推测主要在此）——不要说 du 与 df「吻合」。方向上 df > du 属欠计而非虚高，故「外置盘无 APFS 克隆虚高」方向成立但未直接验证。",
+  "path_convention": "三条惯例并存：(1) 仓库内路径 → <盘>/code/someopark-test/<相同相对路径>，但只镜像 7 棵树（account_history、historical_runs、mlruns、prediction_market_soccer、price_data、qlib-main、someo-park-investment-management），而本机仓库顶层有 103 个条目；且 qlib-main 下只有 mlruns，someo-park-investment-management 下只有 server/sim_assets/microfootball。(2) home 根路径 → <盘>/<同名>，但只落实了 3 项（.codex、tmp、crypto_data_backup）；home 根另有 12 个 *backup* 条目，其余 11 项在盘上 ABSENT。(3) <盘>/someopark-sandbox 是 2026-08-19 22:15 的整仓冻结快照（482116 文件 / 305.14 GiB / 100 个顶层条目），独立于上述惯例，是那些无镜像树的唯一（且已陈旧 24 天）副本；该快照里没有 prediction_market_soccer，也没有 qlib-main/electric_utilities_strategy。另：<盘>/Macbook Downloads（5651 文件 / 63.02 GiB，最后动于 2026-07-26）不归任何脚本管，既不更新也不校验，谈「盘是本机超集」时须排除它与 sandbox。备份脚本对外置盘一律只增不减：backup_to_external / backup_codex_tmp / backup_gaps 三个脚本内置 SELFCHECK，静态 grep 自身，发现 rsync --delete 或针对 EXT_VOL/DEST 的 rm 即 FATAL 中止。",
+  "backup_scripts": [
+    {
+      "script": "conductor/backup_to_external.sh",
+      "covers": [
+        "historical_runs",
+        "price_data",
+        "account_history"
+      ],
+      "destination": [
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/historical_runs",
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/price_data",
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/account_history"
+      ],
+      "last_real_run": "2026-09-11 19:51",
+      "last_run_result": "★ 备份完成，全部校验通过（一个不差）",
+      "automated": "手动",
+      "run_count": 12,
+      "evidence_log": "conductor/logs/backup_external_20260911_195104.log（正式 5 次 + dry-run 7 次）",
+      "data_covered_through": "盘上 historical_runs 最新 2026-09-11 18:03（mtime）、price_data 2026-09-11 18:36（mtime）、account_history 最新文件 account_mtfs_20260910.json（内容日期 2026-09-10，mtime 2026-09-11 08:47）。account_history 自 2026-08-06 commit aa654d4 起纳入，硬证据是日志：08-05 两次正式跑只有 historical_runs/price_data 两行源清单，08-20 起才出现 account_history",
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/backup_mlruns_to_external.sh",
+      "covers": [
+        "mlruns",
+        "qlib-main/mlruns"
+      ],
+      "destination": [
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/mlruns",
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/qlib-main/mlruns"
+      ],
+      "last_real_run": "2026-09-11 19:52",
+      "last_run_result": "★ mlruns 备份完成，全部校验通过（一个不差）",
+      "automated": "手动",
+      "run_count": 5,
+      "evidence_log": "conductor/logs/backup_mlruns_20260911_195251.log（正式 3 次 + dry-run 2 次）",
+      "data_covered_through": "盘上 mlruns 最新 2026-09-11 17:19、qlib-main/mlruns 最新 2026-09-11 19:05（均 mtime）；本机 qlib-main/mlruns 已到 2026-09-11 22:36，比盘上新",
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/backup_codex_tmp_to_external.sh",
+      "covers": [
+        "~/.codex",
+        "/private/tmp"
+      ],
+      "destination": [
+        "/Volumes/Someo Park PRO-BLADE/.codex",
+        "/Volumes/Someo Park PRO-BLADE/tmp"
+      ],
+      "last_real_run": "2026-09-12 15:48",
+      "last_run_result": "★ .codex 备份完成并校验通过",
+      "automated": "手动",
+      "run_count": 4,
+      "evidence_log": "conductor/logs/backup_codex_tmp_20260912_154827.log（正式 4 次 + dry-run 0 次）",
+      "data_covered_through": ".codex 盘上最新 2026-09-11 19:44（logs_2.sqlite-wal），最老 2026-03-22；tmp 盘上最新 2026-09-11 19:47（claude-501 tasks/*.output），最老 2026-03-22 11:57 —— 但 tmp 的这个时间只是 rsync 中途写到哪儿的痕迹，不构成覆盖完整性证据。MD5 抽样口径弱：codex_tmp 与 gaps 用 find | awk NR%7==1 | head -300，只覆盖 find 序前约 2100 个文件（头部样本，非随机）；backup_to_external / backup_mlruns 用 sort -R | head -N 才是真随机",
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/backup_gaps_to_external.sh",
+      "covers": [
+        "prediction_market_soccer",
+        "someo-park-investment-management/server/sim_assets/microfootball",
+        "~/crypto_data_backup"
+      ],
+      "destination": [
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/prediction_market_soccer",
+        "/Volumes/Someo Park PRO-BLADE/code/someopark-test/someo-park-investment-management/server/sim_assets/microfootball",
+        "/Volumes/Someo Park PRO-BLADE/crypto_data_backup"
+      ],
+      "last_real_run": "2026-09-12 16:00",
+      "last_run_result": "★ soccer 备份完成并校验通过",
+      "automated": "手动",
+      "run_count": 6,
+      "evidence_log": "conductor/logs/backup_gaps_20260912_160058.log（正式 5 次 + dry-run 1 次）",
+      "data_covered_through": "soccer 非 db 文件盘上最新 2026-09-12 13:48（data/runtime/{live,full}_refresh.json），最老 2026-06-15 20:31；microfootball 盘上 2026-06-28 10:12 → 2026-09-07 21:16（不是 09-12，09-12 只是又校验了一遍）；crypto 5 个归档 2026-08-13 16:30 → 2026-09-11 23:23（最新档名 crypto_recorded_20260912T032055Z.tar.gz 是 UTC，内容截至 2026-09-11 23:20 EDT）。注：盘上 soccer 实际有 160 个 .db 和 18 个 -wal/-shm，整树最大 mtime 2026-09-12 14:02（wc.db-shm）晚于备份结束——成因是脚本阶段2 每做完一个 .backup 就在目标盘上跑 PRAGMA integrity_check，把 -wal/-shm 又建了回去；快照本身仍事务一致，但『盘上无 -wal/-shm』的设计说明与实际不符",
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "prediction_market_macro/ops/backup_db.py",
+      "covers": [
+        "prediction_market_macro/data/macro.db"
+      ],
+      "destination": [
+        "/Users/xuling/macro_db_backup（本机同一物理盘 /dev/disk3s5，外置盘上 ABSENT）"
+      ],
+      "last_real_run": "2026-09-12 05:14",
+      "last_run_result": "成功（每日 05:10–05:29 落盘一个 macro_YYYYMMDD.db.gz）",
+      "automated": "launchd:com.someopark.macrorefresh 05:00（经 ops/refresh.py:357 的 step backup_db 调用）",
+      "run_count": 0,
+      "evidence_log": "~/macro_db_backup 目录本身（25 个条目 / 1.2G）；脚本 docstring 自述『This is a local second copy, not off-site... It does not survive the disk』",
+      "data_covered_through": "gz 序列 = macro_20260819.db.gz + macro_20260829…20260912（共 16 个 gz），另 3 个 .db 快照各带 -shm/-wal 共 9 个 = 25 个条目。08-20 至 08-28 无 gz 是**按设计 prune 掉的**，不是备份断档：KEEP_DAILY=14 保留近 14 天，另『每个自然月的第一个快照永久保留』，08-19 即八月月首。这是本系统里唯一自动的备份+删除链路"
+    },
+    {
+      "script": "crypto_trading/ops/backup_data.py",
+      "covers": [
+        "crypto_trading/price_data 中 IRREPLACEABLE 白名单 5 棵树：kalshi/perps/poll、kalshi/perps/ws、kalshi/event_strips、index_proxy/live、offshore/okx/liquidations"
+      ],
+      "destination": [
+        "/Users/xuling/crypto_data_backup（tar.gz，--keep 5；再由 backup_gaps 搬到外置盘 crypto_data_backup）"
+      ],
+      "last_real_run": "2026-09-11 23:23",
+      "last_run_result": "产出 crypto_recorded_20260912T032055Z.tar.gz（4660455309 B）；本机与外置盘 5 个包字节数与 mtime 逐位相同",
+      "automated": "未确证（调用点在 crypto_trading/pipeline.sh:70，--keep 5，注释 protect recorded data FIRST；pipeline.sh 的触发方式未查证）",
+      "run_count": 0,
+      "evidence_log": "ls -la ~/crypto_data_backup 与 <盘>/crypto_data_backup",
+      "data_covered_through": "5 个归档覆盖 2026-08-13 16:30 → 2026-09-11 23:23；--keep 5 意味着 8/13 之前的包已被 prune。**包内实际路径从未做过 tar -tzf 抽验**，不得当作『已验证有副本』"
+    }
+  ],
+  "cleanup_scripts": [
+    {
+      "script": "conductor/clean_old_wf_windows.sh",
+      "deletes": "historical_runs/walk_forward/window* 与 historical_runs/walk_forward_mtfs/window*（整目录）",
+      "criterion": "窗口 birthtime 早于 --cutoff，且外置盘同名备份逐项校验通过。判据已于 2026-09-11 20:10:05 从『文件数与字节数必须完全相等』改为 ⊇（b_cnt -lt s_cnt 才算不符）——修复已落地但**从未被执行过**，最后一次正式跑(19:57)用的还是旧判据。默认 cutoff = 上一季度末前一天 13:00 ET。无写入进程守卫、无 --force（与 clean_old_mlruns.sh 不对称）",
+      "last_real_run": "2026-09-11 19:57",
+      "last_cutoff": "2026-08-30 13:00:02",
+      "last_result": "★ 清理完成：删除 333 个 window 文件夹，释放约 69.6 GB",
+      "automated": "手动",
+      "history": [
+        "2026-08-05 17:13 cutoff=2026-06-29 13:00:17 ★ 清理完成：删除 789 个 window 文件夹，释放约 157.8 GB",
+        "2026-08-14 19:11 cutoff=2026-07-30 13:00:03 ★ 清理完成：删除 294 个 window 文件夹，释放约 52.4 GB",
+        "2026-09-11 19:57 cutoff=2026-08-30 13:00:02 ★ 清理完成：删除 333 个 window 文件夹，释放约 69.6 GB"
+      ],
+      "evidence_log": "conductor/logs/clean_wf_windows_20260911_195702.log（正式 3 次 + dry-run 6 次）",
+      "run_count": 9,
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/clean_old_mlruns.sh",
+      "deletes": "mlruns/<exp>/<run> 与 qlib-main/mlruns/<exp>/<run>（逐 run 目录）",
+      "criterion": "run birthtime 早于 --cutoff 且外置盘上该 run 逐项校验存在；判据同样于 2026-09-11 20:10:16 由严格相等改为 ⊇。内置 BUSY_PATTERNS 写入进程守卫（SectorRotationBatchRun|daily_backtest|SemiconductorBatchRun|aiss_batch|AEUSBatchRun|aeus_batch|DailySignal|VolumePrediction|pipeline_runner），可用 --force 越过；mlflow.db 受保护",
+      "last_real_run": "2026-09-12 15:00",
+      "last_cutoff": "2026-08-29 13:00:05",
+      "last_result": "★ 清理完成：删除 0 个 run，释放约 0 GB",
+      "automated": "手动（但其 weekly 包装脚本已入 launchd，见下条）",
+      "history": [
+        "2026-08-25 10:26 cutoff=2026-06-29 13:00:55 ★ 清理完成：删除 48449 个 run，释放约 7.8 GB",
+        "2026-08-25 23:05 cutoff=2026-07-30 13:00:36 ★ 清理完成：删除 26328 个 run，释放约 68.1 GB",
+        "2026-09-11 19:57 cutoff=2026-08-30 13:00:21 ★ 清理完成：删除 28902 个 run，释放约 113.8 GB",
+        "2026-09-12 15:00 cutoff=2026-08-29 13:00:05 ★ 清理完成：删除 0 个 run，释放约 0 GB"
+      ],
+      "evidence_log": "conductor/logs/clean_mlruns_20260912_150005.log（正式 4 次 + dry-run 13 次）",
+      "run_count": 17,
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/clean_old_mlruns_weekly.sh",
+      "deletes": "同 clean_old_mlruns.sh（exec 调用它）",
+      "criterion": "CUTOFF=$(date -v-14d '+%Y-%m-%d 13:00') 的 14 天滚动截止；**不传 --dry-run、不透传 $@**，底层 DRY_RUN=false 默认，故 launchd 触发即真删除。脚本头部注释仍写『文件数+字节数全等』，已过期（底层 20:10 已改 ⊇）",
+      "last_real_run": "",
+      "last_cutoff": "",
+      "last_result": "从未由 launchd 执行过：launchctl print gui/501/com.someopark.mlruns.weeklyclean → runs = 0 / last exit code = (never exited)；conductor/logs/mlruns_weeklyclean_launchd.log 不存在",
+      "automated": "launchd:com.someopark.mlruns.weeklyclean 周六 15:00（Weekday 6 / Hour 15 / Minute 0）",
+      "history": [
+        "脚本 birth=mtime=2026-09-11 23:18:12，是 09-11 磁盘写满事故后装的治理措施",
+        "首次自动触发 = 2026-09-12 15:00，届时 cutoff = 2026-08-29 13:00，早于现存最早 run（08-30/08-31），本轮预计不删任何东西",
+        "自 2026-09-19 起 cutoff 推进到 09-05，会开始逐周切尾；届时若某周忘了手动跑 backup_mlruns，自动删除与手动备份的节奏就会脱钩"
+      ],
+      "evidence_log": "~/Library/LaunchAgents/com.someopark.mlruns.weeklyclean.plist"
+    },
+    {
+      "script": "conductor/clean_codex_tmp_local.sh",
+      "deletes": "~/.codex/backups 下已备份的目录（/private/tmp 分支需 --tmp 显式开启，两份日志头部均写『/private/tmp: 不动（需 --tmp 开启）』）",
+      "criterion": "盘上同名备份 文件数与字节数 >= 本机（⊇）且 lsof 无进程占用。**不看 MD5**",
+      "last_real_run": "2026-09-11 20:11",
+      "last_cutoff": "",
+      "last_result": "★ 清理完成：删除 4 个目录，释放约 26.1 GB",
+      "automated": "手动",
+      "history": [
+        "2026-09-11 20:11 cutoff=默认 ★ 清理完成：删除 4 个目录，释放约 26.1 GB"
+      ],
+      "evidence_log": "conductor/logs/clean_codex_tmp_20260911_201122.log（正式 1 次 + dry-run 1 次）",
+      "run_count": 2,
+      "machine_measured_at": "2026-09-12 16:10:01"
+    },
+    {
+      "script": "conductor/clean_wf_charts.sh",
+      "deletes": "historical_runs/walk_forward*/window*/charts/ 内的文件（保留空目录）",
+      "criterion": "**无时间判据、无备份校验、无写入进程守卫、无日志**（grep -c 'logs/' = 0）。只有 4 个精确 glob + 路径模式自检 + find -mindepth 1 -delete",
+      "last_real_run": "2026-09-07 17:54",
+      "last_cutoff": "",
+      "last_result": "2026-09-07 那次由 Codex 会话执行脚本本体（外套一层 python preflight：先 sha256 校验脚本 dc5e5abb…8dac、冻结三元组、记录 39247 个 charts 外文件 lstat 基线，核心是 subprocess.run(['bash', script])）；捕获的 stdout 为脚本自身输出：Charts folders found: 864 / Total size to clean: 42.0 GB (864 folders)。162 个 charts 被清空",
+      "automated": "手动",
+      "history": [
+        "唯一 commit 13791a8（2026-06-17 19:19）『WF charts cleanup: 348 GB freed + frontend adapts to empty charts dirs』——脚本自 06-17 一字未改；该 message 是人写文本，不是执行记录",
+        "会话记录可确证的正式执行至少 15 次，区间 2026-06-17 18:55 → 2026-09-07 17:54（06-17、07-10、07-21、07-30、07-31、08-03、08-04、08-13、08-20 ×2、08-25 ×2、08-30 ×2，加 09-07）",
+        "最后一次 dry-run 2026-09-11 08:05（bash conductor/clean_wf_charts.sh --dry-run）",
+        "2026-09-11 19:21:45 有 90 个 charts 目录被清空的 mtime 聚簇，按 4 个 glob 拆开为 27/27/18/18，是本脚本的签名（对照 08-13 簇 9/9/9/9、09-07 簇 45/45/36/36），但 ~/.claude/projects 与 ~/.codex/sessions 均无命中、shell history 无命中 → **署名不可确证**",
+        "重要副作用：它删本机 charts 而外置盘只增不减，于是 clean_old_wf_windows.sh 的旧『文件数全等』判据永远过不了——那 18 个被跳过的窗口（如 window01_2023-07-12_2025-02-11 本机 75 文件 vs 盘上 219 文件，差额 144 正是 charts）就是这么锁死的。20:10 的 ⊇ 修复已解开此结，下次正式跑会删掉它们"
+      ],
+      "evidence_log": "无日志。取证途径：目录 mtime 签名 + ~/.codex/sessions 会话记录 + git log"
+    },
+    {
+      "script": "conductor/pipeline_runner.sh 内置日志轮转（第 16–25 行）",
+      "deletes": "pipeline_state/logs/archive/pipeline_*.log.gz 中第 8 份及以后（ls -t | tail -n +8 | xargs -0 rm -f）；同时在 pipeline_current.log 超过 200 MB 时 gzip 归档并原地截断",
+      "criterion": "LOG_MAX_BYTES=200MB 触发归档；归档目录只保留最新 7 份",
+      "last_real_run": "",
+      "last_cutoff": "",
+      "last_result": "rm -f 分支尚未触发过：archive/ 现只有 2 个归档（pipeline_20260818_195900.log.gz 50.9 MB、pipeline_20260903_203145.log.gz 14.6 MB），pipeline_current.log 现 111979171 B（2026-09-12 11:20），未达阈值",
+      "automated": "openclaw cron:someopark-daily-pipeline（enabled=1，每日）——这是**第二个自动删除器，且比 mlruns.weeklyclean 更早更频繁**，先前的『只有 1 个自动化脚本』结论因漏掉它而不成立",
+      "history": [
+        "删除动作只写进它正在截断/删除的那个日志里，属循环自证，无独立留痕",
+        "pipeline_state/ 不在外置盘 7 棵镜像树内 → 那 2 个 gz 是唯一副本，而管理它们的脚本每天都在跑"
+      ],
+      "evidence_log": ""
+    }
+  ],
+  "local_coverage": [
+    {
+      "path": "historical_runs/walk_forward",
+      "size": "13.5 GiB",
+      "files": 8854,
+      "earliest": "2026-03-05 16:30",
+      "latest": "2026-09-12 05:06",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "historical_runs/walk_forward_mtfs",
+      "size": "28.1 GiB",
+      "files": 9812,
+      "earliest": "2026-03-10 21:05",
+      "latest": "2026-09-12 11:07",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "historical_runs/sector_rotation",
+      "size": "26.9 GiB",
+      "files": 22481,
+      "earliest": "2026-05-07 20:31",
+      "latest": "2026-09-11 17:25",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "historical_runs/semiconductor_strategy",
+      "size": "24.8 GiB",
+      "files": 11190,
+      "earliest": "2026-06-01 19:56",
+      "latest": "2026-09-11 21:13",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "historical_runs/electric_utilities_strategy",
+      "size": "4.9 GiB",
+      "files": 1561,
+      "earliest": "2026-08-30 21:59",
+      "latest": "2026-09-11 22:35",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "historical_runs/vix_chronos2",
+      "size": "911.6 MiB",
+      "files": 7,
+      "earliest": "2026-09-12 11:08",
+      "latest": "2026-09-12 11:09",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "mlruns",
+      "size": "29.4 GiB",
+      "files": 25510,
+      "earliest": "2026-04-28 14:25",
+      "latest": "2026-09-11 17:19",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "qlib-main/mlruns",
+      "size": "20.1 GiB",
+      "files": 22889,
+      "earliest": "2026-08-30 21:48",
+      "latest": "2026-09-11 22:36",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "price_data",
+      "size": "2.8 GiB",
+      "files": 14674,
+      "earliest": "2026-03-03 20:47",
+      "latest": "2026-09-12 11:20",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "crypto_trading/price_data",
+      "size": "12.2 GiB",
+      "files": 24627,
+      "earliest": "2026-07-07 01:12",
+      "latest": "2026-09-12 16:10",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "VolumePrediction/outputs",
+      "size": "11.3 GiB",
+      "files": 677,
+      "earliest": "2026-07-23 00:16",
+      "latest": "2026-09-11 17:35",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market_soccer/data",
+      "size": "57.9 GiB",
+      "files": 144278,
+      "earliest": "2026-06-15 21:09",
+      "latest": "2026-09-12 16:10",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market_macro/data",
+      "size": "16.3 GiB",
+      "files": 543,
+      "earliest": "2026-07-26 20:35",
+      "latest": "2026-09-12 16:09",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "account_history",
+      "size": "483.8 KiB",
+      "files": 244,
+      "earliest": "2026-08-06 20:00",
+      "latest": "2026-09-12 11:12",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "inventory_history",
+      "size": "7.2 MiB",
+      "files": 485,
+      "earliest": "2026-03-18 05:52",
+      "latest": "2026-09-12 11:10",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "trading_signals",
+      "size": "208.0 MiB",
+      "files": 2116,
+      "earliest": "2026-03-19 00:47",
+      "latest": "2026-09-12 11:20",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "someo-park-investment-management/server/sim_assets/microfootball",
+      "size": "5.0 GiB",
+      "files": 3360,
+      "earliest": "2026-06-28 10:12",
+      "latest": "2026-09-07 21:16",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market/data",
+      "size": "1.8 GiB",
+      "files": 47172,
+      "earliest": "2026-06-15 21:09",
+      "latest": "2026-09-12 16:09",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "crypto_trading/trading_signals",
+      "size": "1.5 GiB",
+      "files": 2383,
+      "earliest": "2026-07-07 01:44",
+      "latest": "2026-09-12 16:10",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "qlib-main/semiconductor_strategy",
+      "size": "1.3 GiB",
+      "files": 1870,
+      "earliest": "2026-05-29 17:38",
+      "latest": "2026-09-11 21:27",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market/research/martingale_pricing",
+      "size": "1.2 GiB",
+      "files": 90,
+      "earliest": "2026-06-27 06:24",
+      "latest": "2026-07-11 23:14",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "pipeline_state/logs/archive",
+      "size": "62.5 MiB",
+      "files": 2,
+      "earliest": "2026-08-18 19:59",
+      "latest": "2026-09-03 20:31",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    }
+  ],
+  "external_coverage": [
+    {
+      "path": "/Volumes/Someo Park PRO-BLADE/code/someopark-test（7 棵镜像树合计）",
+      "size": "679.7 GiB",
+      "files": 686818,
+      "earliest": "2026-03-03 16:51",
+      "latest": "2026-09-12 16:09",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/historical_runs",
+      "size": "374.7 GiB",
+      "files": 166092,
+      "earliest": "2026-03-03 16:51",
+      "latest": "2026-09-11 18:03",
+      "date_basis": "mtime",
+      "archived_only": "116835 个文件仅存于盘上（mtime 2026-03-05 12:23→2026-08-29 09:33），本机独有 4784 个（2026-09-11 20:32→2026-09-12 11:20）。window 目录：walk_forward 盘 837 / 本机 90 → 仅盘上 756；walk_forward_mtfs 盘 732 / 本机 72 → 仅盘上 660；756+660=1416，与三次清理删除总数逐位相等。本机独有的 9 个 walk_forward 窗口是 09-11 备份后当晚新跑的一轮 MRPT WF（window01_2023-08-24_2025-03-21…window09_2024-12-02_2026-07-01，mtime 2026-09-11 23:47→2026-09-12 05:05），**不是**被清理脚本反复跳过的那 18 个",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/mlruns",
+      "size": "167.4 GiB",
+      "files": 258745,
+      "earliest": "2026-04-25 18:26",
+      "latest": "2026-09-11 17:19",
+      "date_basis": "mtime",
+      "archived_only": "run 目录 盘 86248 / 本机 8503 → 仅盘上 77745，本机独有 0。仅盘上部分按月：2026-04:60、05:19159、06:20075、07:19651、08:18800。实验分布 盘{1:109,2:86131,3:7,4:1} vs 本机{1:20,2:8483}",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/qlib-main/mlruns",
+      "size": "70.3 GiB",
+      "files": 98723,
+      "earliest": "2026-05-29 18:27",
+      "latest": "2026-09-11 19:05",
+      "date_basis": "mtime",
+      "archived_only": "run 目录 盘 32908 / 本机 7630 → 仅盘上 25934（按月 05:2558、06:8793、07:7651、08:6932），本机独有 656（上限 2026-09-11 22:36）",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/price_data",
+      "size": "2.8 GiB",
+      "files": 14665,
+      "earliest": "2026-03-03 20:47",
+      "latest": "2026-09-11 18:36",
+      "date_basis": "mtime",
+      "archived_only": "仅盘上 49 个：46 个是早期错根 rsync 残留（嵌套 price_data/price_data，2026-06-12 03:35→2026-08-05 08:58），**另 3 个是真归档**（sector_etfs/prices_yfinance_SPY_XLB…_2017-01-01_2026-08-05.pkl、…_2026-08-19.pkl、…_2026-09-04.pkl，本机已删）。本机独有 58 个（mtime 2026-09-12 11:13:56–11:14:21）",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/account_history",
+      "size": "478.7 KiB",
+      "files": 242,
+      "earliest": "2026-08-06 20:00",
+      "latest": "2026-09-11 08:47",
+      "date_basis": "mtime",
+      "archived_only": "仅盘上 0；本机独有 2（account_mrpt_20260911.json 11:12:26、account_mtfs_20260911.json 11:12:57）——本机领先一个交易日",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/prediction_market_soccer",
+      "size": "59.5 GiB",
+      "files": 144990,
+      "earliest": "2026-06-15 20:31",
+      "latest": "2026-09-12 16:09",
+      "date_basis": "mtime",
+      "archived_only": "子目录：raw 126629/8.84GiB、logs 1232、logs_wc_archive 6816（2026-06-15 23:27→2026-08-26 00:57）、output_wc_archive 42、priors 3080、output 88、book_candidates 174/37.06GiB。盘上独有 82 个文件（56+23 在 .refresh-stage-sgn7im3y/，3 个在 data/book_candidates/leakfix-20260911/）。首次落盘时刻在 2026-09-11 20:35:13(无)→20:38:30(有) 之间",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/code/someopark-test/someo-park-investment-management/server/sim_assets/microfootball",
+      "size": "5.0 GiB",
+      "files": 3360,
+      "earliest": "2026-06-28 10:12",
+      "latest": "2026-09-07 21:16",
+      "date_basis": "mtime",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/.codex",
+      "size": "27.7 GiB",
+      "files": 130003,
+      "earliest": "1969-12-31 19:00",
+      "latest": "2026-09-12 15:48",
+      "date_basis": "mtime",
+      "archived_only": "backups 四目录 = 本机已删、盘上唯一副本：soccer-completion 6722/7.82GiB、soccer-production 4454/3.89GiB、soccer-ui 1326/3.25GiB、someopark-test 109686/10.88GiB（find -type f 口径；os.walk 口径分别多出符号链接数）。本机 ~/.codex/backups 现为空，~/.codex 降至 7815 文件 / 2.0G",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/tmp",
+      "size": "30.6 GiB",
+      "files": 34512,
+      "earliest": "2026-03-22 11:57",
+      "latest": "2026-09-12 15:48",
+      "date_basis": "mtime",
+      "archived_only": "盘上为本机超集，但**本轮 rsync 退出码 23 未收尾、三项校验一项未跑**，不能声称已验证",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/crypto_data_backup",
+      "size": "16.5 GiB",
+      "files": 5,
+      "earliest": "2026-08-13 16:30",
+      "latest": "2026-09-11 23:23",
+      "date_basis": "mtime",
+      "archived_only": "--keep 5 使 2026-08-13 之前的包已在本机被 prune；包内实际路径未做 tar -tzf 抽验",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/someopark-sandbox",
+      "size": "305.1 GiB",
+      "files": 482052,
+      "earliest": "2025-04-19 06:24",
+      "latest": "2026-08-25 23:28",
+      "date_basis": "mtime",
+      "archived_only": "这是那些无镜像树的唯一副本，但已冻结 24 天：内含 prediction_market_macro 382M（macro.db 213520384 B @2026-08-19 22:01 + macro_backup_20260811_prereset.db 171061248 B）、VolumePrediction 7.8G（registry 仅 7.4M）、prediction_market 3.1G、crypto price_data 14994 文件（本机 24616）。**不含** prediction_market_soccer，**不含** qlib-main/electric_utilities_strategy（AEUS 全无任何副本）",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "<盘>/Macbook Downloads",
+      "size": "63.0 GiB",
+      "files": 5651,
+      "earliest": "1980-01-01 01:00",
+      "latest": "2026-08-05 16:03",
+      "date_basis": "mtime",
+      "archived_only": "不归任何备份脚本管；本机 ~/Downloads 仅 25 项（ls -1）/ 28 项（ls -1A）/ 472K，故盘上这 63G 基本是单向归档，无人校验、无人更新",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    }
+  ],
+  "gaps": [
+    {
+      "path": "prediction_market_macro/data/macro.db（+ 其唯一副本 ~/macro_db_backup 1.2G）",
+      "size": "372.8 MiB",
+      "severity": "critical",
+      "note": "Kalshi 盘口数据 75 天后永久删除、不可再取。macro.db 被 gitignore；唯一滚动副本 ~/macro_db_backup 与仓库同在 /dev/disk3s5（backup_db.py docstring 自述 It does not survive the disk）；/Volumes/Someo Park PRO-BLADE/macro_db_backup 实测 ABSENT；四个 backup 脚本无一覆盖它。外置盘上关于 macro 的唯一东西是 sandbox 里 2026-08-19 那份 213MB 旧库。（注：08-20→08-28 无 gz 是 KEEP_DAILY=14 + 月首永久 的设计 prune，不是备份断档）",
+      "files": 1,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "crypto_trading/price_data（录制数据）",
+      "size": "12.2 GiB",
+      "severity": "critical",
+      "note": "录制 tick/盘口不可再取（MEMORY 红线）。外置盘无目录镜像；唯一保护是 ~/crypto_data_backup 的 5 个 tar.gz（16.54 GiB），且 backup_data.py 的 IRREPLACEABLE 白名单只含 5 棵树（kalshi/perps/poll、kalshi/perps/ws、kalshi/event_strips、index_proxy/live、offshore/okx/liquidations，约 11.6G），白名单外的部分（event_strips 派生、offshore 其余、regime 等）无任何副本。tar 包内容**从未 tar -tzf 抽验**。2026-09-11 07:20→19:12 已发生 ENOSPC 事故（w8_observer.log 321 次 Errno 28），丢失 12.9 小时 15 分钟 tape",
+      "files": 24627,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/crypto_trading/price_data"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "qlib-main/semiconductor_strategy + qlib-main/sector_rotation + qlib-main/electric_utilities_strategy",
+      "size": "2.4 GiB",
+      "severity": "high",
+      "note": "含实盘状态（account_*.json、inventory_*.json、trade_ledger_*.jsonl、selected_param_set.json，git TRACKED）。外置盘 qlib-main 下只有 mlruns；AEUS（electric_utilities_strategy）在 2026-08-19 sandbox 快照里**根本不存在**，即 9/1 go-live 的整棵树零异地副本。覆盖至 AEUS 2026-09-11 22:40 / AISS 2026-09-11 21:27 / SSRS 2026-09-11 17:31",
+      "files": 4958,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/qlib-main/semiconductor_strategy",
+        "/Users/xuling/code/someopark-test/qlib-main/sector_rotation",
+        "/Users/xuling/code/someopark-test/qlib-main/electric_utilities_strategy"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "trading_signals + inventory_history",
+      "size": "215.2 MiB",
+      "severity": "high",
+      "note": "实盘信号、对账与持仓历史（monitor_history 927 / pnl_reports 171 / risk_management 304；inventory 485 文件含 2025-11-11 起的回填）。外置盘 ABSENT，唯一副本是 2026-08-19 sandbox 快照",
+      "files": 2601,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/trading_signals",
+        "/Users/xuling/code/someopark-test/inventory_history"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market_macro/data/synth 与 output",
+      "severity": "medium",
+      "note": "合成样本 S1-S8 等，可重算但代价高（生成窗口 2026-08-21→2026-09-06）。外置盘 ABSENT",
+      "_unmeasured": "非单一路径条目(概念性/多路径/已不存在)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_size": "synth 15G / 107 文件；output 646M / 426 文件"
+    },
+    {
+      "path": "VolumePrediction/outputs",
+      "size": "11.3 GiB",
+      "severity": "medium",
+      "note": "含 rnn_prod_20260904/training_panel.parquet 818003187 B（2026-09-09）。外置盘 ABSENT；sandbox 里 registry 只有 7.4M，等于生产工件无有效副本。可回收项：panel v3/v4 两文件 md5 相同，重复 826098390 B",
+      "files": 677,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/VolumePrediction/outputs"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "prediction_market/data + prediction_market/research",
+      "size": "3.0 GiB",
+      "severity": "medium",
+      "note": "WC2026 已完赛数据。外置盘 ABSENT；sandbox 里 data 为 44677 文件（旧 2487 个）",
+      "files": 47351,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/prediction_market/data",
+        "/Users/xuling/code/someopark-test/prediction_market/research"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "crypto_trading/trading_signals",
+      "size": "1.5 GiB",
+      "severity": "medium",
+      "note": "今天仍在写（2026-09-12 14:22），gitignored，外置盘 ABSENT",
+      "files": 2383,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/crypto_trading/trading_signals"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "pipeline_state/（含 logs/archive 两个 gz 共约 65 MB）",
+      "size": "170.3 MiB",
+      "severity": "medium",
+      "note": "不在外置盘 7 棵镜像树内，是唯一副本；而 pipeline_runner.sh 每天由 openclaw someopark-daily-pipeline 触发，内置只保留最新 7 份 gz 的 rm -f（尚未触发过）",
+      "files": 63,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/pipeline_state"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "home 根 11 个 *backup* 条目（外置盘 ABSENT）",
+      "severity": "high",
+      "note": "home 根惯例只落实了 crypto_data_backup 一项。这些本身就是「最后一道副本」的目录，却全部与仓库同盘、无异地拷贝",
+      "_unmeasured": "非单一路径条目(概念性/多路径/已不存在)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_size": "macro_db_backup 1.2G、soccer_db_backup 863M、clubelo_web_backup 36M、vp_repair_backup_20260826 6.0M、pairs_ledger_backup 2.1M、someopark-backups 1.7M、aiss_pit_backup_20260827 248K、ledger_backup_20260820_remark 80K，另三个散落文件 macro_db_backup_before_releases_repair_20260804.db 61.6MB、macro_db_backup_before_retire_20260805.db 92.6MB、orphan_price_data_backup_20260819.tar.gz 1.5MB"
+    },
+    {
+      "path": "整机无 Time Machine",
+      "size": "",
+      "severity": "high",
+      "note": "tmutil destinationinfo → No destinations configured。除外置盘手动备份外，没有第二道防线",
+      "_unmeasured": "非单一路径条目(概念性/多路径/已不存在)",
+      "measurement_status": "unmeasured_llm_asserted"
+    },
+    {
+      "path": "prediction_market_soccer/data（备份校验未通过，当前禁止清理）",
+      "size": "57.9 GiB",
+      "severity": "high",
+      "note": "2026-09-12 13:58:47 backup_gaps 判『✗ soccer 校验未全过 —— 本机数据请勿删除』（MD5 300 抽 1 失败，非缺文件）。它虽是最诱人的回收对象，按现行策略此刻不可删；且 2026-09-11 已有先例：备份判败 24 分钟后 clean_codex_tmp_local.sh 仍按 ⊇ 判据照删 26.1 GB",
+      "files": 144386,
+      "_measured_paths": [
+        "/Users/xuling/code/someopark-test/prediction_market_soccer/data"
+      ],
+      "_external_now": "盘上仍不存在",
+      "_still_a_gap": true,
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "外置盘唯一副本总量（删了本机就只剩一份的数据）",
+      "severity": "high",
+      "note": "这些已是单副本。外置盘本身无冗余、无校验计划（backup_verification JSON 只产生过一次且无产生脚本）。盘一坏即全失",
+      "_unmeasured": "非单一路径条目(概念性/多路径/已不存在)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_size": "historical_runs 116835 文件约 276G、mlruns 77745 run、qlib-main/mlruns 25934 run、.codex/backups 122188 文件 26.1 GB"
+    }
+  ],
+  "red_lines": [
+    "crypto_trading/price_data/ —— 录制的 tick/盘口/清算数据不可再取，禁碰禁删；任何清理必须先确认 ~/crypto_data_backup 的 tar 包里真的有（需 tar -tzf 抽验，至今未做）",
+    "~/crypto_data_backup 与 /Volumes/Someo Park PRO-BLADE/crypto_data_backup 的 5 个 crypto_recorded_*.tar.gz —— 唯一的 crypto 异地副本",
+    "prediction_market_macro/data/macro.db 与 ~/macro_db_backup —— Kalshi 盘口 75 天后永删，外置盘上完全没有副本",
+    "外置盘 /Volumes/Someo Park PRO-BLADE 下任何路径：禁止 rm、禁止 rsync --delete、禁止 mv/truncate。三个 backup 脚本内置 SELFCHECK 会因此 FATAL 中止，这是「只增不减」从惯例升级为机制的保证，不得绕过",
+    "<盘>/code/someopark-test/historical_runs 中那 116835 个仅存于盘上的文件（含 756+660=1416 个已被清理的 window），以及 mlruns 77745 / qlib-main/mlruns 25934 个仅存 run —— 唯一副本",
+    "<盘>/someopark-sandbox（306G，2026-08-19 整仓快照）—— 是 prediction_market_macro / VolumePrediction / prediction_market / trading_signals / inventory_history 等约 34G 无镜像数据的唯一副本，不得清理、不得当成「过期快照」删除",
+    "<盘>/.codex/backups 四个目录（122188 文件 / 26.1 GB）—— 本机已于 2026-09-11 20:11 删除，盘上是唯一副本，且当时 MD5 校验并未全过",
+    "prediction_market_soccer/data —— 备份脚本明写「本机数据请勿删除」（2026-09-12 13:58 校验未过），在校验通过前禁止任何清理",
+    "qlib-main/{semiconductor_strategy,sector_rotation,electric_utilities_strategy} 下的实盘状态文件（account_*.json / inventory_*.json / trade_ledger_*.jsonl / selected_param_set.json）—— 实盘真源；AEUS 整树无任何异地副本",
+    "仓库为 PUBLIC GitHub 仓库：实盘状态已 untrack 的不得重新提交；Claude Code Test/ 严禁提交",
+    "price_data/（仓库内）—— MEMORY 既有红线，禁碰",
+    "conductor/clean_wf_charts.sh —— 无时间判据、无备份校验、无日志、无守卫，且会使 clean_old_wf_windows.sh 的旧判据把窗口永久锁死；在补上日志与校验之前不应再裸跑"
+  ],
+  "open_items": [
+    "【今日】com.someopark.mlruns.weeklyclean 于 2026-09-12 15:00 首次自动触发（runs=0，从未演练过这条路径，wrapper 不传 --dry-run，触发即真删除）。本轮 cutoff = 2026-08-29 13:00，早于现存最早 run（08-30/08-31），预计不删任何东西；自 2026-09-19 起 cutoff 推进到 09-05 便会逐周切尾，需确保每周先跑 backup_mlruns_to_external.sh",
+    "【流程缺口，最该修】备份脚本与清理脚本互不通气：2026-09-11 19:47:45 backup_codex_tmp 判『✗ 本机数据请勿删除』，20:11:22 clean_codex_tmp_local.sh 仍按 ⊇ 判据删了 4 个目录 / 26.1 GB。应给清理脚本加一道「读同棵树最近一次备份日志的结论」的闸门",
+    "【最该修 #2】conductor/clean_wf_charts.sh 完全不写日志，却是全系统删除量最大的脚本（唯一 commit 13791a8 称单次释放 348 GB，09-07 那次 864 个 folder / 42.0 GB）。给它加 conductor/logs 留痕与备份校验",
+    "clean_old_wf_windows.sh / clean_old_mlruns.sh 的 ⊇ 判据修复（2026-09-11 20:10）已落地但从未执行过；下次正式跑会删掉那 18 个此前被锁死的窗口（wf 9 + mtfs 9），须先确认这是期望行为",
+    "clean_old_mlruns_weekly.sh 头部注释仍写「文件数+字节数全等」，与底层 20:10 改成的 ⊇ 不符，需更新注释（日志措辞滞后是历史，注释滞后是当前文档）",
+    "backup_gaps_to_external.sh 应把 ~/macro_db_backup 收编为第四处缺口（它与已收编的 ~/crypto_data_backup 同类：home 根、gitignored、不可再取）",
+    "把外置盘镜像范围从 7 棵树扩到覆盖 prediction_market_macro/data、crypto_trading、VolumePrediction/outputs、prediction_market、trading_signals、inventory_history、pipeline_state、qlib-main 三策略树（合计约 45G 活数据目前只有 2026-08-19 的陈旧快照）",
+    "对 ~/crypto_data_backup 的 5 个 tar 做一次 tar -tzf 抽验，确认 IRREPLACEABLE 白名单 5 棵树确实在包里（此前只读了脚本白名单就推定受保护）",
+    "backup_codex_tmp 的 tmp 分支需修 socket 文件问题（rsync mkstempsock ×21 → 退出码 23 → 三项校验全跳过）；建议 --exclude socket 或改用 continue 之外的错误处理，使失败分支也能留下校验结论",
+    "codex_tmp 与 gaps 的 MD5 抽样用 find | awk NR%7==1 | head -300，只覆盖 find 序前约 2100 个文件（头部样本，非随机），对 13 万文件的树代表性不足；应改为 sort -R | head -N（backup_to_external / backup_mlruns 已是随机）",
+    "conductor/logs/backup_verification_*.json 是最强正面证据（2026-09-07 19:20，sha256 73810 文件 / 99365840905 字节 / 0 失败、external_device_unchanged=true、mlflow.db 两侧 1701707776 且 quick_check ok、backup_only_entries_retained 96885/72/0/283480/90405），但**仓库里没有任何脚本能产生它**（grep -rl backup_verification --include=*.sh --include=*.py 为空）。应把它脚本化并纳入常设校验",
+    "crypto_trading/logs/diskmon_launchd.log 有未处理告警：2026-09-12 05:17:58 ALERT[warn] fastest grower: crypto_backups +9.4 GB/day，同时 pipeline.sh line 59 exec: conda: not found 导致该次执行失败（launchctl 显示 runs=31, last exit 0）。需修 PATH 并处理增长告警",
+    "conductor/restore_pre_pipeline.sh 含两条 rm -f（pair_universe_mrpt.json / pair_universe_mtfs.json）却零日志；daily_pipeline_launch_nohup.py / daily_pipeline_stop.py 含 shutil.rmtree / unlink 也从未被静态审阅",
+    "4 个脚本权限为 -rw-r--r--（backup_codex_tmp_to_external.sh、backup_gaps_to_external.sh、clean_codex_tmp_local.sh、clean_wf_charts.sh），只能 bash x.sh 调用，无法被 launchd 的 Program/ProgramArguments 直接拉起——若要自动化须先 chmod +x",
+    "可回收但需确认：VolumePrediction/outputs/panel 的 v3/v4 两文件 md5 相同（826098390 B 重复）；price_data 盘上 46 个嵌套 price_data/price_data 错根 rsync 残留",
+    "conductor/logs 共 183 份日志，其中 bdc_daily 占 71 份（2026-06-15 23:27→2026-09-11 16:05）、vp_* 52 份、runtime_sample 2 份、recovery_ssrs_aiss_20260827 2 份（其一为 0 字节）——本次审计只覆盖 backup/clean 三类 27 份，其余从未审阅",
+    "vp_rnn_refreeze 家族日志分裂在两处（conductor/logs/launchd_vp_refreeze.log 与 VolumePrediction/logs/rnn_refreeze_<date>.log），建议统一",
+    "考虑给外置盘本身做冗余：目前所有单副本数据（约 276G historical_runs + 168G mlruns + 26 GB .codex/backups）都只在这一块盘上，盘坏即全失"
+  ],
+  "uncertainties": [
+    "conductor/clean_wf_charts.sh 在 2026-09-11 19:21:45 那一簇（90 个 charts 被清空，按 4 个 glob 拆为 27/27/18/18，符合本脚本签名）究竟由谁触发**无法确证**：~/.claude/projects 与 ~/.codex/sessions 在该窗口内只有只读审计命中，~/.zsh_history / ~/.bash_history 无命中（两文件 mtime 停在 2026-05-26 / 2026-09-01），~/.codex/sessions 只到 2026/09/10。本记录因此把 last_real_run 保守取 2026-09-07 17:54（有会话记录可证），把 09-11 19:21 记在 history 里并标注署名不确证",
+    "backup_codex_tmp_to_external.sh 的 2026-09-11 19:43:21 与 19:43:47 两次调用**是否为 dry-run 无法判定**：脚本自检（第 62-64 行）在打印『模式:』行（第 80 行）之前 die，那两个 86 字节日志里根本没有模式行",
+    "crypto_trading/ops/backup_data.py 的触发方式未查证：调用点确在 crypto_trading/pipeline.sh:70（--keep 5），但 pipeline.sh 由什么调度（或纯手动）没有查",
+    "prediction_market/data 与 prediction_market_soccer/data 是否同源：仅有 birth_min 2026-06-15 20:42:09 / mtime_min 21:09:04 秒级完全相同这一旁证，未做内容比对，维持不下结论",
+    "prediction_market_soccer 盘上 50 个『本机独有且 mtime 早于备份启动』的文件全部位于 data/.refresh-stage-690zn784/，而盘上另有 4 个别的 stage 目录（.refresh-stage-7bllu4po / hddjalqo / lghy91hn / sgn7im3y）。合理解释是 stage 目录随 refresh 轮换（rename 保留 mtime），故『无持久缺口』多半仍成立，但证据链不完整",
+    "外置盘 df Used 1196.60 GiB 与 du 1117.61 GiB 之间约 79 GiB 未归属，推测在 .Spotlight-V100（Operation not permitted 读不到），未证实；因此『外置盘无 APFS 克隆虚高』方向成立但未直接验证",
+    "外置盘上的 birthtime **不携带复制时间信息**：全部 837+732 个 window 目录 |mtime-birthtime|<1s，100% 命中是 macOS/APFS 的 birthtime 钳制（mtime 调早会把 birthtime 一并拉下），不是逐日增量 rsync 的证据。任何基于外置盘 birthtime 的推断都要作废（本机侧 birthtime 不受影响，清理脚本用它做 cutoff 判据仍成立）",
+    "文件数口径分歧已知但两边都对：find -type f 不含符号链接、python os.walk 含符号链接。.codex 为 130003 vs 130144（141 个链接）、.codex/backups/someopark-test 为 109686 vs 109797（111 个链接，另一份报告给 109796，差 1 疑为活动目录竞态或断链）。凡并列两份数字前必须统一口径",
+    "backup_verification_20260907_192035.json 的产生者不明（仓库内 grep 无任何脚本引用），属一次性、不可复现的产物，不能当作常设的备份可信度证据",
+    "clean_codex_tmp_local.sh 的 /private/tmp 分支『从未启用』只有两份日志头部的『需 --tmp 开启』作证，未排查别处是否存在带 --tmp 的调用记录",
+    "本机可用空间为实时漂移量：审计当日 14:10 测得 174Gi 可用 / 699Gi 已用，14:25 测得 171Gi / 703Gi，14:40 复测 174Gi / 700Gi（926Gi 总，81%）。报给用户前应随时重取",
+    "活跃目录的文件数与字节数均为快照：soccer/data 14:10 为 139673、14:2x 已 139978；crypto price_data 12.74→12.77 GB；~/.codex 7821→7815；/private/tmp 28118/28120/28160/28163（该目录正是审计自身 scratchpad）"
+  ],
+  "crypto_recording": {
+    "processes": [
+      "PID 13384 — index_proxy 现货合成指数录制器(自 2026-07-08 04:06:50 连续运行)",
+      "PID 71719 — python -m crypto_trading.crypto_common.refdata.derivs liq-record(OKX 全市场强平 WS,自 2026-07-10 01:33:10)",
+      "PID 86512 — python -m crypto_trading.crypto_common.kalshi.strips --interval 90 --series KXBTC15M,KXETH15M,KXSOL15M,KXDOGE15M,KXXRP15M(自 2026-09-11 20:09:33)",
+      "PID 88823 — python -m crypto_trading.crypto_common.kalshi.strips --interval 90 --series KXBTCD,KXBTC,KXETHD,KXETH,KXSOLD(自 2026-09-11 20:09:37)",
+      "PID 89734 — kalshi.recorder --env demo(WS orderbook_delta,自 2026-09-11 20:09:41)",
+      "PID 89857 — kalshi 轮询器 --interval 10 + 13 个 --book-tickers(自 2026-09-11 20:09:45)",
+      "PID 52827 — crypto_strategies.live_watch.runner(自 2026-09-12 00:31:21)",
+      "PID 53221 — crypto_strategies.live_watch.w8_complete_set --loop 2(自 2026-09-12 14:06:58)"
+    ],
+    "directories": [
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/event_strips/prod(9.28 GiB,10 序列 × markets/orderbook = 20 文件/天)",
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/perps/poll/prod(markets 530M / orderbook 1.0G / trades 551M;44 文件/天,09-10 起 46)",
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/perps/ws/demo(10M;仅 orderbook_delta + _system,14 文件/天)",
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/w8_complete_set/prod(207M,直接多成员 gzip 追加)",
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/index_proxy/live(BTC/ETH/SOL,3 文件/天)",
+      "/Users/xuling/code/someopark-test/crypto_trading/price_data/offshore/okx/liquidations(480 个符号目录累计,整日约 397 个符号文件)"
+    ],
+    "daily_raw_bytes": "≈3.58 GiB/天(未压缩;10 日实测 09-02..09-11 = 3.65 / 3.23 / 3.45 / 3.57 / 3.58 / 3.62 / 3.62 / 3.65 / 3.37 / 3.28 GiB,中位 3.5765 GiB)。09-09 逐流归因:event_strips 3,484,936,765 B(88.86%)/ perps poll 424,941,153(10.8%)/ index_proxy BTC+ETH+SOL 8,190,967 / perps ws demo 2,087,575 / okx 强平 1,878,854",
+    "evidence": "进程:ps -eo pid,ppid,etime,lstart,command | grep python | grep -v 'conda run' | grep -v grep。未压缩逐日:for d in 2026-09-02..2026-09-11; do find . -type f -name \"$d.jsonl.gz\" -print0 | xargs -0 -n1 -P6 sh -c 'for f; do gzip -dc \"$f\" | wc -c; done' _ | awk 求和,再加同日未压缩 .jsonl 的 stat -f %z(切勿用 gzip -l:w8 那种多成员 gz 的 32 位 ISIZE 只报最后一个成员,实测 11,615 vs 真值 325,577,201)。压缩逐日:find . -type f -name '2026-*.jsonl.gz' -exec stat -f '%z %N' {} + | awk 按文件名日期分组。独立口径交叉验证:按 UTC birthtime 分桶的结果整体后移一天(gzip_in_place 在 D+1 00:00 UTC 生成 .gz),错位对齐后两轴吻合到 0.01%(文件名 09-01=114,454,659 vs birthtime 09-02=114,449,499)。第三条独立仪器:crypto_trading/logs/disk_monitor.log 的 crypto_data_gb 字段在 2026-09-11 23:16:54=9.494 → 2026-09-12 13:48:41=11.807(+2.313 GB / 14.53 h = 3.82 GB/天),延伸到 14:18:43=11.886 同样得 3.82 GB/天。disk_monitor.py:43 WATCH_DIR = CRYPTO_ROOT/'price_data',与 du -sh 的 12G 同树。",
+    "daily_compressed_bytes": "≈105.9 MiB/天(9 日实测 09-02..09-10 = 108.65 / 103.22 / 104.67 / 96.20 / 100.97 / 105.90 / 106.67 / 108.36 / 130.83 MiB,中位 105.90 MiB)",
+    "frequency": "strips 两个守护进程各 --interval 90;poll REST --interval 10;demo WS 实时;w8 --loop 2;index_proxy 与 OKX 强平为 WS 实时。UTC 00:00 日切后由 io_jsonl.py 的 DailyJsonlWriter 就地 gzip 前一日 —— 但只有当同一进程跨过日界时才会触发,这正是 2026-09-11 那 281 个 .jsonl(3,196,247,520 B = 2.98 GB)从未被压缩的原因",
+    "pairs_or_symbols": "event_strips 10 个序列(KXBTCD / KXBTC / KXETHD / KXETH / KXSOLD / KXBTC15M / KXETH15M / KXSOL15M / KXDOGE15M / KXXRP15M,两个守护进程的 --series 集合互斥且并集恰为 strips.py:37-52 的 DEFAULT_SERIES);poll markets 覆盖 20 个 ticker 目录(09-04..09-09 仅 18 个有落盘,09-09 新上市 KXGOLDPERP/KXSILVERPERP 后 09-10 起为 20),orderbook 与 trades 各 13 个;demo WS 13 个 orderbook_delta;index_proxy BTC/ETH/SOL;OKX 强平为全市场 SWAP 订阅、客户端分流,累计 480 个符号目录、整日约 397 个符号文件(13 个被策略实际消费)",
+    "backup": "~/crypto_data_backup 共 5 个归档,17G:2,396,642,932(2026-08-13)/ 2,700,601,368(08-18)/ 3,907,858,714(09-02)/ 4,092,432,617(09-04)/ 4,660,455,309(09-11),间隔 5 / 15 / 2 / 7 天(均值 7.25 天,摊销 ≈0.54 GiB/天)。ops/backup_data.py:20-70 的 IRREPLACEABLE 只有 5 棵树(kalshi/perps/poll、kalshi/perps/ws、kalshi/event_strips、index_proxy/live、offshore/okx/liquidations);**w8_complete_set 不在其中,这条新 tape 完全无备份**。pipeline.sh:70 在 daily 段以 `backup_data --keep 5 || true` 调用。触发这次调查的事故写在 ops/disk_monitor.py:57-60 的注释里:「The 2026-09-11 exhaustion killed four recorders and cost 12.9 h of irreplaceable 15-minute tape, and the first root-cause guess (backups) was wrong — the actual driver was qlib-main/mlruns (+113.8 GB)」;实测佐证:KXBTC15M/markets/2026-09-11.jsonl 的 453 条 recv_ts 起于 00:01:23 UTC、止于 11:19:27 UTC,当日 perps/poll 未压缩量 197,163,757 B 仅为 09-09 正常值的 46%。六个录制守护进程全是裸进程(launchctl 只有 w8observer 与 diskmon,openclaw cron_jobs 含 crypto 者为 0),机器重启即六流全断且无告警"
+  },
+  "strategies": [
+    {
+      "name": "MRPT(均值回归配对)",
+      "pulls_from": [
+        "MongoDB someopark.stock_data / pairs_day_select(PortfolioMRPTRun.py:39 DATA_SOURCE='mongo')",
+        "Polygon v2/aggs + v3/reference/dividends(PriceDataStore.py:346/431)",
+        "yfinance 回退",
+        "FRED 13 序列",
+        "MacroStateStore(19 个 FRED 序列 + 12 个市场代理 + 23 维周度)",
+        "MacroSimilarity 相似度库",
+        "Ken French FF5+MOM(RiskManager.py:935/937)",
+        "事件风险覆盖层(NFP + bellwether)",
+        "Chronos-2 VIX 预测",
+        "VolumePrediction 成交量预测(SelectPairs.py:751 / RiskManager.py:92 USE_FORECAST_ADV=True)",
+        "earnings/dividends/splits 共享缓存"
+      ],
+      "writes_to": [
+        "historical_runs/walk_forward",
+        "trading_signals/*mrpt*",
+        "inventory_history / account_history / pair_universe_history"
+      ],
+      "daily_bytes": "≈1.02 GiB/天(09-10 run-window 1,093,447,078 B / 682 文件;09-08 1,091,512,700、09-09 1,093,183,857;09-11 为 4,668,793,191 B / 1,978 文件的 PNG 异常日,含 1,296 个 PNG / 3,577,164,260 B)。另 trading_signals mrpt 部分 71,452–74,742 B/天(2 文件)、逐快照 account 828 B / inventory 8,317–8,353 B / pair_universe 1,387 B",
+      "evidence": "for w in \"2026-09-08 19:00|2026-09-09 12:00\" …; do find historical_runs/walk_forward -type f -newermt \"$a\" ! -newermt \"$b\" -exec stat -f %z {} + | awk '{s+=$1;n++}END{print s,n}'; done(run-window 口径,因 pipeline 跨午夜);独立口径交叉:birthtime 09-10 = 1,093,838,479/682 vs mtime 1,093,837,864/682,漂移 0.00006%。消费者用 grep 核实:DailySignal.py:233/235 构造 wf_dir、MRPTWalkForward.py、MRPTWalkForwardReport.py、WalkForwardDiagnostic.py、**RegimeDetector.py:1452**(glob historical_runs/walk_forward/oos_equity_curve_*.csv);**PnLReport.py 对 walk_forward / historical_runs 的 grep 命中为 0,不是消费者**",
+      "mlruns_experiment": "无(MRPT/MTFS 不写 mlruns)",
+      "schedule": "openclaw someopark-daily-pipeline,schedule_expr '5 23 * * 1-5' America/New_York;实际 09-08/09/10 在 20:30 触发、09-11 在 23:05(cron_run_logs 均 ok);09-07 劳动节 20:30 触发但被 NYSE 闸门跳过,当日零产出"
+    },
+    {
+      "name": "MTFS(动量配对)",
+      "pulls_from": [
+        "与 MRPT 同一条取数链(Mongo → Polygon → yahoo,50 个 stock ticker;SUMMARY mongo_ok=29 polygon_fallback=0 failed=0)",
+        "FRED 13 序列",
+        "MacroStateStore + MacroSimilarity",
+        "Ken French 因子",
+        "事件风险覆盖层",
+        "VolumePrediction 预测"
+      ],
+      "writes_to": [
+        "historical_runs/walk_forward_mtfs",
+        "trading_signals/*mtfs*",
+        "inventory_history / account_history / pair_universe_history"
+      ],
+      "daily_bytes": "≈2.35 GiB/天(09-10 run-window 2,519,034,559 B / 718 文件;09-08 2,491,995,020、09-09 2,524,095,721;09-11 为 7,549,609,328 B / 2,491 文件的 PNG 异常日,含 1,755 个 PNG / 5,058,630,211 B)。trading_signals mtfs 部分 1,512,219–1,938,350 B/天(8–10 文件);逐快照 inventory 54,717–57,728 B / account 4,074 B / pair_universe 1,613–1,625 B",
+      "evidence": "同上 run-window find;日历日 birthtime 口径为 736 文件/天,run-window 口径 09-10 为 718 —— 两者是不同统计量,不可混用。取数留痕:awk 从 pipeline_current.log 切出末次运行(PID=66569,244,745 行)后 grep → 124 个 symbol-week 分 60 次 API 取数、54 次缓存命中、13 个 FRED 序列、5,882 条 [DataLoader/MTFS] 标签、49 个 distinct MTFS ticker。该 GB 级体量只有约两周历史:2026-08-15..08-29 每日仅 742,947–751,188 B / 7 文件,2026-09-01 跃升至 2,493,944,278 B / 736 文件",
+      "mlruns_experiment": "无",
+      "schedule": "同 MRPT(someopark-daily-pipeline)"
+    },
+    {
+      "name": "SSRS(板块轮动)",
+      "pulls_from": [
+        "yfinance 12 个 ticker(2017-01-01→2026-09-11)",
+        "Polygon P/E(从 pe_polygon_*.pkl 缓存读取,未重新拉取)",
+        "sector_etfs EPS store(7 天 TTL,09-11 判定 fresh 而跳过更新)",
+        "MacroStateStore 宏观聚类",
+        "MongoDB(qlib-main/sector_rotation/data/loader.py)"
+      ],
+      "writes_to": [
+        "historical_runs/sector_rotation",
+        "mlruns/2(experiment sector_rotation_backtest)",
+        "qlib-main/sector_rotation/{backtest_results,trading_signals,report,logs,account_ssrs.json,inventory_sector_rotation.json}",
+        "someo-park public/data/strategy_performance.json"
+      ],
+      "daily_bytes": "≈6.69 GiB/天(09-10):mlruns/2 6,812,201,026 B / 2,784 文件 + 非 mlruns 369,247,151 B(= historical_runs/sector_rotation 357,232,622 + qlib-main/sector_rotation 12,014,529)。**其中 99.96% 是重复的 code_diff.txt 大团块**(928 × 7,337,614 = 6,809,305,792 B);四日非 mlruns 小计 368,884,432 / 369,082,590 / 369,247,151 / 373,724,752",
+      "evidence": "find mlruns/2 -type f -newermt '2026-09-05 00:00:00' -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日 → 211,833,276 / 5,635,701,882 / 6,812,201,026 / 7,150,969,087,每日 2,784 文件,birthtime 与 mtime 完全一致;sqlite3 -readonly mlflow.db \"select date(start_time/1000,'unixepoch','localtime'),experiment_id,count(*) from runs group by 1,2\" → exp2 每日恒 928 run;三个 09-10 run 的 code_diff.txt md5 全为 50e353037d593d69d233dd95850fc048、大小全为 7,323,786 B;run 三元组 = 7,323,786 + 13,828 + 0;engine.py:993-999 → uri=sqlite:///{mlruns_path}/mlflow.db, MLflowExpManager(default_exp_name='sector_rotation')。消费者:UpdateMasterPerformance.py 确认(对三个 qlib 策略目录各 4 处路径引用);**UpdateStrategyPerformance.py 对三个策略目录 grep 命中为 0,它读的是共享 account_history/(:256)与 trading_signals/combined_signals_*.json(:296)**",
+      "mlruns_experiment": "mlruns/2 — sector_rotation_backtest(artifact_location 已核实;mlruns/3 同时被注册为 'dbg' 与 'dbg_aiss' 但为空目录)",
+      "schedule": "openclaw sector-rotation-daily '30 17'、sector-rotation-daily-backtest '20 16'(America/New_York);宏观聚类每交易日 1 次约 16:25"
+    },
+    {
+      "name": "AISS(半导体)",
+      "pulls_from": [
+        "Polygon 增量价格(32/32 tickers OK)",
+        "yfinance CapEx",
+        "SEC XBRL:MU DIO + 超大规模厂商资本开支",
+        "TWSE + SEC:TSMC / ASML",
+        "FRED:PMI / IPMAN",
+        "DRAM 现货代理(计算得出)",
+        "MacroStateStore 宏观聚类"
+      ],
+      "writes_to": [
+        "historical_runs/semiconductor_strategy",
+        "qlib-main/mlruns/1(与 AEUS 共用,按 run_uuid 区分)",
+        "qlib-main/semiconductor_strategy/{backtest_results,trading_signals,logs,account_aiss.json,inventory_aiss.json,trade_ledger_aiss.jsonl}",
+        "price_data/semi_strategy/{company,industry}"
+      ],
+      "daily_bytes": "≈2.54 GiB/天(09-10):qlib-main/mlruns/1 中 AISS 的 run_uuid 部分 2,320,961,825 B + 非 mlruns 405,661,467 B。四日 mlruns 序列 74,069,093 / 1,918,382,910 / 2,320,961,825 / 1,574,053,977;非 mlruns 405,386,681 / 405,473,653 / 405,661,467 / 522,589,144。基本面产物 271,510 B / 8 文件、宏观聚类 ≈55.0 KB/天(6 文件,含 shutil.copy2 生成的 .bak 副本使真实落盘翻倍至 ≈110 KB)",
+      "evidence": "先从两个 mlflow.db dump run_uuid|date(1,383 + 1,429 行,comm -12 交集为 0 证明无碰撞),再 for u in $uuids; do find qlib-main/mlruns/1/$u -type f -exec stat -f %z {} + ; done 按日求和;四日 AISS+AEUS 之和(157,185,770 / 3,982,995,631 / 4,818,274,927 / 2,343,677,171)与整目录 find 逐字节吻合。sqlite3 -readonly runs 计数 → exp1 每日 316(09-11 为 395)。7 步取数在 aiss_update_data_20260911_212511.log 中逐条留痕(1/7..7/7,无 altdata 步);asml_orders 标 RETIRED(上游停止披露,历史保留);dram_spot_proxy 2,440 pts",
+      "mlruns_experiment": "qlib-main/mlruns/1 — semiconductor_strategy_backtest(与 AEUS 共享同一 artifact_location,靠 run_uuid 拆分);另 qlib-main/mlruns/2 在 09-11 有 123,407,144 B / 48 文件的测试 run",
+      "schedule": "openclaw aiss-daily '25 21'、aiss-daily-backtest '30 20';宏观聚类每日 2 次(≈17:57 与 18:19,09-11 因事故跑了 3 次)"
+    },
+    {
+      "name": "AEUS(电力公用事业)",
+      "pulls_from": [
+        "Polygon 增量价格(54/54 tickers OK)",
+        "EIA api.eia.gov",
+        "ERCOT(1003/1004 天;demand_yoy 与 gas_share 在 09-11 判定 STALE)",
+        "PJM Data Miner 2(649/727/725/726/727/727 天,8 个 zone area)",
+        "SEC XBRL",
+        "macro.db ERCOT accrual 17,673 行(只读)",
+        "MacroStateStore 宏观聚类"
+      ],
+      "writes_to": [
+        "historical_runs/electric_utilities_strategy",
+        "qlib-main/mlruns/1(与 AISS 共用)",
+        "qlib-main/electric_utilities_strategy/{backtest_results,trading_signals,logs,selected_param_set.json,inventory_aeus.json}",
+        "price_data/elec_strategy/{altdata,company,industry}"
+      ],
+      "daily_bytes": "≈2.88 GiB/天(09-10):qlib-main/mlruns/1 中 AEUS 部分 2,497,313,102 B + 非 mlruns 597,561,270 B。四日 mlruns 序列 83,116,677 / 2,064,612,721 / 2,497,313,102 / 769,623,194;非 mlruns 596,990,098 / 597,288,926 / 597,561,270 / 601,890,735。altdata 产物 1,733,393 B / 22 文件、宏观聚类 ≈57.8 KB/天(6 文件,含 .bak 后实际 ≈116 KB)",
+      "evidence": "同 AISS 的 run_uuid 拆分法;sqlite3 -readonly → exp1 每日 340 run(09-11 为 350)。9 步取数在 aeus_update_data_20260911_223656.log 逐条留痕(1/9..9/9);同一日志明示 ercot_demand_yoy 2,286 pts →2026-08-30 STALE(9 交易日 > 5 交易日阈值)、ercot_gas_share 2,650 pts STALE、ercot_rt_price 0 pts(accruing 13/126)、RESULT: INCOMPLETE。config.yaml:28-48 → eia/ercot(+macro_accrual)/pjm(+extended)/sec 全 true;:259-267 exposure_amplifier enabled: true(AISS 侧为 false)",
+      "mlruns_experiment": "qlib-main/mlruns/1 — electric_utilities_strategy_backtest(与 AISS 共享)",
+      "schedule": "openclaw aeus-daily '30 22'、aeus-daily-backtest '35 21';宏观聚类每日 2 次(≈19:22 与 19:52,09-11 滑到 21:52/22:22)"
+    },
+    {
+      "name": "BDC(私募信贷 look-through)",
+      "pulls_from": [
+        "SEC EDGAR:5 个 CIK 的 10-Q 探测(GBDC / TSLX / OBDC / BXSL / ARCC)",
+        "FRED 8 个利率序列(SOFR, EFFR, DGS2, DGS5, DGS10, DGS30, BAMLC0A0CM, BAMLH0A0HYM2)",
+        "Polygon(缺价即拒绝产出)"
+      ],
+      "writes_to": [
+        "price_data/bdc_holdings(raw_cache + latest_manifest.json)",
+        "portfolio_of_private_credit_deals/bdc_results",
+        "someo-park public/data/bdc_lookthrough_latest.json",
+        "conductor/logs/bdc_daily_*.log"
+      ],
+      "daily_bytes": "≈15.6 KB/天(09-09 15,613 B、09-10 15,611 B,含 8,039 B 日志);09-08 为 5,509,236 B(新月度 SOI 数据集 5,501,665 B 一次性入库);09-11 为 3,530,606 B / 13 文件",
+      "evidence": "find portfolio_of_private_credit_deals/bdc_results price_data/bdc_holdings -type f -newermt \"$d 00:00\" ! -newermt \"$nx 00:00\" -exec stat -f %z {} +,再加 ls -l conductor/logs/bdc_daily_20260908..11 的 8,033/8,039/8,039/8,039 B。注意:evidence 里常见的 glob 'bdc_daily_2026091*.log' 无法匹配 09-08 与 09-09,必须用无 glob 的逐文件 ls。09-11 日志:SOI ingest 各家 1810+211+601+703+1478 = 4,803 笔贷款;墙钟 16:05:24 → 16:06:51 = 87 秒;grep -n 'https://' RefreshBDCHoldings.py → :74/:152/:268/:299/:528/:570/:594",
+      "mlruns_experiment": "无",
+      "schedule": "openclaw private-credit-bdc-daily '5 16' America/New_York"
+    }
+  ],
+  "external_data_sources": [
+    {
+      "source": "Polygon api.polygon.io v2/aggs + v3/reference/dividends(主价格库)",
+      "used_by": [
+        "MRPT",
+        "MTFS",
+        "SSRS",
+        "AISS",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data",
+      "evidence": "grep -n 'api.polygon' PriceDataStore.py → :346 v2/aggs,:431 v3/reference/dividends;PortfolioMRPTRun.py:39 DATA_SOURCE = 'mongo'(先 mongo 后 polygon 后 yahoo);pipeline_current.log 末次运行 grep → 'Fetching 50 stock tickers via mongo→polygon→yahoo'、'SUMMARY mongo_ok=29 polygon_fallback=0 failed=0'、124 个 symbol-week 分 60 次 API 取数 + 54 次缓存命中",
+      "daily_bytes": "",
+      "frequency": "每日 pipeline(openclaw someopark-daily-pipeline,5 23 * * 1-5 America/New_York)"
+    },
+    {
+      "source": "Polygon grouped daily bars(VolumePrediction 链路)",
+      "used_by": [
+        "VolumePrediction"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/volume_prediction/raw",
+      "evidence": "grep -n 'aggs/grouped|THROTTLE_S|MAX_RETRIES|BACKOFF_BASE|429|raw_path|RAW_DIR' VolumePrediction/data/polygon_loader.py → _GROUPED:41、RAW_DIR:35、THROTTLE_S=0.15/MAX_RETRIES=5/BACKOFF_BASE=2.0:43-45、ensure_day:114;service.py:986 pl.ensure_day(target);逐日 stat → 8 个交易日各 1 文件,625,132–642,007 B,中位 630,246 B(birthtime / mtime / 文件名日期三键完全一致)",
+      "daily_bytes": "630,246 B/天(落盘)",
+      "frequency": "每日 launchd vp.shadowdaily 17:33"
+    },
+    {
+      "source": "Polygon grouped daily bars(dfm 第三条链路,此前从未被任何维度盘点)",
+      "used_by": [
+        "dfm"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/dfm/data_cache",
+      "evidence": "dfm/run_real_data.py:7 docstring 'Download daily grouped bars from Polygon (one API call per trading day)';:41 CACHE = data_cache;:56 grouped_{day}.json;:59 https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{day};du → 313,309,733 B / 730 个 JSON —— 与 VP 的 parquet 版是同一批数据的第二份副本",
+      "daily_bytes": "",
+      "frequency": "按需"
+    },
+    {
+      "source": "Polygon v3/reference/tickers(controller 层)",
+      "used_by": [
+        "controller"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/controller/output",
+      "evidence": "grep -n 'requests.get|http' controller/registry.py → :376 requests.get(f\"https://api.polygon.io/v3/reference/tickers/{t}\", …)。注意:controller/output 的 2.6–3.0 MB/天(09-06 2,618,975 → 09-10 3,010,462)是 nav_stream CSV / nav_latest / risk_matrix / day_state / reconcile 等 controller 自身估值产物,**不可归给 SEC 或 Polygon 任何一方**",
+      "daily_bytes": "",
+      "frequency": "每日"
+    },
+    {
+      "source": "FRED api.stlouisfed.org(fredapi,19 序列宏观状态)",
+      "used_by": [
+        "MRPT",
+        "MTFS",
+        "crypto_trading/crypto_common"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/macro/state/fred",
+      "evidence": "sed -n '100,135p' MacroStateStore.py → FRED_SERIES 19 个硬编码键;grep -n 'MacroStateStore' conductor/pre_pipeline.sh → :61 run_step 3 \"MacroStateStore.py --update\"",
+      "daily_bytes": "2,763 B(09-09)/ 7,935 B(09-10)",
+      "frequency": "每日 pre_pipeline"
+    },
+    {
+      "source": "FRED 直连 REST api.stlouisfed.org/fred/release/dates?release_id=50(此前未被任何维度登记)",
+      "used_by": [
+        "MRPT",
+        "MTFS",
+        "AISS",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/macro/nfp",
+      "evidence": "grep -rn 'api.stlouisfed.org' --include=*.py . → RefreshEventRiskData.py:112;tail -3 trading_signals/event_risk_heartbeat.log → 2026-09-12T11:09:53 [MRPT] asof=2026-09-11 / [MTFS] —— 每日实跑并留痕;grep -n RefreshEventRiskData conductor/pipeline_runner.sh → :108",
+      "daily_bytes": "",
+      "frequency": "每日 pipeline"
+    },
+    {
+      "source": "FRED(prediction_market_macro ingest/fred.py,17 个 CORE_SIDS + ALFRED vintage)",
+      "used_by": [
+        "prediction_market_macro"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db",
+      "evidence": "grep -n 'CORE_SIDS' -A5 ingest/fred.py → 17 项;cat data/output/refresh_last.json → fred_core \"ok (95.9s) 117225\";sqlite3 ro fred_obs → 125,210 行 / 25 sid,按 vintage 每日新增 1–15 行",
+      "daily_bytes": "",
+      "frequency": "launchd macrorefresh 每日 05:00"
+    },
+    {
+      "source": "FRED 8 序列(私募信贷利率)",
+      "used_by": [
+        "BDC"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/portfolio_of_private_credit_deals",
+      "evidence": "grep 于 conductor/logs/bdc_daily_20260911_160524.log → SOFR, EFFR, DGS2, DGS5, DGS10, DGS30, BAMLC0A0CM, BAMLH0A0HYM2 共 8 个;head -1 fred_rates.csv 表头逐位一致;tail -1 → 2026-09-10",
+      "daily_bytes": "≈15.6 KB/天(含日志)",
+      "frequency": "openclaw private-credit-bdc-daily(5 16 NY)"
+    },
+    {
+      "source": "SEC EDGAR data.sec.gov/submissions + /api/xbrl/companyconcept + /api/xbrl/frames + www.sec.gov/files/company_tickers.json",
+      "used_by": [
+        "BDC",
+        "AEUS",
+        "AISS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/bdc_holdings",
+      "evidence": "grep -n 'https://' RefreshBDCHoldings.py → :74/:152/:268/:299/:528/:570/:594;qlib-main/electric_utilities_strategy/data/aeus_fetch_sec_data.py:105/:164;09-11 BDC 日志含 GBDC/TSLX/OBDC/BXSL/ARCC 的 10-Q adsh 行,SOI 合计 4,803 笔。注意实际调用的是 companyconcept 与 frames,**不是 companyfacts**",
+      "daily_bytes": "09-08 5,501,665 B(新月度数据集);09-09/09-10 为 0;09-11 450,099 B / 8 文件",
+      "frequency": "每日探测,按申报落盘"
+    },
+    {
+      "source": "SEC fails-to-deliver www.sec.gov/data/foiadocsfailsdatahtm",
+      "used_by": [
+        "controller"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/controller/registry",
+      "evidence": "grep -n 'sec.gov' controller/registry.py → :301 _FTD_INDEX、:353 requests.get('https://www.sec.gov'+link)",
+      "daily_bytes": "",
+      "frequency": "按需"
+    },
+    {
+      "source": "yfinance(SSRS 12 ticker / AISS CapEx / MacroStateStore 12 个市场代理)",
+      "used_by": [
+        "SSRS",
+        "AISS",
+        "MRPT",
+        "MTFS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/{sector_etfs,semi_strategy,macro/state/raw}",
+      "evidence": "grep -n 'yfinance' qlib-main/sector_rotation/logs/sr_daily_20260911.log → 第 34 行 12 ticker 下载,2017-01-01→2026-09-11;aiss_update_data_20260911_212511.log 步骤 2/7 = yfinance CapEx;'Fetched 32/32 tickers OK'(AISS)与 'Fetched 54/54 tickers OK'(AEUS)",
+      "daily_bytes": "",
+      "frequency": "每交易日"
+    },
+    {
+      "source": "Kalshi 交易 API external-api.kalshi.com + 公共选举端点 api.elections.kalshi.com",
+      "used_by": [
+        "crypto_trading",
+        "prediction_market_macro",
+        "prediction_market_soccer",
+        "prediction_market"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi",
+      "evidence": "grep -rln 'api.elections.kalshi.com' --include=*.py . → 13 处跨三模块:soccer 的 config/config.py、venues/kalshi/discovery.py、ops/bootstrap_aliases.py、ops/venue_liquidity.py;prediction_market 的 config/config.py、venues/kalshi/discovery.py;**macro 的 research/discover_series.py、config/settings.py、ingest/kalshi_md.py、ops/trading_kalshi.py、venues/kalshi/account.py**(macro 维度只写了「Kalshi public API」,从未命名此 host);crypto_common/kalshi/poller.py:1-12 明示 keyless capture,走 /margin/markets、/margin/markets/{t}/orderbook、/margin/trades;ingest/kalshi_md.py:75 spacing=0.18(≈10 req/s)、:33 tries=9、:46-47 遵守 429 Retry-After",
+      "daily_bytes": "",
+      "frequency": "crypto 10s 轮询 / macro macrotick 60s / soccer soccerlive 60s"
+    },
+    {
+      "source": "Polymarket clob.polymarket.com + gamma-api.polymarket.com + data-api.polymarket.com + gateway.polymarket.us",
+      "used_by": [
+        "prediction_market_soccer",
+        "prediction_market"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data",
+      "evidence": "sqlite3 ro venue 表 → poly_global | https://clob.polymarket.com;config/config.py:246-247 → gamma-api 与 data-api(发现 / 元数据 / 公开成交 / 持仓 / OI);venues/polymarket_global/reader.py;price_tick 表 34,444 行全部 venue=poly_global,2026-08-14..2026-09-06 共 24 天、168–2,160 行/天、1–5 场/天",
+      "daily_bytes": "",
+      "frequency": "随 soccerlive"
+    },
+    {
+      "source": "API-Football v3.football.api-sports.io",
+      "used_by": [
+        "prediction_market_soccer",
+        "prediction_market(残留空转)"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw",
+      "evidence": "grep -n 'v3.football.api-sports.io|_MIN_INTERVAL_S|max_retries|x-apisports-key' ingest/api_football.py → :3 host、:43 max_retries=6、:51 x-apisports-key、:84 _MIN_INTERVAL_S=0.25、:106 store.log_api_call;sqlite3 ro api_call 按日 → 09-01 815、09-02 432、09-03..09-12 在 2,392–6,500 之间,req_limit 恒 7500;返回记录数 6,956–115,799 条/天;config/config.py:300-320 daily_budget=6500 / monthly=200000 / max_requests_per_run=250",
+      "daily_bytes": "≈313 MB/天(正常日落盘中位)",
+      "frequency": "soccerlive 60s / soccertrigger 900s / soccerrefresh 07:30"
+    },
+    {
+      "source": "ClubElo clubelo.com",
+      "used_by": [
+        "prediction_market_soccer"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/priors/clubelo_web",
+      "evidence": "grep sleep → ingest/club_prior.py:391/:399 与 ingest/clubelo_web.py:147/:153 各 sleep(1.5)、:593 sleep(5);逐日 59 文件 / 2,574,537–2,746,685 B,中位 2,699,699 B",
+      "daily_bytes": "2,699,699 B/天",
+      "frequency": "每日"
+    },
+    {
+      "source": "OKX 公共 WS(liquidation-orders / SWAP)与 OKX REST(klines / funding,已冻结)",
+      "used_by": [
+        "crypto_trading"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/offshore/okx",
+      "evidence": "sed -n '255,268p;385,400p' crypto_common/refdata/derivs.py → liq_subscribe_msg 与 record_liquidations docstring「Records ALL market-wide liquidations」;grep -n 'https://' derivs.py → :186 www.okx.com;funding/klines 最新 mtime 2026-07-26 18:12(已停 48 天),pipeline.sh daily 段无 derivs backfill",
+      "daily_bytes": "强平 ≈272 KB/天(gz);klines/funding 0",
+      "frequency": "强平 WS 实时;REST 已停"
+    },
+    {
+      "source": "Binance fapi.binance.com / Bybit api.bybit.com / KrakenFutures futures.kraken.com",
+      "used_by": [],
+      "directory": "—(price_data/offshore 下只有 okx)",
+      "evidence": "grep -n 'https://' crypto_common/refdata/derivs.py → :48 fapi.binance.com、:110 api.bybit.com、:279 futures.kraken.com;sed -n '1,16p' → 「Binance REST 451-blocked, Bybit REST blocked」;pick_driver(:337-347)顺序 (OKX, KrakenFutures, BinanceFutures, Bybit) 令其永不触发;ls price_data/offshore → 只有 okx",
+      "daily_bytes": "0",
+      "frequency": "从未运行"
+    },
+    {
+      "source": "CoinGecko api.coingecko.com/api/v3/global",
+      "used_by": [
+        "crypto_trading"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/regime",
+      "evidence": "grep -n 'coingecko|URL' crypto_common/refdata/onchain.py → :26;sed -n '60,90p' pipeline.sh → daily 段第 :74 行调用 refdata.onchain,但该 daily 段本身无任何调度器触发",
+      "daily_bytes": "0(输出 btc_dominance.csv 停在 2026-07-07)",
+      "frequency": "无有效调度"
+    },
+    {
+      "source": "EIA api.eia.gov",
+      "used_by": [
+        "prediction_market_macro",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/eia",
+      "evidence": "grep -n 'eia.gov' prediction_market_macro/ingest/eia.py:61 与 ercot.py:307、pjm.py:161;ingest/eia.py:33 _MIRROR_DIR = price_data/eia;refresh_last eia_storage \"ok (1.7s) 5078\";三文件全部 mtime 2026-09-12 05:01",
+      "daily_bytes": "净增 0(整文件覆盖)",
+      "frequency": "每日 05:00"
+    },
+    {
+      "source": "ERCOT 公共面板 JSON + api.ercot.com(b2clogin 认证)",
+      "used_by": [
+        "prediction_market_macro",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: ercot_daily",
+      "evidence": "grep -n 'ercot.com|ERCOT_API_PASSWORD' ingest/ercot.py → :40 dashboards、:163 b2clogin、:166 api.ercot.com;refresh_last ercot \"ok (0.5s) {'days':2,'rows':14}\";AEUS 09-11 日志 ERCOT 1003/1004 天",
+      "daily_bytes": "",
+      "frequency": "每日 05:00"
+    },
+    {
+      "source": "PJM Data Miner 2 api.pjm.com(PJM_API_KEY)",
+      "used_by": [
+        "prediction_market_macro",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: pjm_daily",
+      "evidence": "grep -n 'api.pjm.com|PJM_API_KEY' ingest/pjm.py → :46;AEUS 09-11 日志 PJM 649/727/725/726/727/727 天,8 个 zone area ['AEPAPT','AEPIMP','AEPKPT','AEPOPT','BC','DOM','PEPCO','RTO']",
+      "daily_bytes": "",
+      "frequency": "每日 05:00"
+    },
+    {
+      "source": "Open-Meteo archive-api.open-meteo.com / NOAA CPC ftp.cpc.ncep.noaa.gov",
+      "used_by": [
+        "prediction_market_macro"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: weather_daily / weather_fcst",
+      "evidence": "ingest/weather.py:42 host、:43 _CITY_DELAY_S=3.0、:107 sleep(20*(attempt+1));ingest/weather_fcst.py:50 ftp.cpc.ncep、:53 _FETCH_DELAY_S=1.5、:176 sleep(60…403);weather_fcst 全部 first_seen_ts=2026-08-10 且 ops/ jobs/ 下无写入者 → 已冻结",
+      "daily_bytes": "",
+      "frequency": "weather 每日 05:00;weather_fcst 无调度"
+    },
+    {
+      "source": "Cleveland Fed nowcast / Treasury / AAA / BLS 日历 / Fed 声明",
+      "used_by": [
+        "prediction_market_macro"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db",
+      "evidence": "cat data/output/refresh_last.json → cleveland_nowcast \"ok (1.8s) {'mom':22198,'yoy':22198,'q':16102}\"、treasury \"ok (0.4s) {'inserted':0,'mismatch':0,'latest':'2026-09-11'}\"、aaa_daily \"ok (0.1s) 1\"、calendars \"ok (0.0s) 548\"、fed_statements \"ok (0.0s) 0\";ingest/cleveland_nowcast.py:42、treasury.py:34+:119 pull_if_due、aaa_daily.py:21+:27(Referer google)、calendars.py:338-339 bls.gov、fed_text.py:53+:197 lookback_days=400",
+      "daily_bytes": "",
+      "frequency": "每日 05:00(macrorefresh,backup_db 为最后一步 refresh.py:357)"
+    },
+    {
+      "source": "Ken French 因子库 mba.tuck.dartmouth.edu",
+      "used_by": [
+        "MRPT",
+        "MTFS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/factors/ff_factors.parquet",
+      "evidence": "grep -rn 'tuck.dartmouth' --include=*.py . → RiskManager.py:935 FF5_URL、:937 MOM_URL;grep -rn 'ff_factors' --include=*.py . → **全仓唯一命中 RiskManager.py:939**(SSRS 并非消费者,sector_rotation 与 dfm 中的 Fama 命中全是文献引用注释,dfm/portfolio.py:1055 明写 'FF': None, # Would require Fama-French factors data);stat ff_factors.parquet → 279,467 B,mtime 2026-09-12 11:13",
+      "daily_bytes": "",
+      "frequency": "按需"
+    },
+    {
+      "source": "MongoDB someopark(stock_data / pairs_day_select / fmp_* 共 7 个集合)",
+      "used_by": [
+        "MRPT",
+        "MTFS",
+        "SSRS",
+        "VolumePrediction",
+        "PnLReport"
+      ],
+      "directory": "—(无本地落地目录)",
+      "evidence": "grep -rln 'MONGO_URI|MongoClient' --include=*.py . → DailySignal.py、db/connection.py、6 个 VolumePrediction 文件、qlib-main/sector_rotation/data/loader.py;grep -rln 'from db.connection' → SelectPairs.py:28、PortfolioMRPTRun.py:748、PortfolioMTFSRun.py、PnLReport.py:662、UpdateStrategyPerformance.py;VP 侧集合:fmp_earnings_surprises:52、fmp_industry_classification:65、fmp_{income,balance_sheet,cash_flow}_statement:87、fmp_share_float:103、fmp_market_cap:122、fmp_historical_earning_calendar:135。另 db/connection.py:6/:28 有 MONGO_VEC_URI / DB_VEC='someopark_vec' 向量库,未查明用途",
+      "daily_bytes": "",
+      "frequency": "每日 pipeline(MRPT/MTFS 无 Mongo 不能运行)"
+    },
+    {
+      "source": "Anthropic Messages API(前端 Someo Agent)",
+      "used_by": [
+        "someo-park-investment-management"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/someo-park-investment-management/api_server.log",
+      "evidence": "grep -n 于 server/routes/agent.ts → :49 new Anthropic({apiKey: process.env.ANTHROPIC_API_KEY})、:341 DEFAULT_AGENT_MODEL='claude-sonnet-4-6'、:63 MODEL_PRICES、:19 FREE_AGENT_QUESTIONS=2、:288-305 supabase agent_usage 闸门;ps aux → node tsx server/index.ts PID 49339;api_server.log 31,766 B",
+      "daily_bytes": "",
+      "frequency": "用户触发,每周 2 次免费额度闸"
+    },
+    {
+      "source": "openclaw 调度器的 LLM payload 通道(16 个 cron job,无额度闸)",
+      "used_by": [
+        "SSRS",
+        "AISS",
+        "AEUS",
+        "BDC",
+        "someopark-daily-pipeline",
+        "watchdog",
+        "Altan→Wix"
+      ],
+      "directory": "/Users/xuling/.openclaw/state/openclaw.sqlite",
+      "evidence": "sqlite3 \"file:~/.openclaw/state/openclaw.sqlite?mode=ro\" \"SELECT name,schedule_expr,schedule_tz FROM cron_jobs ORDER BY name\" → 16 个 job;payload_message + payload_model 字段即发给 LLM agent 的 prompt,每天十几次无闸门 API 会话。项目记忆明确记载 12 个 cron 全在 openclaw、不在 crontab/launchd —— 此通道的 token 消耗量级远大于前端那条带闸通道,此前完全未被盘点",
+      "daily_bytes": "",
+      "frequency": "每日多次"
+    },
+    {
+      "source": "Morph api.morphllm.com / E2B 远程代码沙箱 / Ollama 端点",
+      "used_by": [
+        "someo-park-investment-management"
+      ],
+      "directory": "—",
+      "evidence": "grep -rn morphllm server/ → utils/morph.ts:14/:25;server/tools/runPythonTool.ts:172 与 routes/{publish,sandbox}.ts 用 @e2b/code-interpreter 起远程沙箱(E2B_API_KEY);server/utils/models.ts:35 与 routes/chat.ts:46 读 OLLAMA_BASE_URL。另 .env 存在 HYPERBOLIC_API_KEY 但全仓 grep -rn 'HYPERBOLIC|hyperbolic' 零命中(死凭据)",
+      "daily_bytes": "",
+      "frequency": "用户触发"
+    },
+    {
+      "source": "HuggingFace hub(e5-mistral / chronos-bolt / chronos-2)",
+      "used_by": [
+        "MRPT",
+        "MTFS(VIX 预测)",
+        "dfm"
+      ],
+      "directory": "/Users/xuling/.cache/huggingface/hub",
+      "evidence": "du -sh → 15G(e5-mistral 13G / chronos-bolt-base 783M / chronos-2 456M / chronos-bolt-small 182M);find -exec stat -f '%Sm %z' 按日 → 仅 2024-07-10(31 文件 / 14,223,844,909 B)与 2026-03-24(11 文件 / 1,491,800,006 B),2026-09-12 一个 0 字节 touch",
+      "daily_bytes": "0",
+      "frequency": "一次性下载"
+    },
+    {
+      "source": "QuantConnect api/v2(镜像对账)",
+      "used_by": [
+        "trading_quantconnect",
+        "QC mirror 对账"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/trading_quantconnect/reconcile",
+      "evidence": "grep -n 'quantconnect.com/api/v2|sha256' trading_quantconnect/qc_api.py → :21 BASE、:53/:177 Basic base64(uid:sha256(token:ts));逐日 mtime → 09-01 22,268 / 09-02 20,472 / 09-03 41,740 / 09-04 17,410 / 09-05 15,745 / 09-12 16,660,中位 18,941 B;du → reconcile 480K / logs 156K;PlistBuddy qcmirror.exporter → KeepAlive=true ThrottleInterval=30;qcreconcile 每日 5 次(11:00 / 13:30 / 16:20 / 23:15 / 23:50)。注意该目录 birthtime 与 mtime 分叉(09-04 birthtime 3 文件 113,448 B vs mtime 1 文件 17,410 B),文件会被重写",
+      "daily_bytes": "18,941 B/天(中位)",
+      "frequency": "每日 5 次"
+    },
+    {
+      "source": "Kaggle(EA FC26 球员数据集)",
+      "used_by": [
+        "prediction_market_soccer"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw/fc26",
+      "evidence": "grep -n 'kaggle datasets download' ingest/fc_ingest.py → :193;KAGGLE_API_TOKEN 存在于 prediction_market_soccer/.env;三份 CSV 自 2026-06-16 13:12 未变",
+      "daily_bytes": "0",
+      "frequency": "一次性"
+    },
+    {
+      "source": "Tailscale 跨机入站 someoparkdgx25@100.76.95.43(box A GPU 机)",
+      "used_by": [
+        "prediction_market_soccer",
+        "someo-park-investment-management"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/someo-park-investment-management/server/sim_assets/microfootball",
+      "evidence": "prediction_market_soccer/ops/online_microfootball.sh:15 「Mac(本机) --Tailscale--> box A ed9f (someoparkdgx25@100.76.95.43, key=nvsync.key)」、:37 MIRROR=\"$FRONT/server/sim_assets/microfootball\";du -sh → 5.0G / 3,360 文件。这 5 GB 不是本机生成,是跨机拉入的真实入站量,此前被当作本地产物、未计入量①",
+      "daily_bytes": "0(批次式,最近一批 2026-09-07)",
+      "frequency": "按批次"
+    },
+    {
+      "source": "TWSE openapi.twse.com.tw / computeprices.com GPU 报价",
+      "used_by": [
+        "AISS",
+        "AEUS"
+      ],
+      "directory": "/Users/xuling/code/someopark-test/price_data/semi_strategy",
+      "evidence": "AISS 09-11 日志步骤 5/7 = TSMC/ASML TWSE+SEC;computeprices.com 在 semiconductor_strategy/data/altdata_signals.py:98 与 electric_utilities_strategy/data/altdata_signals.py:117 均有 GPU_API 常量,但两侧 gpu_pricing_history.parquet 都不存在、AEUS 日志显示 0 rows / 0 snapshots → 双胞胎均为死代码",
+      "daily_bytes": "TWSE 有量;GPU 为 0",
+      "frequency": "TWSE 每交易日;GPU 仅手动 CLI"
+    },
+    {
+      "source": "api.telegram.org(出站通知,非数据源)",
+      "used_by": [
+        "someo-park-investment-management/functions"
+      ],
+      "directory": "—",
+      "evidence": "someo-park-investment-management/functions/index.js:53 → const url = `https://api.telegram.org/bot${botToken}/sendMessage`",
+      "daily_bytes": "0",
+      "frequency": "事件触发"
+    }
+  ],
+  "alternative_data": [
+    {
+      "domain": "crypto",
+      "name": "OKX 全市场强平逐笔(liquidation-orders / SWAP)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/offshore/okx/liquidations",
+      "consumers": [
+        "crypto_strategies/liq_reversion/widened.py(load_okx_liq_times / okx_confirmed)",
+        "crypto_strategies/liq_reversion/live_signal.py:149",
+        "crypto_strategies/ml_directional/features.py:136-142",
+        "crypto_strategies/*/research_conditioning.py:146",
+        "research_stress_family.py:50-53",
+        "research_episode_test.py:47-51",
+        "ops/backup_data.py:31(标注为不可重取、必须备份)"
+      ],
+      "status": "in_production",
+      "evidence": "find . -type f | wc -l → 19832;find . -type f -exec stat -f %z {} + | awk 求和 → 15,093,605 B;按文件名日期分组 awk → 09-05..09-11 = 181780/222666/233772/272444/355435/281230/376123;解压真值须同时 gzcat *.jsonl.gz 与 cat *.jsonl:09-09=1,878,854 B/16,277 条、09-10=1,385,568 B/12,035 条、09-11=1,477,160 B/12,842 条;sed -n '255,268p' crypto_common/refdata/derivs.py → {\"channel\":\"liquidation-orders\",\"instType\":\"SWAP\"} 客户端分流",
+      "current_size": "14.4 MiB",
+      "daily_bytes": "258.7 KiB/天（最近 8 天中位;窗口 7 天）",
+      "format": "jsonl / 按符号目录 + 日期文件名,隔日 gzip",
+      "frequency": "WS 实时,全市场订阅",
+      "source": "OKX 公共 WebSocket",
+      "daily_series": {
+        "2026-09-05": 217345,
+        "2026-09-06": 220975,
+        "2026-09-07": 241343,
+        "2026-09-08": 264917,
+        "2026-09-09": 331066,
+        "2026-09-10": 357097,
+        "2026-09-11": 599949,
+        "2026-09-12": 120541
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "Kalshi margin markets 的 OI / 杠杆 / 清算标记字段(混装在 poll markets 流内)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/perps/poll/prod/markets",
+      "consumers": [
+        "crypto_common/loader.py:145 load_poll_market_stats",
+        "crypto_common/kalshi/backfill.py:74-75(把 open_interest 并进 K 线 parquet)"
+      ],
+      "status": "in_production",
+      "evidence": "逐键 json.dumps 计字节遍历 markets/*/2026-09-10.jsonl.gz → records=162,729 uncompressed=162,942,031;OI 14,473,934=8.9% / 杠杆 52,881,480=32.5% / 清算标记 11,739,234=7.2% / volume 26,842,831=16.5%,alt 三项合计 48.5%",
+      "current_size": "526.0 MiB",
+      "daily_bytes": "6.1 MiB/天（最近 7 天中位;窗口 7 天）",
+      "format": "jsonl.gz,20 个 ticker 目录",
+      "frequency": "REST 轮询 --interval 10",
+      "source": "Kalshi /margin/markets 无密钥端点",
+      "daily_series": {
+        "2026-09-05": 5987569,
+        "2026-09-06": 6223347,
+        "2026-09-07": 6323107,
+        "2026-09-08": 6438665,
+        "2026-09-09": 6594403,
+        "2026-09-10": 88233508,
+        "2026-09-11": 144231758
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "Kalshi perp 资金费率(funding)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/funding",
+      "consumers": [
+        "crypto_strategies/live_watch/w4_carry.py(age_h>16 陈旧拒动闸)",
+        "perp_rotation/data/loader.py:101",
+        "funding_carry/hold_hedged.py:106",
+        "funding_carry/cross_sectional.py:47",
+        "funding_carry/research_cross_venue.py",
+        "basis_meanrev/strategy.py:111",
+        "另有 8 处 load_funding 消费点"
+      ],
+      "status": "in_production",
+      "evidence": "find price_data/kalshi/funding -type f -exec stat -f %z {} + | awk 求和 → 147,287 B / 20 文件;read_parquet 合并 → 3,906 行 / 20 市场 / 2026-06-03 20:00 → 2026-09-12 14:00,09-03..09-10 每日恒 54 行,702 行非零;结算小时分布 {4:1302, 12:1302, 20:1298, 14:4};sed -n '129,158p' crypto_common/kalshi/backfill.py → concat+drop_duplicates+to_parquet 整文件重写",
+      "current_size": "143.8 KiB",
+      "daily_bytes": "7.3 KiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "parquet(整文件重写)",
+      "frequency": "live_watch runner data_topup 每 6h(TOPUP_S=21600)",
+      "source": "Kalshi REST",
+      "daily_series": {
+        "2026-09-11": 7472
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "Kalshi 事件带报价(event_strips,10 个序列 × markets/orderbook)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/event_strips/prod",
+      "consumers": [
+        "crypto_strategies/live_watch/w7_noisefade.py:85",
+        "crypto_strategies/live_watch/w5_knockdown.py:41",
+        "event_perp/strategy.py:348",
+        "event_binary/research_complete_set.py:71",
+        "research_knockdown.py:44",
+        "research_noisefade.py:59",
+        "research_calibration.py:414",
+        "ops/w7_health.py:63"
+      ],
+      "status": "in_production",
+      "evidence": "find event_strips -type f -exec stat -f %z {} + | awk 求和 → 9,967,101,681 B(9.28 GiB,与 du 9.3G 一致);ls prod → 10 个序列目录(KXBTC/KXBTC15M/KXBTCD/KXDOGE15M/KXETH/KXETH15M/KXETHD/KXSOL15M/KXSOLD/KXXRP15M),另 3 个 heartbeat*.json;按文件名日期 09-05..09-10 gz = 77,247,107 / 79,532,812 / 82,055,525 / 80,861,351 / 80,932,631 / 74,700,335,中位 80,197,081.5;09-09 解压 3,484,936,765 B = 当日未压缩 88.86%、压缩 71.2%",
+      "current_size": "9.5 GiB",
+      "daily_bytes": "77.2 MiB/天（最近 7 天中位;窗口 7 天）",
+      "format": "jsonl → UTC 日切就地 gzip,20 文件/天",
+      "frequency": "两个守护进程 --interval 90(PID 88823 / 86512)",
+      "source": "Kalshi 公共 REST",
+      "daily_series": {
+        "2026-09-05": 77247107,
+        "2026-09-06": 79532812,
+        "2026-09-07": 82055525,
+        "2026-09-08": 80861351,
+        "2026-09-09": 80932631,
+        "2026-09-10": 3066036944,
+        "2026-09-11": 2956278627
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "w8_complete_set 完整集 tape(新流,未纳入备份)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/w8_complete_set/prod",
+      "consumers": [
+        "crypto_strategies/live_watch/w8_complete_set.py(自写自读)"
+      ],
+      "status": "in_production",
+      "evidence": "stat -f %z 2026-09-11.jsonl.gz → 78,647,951;python3 zlib 多成员遍历 → members=3416 uncompressed=325,577,201 ratio=4.14;w8_complete_set.py:157 gzip.open(..., \"at\", compresslevel=3) 每 --loop 2 周期重开 → 多成员碎片化是 4x 压缩比的根因(修为常驻句柄可降至 ≈10 MB/天);sed -n '20,70p' ops/backup_data.py → IRREPLACEABLE 仅 5 棵树,不含 w8_complete_set",
+      "current_size": "214.8 MiB",
+      "daily_bytes": "108.2 MiB/天（最近 2 天中位;窗口 7 天）",
+      "format": "直接 gzip 追加写(从不存在明文 .jsonl),多成员 gz",
+      "frequency": "--loop 2(PID 53221)",
+      "source": "Kalshi",
+      "daily_series": {
+        "2026-09-10": 111772328,
+        "2026-09-11": 113500774
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "index_proxy 现货合成指数(Coinbase/Kraken/Bitstamp VWAP)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/index_proxy/live",
+      "consumers": [
+        "crypto_common/loader.py:223 load_index_live"
+      ],
+      "status": "in_production",
+      "evidence": "find index_proxy/{raw,live} -type f -exec stat -f '%SB %z' → 09-04..09-09 每日 3 文件 / 1,010,360–1,135,653 B;09-10 三个 gz 339,240+376,566+413,837=1,129,643;gzip -dc live/BTC/2026-09-10.jsonl.gz | wc -c → 2,755,596;grep -n BASE crypto_common/refdata/market_data.py:27-38 → coinbase/kraken/bitstamp",
+      "current_size": "65.8 MiB",
+      "daily_bytes": "1.1 MiB/天（最近 7 天中位;窗口 7 天）",
+      "format": "jsonl.gz,BTC/ETH/SOL 三资产",
+      "frequency": "实时录制(PID 13384)",
+      "source": "三家交易所公开行情",
+      "daily_series": {
+        "2026-09-05": 1010360,
+        "2026-09-06": 1067314,
+        "2026-09-07": 1092055,
+        "2026-09-08": 1125047,
+        "2026-09-09": 1135653,
+        "2026-09-10": 8735980,
+        "2026-09-11": 6835143
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "btc_dominance 体制指标",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/regime/btc_dominance.csv",
+      "consumers": [
+        "crypto_common/smart_select.py:65 / :717-724",
+        "crypto_common/regime.py:86-87 / :323-324",
+        "perp_rotation/run_backtest.py:59-64",
+        "weekly_review.py:180",
+        "composite.py:14"
+      ],
+      "status": "dead_code",
+      "evidence": "cat btc_dominance.csv → 表头 + 唯一数据行 2026-07-07,55.78783931491429;wc -l → 2;stat → 75 B / mtime 2026-07-07 01:30;pipeline.sh:74 调用 refdata.onchain 但 daily 段无任何调度器(launchctl 只有 w8observer/diskmon,openclaw cron_jobs 含 crypto 者为 0);消费方拿到单点常数或走 except",
+      "current_size": "75.0 B",
+      "daily_bytes": "0",
+      "format": "csv",
+      "frequency": "已停更 67 天",
+      "source": "CoinGecko /api/v3/global",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "OKX 离岸资金费 / K 线(offshore/okx funding+klines)",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/offshore/okx",
+      "consumers": [
+        "funding_carry/research_cross_venue.py",
+        "basis_meanrev 研究脚本"
+      ],
+      "status": "stale",
+      "evidence": "find offshore/okx/funding -type f -exec stat -f %z {} + → 66,356 B / 10 文件 / 2,757 行;read_parquet → BCH/LINK/LTC/NEAR/SUI 止于 2026-07-26 16:00,BTC/ETH/SOL/XRP/DOGE 止于 2026-07-07 00:00;du -sh klines_1h → 3.5M,klines_1d → 240K,最新 mtime 2026-07-26 18:12;pipeline.sh daily 段(:69-74)无 derivs backfill",
+      "current_size": "18.2 MiB",
+      "daily_bytes": "258.7 KiB/天（最近 8 天中位;窗口 7 天）",
+      "format": "parquet",
+      "frequency": "无调度",
+      "source": "OKX REST",
+      "daily_series": {
+        "2026-09-05": 217345,
+        "2026-09-06": 220975,
+        "2026-09-07": 241343,
+        "2026-09-08": 264917,
+        "2026-09-09": 331066,
+        "2026-09-10": 357097,
+        "2026-09-11": 599949,
+        "2026-09-12": 120541
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "Kalshi fee_tiers 费率快照",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/refdata/fee_tiers.json",
+      "consumers": [
+        "crypto_common/costs.py:31 FEE_SNAPSHOT"
+      ],
+      "status": "stale",
+      "evidence": "cat fee_tiers.json → maker 0.0005 × 16 ticker / taker 0.001 × 16;stat → 786 B,mtime 2026-07-12 17:16;写入器 crypto_common/reporting/ledger.py:302 snapshot_fee_tiers",
+      "current_size": "786.0 B",
+      "daily_bytes": "0",
+      "format": "json 静态快照",
+      "frequency": "手动",
+      "source": "Kalshi",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "margin_markets 参考宇宙快照",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/refdata",
+      "consumers": [
+        "crypto_common/kalshi/backfill.py:183 snapshot_markets() 运行时默认(失败回落 config.py:117 ACTIVE_PERPS_SNAPSHOT 硬编码 13 元组)"
+      ],
+      "status": "in_production",
+      "evidence": "ls -1 margin_markets_*.json | wc -l → 29;stat 求和 → 653,115 B;python3 json → 每份 23 个市场 × 25 个字段;09-04..09-11 日增 25781/25774/25783/25776/25778/28097/28255/28274,中位 25,782;09-09 跳升 +2.3KB 归因 21→23 市场(新增 KXGOLDPERP/KXSILVERPERP)",
+      "current_size": "638.6 KiB",
+      "daily_bytes": "27.4 KiB/天（最近 7 天中位;窗口 7 天）",
+      "format": "json 每日快照",
+      "frequency": "每日",
+      "source": "Kalshi /margin/markets",
+      "daily_series": {
+        "2026-09-05": 25783,
+        "2026-09-07": 25776,
+        "2026-09-08": 25778,
+        "2026-09-09": 28097,
+        "2026-09-10": 28255,
+        "2026-09-11": 28274,
+        "2026-09-12": 28233
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "Binance USD-M / Bybit v5 / KrakenFutures 离岸衍生品",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/offshore(仅 okx 子目录存在)",
+      "consumers": [
+        "crypto_common/refdata/derivs.py pick_driver(:337-347)"
+      ],
+      "status": "dead_code",
+      "evidence": "ls price_data/offshore/ → 只有 okx;grep -n '^class ' derivs.py → BinanceFutures:46 / Bybit:108 / KrakenFutures:276;sed -n '1,16p' derivs.py → 「Binance REST 451-blocked, Bybit REST blocked」;pick_driver 顺序 (OKX, KrakenFutures, BinanceFutures, Bybit) 令其永不触发",
+      "current_size": "18.2 MiB",
+      "daily_bytes": "258.7 KiB/天（最近 8 天中位;窗口 7 天）",
+      "format": "—",
+      "frequency": "从未运行",
+      "source": "fapi.binance.com / api.bybit.com / futures.kraken.com",
+      "daily_series": {
+        "2026-09-05": 217345,
+        "2026-09-06": 220975,
+        "2026-09-07": 241343,
+        "2026-09-08": 264917,
+        "2026-09-09": 331066,
+        "2026-09-10": 357097,
+        "2026-09-11": 599949,
+        "2026-09-12": 120541
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "perps/candles_1m 内的 open_interest 第二份副本",
+      "directory": "/Users/xuling/code/someopark-test/crypto_trading/price_data/kalshi/perps/candles_1m",
+      "consumers": [
+        "crypto_common/kalshi/backfill.py:74-75"
+      ],
+      "status": "in_production",
+      "evidence": "du -sh price_data/kalshi/perps/candles_1m → 81M;candles_1h → 3.6M;candles_1d → 420K;最新 mtime 2026-09-12 12:31(与 index_proxy/raw、refdata、funding 同批 pipeline 拉取)",
+      "current_size": "81.3 MiB",
+      "daily_bytes": "377.9 KiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "parquet(整文件重写)",
+      "frequency": "每日 pipeline",
+      "source": "Kalshi",
+      "daily_series": {
+        "2026-09-10": 386988
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "crypto",
+      "name": "社交情绪 / 新闻 / 链上 / 第三方另类数据供应商",
+      "directory": "—(不存在)",
+      "consumers": [],
+      "status": "dead_code",
+      "evidence": "grep -rn -iE 'sentiment|social|twitter|reddit|glassnode|santiment|lunarcrush|cryptoquant|coinglass|etf.?flow|fear.?greed|stablecoin|gas.?fee|mempool|whale' --include=*.py --include=*.yaml --include=*.json --include=*.sh . → 零命中(praw 的 2 处为 p_raw 变量名假阳性);全仓 host 枚举 11 个数据端点,无任何第三方另类数据供应商",
+      "format": "—",
+      "frequency": "—",
+      "source": "—",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "0",
+      "_llm_asserted_current_size": "0"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "FRED / ALFRED 宏观时序(17 个 CORE_SIDS,按 vintage 存)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: fred_obs",
+      "consumers": [
+        "model/*",
+        "research/*",
+        "ops/predict_all.py",
+        "ingest/treasury.py(第二写入者,INSERT-OR-IGNORE 先到先得 + treasury_fred_mismatch 告警)"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 'file:macro.db?mode=ro' \"select substr(vintage_date,1,10) d,count(*) from fred_obs group by d order by d desc limit 14\" → 09-12:1 09-11:9 09-10:10 09-09:8 09-08:8 09-07:3 09-06:2 09-05:4 09-04:15 09-03:11 09-02:8 09-01:9;count(*) → 125,210 / 25 sid;dbstat → 13,176,832 + 索引 5,451,776;sed -n '20,40p' ingest/fred.py → 17 个 CORE_SIDS;refresh_last fred_core \"ok (95.9s) 117225\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "launchd macrorefresh 每日 05:00",
+      "source": "api.stlouisfed.org (fredapi)",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "Kalshi 宏观合约盘口 quotes / candles / contracts / settlements",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: quotes,candles,contracts,settlements",
+      "consumers": [
+        "ops/position_inputs.py",
+        "ops/trading_kalshi.py",
+        "research/shadow_seasonal.py",
+        "research/martingale.py",
+        "strategy/snipe.py",
+        "strategy/edge.py",
+        "research/param_select.py",
+        "research/synth/calibrate.py"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro quotes-by-day → 09-11:10996 09-10:2466 09-09:557 09-08:546 09-07:1120 09-06:1155 09-05:560 09-04:4743 09-03:1625 09-02:639 09-01:619,中位 879.5 行/天;count → quotes 88,523 / 1,491 ticker、candles 20,000 / 8,752、contracts 9,324、settlements 8,760;jobs/tick.py:189-192 → ±600s 用 60s、否则 300s,窗口 [T-2h, T+30min];PlistBuddy macrotick → StartInterval=60;ops/archive_candles.py docstring 实测 Kalshi K 线仅留 73–75 天",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "macrotick 每 60 秒",
+      "source": "Kalshi 公共 API(kalshi_md.py 0.18s 间隔 ≈10 req/s,429 遵守 Retry-After)",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "Cleveland Fed 通胀 nowcast",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: cleveland_nowcast",
+      "consumers": [
+        "model/ercot_cov.py",
+        "ops/predict_all.py",
+        "model/*",
+        "research/*"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro count → 60,498 行;按日分组中位 19 行/天;dbstat → 6,443,008 + 2,363,392;refresh_last cleveland_nowcast \"ok (1.8s) {'mom':22198,'yoy':22198,'q':16102}\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00",
+      "source": "clevelandfed.org",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "Open-Meteo 15 区域气温实测(weather_daily)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: weather_daily",
+      "consumers": [
+        "model/ts_covariates.py",
+        "model/ercot_cov.py"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro → 118,860 行 / 15 区域,09-05..09-12 每日恒 15 行;dbstat 12,001,280 + 3,031,040;ingest/weather.py:42 archive-api.open-meteo.com,:43 _CITY_DELAY_S=3.0,:107 sleep(20*(attempt+1));refresh_last weather \"ok (47.1s) 45\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00,滚动 45 天回看窗",
+      "source": "archive-api.open-meteo.com",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "NOAA CPC 气温预报(weather_fcst)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: weather_fcst",
+      "consumers": [
+        "ingest/weather_fcst.py",
+        "model/ts_covariates.py"
+      ],
+      "status": "stale",
+      "evidence": "sqlite3 ro \"select substr(first_seen_ts,1,10),count(*) from weather_fcst group by 1\" → 单行 ('2026-08-10', 136318);max(fcst_date)=2026-08-10;grep -rn weather_fcst ops/ jobs/ --include=*.py → 无命中(无调度写入者),已停更 33 天",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "0",
+      "format": "SQLite 表",
+      "frequency": "无调度",
+      "source": "ftp.cpc.ncep.noaa.gov",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "ERCOT 电网日频(17 个指标)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: ercot_daily",
+      "consumers": [
+        "model/ercot_cov.py",
+        "research/*",
+        "qlib-main/electric_utilities_strategy(读镜像)"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro → 17,684 行,09-05..09-12 每日恒 11 行,17 个 distinct metric;dbstat 1,875,968 B;ingest/ercot.py:40 公共 dashboards JSON + :163 b2clogin + :166 api.ercot.com;refresh_last ercot \"ok (0.5s) {'days':2,'rows':14}\";14 个 ERCOT 预测市场经筛选全不可交易,ingest 保留 SHADOW",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00",
+      "source": "ERCOT 公共面板 + EIA-930",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "PJM Data Miner 2 负荷 / 电价(8 个 zone area)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: pjm_daily",
+      "consumers": [
+        "model/*",
+        "qlib-main/electric_utilities_strategy(读镜像)"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro → 22,446 行;09-02 = 22,419 行回填,随后 09-04..09-12 每日恒 3 行(注意 09-03 为 0 行);dbstat 2,383,872 + 1,581,056;ingest/pjm.py:46 api.pjm.com + PJM_API_KEY;refresh_last pjm \"ok (0.4s) {'days':3,'rows':9}\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00",
+      "source": "api.pjm.com",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "EIA 周度库存(原油 / 汽油 / 天然气)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/eia",
+      "consumers": [
+        "prediction_market_macro/ingest/eia.py:33 _MIRROR_DIR",
+        "qlib-main/electric_utilities_strategy(config.yaml external_sources.eia=true)"
+      ],
+      "status": "in_production",
+      "evidence": "find price_data/eia -type f -exec stat -f 'birth=%SB mod=%Sm size=%z %N' → 3 文件 crude 747,642 / gasoline 589,636 / ng_storage 313,690 = 1,650,968 B,birth 2026-07-31,全部 mtime 2026-09-12 05:01(整文件覆盖,净增 0);refresh_last eia_storage \"ok (1.7s) 5078\"",
+      "current_size": "1.6 MiB",
+      "daily_bytes": "净增 0(整文件覆盖)",
+      "format": "json 镜像",
+      "frequency": "",
+      "source": "api.eia.gov",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "期货日频(fut_daily,24 个 root)与 FX(fx_daily)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: fut_daily,fx_daily",
+      "consumers": [
+        "fut_daily: model/*、research/*",
+        "fx_daily: 仅 ingest/market_data.py 写入 + ingest/store.py 建表,无任何模型/研究/运维消费者"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro → fut_daily 47,279 行 / 24 root,09-01..09-11 每交易日恒 22 行(周末真空缺);fx_daily 765 行、2 行/天;grep -rln 'fx_daily' --include=*.py prediction_market_macro/ → ingest/market_data.py + ingest/store.py 两个文件;refresh_last futures \"ok (5.9s) 16332\" / fx \"ok (0.3s) 683\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00",
+      "source": "市场数据源(ZQ 到期合约永久 404,勿再 backfill)",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "Fed 声明文本(fed_statements)与经济日历(releases/calendars)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: fed_statements,releases",
+      "consumers": [
+        "analysis/llm.py(nemotron,串行、可降级)",
+        "model/*"
+      ],
+      "status": "stale",
+      "evidence": "sqlite3 ro → fed_statements 242 行,全部 fetched_ts = 2026-08-04,release_date 1994-02-04..2026-07-29(停更 39 天);releases 548 行 / 11 个日历;ingest/calendars.py:338-339 bls.gov;ingest/fed_text.py:53 + :197 lookback_days=400;refresh_last fed_statements \"ok (0.0s) 0\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "0(fed_statements)",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00 但零新增",
+      "source": "federalreserve.gov / bls.gov",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "新闻流(news)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro.db :: news",
+      "consumers": [
+        "analysis/llm.py",
+        "model/*"
+      ],
+      "status": "in_production",
+      "evidence": "sqlite3 ro → 378 行,1–2 行/天(中位 2);574.3 B/行;refresh_last news \"ok (0.2s) 2\"",
+      "current_size": "372.8 MiB",
+      "daily_bytes": "",
+      "format": "SQLite 表",
+      "frequency": "每日 05:00",
+      "source": "新闻 API",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "macro_pm",
+      "name": "合成世界样本 synth / lambda_worlds(DFM 合成样本 S1-S8)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_macro/data/synth",
+      "consumers": [
+        "research/synth/regen.py(DONOR_MAX_AGE_DAYS=30)",
+        "research/synth/worlds.py:819 conn.backup",
+        "research/synth/calibrate.py"
+      ],
+      "status": "in_production",
+      "evidence": "du -sh data/synth → 15G;find data -type f -exec stat -f '%SB %z' 按日汇总 → 2026-09-06 桶 = 15,919,406,457 B / 105 文件;ls data/synth/KXCPI/ → worlds 204,591,104–204,615,680 B × 8;lambda_worlds 893M;两份 snapshot.db 各 305,295,360 B 且 md5 同为 cdbc05fa5100a43848d968b4715d9a34;dfm_ckpt/best_model.pt 5,130,092 B;regen.py docstring 「Previous runs' worlds are removed when a new run succeeds, so the footprint is one generation deep」",
+      "current_size": "14.8 GiB",
+      "daily_bytes": "14.5 GiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "parquet / SQLite",
+      "frequency": "按需重生成",
+      "source": "本地生成(非外部拉取)",
+      "daily_series": {
+        "2026-09-06": 15613992960
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "API-Football 赛程 / 赔率 / 技术统计 / 球员 / 首发 / 积分榜 / 射手榜",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw",
+      "consumers": [
+        "ingest/api_football.py(_MIN_INTERVAL_S=0.25, max_retries=6)",
+        "ingest/soccer_ingest.py",
+        "ingest/store.py write_raw_snapshot → objects_v1",
+        "model/match_pricing.py 等 34 个已核实模块"
+      ],
+      "status": "in_production",
+      "evidence": "du -sk raw/* → fixtures 4,186,976 KB/42,076 文件、odds_live 3,798,572/9,034、fixtures_players 485,136/13,957、fixtures_statistics 94,176/23,544、odds 41,412/1,033、fixtures_lineups 10,468/1,399、standings 2,292/134、players_topscorers 9,896/356;八条腿逐日 birthtime 与 mtime 两键完全一致;正常日合计 09-02..09-10 = 59,402,141 / 79,392,774 / 382,145,882 / 697,995,971 / 776,732,649 / 215,270,240 / 316,953,478 / 313,014,694 / 265,810,802,中位 313,014,694 B、均值 345,190,959 B;sqlite3 ro api_call → req_limit 恒 7500,端点混合 fixtures 12,573 / statistics 10,972 / players 7,460 / odds-live 3,275 / lineups 677 / standings 408 / odds 195 / topscorers 120 / teams 12;config/config.py:300-320 daily_budget=6500 monthly=200000 max_requests_per_run=250",
+      "current_size": "9.0 GiB",
+      "daily_bytes": "343.9 MiB/天（最近 8 天中位;窗口 7 天）",
+      "format": "json → 2026-09-10/11 起切换为内容寻址 objects_v1",
+      "frequency": "launchd soccerlive 60s / soccertrigger 900s / soccerrefresh 07:30",
+      "source": "v3.football.api-sports.io",
+      "daily_series": {
+        "2026-09-05": 697995971,
+        "2026-09-06": 776732649,
+        "2026-09-07": 215270240,
+        "2026-09-08": 316953478,
+        "2026-09-09": 313014694,
+        "2026-09-10": 267755279,
+        "2026-09-11": 360636084,
+        "2026-09-12": 645492159
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "ClubElo 俱乐部实力先验(web + history)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/priors/clubelo_web",
+      "consumers": [
+        "ingest/club_prior.py:391/399(sleep 1.5)",
+        "ingest/clubelo_web.py:147/153/593",
+        "model/match_pricing.py"
+      ],
+      "status": "in_production",
+      "evidence": "find clubelo_web -type f -exec stat -f '%SB %z' 按日 → 09-05..09-11 每日恒 59 文件,字节 2,699,705 / 2,699,699 / 2,746,179 / 2,746,685 / 2,574,537 / 2,697,238 / 2,698,349,中位 2,699,699;du -sh → 36M(daily 1.3M / raw 29M / history 5.9M);ls history | wc -l → 498;ls priors/clubelo_*.csv | wc -l → 129(5.2 MB);仓外镜像 /Users/xuling/clubelo_web_backup 36M;.source 侧车显示 web/web/web_history/web_history/web/web",
+      "current_size": "33.3 MiB",
+      "daily_bytes": "2.6 MiB/天（最近 7 天中位;窗口 7 天）",
+      "format": "json + csv",
+      "frequency": "每日",
+      "source": "clubelo.com",
+      "daily_series": {
+        "2026-09-05": 2699705,
+        "2026-09-06": 2699699,
+        "2026-09-07": 2746179,
+        "2026-09-08": 2746685,
+        "2026-09-09": 2574537,
+        "2026-09-10": 2697238,
+        "2026-09-11": 2698349
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "Kalshi / Polymarket 场内报价 PIT(public_quote_captures + quote_receipt_v1)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw/public_quote_captures",
+      "consumers": [
+        "ops/run_status.py:64 atomic_bytes(gzip, 0600, sha256 内容寻址)",
+        "venues/kalshi/*",
+        "venues/polymarket_global/reader.py"
+      ],
+      "status": "in_production",
+      "evidence": "find public_quote_captures -type f -exec stat -f '%SB %z' → 2026-09-11 15,393 文件 / 173,414,146 B;sqlite3 'file:data/soccer.db?mode=ro'(注意 immutable=1 会因活跃 WAL 报 database disk image is malformed)→ quote_receipt_v1 09-11 = 3,375 行 / 628,441,825 B;venue 表 → kalshi / poly_us / poly_global",
+      "current_size": "371.9 MiB",
+      "daily_bytes": "206.5 MiB/天（最近 2 天中位;窗口 7 天）",
+      "format": "gzip json 内容寻址",
+      "frequency": "随 soccerlive 60s",
+      "source": "external-api.kalshi.com / api.elections.kalshi.com / clob.polymarket.com / gamma-api.polymarket.com / data-api.polymarket.com",
+      "daily_series": {
+        "2026-09-11": 173414146,
+        "2026-09-12": 216526529
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "EA FC26 球员能力值(Kaggle)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw/fc26",
+      "consumers": [
+        "ingest/fc_ingest.py:193 kaggle datasets download"
+      ],
+      "status": "stale",
+      "evidence": "ls -la data/raw/fc26 → ea_fc26_players.csv 4,061,959 / ea_fc26_outfield.csv 3,312,023 / ea_fc26_goalkeepers.csv 236,199,全部 mtime 2026-06-16 13:12(88 天未变);du -sk → 7,436",
+      "current_size": "7.3 MiB",
+      "daily_bytes": "0",
+      "format": "csv",
+      "frequency": "一次性",
+      "source": "Kaggle",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "伤病数据(injuries)— 已接线但空",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw/injuries",
+      "consumers": [
+        "ingest/api_football.py injuries()",
+        "ingest/soccer_ingest.py sync_injuries"
+      ],
+      "status": "dead_code",
+      "evidence": "find data/raw/injuries -type f | wc -l → 1(最新 2026-06-18);sqlite3 ro \"select count(*) from injury\" → 0;api_call 表中 injuries 端点完全缺席",
+      "current_size": "150.0 B",
+      "daily_bytes": "0",
+      "format": "json",
+      "frequency": "无",
+      "source": "API-Football",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "历史交锋 h2h — 已接线但空",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/raw/h2h",
+      "consumers": [
+        "ingest/api_football.py"
+      ],
+      "status": "dead_code",
+      "evidence": "find data/raw/h2h -type f → 27 文件,最新 mtime 2026-06-18 20:36;sqlite3 ro \"select count(*) from h2h\" → 0",
+      "format": "json",
+      "frequency": "无",
+      "source": "API-Football",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "0",
+      "_llm_asserted_current_size": "116 KB"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "xG 预期进球",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market_soccer/data/soccer.db :: fixture_stats.xg",
+      "consumers": [
+        "model/match_pricing.py(xga_weight=0.0,未启用)"
+      ],
+      "status": "stale",
+      "evidence": "sqlite3 ro \"select count(*),count(xg) from fixture_stats\" → 884 | 350(覆盖率 40%);\"select count(xg_home),count(xg_away) from milestone_snapshot\" → 0 | 0(2,768 行 100% NULL,xG 并未落到该表);config/config.py:198 xga_weight=0.0",
+      "current_size": "10.3 GiB",
+      "daily_bytes": "",
+      "format": "SQLite 列",
+      "frequency": "随 statistics 端点",
+      "source": "API-Football",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "天气 / 裁判 / 海拔场地因子",
+      "directory": "—(天气与裁判不存在;海拔为代码内常量)",
+      "consumers": [
+        "model/venue_climate.py altitude_home_log_edge ← 被 model/match_pricing.py:66-67 真实调用,但 venue_climate_weight=0.0 关闭"
+      ],
+      "status": "dead_code",
+      "evidence": "grep -rlE 'weather|temperature|precip' --include=*.py . → 5 个文件均不做抓取;grep -rn referee --include=*.py . → 唯一命中 config/config.py:78 的散文注释;grep -rn altitude_home_log_edge → model/match_pricing.py:66-67 有真实调用点(venue_climate.py:44 的「无消费者」docstring 已过时);config/config.py:200 venue_climate_weight=0.0",
+      "format": "—",
+      "frequency": "—",
+      "source": "—",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "0",
+      "_llm_asserted_current_size": "0"
+    },
+    {
+      "domain": "soccer_pm",
+      "name": "microfootball 模拟资产(经 Tailscale 从 box A GPU 机拉入)",
+      "directory": "/Users/xuling/code/someopark-test/someo-park-investment-management/server/sim_assets/microfootball",
+      "consumers": [
+        "ops/online_microfootball.sh:37 MIRROR",
+        "前端 Someo Agent"
+      ],
+      "status": "in_production",
+      "evidence": "du -sh sim_assets/microfootball → 5.0G;find -type f | wc -l → 3,360;逐日 birthtime 批次 08-25..09-07 共 12 批(36–84 文件 / 89,816,458–111,712,934 B),中位字节 100,764,696 B、中位 63 文件;09-04/09-05/09-08..09-12 完全无批次;find -maxdepth 1 -mindepth 1 -type d | wc -l → 24 个 matchup 目录;online_microfootball.sh:15 明示 Mac --Tailscale--> box A ed9f (someoparkdgx25@100.76.95.43)",
+      "current_size": "5.0 GiB",
+      "daily_bytes": "107.3 MiB/天（最近 2 天中位;窗口 7 天）",
+      "format": "npz / json",
+      "frequency": "按批次(最近一批 2026-09-07)",
+      "source": "远程 GPU 机 100.76.95.43(跨机入站,未计入量①)",
+      "daily_series": {
+        "2026-09-06": 112467815,
+        "2026-09-07": 111712934
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "worldcup_pm",
+      "name": "WC2026 全量赛事数据(已完赛,冻结)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market/data",
+      "consumers": [
+        "prediction_market/venues/*",
+        "已归档至 prediction_market_soccer/data/{logs_wc_archive,output_wc_archive}"
+      ],
+      "status": "stale",
+      "evidence": "per-dir find → odds_live 259M/4,926、fixtures_players 190M/4,951、fixtures_statistics 25M/6,448、odds 21M/137、players 9.1M/1,381、lineups 836K/105、players_squads 384K/48、h2h 116K/27、standings 64K/2、teams 48K/4、predictions 40K/5;最新 mtime 2026-07-19 18:01(teams 为 2026-07-09);stat wc.db → 623,300,608 B,mtime 2026-09-12 06:44,36 张表(prediction_market/data/wc.db-wal 不存在)",
+      "current_size": "1.8 GiB",
+      "daily_bytes": "240.5 KiB/天（最近 8 天中位;窗口 7 天）",
+      "format": "json + SQLite",
+      "frequency": "残留 launchd predictionrefresh 每日 06:30 本地",
+      "source": "API-Football",
+      "daily_series": {
+        "2026-09-05": 246309,
+        "2026-09-06": 542685,
+        "2026-09-07": 246263,
+        "2026-09-08": 246358,
+        "2026-09-09": 246306,
+        "2026-09-10": 246405,
+        "2026-09-11": 246211,
+        "2026-09-12": 246034
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "worldcup_pm",
+      "name": "WC 残留空转配额消耗(每日 2 次调用、写出逐位相同文件)",
+      "directory": "/Users/xuling/code/someopark-test/prediction_market/data/raw/{fixtures,players_topscorers}",
+      "consumers": [
+        "无(赛事已完结)"
+      ],
+      "status": "stale",
+      "evidence": "md5 -q 三日 fixtures 文件 → 全部 558366fee4ccd33f8e292f277c0c65e0(104,486 B);topscorers 四份 → 全部 97c10e7b4d8ef4b0a7b115c5272fae7a(26,045 B);sqlite3 immutable wc.db api_call(ts>=2026-08-01)→ 仅 fixtures 331 + players/topscorers 43;触发者已定位:文件名 1030 是 UTC,本地 mtime 06:30,正是 PlistBuddy com.someopark.predictionrefresh.plist 的 Hour=6/Minute=30(launchctl 中 PID '-' 只表示此刻未运行,非缺失触发器)",
+      "format": "json",
+      "frequency": "每日 06:30 本地",
+      "source": "API-Football(每天白烧 2 次配额)",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "130,531 B/天(内容恒定)",
+      "_llm_asserted_current_size": "130,531 B/天 × 2 文件"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "MacroStateStore FRED 19 序列宏观状态",
+      "directory": "/Users/xuling/code/someopark-test/price_data/macro/state/fred",
+      "consumers": [
+        "MacroStateStore.py",
+        "DailySignal.py(MRPT/MTFS)",
+        "crypto_trading/crypto_common/{smart_select,walk_forward}.py(跨层第七消费者)"
+      ],
+      "status": "in_production",
+      "evidence": "find -type f | wc -l → 209;stat 求和 → 778,567 B;mtime 直方图 → 09-09 2,763 B/1、09-10 7,935 B/3、09-11 53,041 B/15;birthtime 直方图 → 仅 2026-05-04(152)与 2026-06-16(57),09-09/10/11 零出生,独立证明为就地覆写;sed -n '100,135p' MacroStateStore.py → 19 个硬编码序列;接线于 conductor/pre_pipeline.sh:61 run_step 3",
+      "current_size": "760.3 KiB",
+      "daily_bytes": "2.7–7.9 KB/天(就地覆写,净增 ≈0)",
+      "format": "json/csv 覆写",
+      "frequency": "每日 pre_pipeline",
+      "source": "FRED",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "MacroStateStore 市场代理(12 ticker)与 23 维周度快照",
+      "directory": "/Users/xuling/code/someopark-test/price_data/macro/state/{raw,weekly}",
+      "consumers": [
+        "MacroSimilarity.py",
+        "DailySignal.py"
+      ],
+      "status": "in_production",
+      "evidence": "raw:stat 求和 806,983 B / 144 文件 / 12 ticker(spy qqq iwm xlk soxx nvda arkk gld uso uup tnx hyg),mtime 仅 2026-05-04 与 2026-09-11(56,930 B/12);weekly:86,185,925 B / 506 文件,每周恰 1 个新文件,最近 8 周 210,103/210,116/210,184/209,949/210,026/210,002/210,057/208,136,中位 210,041.5 B",
+      "format": "json",
+      "frequency": "raw 按需;weekly 每周 1 次",
+      "source": "yfinance / Polygon",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "weekly ≈210 KB/周",
+      "_llm_asserted_current_size": "raw 806,983 B;weekly 86,185,925 B"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "MacroSimilarity 潜变量相似度库(MCPS)",
+      "directory": "/Users/xuling/code/someopark-test/macro_similarity",
+      "consumers": [
+        "DailySignal.py:393 _GOLD_SIM_STORE(MRPT/MTFS)",
+        "MacroSimilarity.py:230/237/270"
+      ],
+      "status": "in_production",
+      "evidence": "ls -la macro_similarity/ → latent.parquet 250,904 + similarity_store.json 2,829,723 + encoder.pt 6,877 + meta 1,828 = 3,089,332 B;python3 json → 2,433 天,末 5 天 2026-09-04/08/09/10/11,updated_at 2026-09-12T11:08:02;grep -rln macro_similarity --include=*.py . → DailySignal.py + MacroSimilarity.py + 3 个 qlib 测试;接线 conductor/pipeline_runner.sh:116-121",
+      "current_size": "2.9 MiB",
+      "daily_bytes": "≈0(整文件重写)",
+      "format": "parquet + json + pt",
+      "frequency": "每日 pipeline",
+      "source": "本地派生",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "Chronos-2 VIX 预测(含 FOMC 日期未来协变量)",
+      "directory": "/Users/xuling/code/someopark-test/historical_runs/vix_chronos2 + price_data/macro/{vix,move,vix_hourly,vxtlt_hourly,fomc}",
+      "consumers": [
+        "VIXForecast.py:51(FOMC_DIR 的唯一读者)",
+        "DailySignal.py --vix-forecast(MRPT/MTFS)"
+      ],
+      "status": "in_production",
+      "evidence": "find historical_runs/vix_chronos2 -type f -exec stat -f %z {} + → 955,863,905 B / 7 文件,ft_ckpt_fomc 与 ft_ckpt_full 各含 477,930,472 B model.safetensors,冻结于 2026-03-24;cat vix_forecast_cache.json → 631 B, as_of 2026-09-12, mode finetune-dual;grep -n 'vix-forecast' conductor/pipeline_runner.sh → :123 run_step 7;VIX/MOVE 四库合计 362,375 B,单次运行写 53,631 B / 6 文件;stat price_data/macro/fomc → 2,778 B / 21 文件,mtime 2026-03-24,无任何代码刷新它",
+      "format": "safetensors + json",
+      "frequency": "每日 run_step 7",
+      "source": "本地推理(模型来自 HuggingFace 缓存)",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "≈53.6 KB/天",
+      "_llm_asserted_current_size": "955,863,905 B(检查点)+ 362,375 B(VIX/MOVE)"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "事件风险覆盖层(NFP 日历 + bellwether 财报)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/macro/{nfp,earnings_bellwether}",
+      "consumers": [
+        "EventRiskDetector.py",
+        "DailySignal.py(MRPT/MTFS)",
+        "AISS/AEUS"
+      ],
+      "status": "in_production",
+      "evidence": "head -55 RefreshEventRiskData.py → 4 个 job:价格 / NFP(>=60 天视野才重写)/ bellwether / 死票哨兵,无 FOMC job;stat nfp → 986 B/5 文件、bellwether_earnings.json → 1,187 B(mtime 2026-09-11 23:07);tail -3 trading_signals/event_risk_heartbeat.log → 2026-09-12T11:09:53 [MRPT] / [MTFS],每日两行;接线 conductor/pipeline_runner.sh:108",
+      "daily_bytes": "",
+      "format": "json 覆写",
+      "frequency": "每日 pipeline",
+      "source": "api.stlouisfed.org/fred/release/dates?release_id=50(RefreshEventRiskData.py:112,直连 REST)",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_current_size": "nfp 986 B;bellwether 1,187 B"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "财报 / 分红 / 拆股缓存(共享 price_data)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/{earnings_cache.json,dividends_cache.json,splits_cache.json}",
+      "consumers": [
+        "MRPTFetchEarnings.py",
+        "VolumePrediction/data/earnings_loader.py(其 docstring 自称不写共享文件,实际 MRPTFetchEarnings.run_fetch 在 :251 无条件 save_cache 到共享路径)",
+        "PriceDataStore.py"
+      ],
+      "status": "in_production",
+      "evidence": "stat earnings_cache.json → 25,893,543 B,mtime 2026-09-10 20:48;python3 json → 5,731 symbols,_meta 直方图 Counter({'2026-09-10':3750,'2026-09-05':1850,'2026-09-06':119,'2026-07-25':12});dividends 6,573,294 B / 422 ticker(mtime 2026-09-12 11:20);splits 474,988 B / 2,360 条(since 2025-05-01);grep -n '_meta' MRPTFetchEarnings.py → 零命中但共享文件带 _meta,证明写入来自 VP 路径;sed -n '48,50p' MRPTFetchEarnings.py → CACHE_PATH 指向共享 price_data/earnings_cache.json",
+      "format": "json",
+      "frequency": "每日 pipeline",
+      "source": "Polygon / yfinance",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "净增 ≈0(整文件覆写)",
+      "_llm_asserted_current_size": "32,941,825 B 三者合计"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "ticker_aliases 公司行为登记处",
+      "directory": "/Users/xuling/code/someopark-test/ticker_aliases.json",
+      "consumers": [
+        "VolumePrediction 全接",
+        "六策略价格库未接(需单独批准)"
+      ],
+      "status": "in_production",
+      "evidence": "stat → 645 B,mtime 2026-09-10 20:48;cat → schema v2,1 条改名(BK→BNY,2026-05-21)+ 1 条退市(AVB,2026-08-18),recycled_checked 09-07 / 09-11,updated 2026-09-11T00:48:48Z",
+      "current_size": "645.0 B",
+      "daily_bytes": "≈0",
+      "format": "json",
+      "frequency": "事件驱动",
+      "source": "人工 + 验证源",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "Controller 证券主数据 / 节点注册表 / 变更日志",
+      "directory": "/Users/xuling/code/someopark-test/controller/registry",
+      "consumers": [
+        "controller/registry.py",
+        "controller 估值双引擎"
+      ],
+      "status": "in_production",
+      "evidence": "stat 三文件 → security_master.json 102,031(287 个 ISIN)+ node_registry.json 23,168(78 节点)+ changelog.jsonl 531,496 = 656,695 B;wc -l changelog → 3,244;python3 逐日 ts 直方图 → 09-09 12 行/1,881 B、09-10 1/111、09-11 1/111、09-12 11/1,678。这是本次盘点中唯一纯追加的存储,逐位可复现",
+      "current_size": "641.3 KiB",
+      "daily_bytes": "122.3 KiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "json + jsonl",
+      "frequency": "每日",
+      "source": "SEC fails-to-deliver(controller/registry.py:301/353)+ Polygon v3/reference/tickers(:376)",
+      "daily_series": {
+        "2026-09-12": 125199
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "GICS 行业分类 / 半导体宇宙",
+      "directory": "/Users/xuling/code/someopark-test/price_data/{sp500_gics.json,sp500_sectors.json,rules_gics.json,semiconductor_universe.json}",
+      "consumers": [
+        "SelectPairs.py(GICS 三件套的唯一消费者)",
+        "RefreshEventRiskData.py + EventRiskDetector.py(semiconductor_universe)"
+      ],
+      "status": "stale",
+      "evidence": "stat → 302,124 + 8,701 + 8,913 = 319,738 B,全部 mtime 2026-05-25;semiconductor_universe.json 1,453 B,mtime 2026-06-08 03:42;grep -rln 'sp500_gics|sp500_sectors|rules_gics' --include=*.py . → 仅 SelectPairs.py",
+      "format": "json 静态",
+      "frequency": "无",
+      "source": "人工维护",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "0",
+      "_llm_asserted_current_size": "321,191 B"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "SSRS 板块 EPS 历史与宏观 pickle",
+      "directory": "/Users/xuling/code/someopark-test/price_data/sector_etfs",
+      "consumers": [
+        "qlib-main/sector_rotation/sector_rotation_pipeline.sh:478(REFRESH_DAYS=7 TTL)",
+        "SSRS 回测/日更"
+      ],
+      "status": "in_production",
+      "evidence": "python3 json → eps_history.json 495,185 B,fetched_at 2026-09-06,111 symbols(symbol_meta 113);ls -la → macro_2017-01-01_latest.pkl 326,113 B(mtime 2026-09-11 16:33)、pe_constituents 11,697、pe_polygon 11,949;目录合计 2,853,928 B / 20 文件;mtime 直方图 → 09-06 495,185/1(eps,09-08..09-11 未触碰)与 09-11 2,296,750/16;sr_daily_20260911.log:6 「EPS store is fresh (5 days old, threshold=7) — skip update.」",
+      "current_size": "2.7 MiB",
+      "daily_bytes": "248.6 KiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "json + pkl",
+      "frequency": "每交易日 ~16:25",
+      "source": "Polygon P/E 缓存 + yfinance 12 ticker",
+      "daily_series": {
+        "2026-09-11": 254572
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "AISS 公司/行业基本面(CapEx 脉冲、DRAM 代理、MU DIO、超大规模资本开支、TSMC/ASML、PMI)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/semi_strategy/{company,industry}",
+      "consumers": [
+        "qlib-main/semiconductor_strategy/data/aiss_update_data.py(7 步)",
+        "AISSdailySignal.py"
+      ],
+      "status": "in_production",
+      "evidence": "find company/industry -type f -exec stat -f %z {} + → 135,728/3 + 135,782/5 = 271,510 B / 8 文件,整树 mtime 单日 2026-09-11;09-11 日志逐条:capex_pulse 2,625 pts / mu_dio 64 quarters / hyperscaler_capex 47 quarters / tsmc_monthly 3 months / asml_orders 20 quarters(RETIRED,上游停止披露)/ asml_guidance 22 quarters / dram_spot_proxy 2,440 pts / pmi(IPMAN) 187 months;grep '^\\[[0-9:]+\\] [0-9]/7' → 7 步齐全,无 altdata 步",
+      "format": "json/parquet",
+      "frequency": "每交易日 21:25",
+      "source": "Polygon / yfinance / SEC XBRL / TWSE / FRED",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "≈271 KB/天(整批重写)",
+      "_llm_asserted_current_size": "271,510 B / 8 文件"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "AISS altdata_signals(已接线但闸门关闭)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/semi_strategy/altdata",
+      "consumers": [
+        "AISSdailySignal.py:1265",
+        "backtest/trade_audit.py:181",
+        "backtest/engine.py:607",
+        "portfolio/strategy.py:151"
+      ],
+      "status": "dead_code",
+      "evidence": "stat fred_altdata.json → 311,265 B,mtime 2026-05-30 15:20(停更 105 天);grep -n -A4 'exposure_amplifier' semiconductor_strategy/config.yaml → :219/:220 enabled: false;update_data 日志只有 1/7..7/7,无 altdata 步;grep -rn altdata signals/ → 零命中",
+      "current_size": "304.0 KiB",
+      "daily_bytes": "0",
+      "format": "json",
+      "frequency": "无",
+      "source": "FRED",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "AEUS altdata(EIA / ERCOT / PJM / SEC 四源,放大器已启用)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/elec_strategy/{altdata,company,industry}",
+      "consumers": [
+        "qlib-main/electric_utilities_strategy/data/altdata_signals.py",
+        "aeus_update_data.py(9 步)",
+        "exposure_amplifier(config.yaml:259-267 enabled: true)"
+      ],
+      "status": "in_production",
+      "evidence": "per-dir find/stat → altdata 1,260,179/13 + company 160,809/4 + industry 312,405/5 = 1,733,393 B / 22 文件,整树 mtime 单日 2026-09-11;sed -n '28,48p' config.yaml → eia/ercot(+macro_accrual)/pjm(+extended)/sec 全 true;09-11 日志:ercot_demand_yoy 与 ercot_gas_share 均 →2026-08-30 标 STALE(9 交易日 > 5 交易日阈值)、ercot_rt_price 0 pts(accruing 13/126)、macro accrual 17,673 行只读、RESULT: INCOMPLETE",
+      "format": "json/parquet",
+      "frequency": "每交易日 22:35",
+      "source": "api.eia.gov / ERCOT / api.pjm.com / data.sec.gov",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "≈1.73 MB/天",
+      "_llm_asserted_current_size": "1,733,393 B / 22 文件"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "GPU 算力报价(computeprices.com)— AISS 与 AEUS 双胞胎均为死代码",
+      "directory": "—(gpu_pricing_history.parquet 在两侧均不存在)",
+      "consumers": [
+        "qlib-main/semiconductor_strategy/data/altdata_signals.py:70/98/301/337-361 + CLI --snapshot-gpu/--init-gpu",
+        "qlib-main/electric_utilities_strategy/data/altdata_signals.py:86/117/675/693-709"
+      ],
+      "status": "dead_code",
+      "evidence": "ls -la price_data/semi_strategy/altdata/ → 仅 fred_altdata.json 一个文件,无 gpu_pricing_history.parquet;ls -la price_data/elec_strategy/altdata/ → 13 文件,同样无该 parquet;grep gpu_pricing 于 aeus_update_data_20260911_223656.log → 「gpu_pricing (fwd-only) : 0 rows, 0 snapshots」;find price_data -iname '*gpu*' → 只有 VP financials 的 GPUS.json / AGPU.json",
+      "format": "—",
+      "frequency": "仅手动 CLI",
+      "source": "computeprices.com/api/v1/gpu-prices",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "0",
+      "_llm_asserted_current_size": "0"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "BDC 私募信贷 SOI 持仓穿透(5 家 BDC / 4,803 笔贷款)",
+      "directory": "/Users/xuling/code/someopark-test/price_data/bdc_holdings",
+      "consumers": [
+        "RefreshBDCHoldings.py(:74/152/268/299/528/570/594)",
+        "RunBDCLookThrough.py",
+        "portfolio_of_private_credit_deals/bdc_results"
+      ],
+      "status": "in_production",
+      "evidence": "find -type f | wc -l → 27;stat 求和 → 182,503,399 B(raw_cache 181,637,110 B / 14 文件);mtime 直方图 → 09-08 5,501,665/1(新月度数据集,birthtime 同日)、09-09 与 09-10 为 0、09-11 450,099/8(纯重写);latest_manifest.json → GBDC 10-Q adsh 0001476765-26-000048 rows 1810;heartbeat → deals=4803;09-11 日志 SOI ingest 1810+211+601+703+1478 = 4,803,墙钟 16:05:24→16:06:51 = 87 秒",
+      "current_size": "174.0 MiB",
+      "daily_bytes": "5.2 MiB/天（最近 1 天中位;窗口 7 天）",
+      "format": "parquet + json",
+      "frequency": "openclaw cron private-credit-bdc-daily(16:05 NY)",
+      "source": "SEC EDGAR(data.sec.gov submissions / companyconcept / frames)",
+      "daily_series": {
+        "2026-09-08": 5501665
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "BDC 私募信贷利率曲线(8 个 FRED 序列 + 远期)",
+      "directory": "/Users/xuling/code/someopark-test/portfolio_of_private_credit_deals",
+      "consumers": [
+        "RunBDCLookThrough.py",
+        "SyncPrivateCreditRates"
+      ],
+      "status": "in_production",
+      "evidence": "wc -l fred_rates.csv → 2,979;stat → 165,069 B;head -1 → ',SOFR,EFFR,DGS2,DGS10,DGS5,DGS30,BAMLC0A0CM,BAMLH0A0HYM2';tail -1 → 2026-09-10;forward_rates_latest 76,727 B / 9 文件;bdc_results 3,286,194 B / 67 文件;daily_report_2026-09-* 八份 7,579/7,575/7,579/7,573/7,571/7,574/7,572/7,571,中位 7,573.5",
+      "current_size": "4.4 MiB",
+      "daily_bytes": "7.4 KiB/天（最近 4 天中位;窗口 7 天）",
+      "format": "csv + json",
+      "frequency": "每日 16:05 NY",
+      "source": "FRED 8 序列",
+      "daily_series": {
+        "2026-09-08": 7571,
+        "2026-09-09": 7574,
+        "2026-09-10": 7572,
+        "2026-09-11": 7571
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "VolumePrediction 成交量预测与五策略 advice",
+      "directory": "/Users/xuling/code/someopark-test/VolumePrediction/outputs/{adapters,registry,panel}",
+      "consumers": [
+        "SelectPairs.py:751 USE_FORECAST_ADV=True + :796",
+        "RiskManager.py:92 + :431(仅 MRPT/MTFS 决策接线)",
+        "aeus/aiss/ssrs advice 文件无任何策略读回"
+      ],
+      "status": "in_production",
+      "evidence": "ls adapters | wc -l → 145,stat 求和 2,216,215 B;每日 5 个 advice 文件:09-08 79,515 / 09-09 80,217 / 09-10 80,269 / 09-11 78,435 B;volume_forecast_latest.parquet 385,537 B;registry 836,080,023 B / 30 文件(其中 rnn_prod_20260904/training_panel.parquet 单文件 818,003,187 B,09-09 单日写入);grep -rn 'aiss_advice|ssrs_advice|aeus_advice' --include=*.py . | grep -v VolumePrediction → 零命中",
+      "format": "json + parquet",
+      "frequency": "launchd vp.shadowdaily 17:33",
+      "source": "Polygon grouped bars + MongoDB fmp_* + FRED 72 序列(无独立缓存,折进 panel)",
+      "_unmeasured": "目录/文件不存在(可能已停用或路径已变)",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_daily_bytes": "≈80 KB/天(advice);panel/registry 为批次式",
+      "_llm_asserted_current_size": "adapters 2,216,215 B;registry 836,080,023 B;panel 10G"
+    },
+    {
+      "domain": "quant_strategies",
+      "name": "VolumePrediction 文本/情绪特征",
+      "directory": "/Users/xuling/code/someopark-test/VolumePrediction/features/text_features.py",
+      "consumers": [],
+      "status": "dead_code",
+      "evidence": "sed -n '1,35p' text_features.py → docstring 「**状态: 按计划 §1.1 用户令整体推迟**」,_DEFER_MSG,daily_sentiment / novelty / lda_topics 三个公开函数各自 raise NotImplementedError;ls features/ → 只有 intraday_features.py / pipeline.py / text_features.py",
+      "current_size": "1.4 KiB",
+      "daily_bytes": "0",
+      "format": "—",
+      "frequency": "—",
+      "source": "—",
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    }
+  ],
+  "daily_growth": [
+    {
+      "path": "/Users/xuling/code/someopark-test/mlruns(根,SSRS 回测)",
+      "weekday_bytes": "5.2 GiB/工作日",
+      "evidence": "find mlruns -type f -exec stat -f \"%SB\\t%z\\t%N\" -t \"%Y-%m-%d\" {} + | awk 按日与 code_diff.txt 拆分。09-11 拆分:code_diff 7,134,576,895 B / 928 文件 vs 其它 16,392,192 B / 1,856 文件 = 99.771%。每日 code_diff 中位:09-01 n=928 中位 52,247 → 09-08 227,239 → 09-11 7,688,322。注意 09-06(120 文件)与 09-07(333 文件)不是 2,784 文件/天的常规日。APFS 克隆假设已被证伪:两个 md5 同为 681b77df6717693d0f35c2b0c9b9bf76 的 7,688,322 B 文件,用 fcntl F_LOG2PHYS_EXT 读出物理 devoffset 分别为 57,026,187,264 与 829,749,239,808 —— 是真实重复字节,不是克隆幻影",
+      "weekend_bytes": "228.8 MiB/周末日",
+      "share_pct": "31.0%",
+      "daily_series": {
+        "2026-09-06": 239942360,
+        "2026-09-07": 645062006,
+        "2026-09-08": 211833276,
+        "2026-09-09": 5635701882,
+        "2026-09-10": 6812201026,
+        "2026-09-11": 7150969087
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/historical_runs(MRPT/MTFS/SSRS/AISS/AEUS 回测产物)",
+      "weekday_bytes": "4.6 GiB/工作日",
+      "evidence": "find historical_runs -type f -exec stat -f \"%SB %z\" -t \"%Y-%m-%d\" {} + | awk '{d[$1]+=$2;n[$1]++} END{for(k in d) print k,d[k],n[k]}' | sort → 09-01 4,869,650,342/2003;09-02 4,991,291,398/2059;09-03 4,930,050,763/2018;09-04 4,950,920,811/2034;09-05 2,952,728,069/1006;09-08 1,945,332,773/982;09-09 4,928,349,527/2026;09-10 4,955,184,304/2022;09-11 5,107,397,972/1970;09-12 11,551,748,408/4167。**09-07 整日零文件**(该目录当天完全无产出,劳动节 cron 虽 20:30 触发但被 NYSE 闸门跳过:daily_pipeline_launcher.log「[2026-09-07 20:30:13 EDT] NYSE closed; conductor/pre_pipeline.sh skipped without status」)。find historical_runs -name code_diff.txt | wc -l → 0,该树不受 .gitattributes 修复影响",
+      "weekend_bytes": "10.8 GiB/周末日",
+      "share_pct": "27.2%",
+      "daily_series": {
+        "2026-09-05": 2952728069,
+        "2026-09-08": 1945332773,
+        "2026-09-09": 4928349527,
+        "2026-09-10": 4955184304,
+        "2026-09-11": 5107397972,
+        "2026-09-12": 11551748408
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/qlib-main/mlruns(AISS + AEUS 共用 experiment 1)",
+      "weekday_bytes": "2.3 GiB/工作日",
+      "evidence": "find qlib-main/mlruns -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日汇总;按 run_uuid 拆分 AISS/AEUS(两库 uuid 交集 comm -12 为 0):AISS 74,069,093 / 1,918,382,910 / 2,320,961,825 / 1,574,053,977,AEUS 83,116,677 / 2,064,612,721 / 2,497,313,102 / 769,623,194,四日逐位与整目录合计吻合。sqlite3 -readonly 'select experiment_id,name,artifact_location from experiments' → qlib-main/mlruns/1 同时被 semiconductor_strategy_backtest 与 electric_utilities_strategy_backtest 注册",
+      "weekend_bytes": "459.0 MiB/周末日",
+      "share_pct": "13.6%",
+      "daily_series": {
+        "2026-09-06": 481347920,
+        "2026-09-07": 975560,
+        "2026-09-08": 157185770,
+        "2026-09-09": 3982995631,
+        "2026-09-10": 4818274927,
+        "2026-09-11": 2467084315
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/prediction_market_soccer",
+      "weekday_bytes": "311.0 MiB/工作日",
+      "evidence": "find prediction_market_soccer -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日 → 09-07 219,023,954;09-08 320,088,015;09-09 327,231,540;09-10 926,208,915;09-11 20,880,371,873;09-12 20,224,579,475。注意该中位数**低估真实增长约 2–3 倍**:data/soccer.db 出生于 2026-08-26 但仍在就地增长(现 10,094,702,592 B,自 08-26 起平均 ≈0.55 GiB/天),birthtime 口径完全看不见它;同目录 soccer.db-wal 371,224,392 B 亦无人计。另有 4 个孤儿 .refresh-stage-* 暂存目录共 619,824,507 B / 358 文件(ops/export_stage.py:26 mkdtemp 失败路径不清理)",
+      "weekend_bytes": "743.6 MiB/周末日",
+      "share_pct": "1.8%",
+      "daily_series": {
+        "2026-09-05": 701107314,
+        "2026-09-06": 779768020,
+        "2026-09-07": 218323709,
+        "2026-09-08": 319844606,
+        "2026-09-09": 326126354,
+        "2026-09-10": 789573619,
+        "2026-09-11": 20915968484,
+        "2026-09-12": 20317410677
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/crypto_trading",
+      "weekday_bytes": "132.0 MiB/工作日",
+      "evidence": "find crypto_trading -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日。09-10 的 4.563 GiB 主要来自 3,403,370,476 B / 153 个 UTC-09-11 日的原始 .jsonl(本地 09-10 20:00 创建、因 09-11 写满崩溃而从未 gzip);crypto 维度按**文件名日期**统计把它们记在 09-11,全仓按 **birthtime** 记在 09-10 —— 同一批字节两个时钟,任何汇总前必须声明口径",
+      "weekend_bytes": "96.8 MiB/周末日",
+      "share_pct": "0.8%",
+      "daily_series": {
+        "2026-09-05": 101473289,
+        "2026-09-06": 106461522,
+        "2026-09-07": 111658175,
+        "2026-09-08": 138458197,
+        "2026-09-09": 136387386,
+        "2026-09-10": 4900172878,
+        "2026-09-11": 3414564517,
+        "2026-09-12": 11199229
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/prediction_market_macro",
+      "weekday_bytes": "33.7 KiB/工作日",
+      "evidence": "find prediction_market_macro -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日 → 工作日几乎全零;09-06 单日 15,919,406,457 B / 105 文件(synth worlds 一次性生成)、08-30 单日 309,835,398 B / 12 文件、09-10 656,394,998 B / 181 文件(opsfix 备份,其中 628 MB 是两份 314,441,728 B 的 macro.db 整库副本)、09-09 13,747,010 B / 73 文件。macro.db 本体走就地增长:~/macro_db_backup 的 11 个未压缩日增 delta = 2,158,592 / 6,787,072 / 6,303,744 / 7,966,720 / 1,974,272 / 5,562,368 / 2,990,080 / 1,855,488 / 2,531,328 / 20,836,352 / 51,089,408,9 个平静日中位 2,990,080 B/天",
+      "weekend_bytes": "34.0 KiB/周末日",
+      "share_pct": "0.0%",
+      "daily_series": {
+        "2026-09-05": 34826,
+        "2026-09-06": 15919536609,
+        "2026-09-07": 34468,
+        "2026-09-08": 34538,
+        "2026-09-09": 13747010,
+        "2026-09-10": 658290528,
+        "2026-09-11": 17704,
+        "2026-09-12": 17647
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/VolumePrediction",
+      "weekday_bytes": "1.7 MiB/工作日",
+      "evidence": "find VolumePrediction -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日 → 稳态极小,但 09-09 有 819,636,798 B / 6 文件的单日批次(outputs/registry/artifacts 下 rnn_prod_20260904/training_panel.parquet 单文件 818,003,187 B),占当日全仓 5.16%,两个维度都报过它的 current_size 836,080,023 B 却无人指出是单日写入",
+      "weekend_bytes": "1.4 GiB/周末日",
+      "share_pct": "0.0%",
+      "daily_series": {
+        "2026-09-05": 1461298984,
+        "2026-09-07": 608681,
+        "2026-09-08": 1626292,
+        "2026-09-09": 822194863,
+        "2026-09-10": 1755939,
+        "2026-09-11": 8551570,
+        "2026-09-12": 95
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/price_data",
+      "weekday_bytes": "6.1 MiB/工作日",
+      "evidence": "find price_data -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日;整树 2,974,559,708 B / 14,674 文件;price_data/week_* 09-08..09-11 = 640,929/60、116,243/1、105,011/1、507,921/58。该树大量为整文件覆写(earnings_cache 25.9 MB、dividends_cache 6.6 MB、index.json 2.7 MB、splits_cache 475 KB、event_risk 整目录 11,851,190 B/112 文件、elec_strategy 7,280,001/76、semi_strategy 3,948,535/39、sector_etfs 2,296,750/16),birthtime 口径看不见,约 25 MB/轮的重写量未被任何维度计入",
+      "weekend_bytes": "1.3 GiB/周末日",
+      "share_pct": "0.0%",
+      "daily_series": {
+        "2026-09-05": 1390869422,
+        "2026-09-08": 6347528,
+        "2026-09-09": 1266320,
+        "2026-09-10": 19960857,
+        "2026-09-11": 4572447,
+        "2026-09-12": 507921
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/someo-park-investment-management",
+      "weekday_bytes": "169.8 KiB/工作日",
+      "evidence": "find someo-park-investment-management -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日;public/data 09-09 17,243 / 09-10 17,737 / 09-11 17,704(每日一份 macro_reports/macro_daily_*.pdf);strategy_performance.json 60,577 B 与 master_portfolio_performance.json 184,272 B 为就地重写;dist/ 37 MiB 是 public/data/soccer 的逐文件重复副本(milestone_marks.json 15.9 MB 各一份)",
+      "weekend_bytes": "63.5 MiB/周末日",
+      "share_pct": "0.0%",
+      "daily_series": {
+        "2026-09-05": 34826,
+        "2026-09-06": 112543205,
+        "2026-09-07": 111747402,
+        "2026-09-08": 34454,
+        "2026-09-09": 126479,
+        "2026-09-10": 18515733,
+        "2026-09-11": 173826,
+        "2026-09-12": 66541455
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "/Users/xuling/code/someopark-test/prediction_market(WC2026,已完赛)",
+      "weekday_bytes": "240.5 KiB/工作日",
+      "evidence": "find prediction_market -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日 → 09-03 100/246,359;09-04 100/246,491;09-05 100/246,309;**09-06 147/542,685**;09-07..09-10 各 100/≈246,3xx;09-11 98/246,211;另 09-01 = 163,810/100、09-02 = 152,614/99。即 12 天里有 3 天不平坦(09-01 −33%、09-02 −38%、09-06 +120%),「12 天完全平坦、日日差 <0.1%」的说法不成立,但日增量级结论(≈0)成立",
+      "weekend_bytes": "240.5 KiB/周末日",
+      "share_pct": "0.0%",
+      "daily_series": {
+        "2026-09-05": 246309,
+        "2026-09-06": 542685,
+        "2026-09-07": 246263,
+        "2026-09-08": 246358,
+        "2026-09-09": 246306,
+        "2026-09-10": 246405,
+        "2026-09-11": 246211,
+        "2026-09-12": 246034
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "~/crypto_data_backup(仓外,同卷)",
+      "weekday_bytes": "4.3 GiB/工作日",
+      "evidence": "find ~/crypto_data_backup -type f -exec stat -f 'birth=%SB %z %N' -t '%Y-%m-%d' {} + → 2,396,642,932(08-13)/ 2,700,601,368(08-18)/ 3,907,858,714(09-02)/ 4,092,432,617(09-04)/ 4,660,455,309(09-11);du -sh → 17G。09-02 / 09-04 / 09-11 的 3.639 / 3.811 / 4.340 GiB 恰好解释全仓矩阵与纯仓内 find 在这三天的差额",
+      "weekend_bytes": "",
+      "share_pct": "25.6%",
+      "daily_series": {
+        "2026-09-11": 4660455309
+      },
+      "machine_measured_at": "2026-09-12 16:10:01",
+      "measurement_status": "machine_measured"
+    },
+    {
+      "path": "仓外同卷其它:~/macro_db_backup / ~/.codex / ~/.openclaw",
+      "evidence": "find ~/macro_db_backup ~/.codex ~/.openclaw -type f -exec stat -f '%SB %z' -t '%Y-%m-%d' {} + | awk 按日汇总。~/.codex 2.0G 且成块跳变(09-07 951,106,995 B / 5,520 文件、09-10 407,563,979、09-05 385,044,449),disk_monitor.py 已把 ~/.codex/backups 列为 culprit;~/.openclaw 15G,birthtime 日增仅 ≈0.026 GiB 但 logs_2.sqlite 为 7,685,681,152 B 的活写文件(born 2026-06-01,mtime 2026-09-12),birthtime 口径完全不可见",
+      "weekend_bytes": "",
+      "_unmeasured": "路径不存在或非路径条目",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_weekday_bytes": "~/macro_db_backup ≈0.044 GiB/天(12 天 12 个新文件,41,965,524 B 单调升至 56,085,040 B,是本次盘点中唯一 12/12 完美日频的来源)",
+      "_llm_asserted_share_pct": "0.0%"
+    },
+    {
+      "path": "无归因残差(2026-09-10 当日)",
+      "evidence": "awk -F'|' '$1==\"2026-09-10\" && (/crypto_trading\\/trading_signals/ || /refresh-stage/ || /someo-park.*node_modules/ || /\\/dist\\//){u+=$2;n++} END{print u,n}' birth.txt → 1,999,494,599 B / 1,724 文件。构成:crypto_review_20260910/ 1,420,251,345 B(1,481 文件全部出生于当日)+ w8_check_20260910T234603Z/ 51,520,827 B + .refresh-stage-hddjalqo/ 483,860,844 B + 前端 node_modules/.vite 与 dist/ ≈43 MB。系统性根因:八个维度里六个以中位数为主指标,而本仓增长主要由一次性大批量写入构成(crypto_review 1.42 GB、VP training_panel 818 MB、opsfix 656 MB、refresh-stage 620 MB、book_candidates 38 GB),这些一律被「稳态日增」的叙事框架挤出报告",
+      "weekend_bytes": "",
+      "_unmeasured": "路径不存在或非路径条目",
+      "measurement_status": "unmeasured_llm_asserted",
+      "_llm_asserted_weekday_bytes": "1.999 GiB(占当日全仓 23,015,485,819 B 的 8.69%)",
+      "_llm_asserted_share_pct": "0.0%"
+    }
+  ],
+  "totals": {
+    "weekday_total": "16.9 GiB/工作日（本脚本实测,11 个目录合计）",
+    "days_until_full": "10.2 天",
+    "gitattributes_effect": "−73.52%(单个 code_diff.txt:7,689,727 B → 2,036,112 B)。.gitattributes 出生于 2026-09-11 20:36:05,内容为 `macro_similarity/similarity_store.json -diff`(提交 bf13bb7,2026-09-11 23:21:02)。同一次连续运行内 13 秒完成阶跃:…20:35:41 7,689,727 / 20:35:54 7,689,727 / 20:36:07 2,036,112 / 20:36:20 2,036,112…;修复前 n=161 中位 7,686,927,修复后 n=599 中位 2,040,695。机理:git diff -- macro_similarity/similarity_store.json | wc -c → 229 B(带属性)vs git -c core.attributesfile=/dev/null diff --no-textconv -a → 5,658,553 B(不带)。影响面:根 mlruns 每工作日 928 个 code_diff.txt,修复后投影 928 × 2,040,695 = 1.76 GiB/天(**是投影不是实测**,今日 2026-09-12 为周六,find mlruns -type f -newermt '2026-09-11 20:36:05' | wc -l → 0,须在 2026-09-14 周一后重测);qlib-main/mlruns 同受益;historical_runs 不含任何 code_diff.txt(find … -name code_diff.txt | wc -l → 0),不受影响,修复后将成为第一大增长源",
+    "weekend_total": "11.29 GiB/天(均值,仅 2 个样本:09-05 6.16 与 09-06 16.43;后者几乎全部来自 prediction_market_macro 一次性生成的 14.83 GiB synth worlds,不是周末常态)",
+    "machine_measured_at": "2026-09-12 16:10:01"
+  },
+  "unverified": [
+    "【量①:外部拉取字节数】全部八个维度一律留空,无一处用估计值冒充实测 —— 这是本批报告最应保留的纪律。代码里无任何 content-length / bytes_fetched 计数器(已 grep 核实 poller.py / strips.py / refdata/index.py / prediction_market_macro/ingest/*.py),macOS 也无按进程的历史网络字节计数(nettop/lsof 只给瞬时值)。可测的下界线索:price_data 内有几棵每日从外部 API 刷新的 parquet 树(index_proxy/raw 151 MB、kalshi/perps/candles_1m 81 MB、kalshi/refdata 700 KB、kalshi/funding 200 KB,最新 mtime 全为 2026-09-12 12:31~12:32 同一批拉取),可给量①一个下界",
+    "【strips 15M 调度细节】'atm_window 0.15;每序列 2 个 horizon' —— ps 命令行只有 --interval 90 --series,无任何命令支撑该值,可能是代码默认但未核实",
+    "【配置 interval 等于实际采样率】90s/10s/5s/2s 全部读自 ps 命令行,未测到达间隔。唯一偶然佐证:KXBTC15M 的 markets/2026-09-11 文件中 453 条 recv_ts 跨 11.3 h ≈ 90 秒一条,仅此一条序列,未推广",
+    "【event_strips 占录制链 ~95%】无命令产出 95%;实测为未压缩 88.86% / 压缩 71.2%。已按实测值改写",
+    "【perps/ws demo ~40 files/day 与 poller 46 files/day】前者是 ACTIVE_PERPS_SNAPSHOT(13) × WS_PERP_CHANNELS(3) 的常量相乘(实际磁盘上 ticker/ 与 trade/ 目录根本不存在,只有 orderbook_delta,14 文件/天);后者是目录数算术(09-06..09-09 实为 44,仅 09-10 恰为 46)。两者均为算术冒充实测,已清空改用实测值",
+    "【OKX 强平 ≈330 files/日】7 日真值 257/291/466/348/397/388/340,均值 355.3、中位 348;'≈330' 既非均值也非中位。另 '134 files on 2026-09-12' 是仅过了约 76% 的部分日计数,被当成代表值",
+    "【poll markets 20 个/日】09-04..09-09 全为 18,09-10 起才为 20(KXGOLDPERP/KXSILVERPERP 于 09-09 上市)",
+    "【margin_markets 每份 23 字段】实为 25 字段(市场数 23 正确);其 '中位 26,940 B' 用的是 09-05..09-12 窗口,与声明的 09-04 起窗口不符(该窗口真值 25,782)",
+    "【~/macro_db_backup 压缩日增中位 1,258,604 B】该值是九个 delta 中的**最大值**,真中位 470,125 B/天。唯一实测的整库净增中位是未压缩口径 2,990,080 B/天",
+    "【macro.db 44 张表】实为 46 张(45 张排除 sqlite_sequence);缺 features(0 行)、fills(51 行)、cleveland_nowcast_meta(1 行)",
+    "【macro 逐表 daily_bytes】全部为 rows/day × bytes/row 推导,上游已明确标注 DERIVED, NOT MEASURED 并给出 ±30%;唯一可视为实测的是整库净增 2,990,080 B/天。逐表字节不可用只读手段分离",
+    "【prediction_market_macro data/ 09-07..09-12 ≈2 文件/天】09-09 实为 73 文件 / 13,747,010 B(opsfix_backup 内的 frontend_dist 树,copy 保留了 birthtime);08-30 亦有 309,835,398 B / 12 文件的未提及批次",
+    "【pjm_daily '09-03..09-12 每日 3 行'】09-03 实为 0 行,稳定区间是 09-04..09-12 共 9 天",
+    "【sector_etfs eps_history.json 55 symbols】实为 111 symbols(symbol_meta 113)",
+    "【宏观聚类 daily_files 4/8/8】实为 3/6/6(macro_clusters_build_meta.json 230 B 从不做 .bak);且 macro_clusters.py:146 用 shutil.copy2,每份 .bak 是真实的第二次物理写入,真实日落盘量约为报出值的 2 倍(SSRS ≈82 KB / AISS ≈110 KB / AEUS ≈116 KB)",
+    "【code_diff 团块占 mlruns/2 09-10 的 99.98%】实为 99.9575%(928 × 7,337,614 / 6,812,201,026)",
+    "【QC reconcile 日增中位 19,464 B】六日排序中位为 18,941 B;任何日子集都复现不出 19,464",
+    "【API-Football 137,069 records/day】该数字在 api_call 表中任何一天都不存在(声明窗口内最大 116,839,全表最大为 2026-08-29 的 901,304),亦不在其自己的 evidence 表中 —— 唯一完全无法溯源的数字,已清空",
+    "【API-Football '2,392–6,500 calls/day 覆盖 09-01..09-12'】09-01 = 815、09-02 = 432,均低于所声明的下限;真实范围 432–6,500",
+    "【find dfm/football/production_runs -maxdepth 1 -type d | wc -l → 49】该命令在本机返回 1,永远不可能返回 49;该目录是 49 个平铺文件、零子目录。'49 run dirs' 的表述与其引用的命令均不成立(数字 49 本身正确,指的是文件数)",
+    "【microfootball 25 个 matchup 目录】实为 24(原命令漏了 -mindepth 1,把根目录也数了进去);批次中位文件数实为 63 而非 70(100.8 MB 的字节中位正确)",
+    "【一批被当成中位数的'某一天的值'】fixtures_lineups 53 → 真中位 17.5;inplay 日志 686,492 B → 1,025,817 B(且其 range 下限 154,209 漏掉了真实最小值 97,441);ClubElo 2,698,349 B → 2,699,699;fixtures 876 → 883;fixtures_statistics 868 → 888;fixtures_players 759 → 719.5;priors 60 → 61;weekly 快照 210,014 → 210,041.5;event_strips 中位 80,196,941 → 80,197,081.5;AEUS dram_spot_proxy 2,441 → 2,440",
+    "【soccer.db 60 张表 / wc.db 37 张表】实为 64 张用户表(65 含 sqlite_sequence)与 36 张;且 prediction_market/data/wc.db-wal **根本不存在**(所见的 0 字节 wc.db-wal 是 prediction_market_soccer/data/ 下的副本)",
+    "【objects_v1 '只有 2 天' 与 'raw_index 61,202 行索引它'】实为 3 天(09-10 已有 93 文件 / 1,710,743 B);raw_index 中仅 6,685 行指向 objects_v1,54,568 行指向已冻结的 legacy 目录",
+    "【price_tick '15 天 2026-08-23 起、321–2,160 行/天'】实为 24 天、2026-08-14 起、168–2,160 行/天、1–5 场/天(原值是把 LIMIT 15 当成了序列长度)",
+    "【瞬时速率】objects_v1 +5 文件/180s、public_quote_captures +63/180s、soccer.db 267 KB/s(≈23 GB/天)—— 独立 90 秒重测得 +72/180s、+32/180s、427 KB/s(≈37.8 GB/天),三者分别差 14×/2×/1.6×,均为重建期的突发瞬时值,不可复现",
+    "【prediction_market '12 天完全平坦、日日差 <0.1%'】09-01(163,810 B/100)、09-02(152,614 B/99)、09-06(542,685 B/147)三天不成立,而其 evidence 恰好只引 09-03..09-12。日增量级结论(≈0)本身成立",
+    "【WC fixtures '严格 1 文件/天'】09-06 是 49 个 fixtures 文件的突发日",
+    "【mlruns '每工作日恒 2,784 文件' / historical_runs '每工作日 ~2,000–2,050 文件'】前者漏了 09-06(120 文件)与 09-07(333 文件);后者漏了 09-07 的**整日零文件**与 09-08 的 982",
+    "【crypto_data_backup 平均间隔 ~4.5 天 → 0.87 GiB/日摊销】五个归档间隔为 5/15/2/7 天,均值 7.25 天 → 摊销 0.54 GiB/日,原值高估约 60%",
+    "【caveat『NOTHING IS BEING RECLAIMED，保留期作业处于 DRY-RUN』】证伪:conductor/logs/ 下 2026-09-11 当天有 9 份清理日志,其中 19:57-20:00 的两份是真实执行并删除约 183 GB(clean_mlruns 28,902 run / 113.8 GB;clean_wf_windows 333 个 window / 69.6 GB),以外置盘备份校验为闸、截止 2026-08-30 13:00。被引用的 23:18 DRY-RUN 中止是另一次独立调用。缓解事实:截止时刻早于测量窗口,故日增数字本身不受影响,但所有 current_size 均为清理后快照",
+    "【caveat『mtime≠birthtime 的就地重写已扫全』】证伪:in-scope 漏项包括 price_data/earnings_cache.json 25,893,543 B、dividends_cache.json 6,573,294、index.json 2,678,663、splits_cache.json 474,988、pipeline_state/logs/pre_pipeline_current.log 711,070、qlib-main/semiconductor_strategy/logs/cron_aiss_daily.log 756,820、三个 qlib 策略各自的 batch_equity_cache{,_v1,_v2}.parquet,以及整目录逐轮重写的 price_data/event_risk(11,851,190 B / 112 文件)、elec_strategy(7,280,001/76)、semi_strategy(3,948,535/39)、sector_etfs(2,296,750/16)—— 约 25 MB/轮未计入",
+    "【caveat『<500 MB 的目录未扫,可能漏几百 MB/天』】过度保守一个数量级:09-11 在 11 个已列目录之外的残差仅 10,688,212 B / 610 文件,09-10 约 6 MB。真正的空洞不在小目录,而在一次性大批量写入(见 unattributed_dirs)",
+    "【消费者归因错误(均已按 grep 实测更正)】PnLReport.py 对 walk_forward/historical_runs 命中 0(真消费者含 RegimeDetector.py:1452/1454);UpdateStrategyPerformance.py 对三个 qlib 策略目录命中 0(它读共享 account_history/ 与 trading_signals/);ff_factors.parquet 全仓唯一读者是 RiskManager.py:939(SSRS 不是消费者);crypto_common/loader.py 不含 event_strips 路径;price_data/macro/fomc 的唯一读者是 VIXForecast.py:51 而非事件风险层,且无任何代码刷新它;milestone_snapshot.xg_home/xg_away 在 2,768 行中 100% NULL(xG 并未落到该表);controller/output 的 2.7 MB/天是 controller 自身估值产物,不可归给 SEC",
+    "【altitude_home_log_edge『无调用点』】证伪:model/match_pricing.py:66-67 确有真实调用(venue_climate.py:44 的 docstring 已过时),只是被 venue_climate_weight=0.0 关闭。生产上惰性的结论成立,理由不成立",
+    "【WC predictionrefresh『还有别的触发路径在烧配额』】证伪:文件名里的 1030 是 UTC,本地 mtime 06:30 正是 com.someopark.predictionrefresh.plist 的 Hour=6/Minute=30;launchctl list 中 PID '-' 只表示此刻未运行(日历型作业的正常状态),第二列 0 是上次干净退出码。配额空烧(已完赛仍每日 2 次调用)的结论本身成立",
+    "【APFS 克隆 / 物理块共享】根 mlruns 的克隆假设已被**证伪**(两份 md5 相同的 7,688,322 B 文件物理 devoffset 分别为 57,026,187,264 与 829,749,239,808 —— 是真实重复字节);但另外三处克隆问题只读手段无法判定,须留空:两份 multimarket.db(大小、块数相同、inode 不同,与两份独立拷贝无法区分)、book_candidates 的 6 个 ~6.3 GB DB、prediction_market_macro 的 644 MB opsfix 树与重复 PDF 归档(macOS cp 在 APFS 上默认克隆)。清理日志里的『释放约 113.8 GB』是脚本自身的逻辑大小算术,不是实测物理回收",
+    "【mlflow.db 日增 ~19.3 / 7.2 / 8.4 MB/天】无带日期的快照可差分,系 总字节/总行数 × 新增行数 推导,上游三处标注 DERIVED,不作为实测",
+    "【bellwether_earnings.json / dividends_cache / ff_factors『每日重写』】均为单文件就地覆写,文件系统只保留一个 mtime,重复性无法用任何只读方法复现;可实测的只有『至少在某时刻被写过』",
+    "【price_data/eia『每日拉取』】文件系统在整个近期窗口内只显示一次写入事件(2026-09-12 05:01),与其自身 measured_days『09-08..09-11 无写入』矛盾;可实测的只有『2026-09-12 05:01 至少拉取过一次』",
+    "【mlruns 的消费者『mlflow UI』及备份/soccer/VP/前端行的软性消费者字段】无任何 grep 能产出 mlruns 树的读取方;全仓唯一触碰 mlruns 的代码是 crypto_trading/ops/disk_monitor.py,而它只是把它当磁盘元凶来测量,不是消费",
+    "【config/leagues.py 13 个启用赛事 vs 计划文档的『12 项赛事单一标准』】grep -c 'enabled=True' → 13、'enabled=False' → 20;按项目记忆 TRANSFORM_PLAN 是单一真值,二者确实差一项,属真实开放问题而非测量误差",
+    "【MONGO_VEC_URI / someopark_vec 向量库】db/connection.py:6/:28 有 DB_VEC = 'someopark_vec',未找到证据表明它喂六策略,但也从未被排除;未做探测(需网络)"
+  ],
+  "unattributed_dirs": [
+    "/Users/xuling/code/someopark-test/crypto_trading/trading_signals/reports/crypto_review_20260910 — 1,420,251,345 B / 1,481 文件,1,480 个全部出生于 2026-09-10 单日;不在 disk_monitor.py:43 的 WATCH_DIR(= price_data)内,crypto_data_gb 永远看不见它",
+    "/Users/xuling/code/someopark-test/prediction_market_soccer/data/.refresh-stage-*(4 个隐藏孤儿暂存目录)— 619,824,507 B / 358 文件;ops/export_stage.py:26 用 tempfile.mkdtemp(prefix='.refresh-stage-', dir=self.data) 且失败路径不清理,hddjalqo 一个就 483,860,844 B(output 243 MB + frontend_data 238 MB),birth=mtime=2026-09-10 23:54。**唯一一处边增长边无人知晓的泄漏**",
+    "/Users/xuling/code/someopark-test/dfm/data_cache — 313,309,733 B / 730 个 JSON;第三条未登记的 Polygon grouped bars 链路(dfm/run_real_data.py:59),与 VP parquet 版是同一批数据的第二份副本",
+    "/Users/xuling/code/someopark-test/VolumePrediction/outputs/walkforward — 348,777,517 B / 105 文件,出生于 2026-08-01..08-04;VP 章节盘了 panel / registry / adapters / raw / financials 却独漏此目录",
+    "/Users/xuling/code/someopark-test/qlib-main/semiconductor_strategy/logs — 401,651,815 B / 307 文件;单个 aiss_daily_backtest_*.log 最大 7,222,169 B,每交易日新增约 6.9 MB。日增被计入了 AISS 非 mlruns 小计,但 current_size 从未被任何维度报告",
+    "/Users/xuling/code/someopark-test/prediction_market_soccer/data/soccer.db-wal — 371,224,392 B 活跃 WAL(soccer.db 本体 10,094,702,592 B,出生 2026-08-26,自出生起平均 ≈0.55 GiB/天就地增长,birthtime 口径完全不可见)",
+    "/Users/xuling/code/someopark-test/qlib-main/sector_rotation/backtest_results — 758 MiB,其中仅 4 个 macro cluster 文件(41,235 B = 0.005%)被盘点",
+    "/Users/xuling/code/someopark-test/qlib-main/semiconductor_strategy/mlruns — 659,107,840 B(单文件 mlflow.db)与 /Users/xuling/code/someopark-test/qlib-main/electric_utilities_strategy/mlruns — 97,865,728 B;只以「DB size」出现过,从未作为目录盘点",
+    "/Users/xuling/code/someopark-test/prediction_market_macro/data/macro_backup_20260811_prereset.db — 171,061,248 B,mtime 2026-08-11;data/ 下第二大单文件,无任何保留期机制触及",
+    "/Users/xuling/code/someopark-test/prediction_market_macro/data/output/opsfix_backup_20260910T061439Z 与 opsfix_recheck_backup_20260910T070026Z — 合计 644 MB,其中 628 MB 是两份各 314,441,728 B 的 macro.db 整库副本(frontend_dist 各仅 16M);被描述为「mixed — plists / frontend_dist / logs / JSON」,两份整库从未提及",
+    "/Users/xuling/code/someopark-test/prediction_market_macro/data/synth_wf — 292 MiB,只以「snapshot.db ×2」间接出现",
+    "/Users/xuling/code/someopark-test/crypto_trading/logs — 185 MB,约 11 MB/天(strips.log 119,448,944 B / 67.54 d = 1.8 MB/天、w8_observer.log 13,187,885 B / 1.89 d = 7.0 MB/天、watch.log 0.9、strips15m.log 0.6、recorder_demo.log 0.2);既不在 disk_monitor 的 WATCH_DIR 内,也不在 backup_data 的 IRREPLACEABLE 内",
+    "/Users/xuling/code/someopark-test/crypto_trading/trading_signals(整体)— 1.5 GB,活跃写入(w8_complete_set_state.json 988,914 B、w5_knockdown_state.json 462,149 B,mtime 2026-09-12);crypto 侧第二大磁盘占用者",
+    "/Users/xuling/code/someopark-test/someo-park-investment-management/dist — 37 MiB,与 public/data/soccer 逐文件重复(milestone_marks.json 15.9 MB 各一份)",
+    "/Users/xuling/code/someopark-test/historical_runs/vix_chronos2 — 两个 477,930,472 B 的 model.safetensors(ft_ckpt_full 与 ft_ckpt_fomc),是最明显的重复候选,而 historical_runs(99G,修复后的第一大增长源)从未做过组成拆解或重复探测",
+    "/Users/xuling/code/someopark-test/VolumePrediction/outputs/registry/artifacts — 2026-09-09 单日 819,636,798 B / 6 文件(rnn_prod_20260904/training_panel.parquet 单文件 818,003,187 B),占当日全仓 5.16%;两个维度报过其 current_size 却无人指出是单日写入",
+    "/Users/xuling/code/someopark-test/dfm/football/production_runs — 2026-09-12 单日新增 138,401,100 B / 49 文件;此前被当作 132 MB 的静态目录(且其内容是 49 个平铺文件、零子目录)",
+    "/Users/xuling/code/someopark-test/historical_runs/vix_chronos2 之外的 historical_runs 非六策略内容 — historical_runs 不是六策略专属,任何按该目录做的 roll-up 都不安全",
+    "/Users/xuling/code/someopark-test/pipeline_state/logs/pre_pipeline_current.log — 711,070 B,227 个 PRE-PIPELINE START 标记,mtime 2026-09-11 23:06;一条独立的第二 pipeline 日志,且首行记录真实故障「pre_pipeline.sh: line 20: conda: command not found」,全程无人提及",
+    "仓外同卷(runway 分母的一部分,声明范围为「仓 + ~/crypto_data_backup」而被排除):~/macro_db_backup 1.2G 且严格每日 +1 文件(41,965,524 → 56,085,040 B,≈0.044 GiB/天,是本次唯一 12/12 完美日频的来源);~/.codex 2.0G(09-07 单日 951,106,995 B / 5,520 文件,disk_monitor 已列为 culprit);~/.openclaw 15G(logs_2.sqlite 7,685,681,152 B,born 2026-06-01、mtime 2026-09-12,持续就地增长)"
+  ],
+  "script_defects_found_and_fixed": [
+    {
+      "script": "conductor/backup_codex_tmp_to_external.sh",
+      "defect": "rsync 退出码 23(/private/tmp 上因 883 个 Unix 套接字恒定发生)走 continue,导致 tmp 分支的全部校验被跳过——2026-09-11 那次运行对 tmp 一次校验都没做。",
+      "impact": "数据本身完好(事后人工另跑命令验证:文件数一致、MD5 300/300 通过),但脚本的『失败』结论与『未校验』状态被混为一谈。",
+      "fixed_at": "2026-09-12",
+      "fix": "23 与 24 同等对待:只记录、继续校验。"
+    },
+    {
+      "script": "conductor/backup_codex_tmp_to_external.sh + conductor/backup_gaps_to_external.sh",
+      "defect": "MD5 抽样用 `awk NR%7==1 | head -N`,只覆盖 find 遍历序前约 7N 个文件的头部样本,尾部目录永远抽不到;而 backup_to_external / backup_mlruns 用`sort -R` 是真随机。四组『平行』脚本的校验强度并不平行。",
+      "impact": "抽样代表性不足,尾部损坏可能漏检。",
+      "fixed_at": "2026-09-12",
+      "fix": "两个脚本统一改为 `sort -R | head -N`,四脚本口径一致。"
+    },
+    {
+      "script": "conductor/backup_gaps_to_external.sh",
+      "defect": "脚本注释声称『盘上不需要也不应该有 -wal/-shm』,但实际盘上 soccer 目录出现了这两类文件——成因是脚本每做完一个 .backup 就在**目标盘上**跑 PRAGMA integrity_check,把 -wal/-shm 又建了回去。",
+      "impact": "仅文档与实际不符;sqlite 快照本身仍事务一致(integrity_check 全部 ok)。",
+      "fixed_at": "",
+      "fix": "待办:要么校验后清理目标盘的 -wal/-shm(需谨慎,涉及写外置盘),要么改注释说明。"
+    },
+    {
+      "script": "conductor/clean_old_wf_windows.sh + conductor/clean_old_mlruns.sh",
+      "defect": "逐项备份校验用『文件数/字节数必须完全相等』。备份是只增不减的归档,本机清过 charts 后必然成为备份的真子集,于是安全的窗口被误判为『备份不完整』而永远删不掉——清得越多,能删的越少。",
+      "impact": "2026-09-11 有 18 个 window 被误跳过(实测本机 75/81 文件 vs 备份 219/276,逐文件审计确认 153/153 窗口备份完整、0 缺失、0 尺寸不符、765 个 MD5 全过)。",
+      "fixed_at": "2026-09-11",
+      "fix": "改为 ⊇ 语义:备份的文件数与字节数不得少于本机。"
+    }
+  ],
+  "critic_notes": {
+    "backup_cleanup_audit": "# 完整性批评 —— 六维度审计的遗漏与矛盾\n\n审计时点:2026-09-12 14:30–14:40 EDT。全程只读(ls/find/stat/grep/sed/cat/du/df/sqlite3 mode=ro/launchctl print/git show)。\n\n---\n\n## 一、脚本清单核对:conductor/ 下有 20 个 .sh + 2 个 .py\n\n`ls -la /Users/xuling/code/someopark-test/conductor/*.sh` 实测 20 个。备份/清理家族 9 个(backup_to_external / backup_mlruns_to_external / backup_codex_tmp_to_external / backup_gaps_to_external / clean_old_mlruns / clean_old_mlruns_weekly / clean_old_wf_windows / clean_codex_tmp_local / clean_wf_charts)**全部被至少一个维度覆盖到了**。但六个维度把范围钉死在\"文件名含 backup/clean\",于是漏掉了三处真实的删除/保留机制:\n\n### 1.1 pipeline_runner.sh 内置日志轮转 —— 第 10 个删除器,且是**自动**的(无人提及)\n\n```\nconductor/pipeline_runner.sh:16-25\nLOG_MAX_BYTES=$((200 * 1024 * 1024))\n... gzip -c \"$LOGFILE\" > \"$PIPEDIR/logs/archive/pipeline_<ts>.log.gz\"\n    : > \"$LOGFILE\"                       # 原地截断,保 inode\n    ls -t \"$PIPEDIR/logs/archive\"/pipeline_*.log.gz | tail -n +8 | xargs -0 rm -f\n```\n\n- 它由 openclaw `someopark-daily-pipeline`(enabled=1)每天调用,**比 mlruns.weeklyclean 更早、更频繁地自动删除数据**。维度 3 的结论「9 个备份/清理脚本里只有 1 个是自动的」和维度 2 的「除 com.someopark.mlruns.weeklyclean 外无任何自动清理入口」,都因为漏掉它而不成立。\n- 现状:`pipeline_state/logs/archive/` 只有 2 个归档(pipeline_20260818_195900.log.gz 50.9 MB、pipeline_20260903_203145.log.gz 14.6 MB),保留 7 份的 `rm -f` **尚未触发过**,所以目前无损失。`pipeline_current.log` 现 111,979,171 B(09-12 11:20),未达 200 MB 阈值。\n- **但 `pipeline_state/` 不在外置盘的 7 棵镜像树里**(实测 ext 顶层只有 account_history / historical_runs / mlruns / prediction_market_soccer / price_data / qlib-main / someo-park-investment-management)。这两个 gz 是唯一副本,而删除它们的脚本每天都在跑。\n\n### 1.2 restore_pre_pipeline.sh —— 有 `rm -f`,零日志\n\n```\nconductor/restore_pre_pipeline.sh:36-37\nrm -f \"$REPO/pair_universe_mrpt.json\"\nrm -f \"$REPO/pair_universe_mtfs.json\"\n```\n`grep -c 'logs/' restore_pre_pipeline.sh` → 0。无任何执行留痕。\n\n### 1.3 daily_pipeline_launch_nohup.py / daily_pipeline_stop.py\n\n含 `shutil.rmtree` / `.unlink()`(锁目录与状态文件,风险低),但它们属于 conductor/ 的删除代码,没有任何维度做过静态审阅。\n\n### 1.4 仓库内其他备份脚本 —— 只有部分维度提到,且**关键调用点没人找到**\n\n`find . -name '*backup*' -o -name '*clean*'` 限 .sh/.py,全仓命中 12 个,conductor 之外 3 个:\n- `crypto_trading/ops/backup_data.py`(维度 1/6 提过)\n- `prediction_market_macro/ops/backup_db.py`(维度 1/3/6 提过)\n- `prediction_market_macro/tests/test_backup_db.py`(**无人提及**)\n\n维度 1 称 backup_data.py 是\"上游生产者\"但没找到调用者;实测在 `crypto_trading/pipeline.sh:70`:\n```\n\"${PY[@]}\" -m crypto_trading.ops.backup_data --keep 5 || true   # protect recorded data FIRST\n```\n即 crypto 备份+prune 的入口是 pipeline.sh,不是裸调 .py。\n\n### 1.5 权限位:4 个脚本不可执行(无人注意)\n\n`backup_codex_tmp_to_external.sh`、`backup_gaps_to_external.sh`、`clean_codex_tmp_local.sh`、`clean_wf_charts.sh` 都是 `-rw-r--r--`,只能 `bash x.sh` 调用 —— 正好是这 4 个不能被 launchd 的 `Program`/`ProgramArguments` 直接拉起。这一条是\"为什么它们不可能被自动化\"的机械证据,比维度 3 的三源穷举更直接,无人给出。\n\n---\n\n## 二、日志类型核对:183 份日志 + 1 份 JSON\n\n`ls conductor/logs | wc -l` → 183(与维度 2 的 183 吻合)。前缀普查:\n\n| 前缀 | 份数 | 是否被审计 |\n|---|---|---|\n| bdc_daily | **71** | **无任何维度提及**(2026-06-15 23:27 → 2026-09-11 16:05) |\n| clean_mlruns | 16 | 已审(但份数被维度 4 说成 14) |\n| backup_external | 12 | 已审 |\n| clean_wf_windows | 9 | 已审 |\n| backup_mlruns | 5 | 已审 |\n| backup_gaps | 4 | 已审 |\n| backup_codex_tmp | 3 | 已审 |\n| clean_codex_tmp | 2 | 已审 |\n| runtime_sample | 2 | **无人提及**(最后 2026-08-13 20:43) |\n| recovery_ssrs_aiss_20260827 | 2 | **无人提及**(其中 `.launch.log` 为 0 字节) |\n| launchd_vp_* | 5 | **无人提及**(monthly/quarterly/refreeze/semiannual/shadowdaily) |\n| vp_shadow / vp_wf_* / vp_refreeze | 52 | **无人提及** |\n| backup_verification_*.json | 1(非 .log) | 维度 1/3/5 引用,但**没人追问它由什么产生** |\n\n结论:维度 2 把\"日志清单完整\"当结论下了,但它只列了 clean/backup 三类共 27 份,对占全目录 39% 的 bdc_daily 一字未提。这些非备份日志不改变备份结论,但\"清单完整\"这个断言本身没有被支撑。\n\n---\n\n## 三、跨维度矛盾(逐条实测裁定)\n\n### A. clean_old_mlruns 的日志数与正式执行次数 —— 维度 4 错\n\n| 维度 4 | 「14 份日志中只有 1 次正式执行:2026-09-11 19:57」 |\n|---|---|\n| 维度 2 / 3 / 6 | 16 份日志,3 次正式 |\n| **实测** | **16 份日志,3 次正式** |\n\n逐份提取「模式:」行的结果:无 DRY-RUN 行且带 ★ 的恰好 3 份 —— 20260825_102655(cutoff 2026-06-29 13:00:55,删 48449 run / 7.8 GB)、20260825_230536(cutoff 2026-07-30 13:00:36,删 26328 / 68.1 GB)、20260911_195721(cutoff 2026-08-30 13:00:21,删 28902 / 113.8 GB)。\n\n**后果**:维度 4 据此推出「mlruns 起于 08-31、qlib-main/mlruns 起于 08-30 的**原因**是那一次清理」。实际是三次累积(06-29 → 07-30 → 08-30 三个截止日逐次推进),单次归因是错的。\n\n### B. clean_wf_charts.sh 到底跑没跑过 —— 四个维度四种说法\n\n| 维度 6 | 「从未执行过(干跑也没跑过)」 |\n|---|---|\n| 维度 5 | 「从未(在有日志的路径上)跑过」 |\n| 维度 2 | 至少 15 次正式执行,2026-06-17 → 2026-09-07 |\n| 维度 3 | 最后一次真跑 = 2026-09-11 19:21:45 |\n| 维度 4 | charts 被删是 18 个窗口\"假阴性\"的成因 |\n\n实测 `git log -- conductor/clean_wf_charts.sh`:唯一 commit **13791a8 / 2026-06-17 19:19:25 / \"WF charts cleanup: 348 GB freed + frontend adapts to empty charts dirs\"**。维度 6 的「从未执行」被 git 直接证伪(且被维度 4 的 75 vs 219 文件数差证伪)。\n同时维度 2 与维度 3 **互相矛盾**:同一批 09-11 19:21 的 mtime 聚簇,维度 2 说\"署名无法确证\",维度 3 直接写成 corrected 事实。\n\n### C. openclaw cron_jobs 数量 —— 维度 2 错\n\n维度 1/3/5 = 16;维度 2 = 17(还逐条列了 17 项)。\n实测 `sqlite3 ...?mode=ro \"select count(*) from cron_jobs\"` → **16**,逐条:aeus-daily / aeus-daily-backtest / aeus-weekly / aiss-daily / aiss-daily-backtest / aiss-weekly / altan-wix-bilingual-publisher / altan-wix-image-ready-backfill-2hr / private-credit-bdc-daily / restore-someopark-night-schedules-20260912(enabled=0) / sector-rotation-daily / sector-rotation-daily-backtest / sector-rotation-weekly / someopark-daily-pipeline / someopark-pipeline-watchdog / watch-altan-ergun。无一涉及备份/清理(但见 §1.1:someopark-daily-pipeline 间接触发日志删除)。\n\n### D. ~/macro_db_backup —— 维度 1 的条目数错,维度 6 的\"断档\"结论也错\n\n| 维度 1 | 「1.2 GB,**27 个条目**,最新 2026-09-12 05:14」 |\n|---|---|\n| 维度 6 | 「**25 个文件**,08-20→08-28 **9 天空洞**,滚动备份本身也是断的」 |\n| **实测** | **25 个条目**;gz 序列 = 20260819 + 20260829…20260912 |\n\n维度 6 的数字对,**但结论错**。读 `prediction_market_macro/ops/backup_db.py`:\n```\nRETENTION — deliberately asymmetric:\n  * every snapshot from the last KEEP_DAILY days      (KEEP_DAILY = 14)\n  * the FIRST snapshot of every calendar month, forever\n```\n`prune()` 第 63-79 行实现:`day >= cutoff or first_of_month[...] == p.name` 才保留。09-12 减 14 天 = **08-29**,恰为最老日备;**08-19 是八月的\"月首\"永久留存**。08-20…08-28 是**按设计被 prune 掉的**,不是备份失败。维度 6 把\"加重缺口 #1 严重性\"的结论建立在误读上。\n(缺口本身仍成立:`/Volumes/Someo Park PRO-BLADE/macro_db_backup` 实测 **ABSENT**。)\n\n### E. 外置盘 .codex 文件数 130003 vs 130143 —— 两边都对,是**计数口径**分歧\n\n| 维度 1 | 130003(与备份日志一致) |\n|---|---|\n| 维度 5 | 130143(os.walk) |\n| **实测** | `find -type f` = **130003**;`find -type f -o -type l` = **130144**;符号链接 **141** 个 |\n\n同一成因命中第二处:`.codex/backups/someopark-test` 维度 1 报 109686、维度 5 报 109796;实测 `find -type f` = **109686**,符号链接 **111** 个 → 109686+111 = 109797(维度 5 的 109796 还差 1,活动目录竞态或断链)。\n\n**这是本次复核最需要固化的方法学结论**:维度 5 全篇 `python os.walk` 的文件数**系统性包含符号链接**,而所有备份脚本日志与维度 1/6 的 `find -type f` **不含**。两份报告的数字直接并列会显示为矛盾,实际是同一事实的两种口径。凡引用文件数必须注明用的哪一种。\n\n### F. ~/Downloads 条目数 —— 口径差\n\n维度 5 = 25;维度 6 = 28。实测 `ls -1` = 25,`ls -1A` = **28**(3 个隐藏项)。非错误,但并列呈现即为矛盾。\n\n### G. clean_old_mlruns 的 last_dry_run —— 判据分歧,维度 3 更自洽\n\n维度 2/5/6 填 2026-09-11 23:18;维度 3 主张应为 **2026-09-11 19:36:19**。\n实测:23:18:12 那份以 `ERROR: 为避免与写入任务竞争，已中止` 结束(cutoff 2026-08-28 13:00:12);19:36:19 那份以 `[DRY-RUN] 未删除任何文件` 正常收尾(cutoff 2026-09-10 13:00:19)。维度 2/5/6 自己立了\"ERROR 中止不算有效运行\"的判据却没执行它。\n附:09-11 当晚共 4 次 DRY-RUN,cutoff 依次 08-14 / 08-31 / 09-07 / 09-10(19:34:22 / 19:35:06 / 19:35:42 / 19:36:19),然后 19:57 选 08-30 真删 —— 这是**cutoff 调参扫描**,只有维度 3/5 提到。\n\n### H. 活动目录的实时漂移(三处数字互不相同,都无错)\n\n- 本机 ~/.codex:维度 1 = 7821;实测 14:35 = **7815**\n- /private/tmp:原审计 28120(维度 5 转述)/ 28118(维度 6 转述)/ 维度 5 实测 28160 / 维度 6 实测 28163 —— 该目录正是本次审计自己的 scratchpad,任何精确值都无意义\n- 外置盘 historical_runs 最新文件:维度 1 = `...180336.xlsx`,维度 5 = `...180348.xlsx`(同一分钟不同文件,排序键不同)\n\n### I. 一个没人发现的**跨维度强一致性**(正面)\n\n三次 wf 清理删除总量 789 + 294 + 333 = **1416** 个 window(维度 2/4/6)。\n维度 5 独立测得 ONLY_ON_EXT = 756(walk_forward) + 660(mtfs) = **1416**。\n逐位相等 —— 这是\"外置盘保住了所有被删窗口\"的最硬佐证,但两个数字分散在两个维度里,没有任何一处把它们放在一起。\n\n---\n\n## 四、\"声称验证过但没有命令支撑\"的断言\n\n1. **维度 1 missed §1**:命令写作 `grep -c '/\\.codex/backups/<dir>/' 盘上文件清单` —— `<dir>` 是占位符,不是可执行命令。其结论(四目录逐个吻合)恰好与维度 5 的数字冲突(见 §E)。\n\n2. **维度 3 的 clean_wf_charts「最后真跑 = 2026-09-11 19:21:45」**:证据只是 90 个 charts 目录的 mtime 聚簇,**不能证明是哪个进程写的**。维度 2 用同一批证据明确写\"署名无法确证\"并去查了会话记录与 shell history(皆无命中)。维度 3 把推断升格成 corrected 的事实。\n\n3. **维度 2 §1 用 commit message \"348 GB freed\" 当作首次清理释放量的证据**:commit message 是人写的文本,不是执行记录,无日志可对。\n\n4. **维度 6 check 5 自承\"没做 `tar -tzf` 抽验\"**,却仍在缺口 #2 把 ≈11.6 GB 定性为\"已受保护\"。同一份报告里已出现两处 MD5 抽样失败,这与它自己立的标准不一致。\n\n5. **维度 6「clean_wf_charts.sh 从未执行过(干跑也没跑过)」**:命令是 `ls logs/ | grep -i chart`,只能证明无日志,不能证明未执行 —— 结论超出证据,且已被 git 与文件系统证伪。\n\n6. **backup_verification JSON 的来源无人追问**。维度 1/3/5 都把它当作最强正面证据(sha256 73810 文件 / 99.4 GB / 0 失败)。实测 `grep -rl \"backup_verification\" --include=*.sh --include=*.py .` → **空**。仓库里没有任何脚本产生它 —— 这是一次不可复现的一次性产物,不能当作\"备份可信度的常设证据\",更不会随时间自动重跑。\n\n7. **维度 5 的「du 与 df 相符」被自己 corrected 为差 79 GiB 未归属**,但 corrected 后仍保留「外置盘无 APFS 克隆虚高」的结论,而该结论同样无直接证据(未对外置盘做克隆检查)。方向性判断(df > du 是欠计)成立,但不构成\"已验证\"。\n\n8. **维度 2「clean_codex_tmp_local.sh 的 /private/tmp 分支从未启用」**:证据只是两份日志头部的「/private/tmp: 不动（需 --tmp 开启）」,没有排查别处是否存在带 `--tmp` 的调用记录。\n\n---\n\n## 五、本该有日志却没有日志的脚本\n\n| 脚本 | 日志机制 | 判读 |\n|---|---|---|\n| `conductor/clean_wf_charts.sh` | **完全没有**(`grep -c 'logs/'` = 0) | 已执行 15+ 次却零留痕。唯一可取证途径是目录 mtime 签名与会话记录,且**署名不可确证**。唯一的 commit 13791a8 说它单次释放 348 GB —— 全系统删除量最大的脚本,却是唯一不写日志的。**这是最该修的一条。** |\n| `conductor/restore_pre_pipeline.sh` | **完全没有**(0 命中) | 含两条 `rm -f`,无执行记录 |\n| `conductor/pipeline_runner.sh` 的轮转删除 | **循环自证** | 删除动作只写进它正在截断/删除的那个日志文件里;且 `pipeline_state/` 不在外置盘 7 棵镜像树内 |\n| `conductor/logs/mlruns_weeklyclean_launchd.log` | 文件不存在 | 正确成因:`launchctl print` → **runs = 0**(维度 2/3 已正确解释) |\n| `conductor/vp_rnn_refreeze_monthly.sh` | 日志落在 `VolumePrediction/logs/rnn_refreeze_<date>.log` | conductor/logs 里有 `launchd_vp_refreeze.log` 却无 `vp_rnn_refreeze_*` 前缀 —— 同一家族日志分裂在两处,无人指出 |\n| `conductor/sample_runtime.sh` | 有(runtime_sample_*.log) | 仅 2 份,最后 2026-08-13 |\n| `conductor/pre_pipeline.sh` | 有,但落在 `pipeline_state/logs/pre_pipeline_current.log` | 同样不在外置盘 |\n| `backup_verification_*.json` | 有产物、**无产生脚本** | 见 §四.6 |\n\n---\n\n## 六、六个维度全体漏掉的一条**当前活跃故障**\n\n`crypto_trading/logs/diskmon_launchd.log`(维度 2 提到 diskmon 存在,称\"只监控不删\",但**没读它的输出**):\n\n```\n/Users/xuling/code/someopark-test/crypto_trading/pipeline.sh: line 59: exec: conda: not found\n2026-09-12 05:17:58,266 WARNING ALERT [warn] fastest grower: crypto_backups +9.4 GB/day\nERROR conda.cli.main_run:execute(124): `conda run python -m crypto_trading.ops.disk_monitor --quiet` failed.\n```\n\n`launchctl print gui/501/com.someopark.crypto.diskmon` → runs = 31, last exit code = 0。即 09-11 磁盘写满事故装的这半套治理(每 1800 秒)**在跑,但至少有一次路径失败,并且已经发出一条无人处理的告警**:crypto_backups 以 +9.4 GB/day 增长。考虑到 ~/crypto_data_backup 已占 17 GB 且外置盘只增不减,这条告警直接关系到下一次磁盘事故。\n\n---\n\n## 七、今日基线(供报告取数用,取数时点 2026-09-12 14:30–14:40 EDT)\n\n- `df -h /System/Volumes/Data` → 926Gi 总 / **700Gi 已用** / **174Gi 可用** / 81%\n- `df -h \"/Volumes/Someo Park PRO-BLADE\"` → 3.6Ti / 1.2Ti 已用 / 2.5Ti 可用 / 33%\n- 本机 historical_runs = **54041** 文件(09-11 备份日志记录的 78543 是**当时值**,被同晚 19:57 的清理削掉)\n- 本机 ~/.codex = **7815** 文件\n- 外置盘仓库镜像顶层 = **7 棵树**(本机仓库 103 个顶层条目)\n- home 根 `*backup*` 共 **12 项**,外置盘上只有 crypto_data_backup 一项;**ABSENT 的有**:macro_db_backup(1.2G)、soccer_db_backup(863M)、clubelo_web_backup(36M)、vp_repair_backup_20260826(6.0M)、pairs_ledger_backup(2.1M)、someopark-backups(1.7M)、aiss_pit_backup_20260827(248K)、ledger_backup_20260820_remark(80K),外加三个散落文件 macro_db_backup_before_releases_repair_20260804.db(61.6MB)、macro_db_backup_before_retire_20260805.db(92.6MB)、orphan_price_data_backup_20260819.tar.gz(1.5MB) —— **后四项无任何维度提及**\n- `com.someopark.mlruns.weeklyclean`:state = not running,**runs = 0**,首次自动触发为今天(周六)15:00,届时 cutoff = 2026-08-29 13:00(早于现存最早 run,本轮预计不删任何东西)\n- clean_wf_windows 09-11 那次「跳过不删」计数实测 **18** 行,18 个窗口至今仍在本机",
+    "data_consumption_audit": "已完成全仓实地复核。以下为纯文本报告。\n\n---\n\n# 完整性批评家 · 终审报告\n仓库 `/Users/xuling/code/someopark-test` · 复核时刻 2026-09-12 15:00 前后 · 全程只读\n\n---\n\n## 〇、基线(所有后续对账的锚)\n\n```\ndf -k /Users/xuling/code/someopark-test\n  → Used 736,815,104 KiB (702.7 GiB) / Available 179,500,920 KiB (171.2 GiB) / 81%\ndu -sm /Users/xuling/code/someopark-test  → 270,773 MiB (264.4 GiB)\n```\n\n全仓逐文件出生时间表(排除 `.git`,397,889 个文件)落在\n`…/scratchpad/birth.txt`,命令:\n\n```\nfind . -type f -not -path './.git/*' -exec stat -f \"%SB|%z|%N\" -t \"%Y-%m-%d\" {} +\n```\n\n全仓实际日增(birthtime,排除 .git):\n\n```\n2026-09-01   5,241,048,455    4.881 GiB    8,426 files\n2026-09-02   5,590,903,123    5.207 GiB   10,692\n2026-09-03  14,372,693,189   13.386 GiB    8,505\n2026-09-04  14,611,544,853   13.608 GiB   10,446\n2026-09-05   6,612,466,951    6.158 GiB   12,958\n2026-09-06  17,644,869,692   16.433 GiB    8,234\n2026-09-07   1,091,627,182    1.017 GiB    3,591\n2026-09-08   2,819,341,120    2.626 GiB    9,331\n2026-09-09  15,887,978,169   14.797 GiB   10,639\n2026-09-10  23,015,485,819   21.435 GiB   13,405\n2026-09-11  38,867,619,854   36.198 GiB   28,025\n2026-09-12  32,011,321,837   29.813 GiB   23,243   (部分日)\n```\n\n这与 daily_growth_ledger 的矩阵在扣掉仓外 `~/crypto_data_backup` 后逐日吻合\n(09-11:36.198 + 4.340 tarball = 40.54 ≈ 其 40.44;09-10:21.435 + 0 = 其 21.56,差 0.6%)。\n**那份矩阵本身是真的。问题不在总数,在归因。**\n\n---\n\n## 一、>200 MB 目录全扫描 —— 无归因清单\n\n命令:`du -x -m -d 4 . | awk '$1>200' | sort -rn`(完整输出已核对),\n逐条与八个维度的 items/evidence/missed 段比对。\n\n### A. 完全无任何 agent 归因(既不是条目,也不在 missed 段)\n\n| 目录 | 实测字节 / 文件数 | 性质 | 为什么重要 |\n|---|---|---|---|\n| `crypto_trading/trading_signals/reports/crypto_review_20260910/` | **1,420,251,345 B / 1,481 文件** | 1,480 个文件 **全部出生于 2026-09-10** | 单日 1.42 GB。altdata_crypto 的 missed 段只提了父目录 `trading_signals` 的 `du` 值 1.5G,没有任何维度把它作为条目、也没人发现它是**单日**产生的 |\n| `prediction_market_soccer/data/.refresh-stage-*`(4 个隐藏目录) | **619,824,507 B / 358 文件** | 孤儿暂存目录 | `ops/export_stage.py:26` 用 `tempfile.mkdtemp(prefix=\".refresh-stage-\", dir=self.data)`,**失败时不清理**。hddjalqo 一个就 483,860,844 B(output 243 MB + frontend_data 238 MB),birth=mtime=2026-09-10 23:54,躺了两天。八个维度全部用了 `find … -type f`,隐藏目录照样会被 find 命中——**只是没人往下看** |\n| `dfm/data_cache/` | **313,309,733 B / 730 文件** | Polygon grouped daily bars 的 **JSON 原始缓存** | 见第二节:这是第三条独立的 Polygon 拉取链路,盘点里一个字没有 |\n| `VolumePrediction/outputs/walkforward/` | **348,777,517 B / 105 文件** | 出生于 2026-08-01..08-04 | VP 章节盘了 panel / registry / adapters / raw / financials,唯独漏了这个 325 MiB 目录 |\n| `qlib-main/semiconductor_strategy/logs/` | **401,651,815 B / 307 文件** | 单个 `aiss_daily_backtest_*.log` 最大 7,222,169 B,每个交易日新增一个 ~6.9 MB | six_strategies 的每日 find 把 `logs` 算进了 non-mlruns 小计(所以日增被计入了),但**从未给出 current_size**;383 MiB 的日志堆积无人报告 |\n| `prediction_market_soccer/data/soccer.db-wal` | **371,224,392 B** | 活跃 WAL | altdata_soccer_wc 专门核了 `wc.db-wal`(不存在),却没看同目录下 371 MB 的 `soccer.db-wal` |\n\n### B. 部分归因(只以\"某个数字\"出现过,未作为目录盘点)\n\n| 目录 | 实测 | 归因状态 |\n|---|---|---|\n| `qlib-main/sector_rotation/backtest_results/` | 758 MiB | altdata_ai 只盘了其中 4 个 macro cluster 文件(41,235 B = 0.005%),主体 758 MiB 无人交代 |\n| `qlib-main/semiconductor_strategy/mlruns/` | 659,107,840 B(单文件 mlflow.db) | six_strategies 以 \"DB sizes 659,107,840\" 报过,但没人说它是一个 621 MiB 的目录 |\n| `qlib-main/electric_utilities_strategy/mlruns/` | 97,865,728 B | 同上 |\n| `prediction_market_macro/data/synth_wf/` | 292 MiB | 仅出现在 altdata_macro_pm 的 missed 段(我确认该批评成立) |\n| `crypto_trading/trading_signals/`(整体) | 1,491 MiB | 仅出现在 altdata_crypto 的 missed 段 |\n| `someo-park-investment-management/dist/` | 37 MiB,`data/soccer/*` 与 `public/data/soccer/*` **逐文件重复** | 无人提及前端产物的第二份副本(milestone_marks.json 15.9 MB + 15.5 MB 各一份) |\n\n### C. 已充分归因(确认无遗漏)\n`historical_runs`(99G)、`mlruns`(29G)、`qlib-main/mlruns`(20G)、`prediction_market_soccer/data/book_candidates`(36G)、`prediction_market_macro/data/synth`(15G)、`crypto_trading/price_data`(12G)、`VolumePrediction/outputs/panel`(10G)、`sim_assets/microfootball`(5.0G)、`prediction_market/data`(2.0G)、`price_data/volume_prediction/{financials,raw}`、`martingale_pricing/data`×2、`historical_runs/vix_chronos2`、`research_collection_v1`、`index_proxy`、`prediction_market_macro/data/output`、`trading_signals`(根)。\n\n---\n\n## 二、全仓 host 扫描 —— 未被盘点的外部数据源\n\n命令:\n```\ngrep -rhoE \"https?://[a-zA-Z0-9._-]+\" --include=*.py --include=*.sh --include=*.yaml \\\n  --include=*.yml --include=*.ts --include=*.tsx --include=*.js . | grep -v node_modules \\\n  | sed -E 's#^https?://##' | sort | uniq -c | sort -rn\n```\n共 68 个 host。逐条比对八维度后,**下列在任何维度都没被盘点**:\n\n**1. `api.polygon.io` 的第三条独立链路 —— `dfm/run_real_data.py`**\n```\ndfm/run_real_data.py:7   \"Download daily grouped bars from Polygon (one API call per trading day)\"\ndfm/run_real_data.py:41  CACHE = os.path.join(HERE, 'data_cache')\ndfm/run_real_data.py:56  fp = os.path.join(CACHE, f'grouped_{day}.json')\ndfm/run_real_data.py:59  url = 'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{day}'\n```\n盘点里 Polygon 只有两条:`PriceDataStore.py:346`(六策略)与 `VolumePrediction/data/polygon_loader.py:41`。\n这是第三条,落盘 313 MB / 730 个 JSON,与 VP 的 parquet 版**同一批数据的第二份副本**。\n\n**2. `api.stlouisfed.org` —— `RefreshEventRiskData.py:112`**(external_pulls 批评家已指出,我实地确认)\n```\nu = f\"https://api.stlouisfed.org/fred/release/dates?release_id=50…\"\ntail -3 trading_signals/event_risk_heartbeat.log → 2026-09-12T11:09:53 [MRPT]/[MTFS]\n```\n每日在跑,直连 FRED REST(不走 fredapi),盘点为零。\n\n**3. `api.elections.kalshi.com` —— 13 处,跨三个模块**\n```\ngrep -rln \"api.elections.kalshi.com\" --include=*.py . →\n  prediction_market_soccer/{config/config.py, venues/kalshi/discovery.py,\n    ops/bootstrap_aliases.py, ops/venue_liquidity.py}\n  prediction_market/{config/config.py, venues/kalshi/discovery.py}\n  prediction_market_macro/{research/discover_series.py, config/settings.py,\n    ingest/kalshi_md.py, ops/trading_kalshi.py, venues/kalshi/account.py}\n```\naltdata_soccer_wc 的批评家点出了 soccer 侧;**macro 侧 5 个文件同样在用,macro 维度只写了\"Kalshi public API\",从未命名 host**。\n\n**4. `100.76.95.43`(Tailscale box A)—— 一条真实的跨机数据入站链路**\n```\nprediction_market_soccer/ops/online_microfootball.sh:15\n  \"Mac(本机) --Tailscale--> box A ed9f (someoparkdgx25@100.76.95.43, key=nvsync.key)\"\n:37  MIRROR=\"$FRONT/server/sim_assets/microfootball\"\n```\n`sim_assets/microfootball` 那 5.0 GB / 3,360 个文件不是本机生成的,是**从远程 GPU 机拉进来的**。altdata_soccer_wc 精确测了它的字节和批次,却把它当本地产物,没把这条 5 GB 的入站通道计入\"量①\"。\n\n**5. `api.telegram.org` —— `someo-park-investment-management/functions/index.js:53`**\n```\nconst url = `https://api.telegram.org/bot${botToken}/sendMessage`;\n```\n出站通知通道,非数据源,但属于未登记的外部依赖。\n\n**6. `.env` 里的凭据揭示的未盘点服务**(只读键名):\n- `E2B_API_KEY` → `server/tools/runPythonTool.ts:172`、`routes/publish.ts`、`routes/sandbox.ts` 用 `@e2b/code-interpreter` 起远程沙箱。**外部代码执行服务,无人盘点。**\n- `HF_TOKEN` → HuggingFace(`~/.cache/huggingface/hub` 15G 被 external_pulls 盘了,但 token 侧的拉取通道未登记)\n- `HYPERBOLIC_API_KEY` → 全仓 `grep -rn \"HYPERBOLIC\\|hyperbolic\"` **零命中**,即凭据在、代码不在(死凭据,但应登记)\n- `OLLAMA_BASE_URL` → `server/utils/models.ts:35`、`routes/chat.ts:46`,本地/远程 LLM 端点\n- `MONGO_VEC_URI` → altdata_ai 批评家已点名,我确认 `db/connection.py:28 DB_VEC = \"someopark_vec\"`\n\n**7. `openclaw` 调度器的 LLM 通道**(external_pulls 批评家已指出,我不重复取数)——16 个 cron job 的 payload 是发给 LLM 的 prompt,每天十几次无闸门的 API 会话,盘点里只有前端那条带 2 次/周免费闸的 Anthropic 通道。\n\n**确认可豁免的**:`www.apache.org`(272)/`www.w3.org`(40)/`react.dev`/`redux.js.org`/`bit.ly`/`api.example`/`localhost`/`www.apple.com`(plist DTD)= 非数据端点;`openapi.twse.com.tw`、`computeprices.com`、`www.sec.gov`、`data.sec.gov` = 六策略内(已由相应维度覆盖或标注为死代码)。\n另:`praw` 的 2 处命中是假阳性(`p_raw` 变量名,见 `backtest_export.py:89`、`pairs_ledger/rebuild.py:278`)——altdata_crypto\"无任何社交/新闻/链上第三方供应商\"的结论成立。\n\n---\n\n## 三、\"没有命令支撑的数字\" —— 点名清单\n\n分三级。**S 级 = 引用的命令根本产不出该数字(等同造假)**。\n\n### S 级(3 项)\n\n**S1. `find dfm/football/production_runs -maxdepth 1 -type d | wc -l → 49`(altdata_soccer_wc)**\n我实测:\n```\nfind dfm/football/production_runs -maxdepth 1 -type d | wc -l  →  1\nls dfm/football/production_runs | wc -l                        →  49\n```\n该命令在本机返回 **1**,永远不可能返回 49。目录里是 49 个**平铺文件**,零子目录。这条 evidence 没有真的跑过。同类错误还把 microfootball 的 24 个 matchup 目录写成 25。\n\n**S2. `137,069 records/day`(altdata_soccer_wc,API-Football 记录数上限)**\n```\nsqlite3 \"file:…/soccer.db?mode=ro\" \\\n \"SELECT substr(ts,1,10) d,COUNT(*),SUM(results_count) FROM api_call GROUP BY d ORDER BY 3 DESC LIMIT 5;\"\n → 2026-08-29|6501|901304   2026-08-27|3903|208753   2026-08-26|3765|172518\n   2026-08-28|839|131224    2026-09-12|4226|116839\n```\n全表任何一天都不是 137,069;声明窗口(09-01..09-12)内最大是 116,839。该数字**在数据库里不存在**,且不在其自己引用的 evidence 表中。\n\n**S3. `perps/ws 13 perps × 3 channels ≈ 40 files/day`(crypto 价格录制链)**\nevidence 自承来自 `ACTIVE_PERPS_SNAPSHOT(13) × WS_PERP_CHANNELS(3)`,即**常量相乘冒充实测**。实盘只有 `orderbook_delta` 一个 channel,实际 14 files/day。同一条链上的 `poller 46 files/day` 同样是目录数算术(实际 44,仅 09-10 恰好 46)。\n\n### A 级 —— 声称是实测、实为推导或统计量算错(15 项,点名)\n\n| # | 数字 | 出处维度 | 真值 / 问题 |\n|---|---|---|---|\n| A1 | `event_strips ≈ 95% of the entire recording chain` | crypto 录制链 | 88.86%(未压缩)/ 71.2%(压缩)。无任何命令产出 95% |\n| A2 | `strips atm_window 0.15;2 horizons per series` | crypto 录制链 | evidence 只引了路径与格式两处 sed,该值无命令支撑 |\n| A3 | `OKX 强平 ≈330 files/日` | altdata_crypto | 7 日真值 257/291/466/348/397/388/340 → 均值 355.3、中位 348 |\n| A4 | `poll markets 20 个/日` | altdata_crypto | 09-04..09-09 全是 18,09-10 才 20 |\n| A5 | `margin_markets 每份 23 字段` | altdata_crypto | 25 字段;且\"中位 26,940\"用的是 09-05..09-12 窗口,与声明的 09-04 起窗口不符(真值 25,782) |\n| A6 | `~/macro_db_backup 压缩日增中位 1,258,604 B` | altdata_macro_pm | 1,258,604 是九个值里的**最大值**;真中位 470,125 |\n| A7 | `macro.db 44 tables` | altdata_macro_pm | 46(缺 features / fills / cleveland_nowcast_meta) |\n| A8 | `09-07..09-12 ≈ 2 files/day` | altdata_macro_pm | 09-09 是 73 文件 / 13,747,010 B |\n| A9 | `eps_history.json 55 symbols` | altdata_ai | 111 symbols(symbol_meta 113) |\n| A10 | `cluster daily_files 4/8/8` | altdata_ai | 3/6/6(`macro_clusters_build_meta.json` 不做 .bak);且 `macro_clusters.py:146 shutil.copy2` 使真实落盘量翻倍,未声明 |\n| A11 | `code_diff 占 mlruns/2 09-10 的 99.98%` | six_strategies | 928×7,337,614/6,812,201,026 = **99.96%** |\n| A12 | `QC reconcile 日增中位 19,464 B` | external_pulls | 六日排序中位 = 18,941;任何日子集都复现不出 19,464 |\n| A13 | `fixtures_lineups 中位 53 files/日` | altdata_soccer_wc | 17.5(另 fixtures 876→883、stats 868→888、players 759→719.5、priors 60→61、inplay 686,492→1,025,817、ClubElo 2,698,349→2,699,699 全是\"把某一天的值当中位数\") |\n| A14 | `crypto_data_backup 平均间隔 ~4.5 天 → 0.87 GiB/日摊销` | daily_growth_ledger | 五个归档间隔 5/15/2/7 天,均值 **7.25** 天 → 摊销 0.54 GiB/日,高估 ~60% |\n| A15 | `priors = 110 dates × 14 families` | altdata_soccer_wc | 13 families(其正文自己写的是 13,与摘要自相矛盾) |\n\n### B 级 —— 范围声明与实测窗口不符(把打破结论的那几天悄悄删掉,4 项)\n\n- `prediction_market 12 天完全平坦、日日差 <0.1%`(daily_growth_ledger)——**09-01 = 163,810 B/100、09-02 = 152,614 B/99、09-06 = 542,685 B/147**。evidence 只引 09-03..09-12,正好避开这三天。\n- `API-Football 2,392–6,500 calls/day,覆盖 09-01..09-12`(altdata_soccer_wc)——09-01 = 815、09-02 = 432,都低于所声明的下限。\n- `inplay 日志 range 154,209–5,644,876`——最小值实为 97,441(20260828)。\n- `mlruns 每个工作日 2,784 文件`(daily_growth_ledger)——evidence 列了 8 天,漏掉 09-06(120 文件)与 09-07(333 文件);而 09-07 被算进了\"工作日中位数\"。同理 `historical_runs ~2,000–2,050 files/工作日` 漏了 **09-07 = 0 文件**(整日无产出)。\n\n### C 级 —— 归因错误(有数字有命令,但挂在错误的来源/消费者下,8 项)\n\n`PnLReport.py` 作为 walk_forward 消费者(grep 命中 0)· `UpdateStrategyPerformance.py` 作为 SSRS 消费者(0)· `ff_factors.parquet` 的 SSRS 消费者(全仓仅 `RiskManager.py:939` 一处)· `loader.py` 作为 event_strips 消费者(该文件无此路径)· `controller/output` 2.7 MB/日挂在 \"SEC EDGAR\" 下(实为 controller 自身估值产物)· `price_data/macro/fomc` 挂在事件风险覆盖层(实际唯一读者是 `VIXForecast.py:51`)· `milestone_snapshot.xg_home/xg_away` 作为 xG 落点(2,768 行 100% NULL)· `raw_index 61,202 行` 归给 objects_v1(实际只有 6,685 行指向它)。\n\n### D 级 —— 诚实留白(**应当保留,不要改**)\n外部拉取字节量(量①)在**全部八个维度**一律留空,没有任何一处用估计值冒充实测。macro 的 per-table daily_bytes 明确标 \"DERIVED, NOT MEASURED\";mlruns 修复后 1.76 GiB/日明确标 PROJECTION;Mongo 集合体积、ercot_daily 逐表字节、APFS 物理块共享全部拒绝给数。这是这批报告最值得肯定的纪律。\n\n---\n\n## 四、日增加总对账 —— 差额在哪\n\n取 **2026-09-10**(完整交易日,八个维度全部测过)做逐目录对账。\n\n```\n实测全仓(birthtime,排除 .git)= 23,015,485,819 B = 21.435 GiB\n```\n\n### 各维度声称值 vs 实测值\n\n| 顶层目录 | 实测 09-10 | 各维度声称 | 差 |\n|---|---|---|---|\n| `historical_runs` | 4,955,184,304 | 4,949,732,077(MRPT run-window 1,093,447,078 + MTFS 2,519,034,559 + SSRS 357,232,622 + AISS 394,216,850 + AEUS 585,490,767 + xlsx) | +5.45 MB(run-window vs 日历日口径差) |\n| `mlruns` | 6,812,201,026 | 6,812,201,026 | **0** |\n| `qlib-main` | 4,853,804,576 | 4,853,804,576 | **0** |\n| `prediction_market_macro` | 658,290,528 | 656,394,998 | +1.9 MB |\n| `trading_signals`(根) | 2,304,093 | 2,304,093 | **0** |\n| `prediction_market` | 246,405 | 246,405 | **0** |\n| `controller` | 3,011,223 | 3,011,223 | **0**(但挂错来源) |\n| `price_data` | 19,960,857 | ≈19,950,000 | ~0 |\n| `crypto_trading` | **4,899,951,334** | ≈111,000,000(压缩稳态 ~106 MB/日) | **+4,789,000,000** |\n| `prediction_market_soccer` | **789,934,618** | ≈280,246,632 | **+509,687,986** |\n| `someo-park-investment-management` | 18,515,733 | 17,737 | +18.5 MB |\n| `VolumePrediction` | 1,755,939 | ≈722,000 | +1.0 MB |\n\n**六策略那条链逐位对上了**,我另做交叉验算确认:\n```\nSSRS  : historical_runs/sector_rotation 357,232,622 + qlib-main/sector_rotation 12,014,529 = 369,247,151  ← 与其声称值逐位相同\nAISS  : 394,216,850 + 11,444,617 = 405,661,467  ← 逐位相同\nAEUS  : 585,490,767 + 12,070,503 = 597,561,270  ← 逐位相同\n```\n\n### 差额分解(09-10 共 5.34 GB,占当日 23.2%)\n\n**(1) 3.30 GB = 时钟口径差,不是遗漏。**\n```\nawk '$1==\"2026-09-10\" && /crypto_trading\\/price_data\\/kalshi/' birth.txt | sort -rn | head\n → 565,025,290  …/event_strips/prod/KXETH/markets/2026-09-11.jsonl\n   556,658,956  …/KXETHD/markets/2026-09-11.jsonl\n   541,391,147  …/KXSOLD/markets/2026-09-11.jsonl   (共 3,403,370,476 B / 153 文件)\n```\n这些是 **UTC 09-11 日的原始 .jsonl**(本地 09-10 20:00 创建),因 09-11 磁盘写满崩溃而**从未被 gzip**。crypto 维度按**文件名日期**统计,把它们记在 09-11;全仓按 **birthtime** 统计记在 09-10。同一批字节,两个时钟。\n→ 结论:crypto 的\"106 MB/日压缩 / 3.58 GB/日未压缩\"与全仓 birthtime 表**不可直接相加**,任何汇总必须先声明时钟。八个维度里只有 crypto 用文件名日期,其余七个用 birthtime/mtime,**这个不一致从未被声明过**。\n\n**(2) 1.999 GB = 真正的无归因增长(占当日 8.69%)**\n```\nawk -F'|' '$1==\"2026-09-10\" && (/crypto_trading\\/trading_signals/ || /refresh-stage/ \\\n  || /someo-park.*node_modules/ || /\\/dist\\//){u+=$2;n++} END{print u,n}' birth.txt\n → 1,999,494,599  1,724 文件   (= 8.69% of 23,015,485,819)\n```\n- `crypto_review_20260910/` 1,420,251,345 B + `w8_check_20260910T234603Z/` 51,520,827 B\n- `.refresh-stage-hddjalqo/` 483,860,844 B\n- 前端 `node_modules/.vite` + `dist/` ≈ 43 MB\n\n**(3) 其它日子的同类空洞:**\n```\n2026-09-09: VolumePrediction/outputs/registry/artifacts = 819,636,798 B / 6 文件 = 当日 5.16%\n            (rnn_prod_20260904/training_panel.parquet 单文件 818,003,187 B)\n            —— 两个维度都报过 registry 的 current_size 836,080,023 B,没有一个报过它是单日写入\n2026-09-12: soccer.db-wal 371,224,392 B(无人计)\n            dfm/football/production_runs 138,401,100 B / 49 文件(soccer 维度只给了 132 MB 的静态值,\n            未发现它当日新增 138 MB —— 该目录不是\"近乎静态\")\n            .refresh-stage-690zn784 58,939,084 B\n2026-09-11: .refresh-stage-7bllu4po 44,835,948 B\n```\n\n### 一个被中位数掩盖的结论\n\ndaily_growth_ledger 的 `crypto_trading` 行写\"工作日中位 0.107 GiB/日\"。我复算,**中位数是对的**:\n```\n09-01..09-11 工作日 birthtime:0.107 0.107 0.101 0.103 0.129 0.127 0.104 4.563 2.981  → 中位 0.107\n```\n但九个工作日里有两天分别是中位数的 **43 倍和 28 倍**(09-10 = 4.563 GiB,09-11 = 2.981 GiB),合计 7.54 GiB。用中位数给一个**双峰、右尾极长**的分布做容量规划,会把 7.5 GiB 的真实增长从 runway 里抹掉。这正是 `crypto_trading/ops/disk_monitor.py:57-60` 注释里记录的那次事故的形状:\n\n```\n\"The 2026-09-11 exhaustion killed four recorders and cost 12.9 h of irreplaceable\n 15-minute tape, and the first root-cause guess (backups) was wrong — the actual\n driver was qlib-main/mlruns (+113.8 GB).\"\n```\n\n### 对账总评\n\n- **加总对得上的部分**:六策略链(historical_runs / mlruns / qlib-main / trading_signals / price_data)逐位吻合到字节,包括 AISS↔AEUS 的 run_uuid 拆分——这是整批报告里最硬的一段。macro、prediction_market、controller 也在 0.3% 内。\n- **对不上的两处**:crypto(时钟口径,3.30 GB,可解释)与 soccer(0.51 GB,其中 0.48 GB 是孤儿暂存目录,真遗漏)。\n- **系统性空洞**:凡是**一次性大批量写入**(crypto_review 1.42 GB、VP training_panel 818 MB、opsfix 备份 656 MB、refresh-stage 620 MB、book_candidates 38 GB)都倾向于被\"中位数/稳态日增\"这个叙事框架挤出报告。八个维度里有六个用中位数作为主指标,而这个仓库的增长**主要由一次性事件构成**,不是由稳态构成。09-10 当天 8.69% 的字节没有任何人认领,根因就在这里。\n\n---\n\n## 五、最应当先行动的三条(按可回收/可防护排序)\n\n1. `prediction_market_soccer/data/.refresh-stage-*` 4 个孤儿目录 619,824,507 B —— `export_stage.py:26` 的 mkdtemp 在失败路径不清理,**会持续累积**。这是唯一一处\"边增长边无人知晓\"的泄漏。\n2. `crypto_trading/trading_signals/reports/crypto_review_20260910/` 1.42 GB 一次性评审产物,以及 `qlib-main/semiconductor_strategy/logs/` 401 MB 日志堆积 —— 两者都不在 `disk_monitor.py:43 WATCH_DIR`(= `price_data`)内,`crypto_data_gb` 永远看不见。\n3. `dfm/data_cache/` 313 MB 是 VP parquet 的 JSON 重复副本,且走的是**第三条未登记的 Polygon 链路**;登记它比删它更重要——它代表盘点边界本身有洞。"
+  },
+  "measurement_coverage": {
+    "alternative_data": "41/54",
+    "local_coverage": "22/22",
+    "external_coverage": "13/13",
+    "daily_growth": "11/13",
+    "gaps": "9/13",
+    "measured_at": "2026-09-12 16:10:01"
+  },
+  "judgment_fields_last_audited": "2026-09-12 15:20:54 EDT",
+  "judgment_fields_stale_days": 0,
+  "last_machine_update": "2026-09-12 16:10:01"
+}

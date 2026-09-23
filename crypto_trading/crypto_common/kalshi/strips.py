@@ -70,11 +70,13 @@ class StripRecorder:
         self.horizons = horizons
         self.atm_window = atm_window
         self.interval = interval
-        self.event = KalshiEventClient(env=env)
+        self.event = KalshiEventClient(env=env, public_priority=(
+            "live" if all(key.endswith("15M") for key in self.series) else "normal"))
         self.margin = KalshiMarginClient(env=env, min_interval=0.15)
         self.root = PRICE_DATA / "kalshi" / "event_strips" / env
         self.writer = DailyJsonlWriter(self.root)
         self.counts = {"markets": 0, "orderbooks": 0, "errors": 0}
+        self.series_health = {}
         self._locks: list = []
         # one heartbeat per instance: a shared file let the second recorder
         # overwrite the first's series list, which is what made the overlap
@@ -83,9 +85,10 @@ class StripRecorder:
             "_" + "-".join(sorted(self.series))[:40]
 
     def capture_series(self, series_ticker: str, perp_ticker: str) -> None:
-        now = time.time()
         spot = spot_estimate(self.margin, perp_ticker)
+        markets_started = time.time()
         markets = self.event.list_markets(series_ticker=series_ticker, status="open")
+        markets_received = time.time()
         by_close: dict[str, list[dict]] = defaultdict(list)
         for m in markets:
             by_close[m.get("close_time", "")].append(m)
@@ -94,7 +97,8 @@ class StripRecorder:
         for close_time in horizons:
             strip = by_close[close_time]
             self.writer.write(f"{series_ticker}/markets", {
-                "recv_ts": now, "close_time": close_time, "spot_est": spot,
+                "recv_ts": markets_received, "request_started_ts": markets_started,
+                "close_time": close_time, "spot_est": spot,
                 "n_markets": len(strip), "markets": strip,
             })
             self.counts["markets"] += len(strip)
@@ -102,9 +106,12 @@ class StripRecorder:
                 strike = m.get("floor_strike") or m.get("cap_strike")
                 if spot and strike and abs(float(strike) / spot - 1.0) > self.atm_window:
                     continue                      # only book-snapshot strikes near ATM
+                book_started = time.time()
                 ob = self.event.orderbook_raw(m["ticker"])
+                book_received = time.time()
                 self.writer.write(f"{series_ticker}/orderbook", {
-                    "recv_ts": now, "ticker": m["ticker"], "close_time": close_time,
+                    "recv_ts": book_received, "request_started_ts": book_started,
+                    "ticker": m["ticker"], "close_time": close_time,
                     "strike": strike, "spot_est": spot, "ob": ob,
                 })
                 self.counts["orderbooks"] += 1
@@ -113,7 +120,8 @@ class StripRecorder:
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / f"heartbeat{self.hb_suffix}.json").write_text(json.dumps(
             {"ts": time.time(), "env": self.env, "series": list(self.series),
-             "pid": os.getpid(), "counts": self.counts}, indent=1))
+             "pid": os.getpid(), "counts": self.counts,
+             "public_reads": self.event.metrics, "series_health": self.series_health}, indent=1))
 
     def claim_series(self) -> None:
         """Refuse to start if another live process already records these series.
@@ -168,11 +176,22 @@ class StripRecorder:
             while True:
                 started = time.time()
                 for st, perp in self.series.items():
+                    before = dict(self.counts)
+                    attempt_at = time.time()
+                    state = self.series_health.setdefault(st, {})
+                    state["last_attempt_at"] = attempt_at
                     try:
                         self.capture_series(st, perp)
-                    except Exception:
+                    except Exception as exc:
                         self.counts["errors"] += 1
+                        state.update(status="error", last_error_at=time.time(), last_error_type=type(exc).__name__)
                         logger.exception("strip capture failed for %s — continuing", st)
+                    else:
+                        state.update(status="ok", last_success_at=time.time(), last_error_type=None)
+                    finally:
+                        state.update(markets_added=self.counts["markets"] - before["markets"],
+                                     orderbooks_added=self.counts["orderbooks"] - before["orderbooks"],
+                                     elapsed_seconds=round(time.time() - attempt_at, 3))
                 self.heartbeat()
                 n += 1
                 if cycles and n >= cycles:

@@ -24,11 +24,13 @@ absence alone does not establish that the venue has not listed the match.
 from __future__ import annotations
 
 import json
+import time
 from copy import deepcopy
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.club_identity import chinese_names
 from prediction_market_soccer.util.pricing import quote_to_cents
 from prediction_market_soccer.util.market_identity import fixture_identity, equivalent_contract
 from prediction_market_soccer.util.quote_evidence import qualify_quote, qualified_quotes, select_quote, collect_receipts, diagnose_quotes
@@ -36,6 +38,13 @@ from prediction_market_soccer.util.quote_evidence import qualify_quote, qualifie
 ET = ZoneInfo("America/New_York")
 _FEE = 0.01            # per-contract execution fee estimate (matches inplay_arb)
 _FINISHED = ("FT", "AET", "PEN")
+# Deadline for admitting Polymarket reads, starting before per-competition prep.
+# It also counts model/Kalshi work between those reads; it is not a hard cap on
+# the whole export. An already started SDK call retains its original HTTP timeout.
+# Competitions are prioritized by their earliest kickoff, then processed in
+# their existing per-competition order (not a global per-fixture priority queue).
+_POLY_SWEEP_BUDGET_SEC = 180.0
+
 _UPCOMING = ("NS", "TBD", "PST")   # not-started statuses
 _FINISHED = ("FT", "AET", "PEN")   # finished statuses
 
@@ -68,9 +77,10 @@ def recent_finished(conn, hours: float = 0.75) -> list[dict]:
     from datetime import timedelta
     from prediction_market_soccer.config.leagues import by_api_id
     name, zh = {}, {}
+    _zh = chinese_names()
     for r in conn.execute("SELECT DISTINCT club_id, name, zh FROM club_registry"):
         name[r["club_id"]] = r["name"]
-        zh[r["club_id"]] = r["zh"] or ""
+        zh[r["club_id"]] = _zh.get(r["club_id"]) or r["zh"] or ""
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     # The fixture stores kickoff, not the final whistle, so approximate finish as
@@ -442,9 +452,10 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
     conn = conn or store.init_db()
     per_league_limit = per_league_limit or limit
     name_of, zh_of = {}, {}
+    _zh = chinese_names()
     for r in conn.execute("SELECT DISTINCT club_id, name, zh FROM club_registry"):
         name_of[r["club_id"]] = r["name"]
-        zh_of[r["club_id"]] = r["zh"] or ""
+        zh_of[r["club_id"]] = _zh.get(r["club_id"]) or r["zh"] or ""
     try:
         from prediction_market_soccer.model.form_strength import form_index
         fidx = form_index(conn)
@@ -475,7 +486,20 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
         _UPCOMING).fetchall()}
 
     out: list[dict] = []
-    for comp in active():
+    # One wall clock for the whole Polymarket sweep, not one per competition: the
+    # budget is shared, so the last competition must not be handed a fresh
+    # allowance that the first one already spent.
+    _poly_deadline = time.monotonic() + _POLY_SWEEP_BUDGET_SEC
+    # Prioritize competitions with an earlier kickoff under the shared budget.
+    # A competition is still processed together; this does not promise that every
+    # imminent fixture precedes every later fixture in another competition.
+    # The final public rows retain their existing kickoff sort.
+    _next_kickoff = {r["league_id"]: r["next_ts"] for r in conn.execute(
+        "SELECT league_id, MIN(kickoff_ts) next_ts FROM fixture "
+        f"WHERE status_short IN ({','.join('?' * len(_UPCOMING))}) AND kickoff_ts IS NOT NULL "
+        "AND kickoff_ts >= strftime('%Y-%m-%dT%H:%M:%S','now','-3 hours') GROUP BY league_id",
+        _UPCOMING)}
+    for comp in sorted(active(), key=lambda c: _next_kickoff.get(c.api_football_id) or "9999"):
         _ph = ",".join("?" * len(_UPCOMING))
         _q = ("SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json, updated_at "
               f"FROM fixture WHERE league_id=? AND season=? AND status_short IN ({_ph}) "
@@ -509,7 +533,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
                 print(f"[warn] Kalshi discovery {comp.key}: {e}")
             try:
                 from prediction_market_soccer.venues.polymarket_us.discovery import PolymarketUSDiscovery
-                pd_ = PolymarketUSDiscovery(conn=conn)
+                pd_ = PolymarketUSDiscovery(conn=conn, budget_deadline=_poly_deadline)
             except Exception as e:
                 print(f"[warn] Polymarket US discovery unavailable: {e}")
 

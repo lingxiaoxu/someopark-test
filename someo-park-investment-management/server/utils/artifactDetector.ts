@@ -1,5 +1,6 @@
 import { MACRO_KEYWORD_PATTERNS } from '../tools/macroMarketTool.js'
 import { detectSoccerArtifacts } from '../tools/soccerTriggers.js'
+import { detectCryptoArtifacts } from '../tools/cryptoTriggers.js'
 
 export interface ArtifactTrigger {
   type: string
@@ -146,11 +147,15 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_pdfs',          title: 'PDF Reports',         keywords: ['pdf', 'pdf report', 'download report', 'pdf 报告', '下载报告', 'pdf报告'] },
 ]
 
-export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' | 'macro' | 'soccer'): ArtifactTrigger[] {
+export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto'): ArtifactTrigger[] {
   if (!message) return []
 
   const lowerMessage = message.toLowerCase()
   const detected: ArtifactTrigger[] = []
+
+  // Crypto is a parallel, exclusive module, like Macro and Club Soccer below.
+  // Its broad performance/position words must never inject stock or World Cup data.
+  if (mode === 'crypto') return detectCryptoArtifacts(message)
 
   // Macro Markets mode: detect ONLY macro_* types using the macro keyword dictionary
   // (kept in macroMarketTool next to the grounding loader). Fully additive — this

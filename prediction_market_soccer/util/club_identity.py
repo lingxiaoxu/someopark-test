@@ -105,6 +105,44 @@ class ClubIdentityIndex:
         return self.resolve_labels(label)
 
 
+# Han without kana: the registry mixes Chinese, Japanese and Latin aliases in one
+# list, and the Japanese entries are katakana (ホッフェンハイム) while the Chinese ones
+# are not (霍芬海姆). Measured 2026-09-14 over all 409 clubs: 405 have exactly one
+# such alias, 4 have several (alternate or traditional-script renderings) and none
+# has zero. Where ordering differs from the reviewed Chinese display name, the
+# explicit choices below retain that existing alias as the preferred label.
+_HAN = re.compile(r'[\u4e00-\u9fff]')
+_KANA = re.compile(r'[\u3040-\u30ff]')
+_CHINESE_DISPLAY_NAMES = {
+    'always_ready': '拉巴斯准备',
+    'atletico_torque': '蒙得维的亚城扭矩',
+    'defensa_y_justicia': '国防与司法',
+}
+
+
+def chinese_names() -> dict[str, str]:
+    """club_id → Chinese display name, from the identity registry.
+
+    ``club_registry.zh`` is NULL for all 409 clubs and has been since the club fork,
+    so every export shipped ``zh: ""`` while the registry carried a Chinese name for
+    every single one. The registry is the reviewed source; callers keep the column
+    as a fallback for any club the registry has not reviewed yet.
+    """
+    out: dict[str, str] = {}
+    for rec in catalog_records():
+        # These reviewed display names are existing aliases; alias ordering does
+        # not designate a preferred label when a club has several Chinese names.
+        preferred = _CHINESE_DISPLAY_NAMES.get(rec['club_id'])
+        if preferred and preferred in (rec.get('aliases') or ()):
+            out[rec['club_id']] = preferred
+            continue
+        for alias in rec.get('aliases') or ():
+            if alias and _HAN.search(alias) and not _KANA.search(alias):
+                out[rec['club_id']] = alias
+                break
+    return out
+
+
 def venue_identity_index(*, allowed_ids=None, aliases=(), records=()) -> ClubIdentityIndex:
     """Overlay current DB records and curated mappings without dropping collisions."""
     return ClubIdentityIndex([*catalog_records(), *records], allowed_ids=allowed_ids, aliases=aliases)

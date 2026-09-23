@@ -1,3 +1,4 @@
+import pytest
 """Research replay invariants: no foresight fills and no missing inventory loss."""
 from crypto_trading.crypto_strategies.event_binary import complete_set as cs
 from crypto_trading.crypto_strategies.event_binary.research_complete_set import (
@@ -37,17 +38,31 @@ def test_sequential_unpaired_loss_is_included_and_pairs_reconcile():
 
 
 def test_public_print_replay_cannot_fill_before_order_existed():
-    rows=[row(100,book()),row(200,book())]
-    pre=[dict(trade_id="before",ticker="KXBTC15M-test",ts=99.,quantity=100.,
+    # v3 quotes fresh inventory only on the favored side; make YES favored
+    # (mid .52) so the replayed order exists on the side the prints hit. The
+    # v4 entry band is widened here: this test is about fill CAUSALITY.
+    from dataclasses import replace as _r
+    # ts 300/400 against a 900 close = 10min/8.3min left: inside the v7 entry
+    # window, so an order exists for the prints to hit
+    rows=[row(300,book(.51,.47)),row(400,book(.51,.47))]
+    pre=[dict(trade_id="before",ticker="KXBTC15M-test",ts=299.,quantity=100.,
               yes_price=.49,taker_side="no",is_block_trade=False)]
-    result=replay_prints(rows,pre,"yes",cs.Parameters(),residual=False)
+    # v8 sets the live maker coefficient to 0 (the venue verifies fee_type=
+    # quadratic hourly). This test guards the v1 regression where maker fills
+    # were booked fee-FREE while the schedule charged for them, so it pins a
+    # fee-bearing coefficient rather than tracking the live one.
+    wide=_r(cs.Parameters(),entry_band_lo=.01,entry_band_hi=.99,maker_coefficient=.0175)
+    result=replay_prints(rows,pre,"yes",wide,residual=False)
     assert result["quantity"]==0
     assert result["net_usd"]==0
-    future=pre+[dict(trade_id="after",ticker="KXBTC15M-test",ts=102.,quantity=6.,
+    future=pre+[dict(trade_id="after",ticker="KXBTC15M-test",ts=402.,quantity=6.,
                     yes_price=.49,taker_side="no",is_block_trade=False)]
-    traded=replay_prints(rows,future,"no",cs.Parameters(),residual=False)
+    traded=replay_prints(rows,future,"no",wide,residual=False)
     assert traded["quantity"]==5
-    assert traded["net_usd"]==-2.45
+    # loses the whole basis when "no" settles: payout 0, so net is exactly
+    # -(cost+fees), fee-bearing since v2 (v1 booked maker fills fee-free)
+    assert traded["net_usd"]==pytest.approx(
+        -(traded["cost_usd"]+traded["fees_usd"])) and traded["fees_usd"]>0
     assert traded["residual_quantity"]==5
 
 

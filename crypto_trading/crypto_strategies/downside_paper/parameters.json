@@ -1,0 +1,19 @@
+{
+  "policy": "price_flow_reversal_v1",
+  "status": "exploratory_posthoc_selected_forward_probe_not_validated",
+  "parents": {"w9": "W7 MAIN paper, 25 contracts", "w10": "W8 tilted paper, complete market episode"},
+  "skip_if": "held_direction * prior_1m_log_return_bp < 0 AND held_direction * prior_1m_observed_signed_notional_imbalance <= -0.5",
+  "held_direction": {"yes": 1, "no": -1},
+  "feature_clock": "only records received at or before parent first entry/order creation time",
+  "flow_quality": "at least 3 fresh distinct nonempty batches in prior 60s; newest <=15s; print venue delay0..15s; not complete venue volume",
+  "missing_data": "unclassified; excluded from matched PNL, never credited as avoided loss",
+  "unknown_execution": "source unverified fills or revised outcomes excluded from matched PNL",
+  "discovery_deadline_seconds": 90,
+  "first_review_classified_expiry_windows": 300,
+  "historical_selection_disclosure": "Three initial economic gates plus a crowded-continuation counterhypothesis inspected on Sep14/Sep15 including the known Sep15 loss. Sep15 is no longer an untouched holdout for selecting this rule.",
+  "research_report": "trading_signals/reports/w9_w10_flow_research_20260915T202229Z",
+  "fees_and_fills": "inherit all parent paper fees and modeled fills unchanged; no new execution simulation",
+  "network_enabled": false,
+  "demo_orders_enabled": false,
+  "prod_orders_enabled": false
+}

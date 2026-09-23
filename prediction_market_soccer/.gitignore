@@ -37,3 +37,8 @@ docs/REMOTE_DATA_ACCESS.md
 data/research_collection_v1/
 data/.soccer-maintenance.json
 data/.refresh-stage-*/
+
+# 2026-09-23: 纯运行时状态,每次跑批重写(磁盘余量快照、哨兵心跳时间戳)。
+# 只挡新增;data/runtime/ 下既有的 16 个已跟踪文件不受影响,是否移出另行决定。
+data/runtime/disk_free.json
+data/runtime/sentry_*.stamp

@@ -31,3 +31,9 @@
 {"date": "2026-09-01", "ticker": "XLI", "side": "BUY", "shares": 82, "price": 172.73, "gross": -14163.86, "dedup_key": "2026-09-01-XLI-BUY"}
 {"date": "2026-09-01", "ticker": "XLK", "side": "BUY", "shares": 3, "price": 183.64, "gross": -550.92, "dedup_key": "2026-09-01-XLK-BUY"}
 {"date": "2026-09-01", "ticker": "XLRE", "side": "BUY", "shares": 233, "price": 44.04, "gross": -10261.32, "dedup_key": "2026-09-01-XLRE-BUY"}
+{"date": "2026-09-21", "ticker": "XLB", "side": "DIV", "shares": 2926, "price": 0.228593, "gross": 668.86, "dedup_key": "2026-09-21-XLB-DIV"}
+{"date": "2026-09-21", "ticker": "XLE", "side": "DIV", "shares": 2847, "price": 0.380277, "gross": 1082.65, "dedup_key": "2026-09-21-XLE-DIV"}
+{"date": "2026-09-21", "ticker": "XLI", "side": "DIV", "shares": 928, "price": 0.45497, "gross": 422.21, "dedup_key": "2026-09-21-XLI-DIV"}
+{"date": "2026-09-21", "ticker": "XLK", "side": "DIV", "shares": 851, "price": 0.220686, "gross": 187.8, "dedup_key": "2026-09-21-XLK-DIV"}
+{"date": "2026-09-21", "ticker": "XLRE", "side": "DIV", "shares": 4016, "price": 0.354737, "gross": 1424.62, "dedup_key": "2026-09-21-XLRE-DIV"}
+{"date": "2026-09-21", "ticker": "XLV", "side": "DIV", "shares": 1200, "price": 0.642226, "gross": 770.67, "dedup_key": "2026-09-21-XLV-DIV"}

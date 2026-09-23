@@ -19,6 +19,7 @@ import time
 from datetime import datetime, timezone
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.util.club_identity import chinese_names
 from prediction_market_soccer.util.quote_evidence import (qualify_source_block, source_kind, collect_receipts, diagnose_quotes)
 from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData as _KMD
 
@@ -230,9 +231,10 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
 
     conn = conn or store.init_db()
     name, zh = {}, {}
+    _zh = chinese_names()
     for r in conn.execute("SELECT DISTINCT club_id, name, zh FROM club_registry"):
         name[r["club_id"]] = r["name"]
-        zh[r["club_id"]] = r["zh"] or ""
+        zh[r["club_id"]] = _zh.get(r["club_id"]) or r["zh"] or ""
     # Per-competition models behind a StrengthModel-shaped facade (club ratings are
     # per-league; the in-play consumers stay unchanged) — plan §2.2/§3.0.
     from prediction_market_soccer.config.leagues import active, by_api_id, caps_dict, caps_for, stage_of

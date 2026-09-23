@@ -172,6 +172,9 @@ prediction_market_soccer/data/priors/clubelo_*.csv
 
 # 根目录一次性分析脚本(读 /tmp、含硬编码绝对路径),非系统组成部分
 /econ.py
+# 2026-09-23: W8 v7 paired/tilted 双账本下单流水(约 520KB,2,521 条),
+# 跑批一次性产物,裸放仓库根目录无模块归属。同 /econ.py 处理。
+/v7_orders.json
 
 # dfm + crypto-dev: local-only projects, do not track (2026-07-06)
 # dfm: 2026-08-03 — source only. The heavy artifacts (383M of the 389M) stay out;

@@ -32,11 +32,13 @@ router.post('/', async (req: Request, res: Response) => {
     model,
     config,
     currentStanseAgent,
+    appMode,
   }: {
     messages: ModelMessage[]
     model: LLMModel
     config: LLMModelConfig
     currentStanseAgent: StanseAgentSchema
+    appMode?: string
   } = req.body
 
   const { apiKey: _ak, model: _m, baseURL: _bu, ...modelParams } = config
@@ -61,10 +63,14 @@ router.post('/', async (req: Request, res: Response) => {
   // Only fall back to chat if there's no active code AND it doesn't look like a code request.
   const hasActiveCode = currentStanseAgent?.code && currentStanseAgent.code.length > 0
   if (!hasActiveCode && !isCodeEditRequest(lastContent)) {
-    const detectedArtifacts = detectArtifacts(lastContent)
+    const detectedArtifacts = detectArtifacts(lastContent, appMode === 'crypto' ? 'crypto' : undefined)
     // Realtime NAV grounding(与 chat.ts 同模式,仅纯聊天分支;
     // 下方 code-edit 分支的 prompt 保持纯洁不动)
     let chatSystem = toChatPrompt()
+    if (appMode === 'crypto') {
+      const { cryptoChatGrounding } = await import('../utils/cryptoPrompt.js')
+      chatSystem += await cryptoChatGrounding(lastContent, detectedArtifacts, model)
+    }
     if (detectedArtifacts.some(a => a.type === 'realtime_nav')) {
       try {
         const { realtimeNavGrounding } = await import('../tools/realtimeNavTool.js')

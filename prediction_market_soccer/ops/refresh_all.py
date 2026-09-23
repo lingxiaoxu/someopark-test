@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 from dataclasses import asdict
 
 from prediction_market_soccer.config import CONFIG
@@ -22,6 +23,50 @@ def _quality(conn):
     return report
 
 
+def _club_recent_step(conn):
+    """A retryable projection that owns only its own transaction/revisions.
+
+    A data commit can succeed before the separate availability commit is locked.
+    Retrying the idempotent projection alone would then skip its unchanged rows
+    and incorrectly report success with their revisions still unavailable.
+    """
+    from prediction_market_soccer.ingest import soccer_ingest as si
+    from prediction_market_soccer.util.source_history import finalize_versions
+
+    recovery = None
+
+    def project():
+        nonlocal recovery
+        if conn.in_transaction:
+            raise ValueError('club_recent retry requires its own transaction boundary')
+        if recovery is not None:
+            lower_rowid, batch_id = recovery
+            # rowid bounds avoid scanning the historical source archive. The
+            # connection's batch ID excludes concurrent writers' new revisions.
+            revisions = [r[0] for r in conn.execute('''SELECT revision_id
+                FROM source_observation_v1 NOT INDEXED
+                WHERE rowid>? AND batch_id=? AND source='table:nt_recent' ''',
+                (lower_rowid, batch_id))]
+            finalize_versions(conn, revisions)  # actual recovery time, never backdated
+            recovery = None
+        batch_id = getattr(conn, 'source_batch_id', None)
+        if not batch_id:
+            raise ValueError('club_recent retry requires an observed connection')
+        lower_rowid = conn.execute(
+            'SELECT COALESCE(MAX(rowid),0) FROM source_observation_v1').fetchone()[0]
+        try:
+            return si.project_results_to_club_recent(conn)
+        except sqlite3.OperationalError as exc:
+            if 'locked' in str(exc).lower():
+                # The entry guard makes this exclusively this step's uncommitted
+                # work. Already committed data survives and is finalized on retry.
+                conn.rollback()
+                recovery = (lower_rowid, batch_id)
+            raise
+
+    return project
+
+
 def _refresh(conn, args, status):
     from prediction_market_soccer.config.leagues import active
     from prediction_market_soccer.ingest import soccer_ingest as si, fc_ingest
@@ -39,7 +84,9 @@ def _refresh(conn, args, status):
             status.step(f"standings_previous:{comp.key}", lambda c=comp: si.sync_standings(api, conn, c, season=c.season - 1))
             status.step(f"topscorers:{comp.key}", lambda c=comp: si.sync_topscorers(api, conn, c), required=False)
         status.step("odds", lambda: si.sync_odds(api, conn, limit=30, include_settled=True), required=False)
-        status.step("club_recent", lambda: si.project_results_to_club_recent(conn))
+        # Retry only this transaction-owning projection, including recovery of a
+        # data commit whose separate source-availability commit was contended.
+        status.step("club_recent", _club_recent_step(conn), retry_on_lock=2)
         if args.with_form:
             status.step("club_form", lambda: si.sync_club_recent(api, conn), required=False)
 

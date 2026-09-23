@@ -2,6 +2,7 @@
 // Reference: CC src/tools/WebFetchTool/WebFetchTool.ts
 
 import type { AgentTool } from './index.js'
+import { fetchSafeText } from './safeWebFetch.js'
 
 export const httpRequestTool: AgentTool = {
   definition: {
@@ -19,38 +20,20 @@ export const httpRequestTool: AgentTool = {
   },
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
-  async execute({ url, headers, timeout = 10000 }) {
-    const parsedUrl = new URL(url)
-    // Security: block private IP ranges
-    const blocked = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]']
-    if (blocked.includes(parsedUrl.hostname)) {
-      throw new Error('Requests to localhost/private IPs are not allowed')
-    }
+  async execute({ url, headers, timeout = 10000 }, context) {
+    const response = await fetchSafeText(url, {
+      headers: headers ? JSON.parse(headers) : {}, timeout, signal: context?.signal,
+    })
+    // Preserve raw data for API consumers. The agent's shared result storage
+    // handles large output without deleting the tail of a response.
+    return formatHttpResponse(response)
+  }
+}
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeout)
-
-    try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: headers ? JSON.parse(headers) : {},
-        signal: controller.signal,
-      })
-
-      const contentType = res.headers.get('content-type') || ''
-      const body = contentType.includes('json')
-        ? await res.json()
-        : await res.text()
-
-      return {
-        status: res.status,
-        content_type: contentType,
-        body: typeof body === 'string' && body.length > 8000
-          ? body.slice(0, 8000) + `\n[TRUNCATED: ${body.length - 8000} chars omitted]`
-          : body,
-      }
-    } finally {
-      clearTimeout(timer)
-    }
+export function formatHttpResponse(response: Awaited<ReturnType<typeof fetchSafeText>>) {
+  return {
+    status: response.status,
+    content_type: response.contentType,
+    body: response.contentType.includes('json') ? JSON.parse(response.text) : response.text,
   }
 }

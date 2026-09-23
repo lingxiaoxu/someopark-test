@@ -71,12 +71,11 @@ const ET_HMS = new Intl.DateTimeFormat('en-GB', {
 const COHORT_COLOR: Record<string, string> = {
   L: '#b45309', S: '#7c3aed', F: '#16a34a',
 };
-const COHORTS = ['L', 'S', 'F'] as const;
 const usd = (v: number) =>
   `${v < 0 ? '−' : ''}$${formatNavMoney(Math.abs(v))}`;
 
-// A2 + K 行——把"展开项加总 ≠ 卡片主数字"这件事画出来。
-// 加性族 MRPT/MTFS:账本口径 → −C 落官方,附 K 三队列;乘性族 SSRS/AISS/BDC
+// 资金构成——把"展开项加总 ≠ 卡片主数字"这件事画出来。
+// 加性族 MRPT/MTFS:账本口径 → −C 落官方;乘性族 SSRS/AISS/BDC
 // (mul 传 k):整段直接官方口径(×k,与展开行金额同刻度),底行=卡片主数字,
 // 无 −C/K 段(全额缩放镜像,无退场队列)。
 // 多空组合占用的资金不能净额化(2026-08-24 用户指正:132k 多 − 56k 空 ≠ 76k 占用)。
@@ -87,15 +86,13 @@ const usd = (v: number) =>
 //   融资负债 M = max(0, L + 0.02×S − E)   自由现金 = max(0, E − L − 0.02×S)
 //   恒等式: 自由现金 + 受限现金 + L − S − M ≡ E(账本 equity,日内唯一可算口径)
 // 官方口径杠杆另差一个 C: gross/(E−C),tooltip 里同时给出。
-// K 行是**信息行**(不参与上面的加总): QC 因队列倍数没镜像到的那部分持仓市值。
-// L(m=0)与 S(m=k)都是有限寿命的退场队列 —— 两队清空后 QC 只剩 F(m=1),
-// 净值层的差就此定格为常数,届时由 ops/rolloff.py 实测冻结、记到 QC 侧现金上。
+// 旧 K/L/S/F 退场队列仅移除展示；底层镜像数据与冻结系数保持原样。
 function waterfall(s: NavNode, kids: NavNode[],
                    cohorts: Record<string, Cohort> | undefined,
                    mirror: MirrorState | null, t: (k: string, o?: any) => string,
                    mul?: { k: number }) {
   const { C, Lmv, Smv, E, restrictedCash, marginLoan, freeCash,
-    gross, levLedger, levOfficial, byCohort, unknown, gap } =
+    gross, levLedger, levOfficial } =
     capitalPresentation(s, kids, cohorts, mirror, mul);
   const row = (label: string, v: number | null, opt?: {
     bold?: boolean; color?: string; top?: string; title?: string }) => (
@@ -140,29 +137,6 @@ function waterfall(s: NavNode, kids: NavNode[],
             : t('realtimeNav.wfGrossTitle', {
                 lev: levLedger === null ? '—' : levLedger.toFixed(2),
                 levOff: levOfficial === null ? '—' : levOfficial.toFixed(2) }) })}
-      {!mul && <div style={{ fontSize: 9.5, marginTop: 4, padding: '3px 0',
-        borderTop: '1px dotted #999', color: '#666' }}
-        title={t('realtimeNav.wfKTitle')}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-          <span>{t('realtimeNav.wfK')}{unknown ? ` ${t('realtimeNav.wfKUnknown')}` : ''}</span>
-          <span>{usd(gap)}</span>
-        </div>
-        {COHORTS.map(c => {
-          const n = kids.filter(k => cohorts?.[k.display_name]?.cohort === c).length;
-          return (
-            <div key={c} style={{ display: 'flex', justifyContent: 'space-between',
-              paddingLeft: 10, color: COHORT_COLOR[c] }}>
-              <span>{c} · {t(`realtimeNav.cohort${c}`)} · {t('realtimeNav.wfPairs', { n })}</span>
-              <span>{usd(byCohort[c])}</span>
-            </div>
-          );
-        })}
-        {mirror && mirror.scaled_frozen === false && (
-          <div style={{ color: '#b45309', fontWeight: 700, paddingLeft: 10 }}>
-            ⚠︎ {t('realtimeNav.wfNoScaledFreeze')}
-          </div>
-        )}
-      </div>}
     </div>
   );
 }
@@ -343,16 +317,21 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       }
       delete row.pf_ledger;
     }
-    // 0% 垂直居中:对称 Y 域(上=正收益,下=负收益),平线时最小 ±0.5%
+    return { data, names: [...wanted], offSum };
+  }, [chartStream, freq, strategies, prevByName, official, mirror]);
+
+  // 与 SPV 同款:仅按可见曲线自动缩放;保留 0% 对称域与原有留白。
+  const chartLim = useMemo(() => {
     let lim = 0.5;
-    for (const row of data) {
-      for (const k of Object.keys(row)) {
-        if (k !== 'label' && k !== 'pf_usd') lim = Math.max(lim, Math.abs(row[k]));
+    const visibleNames = chart.names.filter(name => activeLines.has(name));
+    for (const row of chart.data) {
+      for (const name of visibleNames) {
+        const value = row[name];
+        if (Number.isFinite(value)) lim = Math.max(lim, Math.abs(value));
       }
     }
-    lim = Math.ceil(lim * 1.15 * 100) / 100;
-    return { data, names: [...wanted], lim, offSum };
-  }, [chartStream, freq, strategies, prevByName, official, mirror]);
+    return Math.ceil(lim * 1.15 * 100) / 100;
+  }, [chart, activeLines]);
 
   // 展示规则与聊天 NAV 共用，保留面板原有的基准与回退行为。
   const dayPct = (name: string, value: number) =>
@@ -423,8 +402,15 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               { label: t('realtimeNav.qcStruct'),
                 state: states.structure_sync },
             ];
+            // 沿用既有历史 QC 标记,移至同一详情行;不把冻结记录当成每日新裁决。
+            if (mirror?.rolloff) qc.push({ label: t('realtimeNav.rolloffDone'), state: 'pass' });
             const allPass = panel.quality.allPass;
             const anyFail = panel.quality.anyFail;
+            // 沿用共享检查的严重程度:待确认/短暂延迟为警告,实质失败为异常。
+            const status = allPass ? 'pass' : anyFail ? 'fail' : 'pending';
+            const statusColor = allPass ? '#16a34a' : anyFail ? '#e11d48' : '#b45309';
+            const statusLabel = t(allPass ? 'realtimeNav.statusNormal'
+              : anyFail ? 'realtimeNav.statusAbnormal' : 'realtimeNav.statusWarning');
             return (
               <>
                 <div style={{ fontSize: 30, fontWeight: 800 }}
@@ -440,28 +426,29 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 10.5, fontWeight: 700,
-                  color: allPass ? '#16a34a' : anyFail ? '#e11d48' : '#b45309' }}
-                  title={latest.rebuild_error
-                    ? `${t('realtimeNav.qcStructTitle')} — ${latest.rebuild_error}`
-                    : t('realtimeNav.qcTitle')}>
-                  {allPass ? `✓ ${t('realtimeNav.qcAllPass')} · `
-                    : anyFail ? `✗ ${t('realtimeNav.qcFail')} · ` : `◷ ${t('realtimeNav.qcPending')} · `}
-                  {qc.map(c => `${c.state === 'pass' ? '✓' : c.state === 'fail' ? '✗' : '◷'}${c.label}`).join(' ')}
-                </div>
-                {mirror?.rolloff && (
-                  // 退场日之后:L/S 两队清空、QC 逐票收敛 ⇒ 两边持仓相同,净值差
-                  // 定格成常数 K,记到 QC 一侧当现金。K 是**账户级**的一个数(QC 是
-                  // 单一混合账户,没有分策略子账),所以放在组合层,不放策略卡里。
-                  <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}
-                    title={t('realtimeNav.rolloffTitle', {
-                      qc: usd(mirror.rolloff.qc_equity ?? 0),
-                      panel: usd(mirror.rolloff.panel_official_total ?? 0) })}>
-                    ✓ {t('realtimeNav.rolloffDone', {
-                      k: usd(mirror.rolloff.k_equity),
-                      date: mirror.rolloff.measured_on })}
+                <details data-nav-quality={status} className="group"
+                  style={{ marginTop: 3, fontSize: 10.5, fontWeight: 700 }}>
+                  <summary className="[&::-webkit-details-marker]:hidden"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6,
+                      width: 'fit-content', cursor: 'pointer', listStyle: 'none', color: statusColor }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%',
+                      background: statusColor, flexShrink: 0 }} />
+                    <span>{statusLabel}</span>
+                    <span style={{ color: '#777', fontSize: 10, marginLeft: 3 }}>
+                      {t('realtimeNav.qualityDetails')}
+                      <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90"
+                        style={{ marginLeft: 3 }}>▸</span>
+                    </span>
+                  </summary>
+                  <div style={{ marginTop: 5, color: statusColor, lineHeight: 1.6 }}
+                    title={latest.rebuild_error
+                      ? `${t('realtimeNav.qcStructTitle')} — ${latest.rebuild_error}`
+                      : t('realtimeNav.qcTitle')}>
+                    {allPass ? `✓ ${t('realtimeNav.qcAllPass')} · `
+                      : anyFail ? `✗ ${t('realtimeNav.qcFail')} · ` : `◷ ${t('realtimeNav.qcPending')} · `}
+                    {qc.map(c => `${c.state === 'pass' ? '✓' : c.state === 'fail' ? '✗' : '◷'}${c.label}`).join(' ')}
                   </div>
-                )}
+                </details>
               </>
             );
           })()}
@@ -605,16 +592,6 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                           → QC {qc.toLocaleString()}
                         </span>
                       )}
-                      {!mul && qc !== null && (   /* 乘性族镜像徽章,同 pair 行 F 徽章样式 */
-                        <span style={{ marginLeft: 5, fontSize: 9,
-                          color: COHORT_COLOR.F,
-                          border: `1px solid ${COHORT_COLOR.F}`, padding: '0 3px' }}
-                          title={t('realtimeNav.qcScaledTitle', { k: kf })}>
-                          {/* 3 位小数:SSRS k=0.995 用 2 位会显示成 ×1.00,与 BDC 真 ×1 混淆 */}
-                          {t('realtimeNav.qcScaledShort',
-                            { k: kf === 1 ? '1' : String(+(kf as number).toFixed(3)) })}
-                        </span>
-                      )}
                     </span>
                     <span>${displayHolding.display_value}</span>
                   </div>
@@ -645,16 +622,6 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                           justifyContent: 'space-between', borderTop: '1px dashed #ddd',
                           padding: '3px 0', cursor: k.holdings?.length ? 'pointer' : 'default' }}>
                         <span>└ {k.display_name}{k.holdings?.length ? (expanded.has(k.node_id) ? ' ▾' : ' ▸') : ''}
-                          {mul && (                            /* A4:每对挂 QC 队列徽标 */
-                            <span style={{ marginLeft: 5, fontSize: 9,
-                              color: COHORT_COLOR[mul.cohort],
-                              border: `1px solid ${COHORT_COLOR[mul.cohort]}`,
-                              padding: '0 3px' }}
-                              /* 徽标挤在对名后面,只放最短的辨识词;完整说法进 tooltip */
-                              title={`${t(`realtimeNav.cohort${mul.cohort}`)} · m=${mul.m}`}>
-                              {mul.cohort} {t(`realtimeNav.cohort${mul.cohort}Short`)}
-                            </span>
-                          )}
                         </span>
                         {pS > 0 ? (
                           <span style={{ textAlign: 'right', lineHeight: 1.25 }}
@@ -760,13 +727,14 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
                 <XAxis dataKey="label" fontSize={9} stroke="#999"
                   tickLine={false} axisLine={false} minTickGap={50} />
-                <YAxis yAxisId="ret" domain={[-chart.lim, chart.lim]}
+                <YAxis yAxisId="ret" domain={[-chartLim, chartLim]}
                   fontSize={9} stroke="#999" tickLine={false} axisLine={false}
                   tickFormatter={(v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`} />
                 {chart.offSum && (
                   <YAxis yAxisId="eq" orientation="right"
-                    domain={[chart.offSum * (1 - chart.lim / 100),
-                             chart.offSum * (1 + chart.lim / 100)]}
+                    domain={[chart.offSum * (1 - chartLim / 100),
+                             chart.offSum * (1 + chartLim / 100)]}
+                    allowDataOverflow
                     fontSize={9} stroke="#999" tickLine={false} axisLine={false}
                     tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
                     width={40} />

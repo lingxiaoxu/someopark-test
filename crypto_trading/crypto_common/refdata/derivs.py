@@ -29,6 +29,8 @@ import argparse
 import asyncio
 import json
 import logging
+import math
+import os
 import time
 
 import pandas as pd
@@ -385,7 +387,46 @@ def _has_subscribe(drv) -> bool:
     return hasattr(drv, "liq_subscribe_msg")
 
 
-async def record_liquidations(symbols: list[str]) -> None:
+class _LiquidationStatus:
+    """Small atomic health receipt; an event counts only after the tape write."""
+
+    def __init__(self, root, driver: str, max_open_files: int):
+        self.path = root / "recorder_status.json"
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        last_event = None
+        try:
+            old = json.loads(self.path.read_text())
+            value = old.get("last_event_at")
+            if (old.get("schema_version") == 1 and old.get("driver") == driver
+                    and isinstance(value, (int, float)) and not isinstance(value, bool)
+                    and math.isfinite(value) and 0 < value <= time.time()):
+                last_event = value
+        except (OSError, ValueError, AttributeError):
+            pass
+        self.data = {"schema_version": 1, "driver": driver, "pid": os.getpid(),
+                     "started_at": time.time(), "state": "starting", "subscribed": False,
+                     "connected_at": None, "last_message_at": None,
+                     "last_event_at": last_event, "events_written": 0,
+                     "connections": 0, "errors": 0, "last_error": None,
+                     "open_files": 0, "max_open_files": max_open_files}
+        self._saved_monotonic = -math.inf
+
+    def update(self, *, force: bool = False, **changes) -> None:
+        self.data.update(changes)
+        now = time.monotonic()
+        if not force and now - self._saved_monotonic < 5.0:
+            return
+        self.data["updated_at"] = time.time()
+        tmp = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")
+        try:
+            tmp.write_text(json.dumps(self.data, sort_keys=True, allow_nan=False) + "\n")
+            os.replace(tmp, self.path)
+        finally:
+            tmp.unlink(missing_ok=True)
+        self._saved_monotonic = now
+
+
+async def record_liquidations(symbols: list[str], *, max_open_files: int = 64) -> None:
     """Record-forward liquidation tape (Plan 04 proxy prototyping input).
 
     Records ALL market-wide liquidations from the venue (useful cascade context,
@@ -395,48 +436,86 @@ async def record_liquidations(symbols: list[str]) -> None:
     """
     import websockets
     drv = pick_driver()
-    writer = DailyJsonlWriter(OFFSHORE_DIR / drv.name / "liquidations")
+    root = OFFSHORE_DIR / drv.name / "liquidations"
+    writer = DailyJsonlWriter(root, max_open_files=max_open_files)
+    status = _LiquidationStatus(root, drv.name, max_open_files)
     url = drv.liq_ws_url(symbols)
-    while True:
-        keepalive = None
-        try:
-            async with websockets.connect(url, open_timeout=15, ping_interval=20,
-                                          ping_timeout=15) as ws:
-                if _has_subscribe(drv):
-                    await ws.send(json.dumps(drv.liq_subscribe_msg(symbols)))
-                if isinstance(drv, OKX):
-                    keepalive = asyncio.create_task(_okx_keepalive(ws))
-                logger.info("liq stream connected (%s), subscribed=%s", drv.name,
-                            _has_subscribe(drv))
-                n = 0
-                while True:
-                    msg = await ws.recv()
-                    if msg == "pong" or (isinstance(msg, str) and msg.startswith("pong")):
-                        continue
-                    raw = json.loads(msg)
-                    if raw.get("event"):          # subscribe ack / error frame
+    try:
+        while True:
+            keepalive = None
+            status.update(force=True, state="connecting", subscribed=False)
+            try:
+                async with websockets.connect(url, open_timeout=15, ping_interval=20,
+                                              ping_timeout=15) as ws:
+                    if _has_subscribe(drv):
+                        await ws.send(json.dumps(drv.liq_subscribe_msg(symbols)))
+                    if isinstance(drv, OKX):
+                        keepalive = asyncio.create_task(_okx_keepalive(ws))
+                    connected_at = time.time()
+                    status.update(force=True, state="connected", connected_at=connected_at,
+                                  last_message_at=None, subscribed=not _has_subscribe(drv),
+                                  connections=status.data["connections"] + 1)
+                    logger.info("liq stream connected (%s), subscribe_sent=%s", drv.name,
+                                _has_subscribe(drv))
+                    n = 0
+                    while True:
+                        try:
+                            msg = await asyncio.wait_for(ws.recv(), timeout=5.0)
+                        except asyncio.TimeoutError:
+                            # OKX answers our app-level ping every 20s. Silence
+                            # is not a liquidation event, but no pong/packet for
+                            # 60s is a broken connection, not a quiet market.
+                            if (isinstance(drv, OKX) and time.time() -
+                                    (status.data["last_message_at"] or connected_at) > 60):
+                                raise TimeoutError("OKX has sent no message/pong for 60s")
+                            status.update(open_files=writer.open_file_count)
+                            continue
+                        received_at = time.time()
+                        status.update(last_message_at=received_at, open_files=writer.open_file_count)
+                        if msg == "pong" or (isinstance(msg, str) and msg.startswith("pong")):
+                            continue
+                        raw = json.loads(msg)
                         if raw.get("event") == "error":
-                            logger.warning("liq subscribe error: %s", str(raw)[:200])
-                        continue
-                    parsed = drv.parse_liq(raw)
-                    events = parsed if isinstance(parsed, list) else ([parsed] if parsed else [])
-                    for ev in events:
-                        if ev and ev.get("symbol"):
-                            writer.write(ev["symbol"], {"recv_ts": time.time(), **ev})
-                            n += 1
-                    if n and n % 50 == 0:
-                        logger.info("liq events recorded: %d", n)
-        except asyncio.CancelledError:
-            if keepalive:
-                keepalive.cancel()
-            writer.close()
-            raise
-        except Exception as e:
-            logger.warning("liq stream dropped: %s: %s — reconnecting", type(e).__name__,
-                           str(e)[:150])
-            if keepalive:
-                keepalive.cancel()
+                            raise RuntimeError(f"liquidation subscription rejected: {str(raw)[:200]}")
+                        if raw.get("event") == "subscribe":
+                            arg = raw.get("arg") or {}
+                            if not isinstance(drv, OKX) or (arg.get("channel") == "liquidation-orders"
+                                                          and arg.get("instType") == "SWAP"):
+                                status.update(force=True, subscribed=True)
+                            continue
+                        parsed = drv.parse_liq(raw)
+                        events = parsed if isinstance(parsed, list) else ([parsed] if parsed else [])
+                        for ev in events:
+                            if ev and ev.get("symbol"):
+                                writer.write(ev["symbol"], {"recv_ts": received_at, **ev})
+                                n += 1
+                                status.update(last_event_at=received_at, subscribed=True,
+                                              events_written=status.data["events_written"] + 1,
+                                              open_files=writer.open_file_count)
+                        if n and n % 50 == 0:
+                            logger.info("liq events recorded: %d", n)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                # Release every cached descriptor BEFORE DNS/connect/status IO
+                # is retried. Keeping the exhausted writer made retries fail
+                # indefinitely even after the host's network had recovered.
+                writer.close()
+                logger.warning("liq stream dropped: %s: %s — reconnecting", type(e).__name__,
+                               str(e)[:150])
+                status.update(force=True, state="reconnecting", subscribed=False,
+                              open_files=0, errors=status.data["errors"] + 1,
+                              last_error={"at": time.time(), "type": type(e).__name__,
+                                          "message": str(e)[:200]})
+            finally:
+                if keepalive:
+                    keepalive.cancel()
+                    await asyncio.gather(keepalive, return_exceptions=True)
+                writer.close()
             await asyncio.sleep(5)
+    finally:
+        writer.close()
+        status.update(force=True, state="stopped", subscribed=False, open_files=0)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -444,13 +523,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("mode", choices=["backfill", "liq-record"])
     ap.add_argument("--symbols", default=",".join(DEFAULT_SYMBOLS))
     ap.add_argument("--days", type=int, default=730)
+    ap.add_argument("--max-open-files", type=int, default=64,
+                    help="maximum cached liquidation tape handles (default: 64)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     if args.mode == "backfill":
         backfill(symbols, args.days)
     else:
-        asyncio.run(record_liquidations(symbols))
+        asyncio.run(record_liquidations(symbols, max_open_files=args.max_open_files))
     return 0
 
 

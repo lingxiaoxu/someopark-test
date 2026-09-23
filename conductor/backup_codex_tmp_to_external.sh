@@ -86,14 +86,24 @@ for i in "${!NAMES[@]}"; do
   fi
 
   mkdir -p "$DST"
+  # 与 backup_gaps 同:活目录必须先冻结源清单,只对「开始那一刻存在的文件」负责
+  SNAP=$(mktemp -t bkcodex_snap)
+  find "$SRC" -type f 2>/dev/null > "$SNAP"
+  log "  源清单已冻结: $(wc -l < "$SNAP" | tr -d ' ') 个文件"
   log "  复制中…（活动目录会有 vanished 提示，属正常）"
   rsync -a --partial "$SRC/" "$DST/" 2>>"$LOG"
   RC=$?
   # 24 = some files vanished during transfer（源是活动目录，正常）
-  if [[ "$RC" -ne 0 && "$RC" -ne 24 ]]; then
+  # 码 24 = 传输中文件消失（活动目录正常）；码 23 = 部分条目跳过，在 /private/tmp
+  # 上恒定发生——那里有 883 个 Unix 套接字，rsync 报 mkstempsock: Invalid argument。
+  # 套接字是 IPC 端点不是数据，跳过是**正确行为**。
+  # 2026-09-12 修:原来 23 走 `continue` → **整段校验被跳过**，tmp 分支因此从未被
+  # 脚本校验过（当时是人工另跑命令才确认完好）。现在 23/24 都只记录、继续校验。
+  if [[ "$RC" -ne 0 && "$RC" -ne 24 && "$RC" -ne 23 ]]; then
     log "  ✗ rsync 退出码 $RC"; FAIL=1; continue
   fi
   [[ "$RC" -eq 24 ]] && log "  （rsync 码 24：传输中有文件消失，活动目录属正常）"
+  [[ "$RC" -eq 23 ]] && log "  （rsync 码 23：部分条目跳过，通常是套接字等特殊文件；继续校验）"
 
   [[ -d "$EXT_VOL" ]] || die "移动硬盘中途掉线"
   DN=$(count_files "$DST"); DB=$(count_bytes "$DST")
@@ -102,14 +112,33 @@ for i in "${!NAMES[@]}"; do
   DIFF=$(rsync -an "$SRC/" "$DST/" 2>/dev/null | grep -vE '^(sending|sent|total|building|created )' | grep -cv '^\.\?/\?$' || true)
   log "  校验 3/3 rsync 零差异: 待传 $DIFF  $([[ "$DIFF" -le 5 ]] && echo '✓（≤5 为活动文件抖动）' || echo ✗)"
 
-  SF=0; SC=0
+  # MD5 抽样(活动目录会有竞争:抽样瞬间文件正被写入)。
+  # 2026-09-12 加定向重试:不符 → 单独重传该文件再比一次,**第二次仍不符才算真失败**。
+  # 这样才能把「活文件churn」与「真损坏」分开——此前两次误报都属前者。
+  SF=0; SC=0; SR=0
   while IFS= read -r f; do
     rel="${f#"$SRC/"}"
-    [[ -f "$DST/$rel" ]] || { SF=$((SF+1)); continue; }
-    [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]] || SF=$((SF+1))
     SC=$((SC+1))
-  done < <(find "$SRC" -type f 2>/dev/null | awk -v n="$MD5_SAMPLE" 'NR%7==1' | head -"$MD5_SAMPLE")
-  log "  校验 MD5 抽样: $SC 个, 失败 $SF  $([[ "$SF" -eq 0 ]] && echo ✓ || echo ✗)"
+    [[ -f "$f" ]] || { SC=$((SC-1)); continue; }
+    if [[ ! -f "$DST/$rel" ]]; then
+      SR=$((SR+1)); mkdir -p "$(dirname "$DST/$rel")"
+      rsync -a --partial "$f" "$DST/$rel" 2>>"$LOG"
+      if [[ -f "$DST/$rel" ]]; then log "    · 盘上原缺失,已定向补传: $rel"
+      else log "    ✗ 补传后仍缺失: $rel"; SF=$((SF+1)); fi
+      continue
+    fi
+    if [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]]; then continue; fi
+    # 第一次不符 → 定向重传后复比
+    SR=$((SR+1))
+    rsync -a --partial "$f" "$DST/$rel" 2>>"$LOG"
+    if [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]]; then
+      log "    · 活文件竞争,已定向重传并复比通过: $rel"
+    else
+      log "    ✗ 重传后仍不符(疑似真损坏): $rel"; SF=$((SF+1))
+    fi
+  done < <(sort -R "$SNAP" | head -"$MD5_SAMPLE")
+  rm -f "$SNAP"
+  log "  校验 MD5 抽样: $SC 个, 定向重传 $SR 个, 最终失败 $SF  $([[ "$SF" -eq 0 ]] && echo ✓ || echo ✗)"
 
   if [[ "$DN" -ge "$SN" && "$DB" -ge "$SB" && "$SF" -eq 0 ]]; then
     log "  ★ $NAME 备份完成并校验通过"

@@ -35,6 +35,7 @@ import json
 from copy import deepcopy
 import os
 import re
+import time
 from datetime import date, datetime, timedelta, timezone
 
 from prediction_market_soccer.config import CONFIG
@@ -43,6 +44,7 @@ from prediction_market_soccer.config.leagues import active
 from prediction_market_soccer.util.club_identity import venue_identity_index, identity_manifest_id
 from prediction_market_soccer.util.market_identity import fixture_identity, make_binding, unique_event
 from prediction_market_soccer.util.quote_evidence import make_receipt, quote_from_receipt, qualify_quote
+from prediction_market_soccer.venues import ratelimit
 
 # Base (non-derivative) match slug. Team codes are 2-6 chars and may carry digits
 # (s04, aek1, icde) — measured over the live slug set.
@@ -51,6 +53,9 @@ _CODE = r"[a-z0-9]{2,6}"
 # How far the pairing index reaches around "now". Poly US lists a match roughly two
 # weeks ahead and keeps it after settlement, so this covers both upcoming_export
 # (next fixtures) and live_poller (in-play) from one listing per competition.
+# Admission/retry-wait budget for one provider read. Once dispatched, the SDK's
+# existing HTTP timeout applies; this is not a hard wall-clock request timeout.
+_REQUEST_TIMEOUT_SEC = 45.0
 _WINDOW_BACK_DAYS = 5
 _WINDOW_FWD_DAYS = 21
 _CACHE_TTL_SEC = 300
@@ -98,12 +103,48 @@ def _load_aliases() -> dict[str, str]:
 
 
 class PolymarketUSDiscovery:
+    def _request(self, call, *args, **kwargs):
+        """Every provider read is paced by Soccer's shared local budget.
+
+        Polymarket US answers a 429 with Retry-After, so the limiter waits exactly
+        as long as the server asked instead of giving up on the fixture: the
+        2026-09-14 sweep spent 198 of 255 book reads on RateLimitError and priced
+        19 of 85 fixtures. BudgetExhausted still surfaces as a failed request —
+        an honest "we could not pay for this read", not a silent empty book.
+        """
+        timeout = self._request_timeout
+        if self._budget_deadline is not None:
+            timeout = min(timeout, self._budget_deadline - time.monotonic())
+            if timeout <= 0:
+                raise ratelimit.BudgetExhausted("Polymarket US sweep budget spent")
+        return self._limiter.run(lambda: call(*args, **kwargs),
+                                 bulk=self._bulk, timeout=timeout)
+
     def __init__(self, client=None, *, window_back_days: int = _WINDOW_BACK_DAYS,
-                 window_fwd_days: int = _WINDOW_FWD_DAYS, conn=None):
+                 window_fwd_days: int = _WINDOW_FWD_DAYS, conn=None, priority: str = "bulk",
+                 request_timeout: float = _REQUEST_TIMEOUT_SEC,
+                 budget_deadline: float | None = None):
         if client is None:
             from polymarket_us import PolymarketUS
             client = PolymarketUS(key_id=os.environ["PMUS_KEY_ID"], secret_key=os.environ["PMUS_SECRET"])
         self.c = client
+        if priority not in ("bulk", "live"):
+            raise ValueError(f"priority must be 'bulk' or 'live', not {priority!r}")
+        # Per-process objects share a locked Soccer state file — see ratelimit.py.
+        # "live" is the in-play poller, whose quote can reach a paper decision;
+        # "bulk" is the upcoming sweep (including imminent PRE), which leaves a
+        # token reserve. Other applications/hosts with the key are not coordinated.
+        self._limiter = ratelimit.polymarket_us_limiter()
+        self._bulk = priority == "bulk"
+        self._request_timeout = float(request_timeout)
+        # A whole-calendar sweep wants ~255 book reads. At the budget this account
+        # actually has that is longer than the 15-minute trigger interval, so the
+        # sweep is given a wall clock: past it further reads are declined rather
+        # than left to overrun the next run and hold a connection while they wait.
+        # time.monotonic()-based, and shared across the sweep's per-competition
+        # discoveries so the last competition cannot spend a fresh allowance.
+        # An admitted request may finish later under the unchanged SDK timeout.
+        self._budget_deadline = budget_deadline
         self.back, self.fwd = window_back_days, window_fwd_days
         self._aliases = _load_aliases()
         self._alias_pairs = _load_alias_pairs()
@@ -196,7 +237,7 @@ class PolymarketUSDiscovery:
         catalogue, complete, pages, error = {}, False, 0, None
         for off in range(0, 2000, 100):
             try:
-                out = self.c.series.list({"limit":100,"offset":off})
+                out = self._request(self.c.series.list, {"limit":100,"offset":off})
                 items = (out.get("series") if isinstance(out,dict) else out) or []
                 pages += 1
             except Exception as exc:
@@ -256,7 +297,7 @@ class PolymarketUSDiscovery:
             comp_errors=[]
             for offset in range(0,400,100):
                 try:
-                    out=self.c.events.list({'seriesId':ids,'limit':100,'offset':offset,'startTimeMin':lo,'startTimeMax':hi})
+                    out=self._request(self.c.events.list, {'seriesId':ids,'limit':100,'offset':offset,'startTimeMin':lo,'startTimeMax':hi})
                     page=(out.get('events') if isinstance(out,dict) else out) or []
                     pages+=1
                     comp_pages+=1
@@ -382,7 +423,7 @@ class PolymarketUSDiscovery:
             return None
         d['probe']={'state':'requested','slugs':slugs,'limit':len(slugs)}
         try:
-            out=self.c.events.list({'slug':slugs,'limit':len(slugs)})
+            out=self._request(self.c.events.list, {'slug':slugs,'limit':len(slugs)})
         except Exception as exc:
             d['probe'].update(state='failed',error=type(exc).__name__)
             d.update(reason='request_failed')
@@ -407,7 +448,7 @@ class PolymarketUSDiscovery:
     def _price(self, slug: str, *, binding=None):
         started=datetime.now(timezone.utc).isoformat()
         try:
-            raw=self.c.markets.bbo(slug)
+            raw=self._request(self.c.markets.bbo, slug)
             received=datetime.now(timezone.utc).isoformat()
             md=raw.get('marketData',raw) if isinstance(raw,dict) else {}
             returned_slug = md.get('slug') or md.get('marketSlug') or (raw.get('slug') if isinstance(raw, dict) else None)
@@ -426,8 +467,12 @@ class PolymarketUSDiscovery:
                 status=str(md.get('status') or 'active').lower())
             return quote_from_receipt(receipt)
         except Exception as exc:
-            self.quote_status.setdefault('books', {})[binding['side'] if binding else slug]={'state':'unavailable','reason':'quote_request_failed','error':type(exc).__name__}
-            self.quote_status.update(state='unavailable',reason='quote_request_failed')
+            # A budget we could not pay is a different fact from a book we asked
+            # for and could not read; the operator needs to tell them apart.
+            reason = ('rate_limit_budget_exhausted' if isinstance(exc, ratelimit.BudgetExhausted)
+                      else 'quote_request_failed')
+            self.quote_status.setdefault('books', {})[binding['side'] if binding else slug]={'state':'unavailable','reason':reason,'error':type(exc).__name__}
+            self.quote_status.update(state='unavailable',reason=reason)
             return None
 
     def match_quotes(self, home_id, away_id, et_date, *, fixture=None, comp_key=None):

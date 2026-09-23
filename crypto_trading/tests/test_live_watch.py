@@ -949,3 +949,160 @@ def test_runner_survives_a_missing_experimental_strategy():
                        text=True, timeout=120, cwd=str(repo), env=env)
     assert r.returncode == 0, f"runner died without w8:\n{r.stderr[-2000:]}"
     assert r.stdout.startswith("OK 7")
+
+
+def test_w7_mirrors_and_live_intents_only_the_main_cell(sandbox, monkeypatch):
+    """v3.3 (user 2026-09-12): the LIVE rule is MAIN [0.78,0.98]. Demo must
+    rehearse exactly those trades and nothing else, and every MAIN entry must
+    also dispatch a (disarmed) live intent — so arming later changes nothing
+    but the gate."""
+    import time
+
+    import pandas as pd
+
+    from crypto_trading.crypto_common.execution_events import EventExecutionRouter
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    mirrored, lived = [], []
+    monkeypatch.setattr(EventExecutionRouter, "mirror_demo",
+                        lambda self, **kw: mirrored.append(kw) or {"status": "sent"})
+    monkeypatch.setattr(EventExecutionRouter, "submit",
+                        lambda self, **kw: lived.append(kw) or {"status": "live_disarmed"})
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now + pd.Timedelta(minutes=8.0)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    snap = {"recv_ts": now.timestamp(),
+            "markets": [{"ticker": "KXETH15M-MAINTEST", "close_time": close,
+                         "yes_bid_dollars": "0.50", "yes_ask_dollars": "0.51"}]}
+    monkeypatch.setattr(w7, "latest_snapshot",
+                        lambda s: snap if s == "KXETH15M" else None)
+    cfg = {"w7_noisefade": {"enabled": False, "contracts": 25,
+                            "demo_mirror": True, "live_orders": False}}
+
+    def run_fill(fc):
+        book = {"yes_bid": fc - 0.01, "yes_ask": fc,
+                "no": {"top_cost": 1 - (fc - 0.01), "fill_cost": 1 - (fc - 0.01),
+                       "filled": 25, "shortfall": 0, "slippage_c": 0.0},
+                "yes": {"top_cost": fc, "fill_cost": fc, "filled": 25,
+                        "shortfall": 0, "slippage_c": 0.0}}
+        monkeypatch.setattr(w7, "walk_book_both", lambda t, c: book)
+        common.save_state("w7_noisefade", {"positions": {}, "trades": [],
+                                           "cum_net_usd": 0.0})
+        w7.run(cfg)
+        time.sleep(0.3)                      # fire-and-forget threads land
+
+    run_fill(0.72)                           # band, but NOT main
+    assert mirrored == [] and lived == []
+    run_fill(0.85)                           # main cell
+    assert len(mirrored) == 1 and len(lived) == 1
+    assert lived[0]["ticker"] == "KXETH15M-MAINTEST"
+    assert lived[0]["side"] == "yes" and lived[0]["armed"] is False
+    assert lived[0]["entry_price"] == 0.85 and lived[0]["contracts"] == 25
+
+
+def test_events_live_gate_never_downgrades_silently(monkeypatch):
+    """Disarmed -> a full audit row and NO venue construction. Armed with a
+    closed gate -> LiveOrderRefused, never a quiet dry-run. Armed with every
+    gate open -> the V2 order goes out IOC with the yes/no translation."""
+    import crypto_trading.crypto_common.execution_events as ee
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("venue client must not be built while disarmed")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Boom)
+    r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
+        ticker="KXBTC15M-X", side="no", entry_price=0.88, contracts=25)
+    assert r["status"] == "live_disarmed" and r["price_dollars"] == 0.88
+
+    router = ee.EventExecutionRouter(strategy="w7_noisefade")
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status",
+                        lambda self: {"live_open": False, "env_allows": False})
+    with pytest.raises(ee.LiveOrderRefused):
+        router.submit(ticker="KXBTC15M-X", side="no", entry_price=0.88,
+                      contracts=25, armed=True)
+
+    sent = []
+
+    class Client:
+        def __init__(self, *, env=None):
+            assert env == "prod"
+
+        def create_order(self, **kw):
+            sent.append(kw)
+            return {"status_code": 201, "response": "{}", "body_sent": {}}
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Client)
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status",
+                        lambda self: {"live_open": True})
+    r = router.submit(ticker="KXBTC15M-X", side="no", entry_price=0.88,
+                      contracts=25, armed=True)
+    assert r["status"] == "live_sent"
+    assert sent == [{"ticker": "KXBTC15M-X", "side": "no", "count": 25,
+                     "price_dollars": 0.88, "tif": "immediate_or_cancel"}]
+
+
+def test_events_gate_status_defaults_closed(monkeypatch):
+    """The shipped configuration must evaluate to a fully closed gate: no
+    ALLOW_LIVE_ORDERS, no armed flag -> live_open False, whatever the keys."""
+    import crypto_trading.crypto_common.execution_events as ee
+    monkeypatch.delenv("ALLOW_LIVE_ORDERS", raising=False)
+    g = ee.EventExecutionRouter(strategy="w7_noisefade").gate_status()
+    assert g["live_open"] is False
+    assert g["env_allows"] is False and g["cfg_armed"] is False
+
+
+def test_kalshi_key_prod_naming_serves_order_paths_only(monkeypatch):
+    """The user's prod key lives under KALSHI_PROD_* (prediction_market
+    naming). Order paths (borrowed_ok=False) must find it as a DEDICATED key;
+    demo/read paths must NOT get it (a prod key cannot authenticate against
+    the demo host — the mirror keeps the demo key)."""
+    import crypto_trading.crypto_common.config as C
+
+    monkeypatch.delenv("KALSHI_MARGIN_KEY_ID", raising=False)
+    monkeypatch.delenv("KALSHI_MARGIN_PRIVATE_KEY_PATH", raising=False)
+    monkeypatch.setattr(C, "_PM_ENV", {
+        "KALSHI_PROD_API_KEY_ID": "prod-kid",
+        "KALSHI_PROD_PRIVATE_KEY_PATH": "/tmp/prod.pem",
+        "KALSHI_API_KEY_ID": "demo-kid",
+        "KALSHI_PRIVATE_KEY_PATH": "/tmp/demo.pem"})
+    k = C.kalshi_key("margin", borrowed_ok=False)
+    assert k.key_id == "prod-kid" and k.borrowed is False
+    k = C.kalshi_key("margin", borrowed_ok=True)
+    assert k.key_id == "demo-kid" and k.borrowed is True
+    # a dedicated crypto key still wins over everything
+    monkeypatch.setenv("KALSHI_MARGIN_KEY_ID", "dedicated-kid")
+    monkeypatch.setenv("KALSHI_MARGIN_PRIVATE_KEY_PATH", "/tmp/ded.pem")
+    assert C.kalshi_key("margin", borrowed_ok=False).key_id == "dedicated-kid"
+
+
+def test_w7_cum_equals_the_sum_of_stored_trades_exactly(sandbox, monkeypatch):
+    """The paper book's headline must equal the trades it is made of, to the
+    cent, forever. Accumulating full precision while storing 2dp drifted them
+    apart by $0.055 over 3,831 trades and tripped the health check that exists
+    to catch a real accounting bug."""
+    import pandas as pd
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+
+    now = pd.Timestamp.now(tz="UTC")
+    close = (now - pd.Timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # costs chosen so the raw pnl has long decimal tails in both directions
+    pos = {}
+    for i, cost in enumerate([0.6133, 0.7777, 0.8451, 0.9099, 0.7003]):
+        pos[f"KXBTC15M-R{i}"] = {
+            "cost": cost, "close": close, "series": "KXBTC15M", "side": "no",
+            "leg": "band", "maker_posted": None, "entry_rts": 1,
+            "opened": str(now - pd.Timedelta(minutes=18))}
+    common.save_state("w7_noisefade", {"positions": pos, "trades": [],
+                                       "cum_net_usd": 0.0})
+    monkeypatch.setattr(w7, "official_result",
+                        lambda t: "no" if t.endswith(("0", "2", "4")) else "yes")
+    monkeypatch.setattr(w7, "latest_snapshot", lambda s: None)
+    monkeypatch.setattr(w7, "tape_quotes", lambda *a: [])
+    rep = w7.run({"w7_noisefade": {"enabled": False, "contracts": 25}})
+    assert len(rep["settled"]) == 5
+    st = common.load_state("w7_noisefade")
+    booked = sum(t["pnl_c"] for t in st["trades"]) * 25 / 100
+    assert st["cum_net_usd"] == pytest.approx(booked, abs=1e-9)

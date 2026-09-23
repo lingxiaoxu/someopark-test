@@ -1,0 +1,519 @@
+{
+ "mrpt": {
+  "as_of": "2026-09-14",
+  "balance_sheet": {
+   "cash": 1032864.13,
+   "net_securities": 0.0,
+   "nav": 1032864.13,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -550.14,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -2499.88,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -9248.15,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 24598.49,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1033414.27,
+    "net_income": -550.14,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1032864.13,
+    "return_pct": -0.0532,
+    "max_drawdown_pct": -0.05
+   },
+   "1W": {
+    "beginning_nav": 1035364.01,
+    "net_income": -2499.88,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1032864.13,
+    "return_pct": -0.2414,
+    "max_drawdown_pct": -0.24
+   },
+   "1M": {
+    "beginning_nav": 1042112.28,
+    "net_income": -9248.15,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1032864.13,
+    "return_pct": -0.8874,
+    "max_drawdown_pct": -0.89
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 24598.49,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1032864.13,
+    "return_pct": 2.4397,
+    "max_drawdown_pct": -3.21
+   }
+  },
+  "positions": {},
+  "pnl": {
+   "cumulative_realized": 33862.61,
+   "cumulative_dividends": -998.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 32864.13
+  },
+  "activity_today": {
+   "n_trades": 2,
+   "realized_today": -550.14,
+   "trades": [
+    {
+     "date": "2026-09-14",
+     "ticker": "FTV",
+     "side": "SELL",
+     "shares": 1315,
+     "price": 55.19,
+     "avg_cost_at_trade": 54.69,
+     "realized_pnl": 657.5,
+     "gross": 72574.85,
+     "dedup_key": "2026-09-14-FTV-SELL-FTV/JBHT|s1",
+     "lot": "FTV/JBHT|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 54.69,
+     "lot_realized": 657.5,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "JBHT",
+     "side": "BUY",
+     "shares": 266,
+     "price": 274.99,
+     "avg_cost_at_trade": 270.45,
+     "realized_pnl": -1207.64,
+     "gross": -73147.34,
+     "dedup_key": "2026-09-14-JBHT-BUY-FTV/JBHT|s2",
+     "lot": "FTV/JBHT|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 270.45,
+     "lot_realized": -1207.64,
+     "price_basis": "close_resolved"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-09-14",
+  "balance_sheet": {
+   "cash": -13041.88,
+   "net_securities": 874356.77,
+   "nav": 861314.89,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -53849.9,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -52283.74,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -88340.18,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": -139691.02,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 915164.79,
+    "net_income": -53849.9,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 861314.89,
+    "return_pct": -5.8842,
+    "max_drawdown_pct": -5.88
+   },
+   "1W": {
+    "beginning_nav": 913598.63,
+    "net_income": -52283.74,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 861314.89,
+    "return_pct": -5.7228,
+    "max_drawdown_pct": -9.72
+   },
+   "1M": {
+    "beginning_nav": 949655.07,
+    "net_income": -88340.18,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 861314.89,
+    "return_pct": -9.3023,
+    "max_drawdown_pct": -9.72
+   },
+   "ITD": {
+    "beginning_nav": 1001005.91,
+    "net_income": -139691.02,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 861314.89,
+    "return_pct": -13.9551,
+    "max_drawdown_pct": -26.85
+   }
+  },
+  "positions": {
+   "PSX": {
+    "shares": 546,
+    "avg_cost": 236.9,
+    "entry_date": "2026-08-21"
+   },
+   "DECK": {
+    "shares": -730,
+    "avg_cost": 88.74,
+    "entry_date": "2026-08-25"
+   },
+   "HUM": {
+    "shares": 359,
+    "avg_cost": 409.8,
+    "entry_date": "2026-09-11"
+   },
+   "AON": {
+    "shares": -122,
+    "avg_cost": 302.69,
+    "entry_date": "2026-09-11"
+   },
+   "VLO": {
+    "shares": 946,
+    "avg_cost": 390.42,
+    "entry_date": "2026-09-11"
+   },
+   "VRSK": {
+    "shares": -309,
+    "avg_cost": 176.2,
+    "entry_date": "2026-09-11"
+   },
+   "IDXX": {
+    "shares": -73,
+    "avg_cost": 504.7,
+    "entry_date": "2026-09-11"
+   },
+   "HPE": {
+    "shares": 8862,
+    "avg_cost": 55.41,
+    "entry_date": "2026-09-14"
+   },
+   "BLDR": {
+    "shares": -1223,
+    "avg_cost": 60.24,
+    "entry_date": "2026-09-14"
+   },
+   "PCG": {
+    "shares": -3611,
+    "avg_cost": 13.6,
+    "entry_date": "2026-09-14"
+   },
+   "SWKS": {
+    "shares": 1239,
+    "avg_cost": 79.26,
+    "entry_date": "2026-09-14"
+   },
+   "HWM": {
+    "shares": -216,
+    "avg_cost": 227.13,
+    "entry_date": "2026-09-14"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": -136025.05,
+   "cumulative_dividends": -6807.83,
+   "cumulative_fees": 0.0,
+   "unrealized": 4147.77,
+   "total": -138685.11
+  },
+  "activity_today": {
+   "n_trades": 18,
+   "realized_today": -42076.86,
+   "trades": [
+    {
+     "date": "2026-09-14",
+     "ticker": "MU",
+     "side": "SELL",
+     "shares": 207,
+     "price": 924.03,
+     "avg_cost_at_trade": 1005.490777,
+     "realized_pnl": -19159.92,
+     "gross": 191274.21,
+     "dedup_key": "2026-09-14-MU-SELL-MU/BLDR|s1",
+     "lot": "MU/BLDR|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 1016.59,
+     "lot_realized": -19159.92,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "BLDR",
+     "side": "BUY",
+     "shares": 806,
+     "price": 60.24,
+     "avg_cost_at_trade": 63.457293,
+     "realized_pnl": 4473.3,
+     "gross": -48553.44,
+     "dedup_key": "2026-09-14-BLDR-BUY-MU/BLDR|s2",
+     "lot": "MU/BLDR|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 65.79,
+     "lot_realized": 4473.3,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "PSX",
+     "side": "SELL",
+     "shares": 416,
+     "price": 257.06,
+     "avg_cost_at_trade": 244.765946,
+     "realized_pnl": 819.52,
+     "gross": 106936.96,
+     "dedup_key": "2026-09-14-PSX-SELL-PSX/LUV|s1",
+     "lot": "PSX/LUV|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 255.09,
+     "lot_realized": 819.52,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "LUV",
+     "side": "BUY",
+     "shares": 1340,
+     "price": 39.52,
+     "avg_cost_at_trade": 39.62,
+     "realized_pnl": 134.0,
+     "gross": -52956.8,
+     "dedup_key": "2026-09-14-LUV-BUY-PSX/LUV|s2",
+     "lot": "PSX/LUV|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 39.62,
+     "lot_realized": 134.0,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "DELL",
+     "side": "SELL",
+     "shares": 129,
+     "price": 534.28,
+     "avg_cost_at_trade": 567.29,
+     "realized_pnl": -4258.29,
+     "gross": 68922.12,
+     "dedup_key": "2026-09-14-DELL-SELL-DELL/BLDR|s1",
+     "lot": "DELL/BLDR|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 567.29,
+     "lot_realized": -4258.29,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "BLDR",
+     "side": "BUY",
+     "shares": 609,
+     "price": 60.24,
+     "avg_cost_at_trade": 63.457293,
+     "realized_pnl": 79.17,
+     "gross": -36686.16,
+     "dedup_key": "2026-09-14-BLDR-BUY-DELL/BLDR|s2",
+     "lot": "DELL/BLDR|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 60.37,
+     "lot_realized": 79.17,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "HPE",
+     "side": "SELL",
+     "shares": 2371,
+     "price": 55.41,
+     "avg_cost_at_trade": 62.09,
+     "realized_pnl": -15838.28,
+     "gross": 131377.11,
+     "dedup_key": "2026-09-14-HPE-SELL-HPE/DECK|s1",
+     "lot": "HPE/DECK|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 62.09,
+     "lot_realized": -15838.28,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "DECK",
+     "side": "BUY",
+     "shares": 453,
+     "price": 80.54,
+     "avg_cost_at_trade": 85.879552,
+     "realized_pnl": 330.69,
+     "gross": -36484.62,
+     "dedup_key": "2026-09-14-DECK-BUY-HPE/DECK|s2",
+     "lot": "HPE/DECK|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 81.27,
+     "lot_realized": 330.69,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "MU",
+     "side": "SELL",
+     "shares": 76,
+     "price": 924.03,
+     "avg_cost_at_trade": 1005.490777,
+     "realized_pnl": -3893.48,
+     "gross": 70226.28,
+     "dedup_key": "2026-09-14-MU-SELL-MU/HRL|s1",
+     "lot": "MU/HRL|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 975.26,
+     "lot_realized": -3893.48,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "HRL",
+     "side": "BUY",
+     "shares": 1790,
+     "price": 20.96,
+     "avg_cost_at_trade": 20.57,
+     "realized_pnl": -698.1,
+     "gross": -37518.4,
+     "dedup_key": "2026-09-14-HRL-BUY-MU/HRL|s2",
+     "lot": "MU/HRL|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 20.57,
+     "lot_realized": -698.1,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "AMD",
+     "side": "SELL",
+     "shares": 142,
+     "price": 493.41,
+     "avg_cost_at_trade": 516.13,
+     "realized_pnl": -3226.24,
+     "gross": 70064.22,
+     "dedup_key": "2026-09-14-AMD-SELL-AMD/SYK|s1",
+     "lot": "AMD/SYK|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 516.13,
+     "lot_realized": -3226.24,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "SYK",
+     "side": "BUY",
+     "shares": 133,
+     "price": 281.87,
+     "avg_cost_at_trade": 275.56,
+     "realized_pnl": -839.23,
+     "gross": -37488.71,
+     "dedup_key": "2026-09-14-SYK-BUY-AMD/SYK|s2",
+     "lot": "AMD/SYK|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 275.56,
+     "lot_realized": -839.23,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "HPE",
+     "side": "BUY",
+     "shares": 4431,
+     "price": 55.41,
+     "gross": -245521.71,
+     "dedup_key": "2026-09-14-HPE-BUY-HPE/BLDR|s1",
+     "lot": "HPE/BLDR|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "BLDR",
+     "side": "SELL",
+     "shares": 1223,
+     "price": 60.24,
+     "gross": 73673.52,
+     "dedup_key": "2026-09-14-BLDR-SELL-HPE/BLDR|s2",
+     "lot": "HPE/BLDR|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "HPE",
+     "side": "BUY",
+     "shares": 4431,
+     "price": 55.41,
+     "gross": -245521.71,
+     "dedup_key": "2026-09-14-HPE-BUY-HPE/PCG|s1",
+     "lot": "HPE/PCG|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "PCG",
+     "side": "SELL",
+     "shares": 3611,
+     "price": 13.6,
+     "gross": 49109.6,
+     "dedup_key": "2026-09-14-PCG-SELL-HPE/PCG|s2",
+     "lot": "HPE/PCG|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "SWKS",
+     "side": "BUY",
+     "shares": 1239,
+     "price": 79.26,
+     "gross": -98203.14,
+     "dedup_key": "2026-09-14-SWKS-BUY-SWKS/HWM|s1",
+     "lot": "SWKS/HWM|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-09-14",
+     "ticker": "HWM",
+     "side": "SELL",
+     "shares": 216,
+     "price": 227.13,
+     "gross": 49060.08,
+     "dedup_key": "2026-09-14-HWM-SELL-SWKS/HWM|s2",
+     "lot": "SWKS/HWM|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    }
+   ]
+  }
+ }
+}

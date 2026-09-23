@@ -96,7 +96,8 @@ def kill_check(name: str, st: dict, cfg: dict) -> bool:
     return False
 
 
-def mirror_async(name: str, fn, *args, **kwargs) -> str:
+def mirror_async(name: str, fn, *args, _log_action: str = "demo_mirror_result",
+                 **kwargs) -> str:
     """PRINCIPLE (user, 2026-08-25): the 24/7 probes are the product; demo
     trading only CONSUMES their signals and must never be able to affect them.
 
@@ -114,7 +115,7 @@ def mirror_async(name: str, fn, *args, **kwargs) -> str:
         except Exception as e:                              # noqa: BLE001
             res = {"status": "error", "error": str(e)[:200]}
         try:
-            log_line(name, {"action": "demo_mirror_result", **(
+            log_line(name, {"action": _log_action, **(
                 res if isinstance(res, dict) else {"result": str(res)[:200]})})
         except Exception:                                   # noqa: BLE001
             pass

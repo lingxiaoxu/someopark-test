@@ -191,6 +191,71 @@ def _log_change(event: str, **kw) -> None:
         fh.write(json.dumps({"ts": _now(), "event": event, **kw}) + "\n")
 
 
+def _anchor_mismatch(alias_entry: dict, target: dict) -> str | None:
+    """别名身份锚:有共同锚且全部相符才返回 None;缺锚也不得自动放行。
+
+    CIK 是发行人级锚,不能覆盖 FIGI/CUSIP 的证券级冲突。
+    """
+    out = []
+    comparable = False
+    for key in ("figi", "cusip"):
+        a_f, t_f = alias_entry.get(key), target.get(key)
+        if a_f and t_f:
+            comparable = True
+            if a_f != t_f:
+                out.append(f"{key} {a_f}≠{t_f}")
+    a_c, t_c = alias_entry.get("cik"), target.get("cik")
+    if a_c and t_c:
+        comparable = True
+        if str(a_c).lstrip("0") != str(t_c).lstrip("0"):
+            out.append(f"cik {a_c}≠{t_c}")
+    return "; ".join(out) or (None if comparable else "缺共同可比身份锚,无法核验")
+
+
+def _alias_identity_group(ticker: str) -> tuple[str, list[tuple[str, dict]]]:
+    """沿用登记处 canonical,另验证路径完整性并收集指向同一现名的全部锚。
+
+    当前名先出现在 universe 时也必须核验旧名的锚,不可被 seen 去重绕过。
+    这里只读取登记元数据,不另建旧名映射或猜测证券身份。
+    """
+    from ticker_aliases import canonical, load_aliases
+    aliases = load_aliases()
+    today = _now()[:10]
+
+    def active(entry):
+        return not entry.get("recycled") or today < entry["recycled"]
+
+    def checked(start):
+        expected = canonical(start, today)
+        cursor, seen = start, set()
+        while cursor in aliases and active(aliases[cursor]):
+            if cursor in seen:
+                raise RegistryError(f"{start}: ticker_aliases 改名链循环 — manual review")
+            seen.add(cursor)
+            cursor = aliases[cursor]["current"]
+        if cursor != expected:
+            raise RegistryError(f"{start}: canonical 未完成改名链 — manual review")
+        return expected
+
+    try:
+        current = checked(ticker)
+        entries = []
+        for old, entry in aliases.items():
+            if old != current and active(entry) and canonical(old, today) == current:
+                checked(old)
+                entries.append((old, entry))
+        return current, entries
+    except (KeyError, TypeError, AttributeError) as e:
+        raise RegistryError(f"{ticker}: ticker_aliases 记录不完整 — manual review") from e
+
+
+def _require_alias_identity(current: str, entries: list[tuple[str, dict]], target: dict) -> None:
+    for old, entry in entries:
+        mismatch = _anchor_mismatch(entry, target)
+        if mismatch:
+            raise RegistryError(f"{old}→{current}: 别名身份锚不符 {mismatch} — manual review")
+
+
 class Registry:
     """security master + node registry 的统一读写口(装配层唯一入口)。"""
 
@@ -199,14 +264,27 @@ class Registry:
         self.nodes: dict = _load(NODES_PATH)            # spid -> {…}
         self._by_ticker = {v["polygon_ticker"]: k for k, v in self.master.items()}
         self._by_key = {v["canonical_key"]: k for k, v in self.nodes.items()}
+        self._alias_noted: set = set()   # 改名解析只播报一次/实例(shadow 重建时不刷屏)
 
     # ── 叶子解析 ────────────────────────────────────────────────────────────
     def isin_of(self, ticker: str) -> str:
-        isin = self._by_ticker.get(ticker)
+        cur, entries = _alias_identity_group(ticker)
+        isin = self._by_ticker.get(ticker) or self._by_ticker.get(cur)
         if isin is None:
             raise RegistryError(
                 f"ticker {ticker!r} not in security master — run "
                 f"`python -m controller.registry --build-master` (new position?)")
+        if entries:
+            # 直查旧名/现名与别名 fallback 走同一道守卫;不改变普通无别名的直查。
+            identities = {self._by_ticker[t] for t in [cur] + [old for old, _ in entries]
+                          if t in self._by_ticker}
+            if identities != {isin}:
+                raise RegistryError(f"{ticker}→{cur}: 别名对应不同 ISIN {sorted(identities)} — manual review")
+            _require_alias_identity(cur, entries, self.master[isin])
+        if ticker != cur and ticker not in self._alias_noted:
+            print(f"[registry] ticker {ticker!r} → {cur!r} "
+                  f"(ticker_aliases 改名解析 → {isin},身份锚已核)")
+            self._alias_noted.add(ticker)
         return isin
 
     def register_security(self, ticker: str, cusip: str | None,
@@ -223,15 +301,28 @@ class Registry:
         else:
             raise RegistryError(f"{ticker}: neither CUSIP nor FIGI — cannot identify")
         prev = self.master.get(isin)
+        hist = list((prev or {}).get("ticker_history")
+                    or [{"ticker": ticker, "from": _now()[:10], "to": None}])
         if prev and prev["polygon_ticker"] != ticker:
-            # ticker 漂移:报警,人工确认路径(此处只记录,不自动改)
+            # ticker 漂移:大声报警 + 封旧窗/开新窗 + changelog 留痕。经 build_master
+            # 的 ticker_aliases 归一到达此处 = 已登记的改名(BK→BNY 型);未经登记的
+            # 意外漂移同样走这里,ALERT 即人工复核入口(2026-09-21:此前 history 不追加,
+            # polygon_ticker 翻了历史却still停在旧窗,档案失真——今补)。
             print(f"!!!! [registry ALERT] ISIN {isin} ticker drift: "
                   f"{prev['polygon_ticker']} -> {ticker} (manual confirm)")
+            # ⚠️ history 的 from/to 是**登记**窗口(本 registry 何时改档),不是市场
+            # 改名生效日 —— 市场日期的唯一真源是 ticker_aliases 的 changed(BK→BNY
+            # 市场日 2026-05-21,本处登记日 2026-09-21)。消费方别拿它当行情窗口。
+            today = _now()[:10]
+            if hist and hist[-1].get("to") is None:
+                hist[-1] = {**hist[-1], "to": today}
+            hist.append({"ticker": ticker, "from": today, "to": None})
+            _log_change("ticker_drift", isin=isin,
+                        old=prev["polygon_ticker"], new=ticker)
         self.master[isin] = {
             "cusip": cusip, "figi": figi, "cik": cik, "name": name,
             "asset_class": asset_class, "polygon_ticker": ticker,
-            "ticker_history": (prev or {}).get("ticker_history",
-                                               [{"ticker": ticker, "from": _now()[:10], "to": None}]),
+            "ticker_history": hist,
             "status": "active",
             "registered_at": (prev or {}).get("registered_at", _now()),
         }
@@ -368,26 +459,64 @@ def build_master() -> dict:
     key = os.environ.get("POLYGON_API_KEY")
     if not key:
         raise RegistryError("POLYGON_API_KEY not visible (source .env)")
+    # 公司行为登记处接线(2026-09-21,BK→BNY 实证):universe 里的名字来自 inventory
+    # 配对名等**历史命名**,直查 Polygon 旧名 404(BK)、退市名空手(AVB)。统一经
+    # ticker_aliases 归一/判退市 —— 不自铺映射(该模块 docstring 的第 24 行纪律)。
+    from ticker_aliases import delisting_of
     reg = Registry()
     universe = collect_universe()
     cusips = fetch_ftd_cusip_map()
-    stats = {"total": len(universe), "cusip_hit": 0, "placeholder": 0}
+    bdc_holdings = set(json.load(open(os.path.join(REPO, "inventory_bdc.json")))["holdings"])
+    stats = {"total": len(universe), "cusip_hit": 0, "placeholder": 0,
+             "renamed": 0, "delisted_kept": 0}
+    seen: set[str] = set()
     for t in universe:
-        r = requests.get(f"https://api.polygon.io/v3/reference/tickers/{t}",
+        gone = delisting_of(t)
+        if gone:
+            # 已退市(登记处判定,带日期窗口与回收守卫):实体没了,Polygon 主动名
+            # 直查/近期 FTD 都不会再有它。master 里既有条目**原样保留**(append-only、
+            # 退役不删),只跳过刷新;master 里没有 → 无法识别,显式 raise(绝不静默)。
+            try:
+                reg.isin_of(t)
+            except RegistryError:
+                raise RegistryError(
+                    f"{t}: delisted {gone['delisted']} per ticker_aliases and not in "
+                    f"master — manual review (successor_candidates="
+                    f"{gone.get('successor_candidates')})")
+            stats["delisted_kept"] += 1
+            print(f"[registry] {t}: delisted {gone['delisted']}"
+                  f"({gone.get('name', '')}) — 保留既有条目,跳过刷新")
+            continue
+        ct, alias_entries = _alias_identity_group(t)      # 含指向现名的全部旧名证据
+        if ct != t:
+            stats["renamed"] += 1
+            print(f"[registry] {t} → {ct} (ticker_aliases 改名,按现名刷新)")
+        if ct in seen:
+            continue                                     # 旧名/现名同现 universe 时只刷一次
+        seen.add(ct)
+        r = requests.get(f"https://api.polygon.io/v3/reference/tickers/{ct}",
                          params={"apiKey": key}, timeout=15)
         d = (r.json() or {}).get("results", {}) if r.status_code == 200 else {}
-        cusip = d.get("cusip") or cusips.get(t)          # Polygon 优先(将来订阅升级)
+        cusip = d.get("cusip") or cusips.get(ct)         # Polygon 优先(将来订阅升级)
         figi = d.get("composite_figi")
         asset_class = {"CS": "equity", "ETF": "etf"}.get(d.get("type"), "equity")
-        # BDC 股票标记(与 inventory_bdc 对齐)
-        if t in json.load(open(os.path.join(REPO, "inventory_bdc.json")))["holdings"]:
+        # BDC 股票标记(与 inventory_bdc 对齐;新旧名任一命中都算)
+        if t in bdc_holdings or ct in bdc_holdings:
             asset_class = "bdc_equity"
         if cusip:
             stats["cusip_hit"] += 1
         elif figi:
             stats["placeholder"] += 1
-        reg.register_security(t, cusip, figi, d.get("cik"),
-                              d.get("name", t), asset_class)
+        _require_alias_identity(ct, alias_entries,
+                                {"figi": figi, "cik": d.get("cik"), "cusip": cusip})
+        # 改名沿用同一证券 ID。元数据即使匹配,新旧 CUSIP/ISIN 分裂也需人工复核。
+        if alias_entries:
+            existing = {reg._by_ticker[s] for s in [ct] + [old for old, _ in alias_entries]
+                        if s in reg._by_ticker}
+            if existing and (not cusip or existing != {isin_from_cusip(cusip)}):
+                raise RegistryError(f"{ct}: 改名刷新不能保持原 ISIN {sorted(existing)} — manual review")
+        reg.register_security(ct, cusip, figi, d.get("cik"),
+                              d.get("name", ct), asset_class)
     reg.save()
     _log_change("build_master", **stats)
     print(f"[registry] master built: {stats}")

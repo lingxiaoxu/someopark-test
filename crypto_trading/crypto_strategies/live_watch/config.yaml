@@ -70,8 +70,17 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
                           # (favorite-NO only) closed at 259 windows -2.76c
                           # and its rescan showed the up-tilt itself died.
   enabled: false          # prod path does not even exist — paper + demo mirror
-  demo_mirror: true       # user 2026-08-31: mirror ALL band entries, favorite
-                          # side as-is — unified band, no demo special-casing
+  demo_mirror: true       # v3.3 (user 2026-09-12): demo rehearses the LIVE
+                          # rule — MAIN [0.78,0.98] entries ONLY. The wide
+                          # band stays paper-recorded but is not mirrored.
+  live_orders: false      # ⚠️ THE ARMING FLAG. false = every MAIN entry logs
+                          # a live_order_result audit row (live_disarmed) of
+                          # exactly what would be sent. Flipping to true makes
+                          # REAL prod orders IF AND ONLY IF the whole gate is
+                          # open: ALLOW_LIVE_ORDERS=1 in the env, a dedicated
+                          # (non-borrowed) prod key, and prod exchange
+                          # instance 2 funded >= $30 (UI-only transfer,
+                          # crypto-dev/15 §2.5). Arming is the USER's step.
   contracts: 25
   # EVIDENCE kill (2026-08-29, user-approved; v3.1 made it continuous-monitoring
   # valid 2026-09-02): paper probes burn no money, so dollar stops only ever
@@ -102,9 +111,16 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
 w8_complete_set:          # 2026-09-10: bilateral inventory + bounded residual
   enabled: false          # implementation rejects true; observation only
   demo_mirror: false
-  contracts: 5            # each maker quote, fractionally filled if tape permits
-  max_net_contracts: 15   # per market, including potential pending side fills
-  max_total_net_contracts: 30
+  # v8 sizing: clip, loss budget and latch n are now ONE consistent triple.
+  # They never were before: at clip 5 the $100 backstop binds at ~57 windows,
+  # a fifth of the 300-window latch, so the pre-registered verdict was
+  # unreachable by construction - v1 already died that way (-$101.22 at 52
+  # windows), and eleven registrations produced 216 clean windows and zero
+  # latched verdicts. At clip 1 the per-window loss scales to ~-$0.30 and $100
+  # covers ~330 windows > 300, so the latch is the binding rule again.
+  contracts: 1            # each maker quote, fractionally filled if tape permits
+  max_net_contracts: 3    # per market, including potential pending side fills
+  max_total_net_contracts: 6
   max_cum_loss_usd: 100   # halt new simulated risk; keep settling existing lots
   # Independent 2s process; excluded from the slower runner's default 'all'.
   # Fixed kernel parameters and methodology: event_binary/W8_RESEARCH.md.

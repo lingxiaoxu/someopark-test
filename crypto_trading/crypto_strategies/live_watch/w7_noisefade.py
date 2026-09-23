@@ -457,7 +457,12 @@ def run(cfg: dict | None = None, **_) -> dict:
             continue
         side = p.get("side", "no")
         win = (res == side)
-        pnl_c = ((1.0 if win else 0.0) - p["cost"] - fee(p["cost"])) * 100
+        # Round ONCE, then use that same number everywhere. Accumulating the
+        # full-precision value into cum_net_usd while storing a 2dp copy in
+        # the trade row let the two drift apart by a cent per ~700 trades
+        # (measured -$0.055 over 3,831 trades, 2026-09-12) and eventually
+        # broke the book identity the health check exists to protect.
+        pnl_c = round(((1.0 if win else 0.0) - p["cost"] - fee(p["cost"])) * 100, 2)
         # MAKER parallel book: settle from the tape (posted at touch − 1c,
         # zero fee — maker-fee schedule unverified 2026-08-31, kalshi.com
         # 429'd; the comparison is dominated by selection, not the fee).
@@ -490,7 +495,7 @@ def run(cfg: dict | None = None, **_) -> dict:
                "snap_age_s": p.get("snap_age_s"), "rem_min": p.get("rem_min"),
                "depth": p.get("depth"), "maker_fill": mk_fill,
                "maker_pnl_c": mk_pnl,
-               "win": win, "pnl_c": round(pnl_c, 2), "closed": str(now)}
+               "win": win, "pnl_c": pnl_c, "closed": str(now)}
         if leg == "obs":
             # observation leg: recorded, never booked — the FLB's negative
             # print. If this leg's mean turns POSITIVE the structure changed.
@@ -600,15 +605,31 @@ def run(cfg: dict | None = None, **_) -> dict:
                      "side": side, "leg": leg, "cost": round(cost, 4),
                      "rem_min": round(rem_min, 2), "contracts": contracts,
                      "depth": bk}
-            # demo mirror: ALL band entries, favorite side as-is (user
-            # 2026-08-31: unified band, no demo special-casing).
-            if leg == "band" and cfg.get("demo_mirror", False):
+            # LIVE RULE = the MAIN cell [0.78, 0.98] (user 2026-09-12: "按照
+            # MAIN 来实盘下单,在 demo kalshi 同步实现"). Demo now rehearses
+            # exactly the trades the live strategy would place — MAIN only,
+            # not the wide observation band. The live path itself dispatches
+            # through the same fire-and-forget isolation as the mirror (the
+            # probes are the product; no venue call may block them) and stays
+            # DISARMED until the user opens every gate: with live_orders
+            # false it records a full audit row of what it would have sent.
+            in_main = leg == "band" and MAIN_LO <= cost <= MAIN_HI
+            if in_main and cfg.get("demo_mirror", False):
                 from crypto_trading.crypto_common.execution_events import (
                     EventExecutionRouter)
                 entry["demo_mirror"] = common.mirror_async(
                     NAME, EventExecutionRouter(strategy=NAME).mirror_demo,
                     side=side, close_time=ct, entry_price=cost,
                     contracts=contracts, series=(series, "KXBTC"))
+            if in_main:
+                from crypto_trading.crypto_common.execution_events import (
+                    EventExecutionRouter)
+                entry["live"] = common.mirror_async(
+                    NAME, EventExecutionRouter(strategy=NAME).submit,
+                    _log_action="live_order_result",
+                    ticker=tkr, side=side, entry_price=cost,
+                    contracts=contracts,
+                    armed=bool(cfg.get("live_orders", False)))
             entries.append(entry)
             common.log_line(NAME, entry)
 

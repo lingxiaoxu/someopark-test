@@ -545,17 +545,22 @@
  },
  "US0640581007": {
   "asset_class": "equity",
-  "cik": null,
+  "cik": "0001390777",
   "cusip": "064058100",
-  "figi": null,
-  "name": "BK",
-  "polygon_ticker": "BK",
+  "figi": "BBG000BD8PN9",
+  "name": "Bank of New York Mellon Corporation",
+  "polygon_ticker": "BNY",
   "registered_at": "2026-08-12T06:53:08+00:00",
   "status": "active",
   "ticker_history": [
    {
     "from": "2026-08-12",
     "ticker": "BK",
+    "to": "2026-09-21"
+   },
+   {
+    "from": "2026-09-21",
+    "ticker": "BNY",
     "to": null
    }
   ]
@@ -783,7 +788,7 @@
  },
  "US1258961002": {
   "asset_class": "equity",
-  "cik": "0000811156",
+  "cik": "0000201533",
   "cusip": "125896100",
   "figi": "BBG000BFVXX0",
   "name": "CMS Energy Corporation",
@@ -947,6 +952,23 @@
    {
     "from": "2026-08-12",
     "ticker": "CRL",
+    "to": null
+   }
+  ]
+ },
+ "US16119P1084": {
+  "asset_class": "equity",
+  "cik": "0001091667",
+  "cusip": "16119P108",
+  "figi": "BBG000VPGNR2",
+  "name": "Charter Comm Inc Del CL A New",
+  "polygon_ticker": "CHTR",
+  "registered_at": "2026-09-20T06:58:05+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-20",
+    "ticker": "CHTR",
     "to": null
    }
   ]
@@ -1376,6 +1398,23 @@
    }
   ]
  },
+ "US2605571031": {
+  "asset_class": "equity",
+  "cik": "0001751788",
+  "cusip": "260557103",
+  "figi": "BBG00BN96922",
+  "name": "Dow Inc.",
+  "polygon_ticker": "DOW",
+  "registered_at": "2026-09-20T06:58:05+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-20",
+    "ticker": "DOW",
+    "to": null
+   }
+  ]
+ },
  "US26441C2044": {
   "asset_class": "equity",
   "cik": "0001326160",
@@ -1733,6 +1772,23 @@
    }
   ]
  },
+ "US34959J1088": {
+  "asset_class": "equity",
+  "cik": "0001659166",
+  "cusip": "34959J108",
+  "figi": "BBG00BLVZ228",
+  "name": "Fortive Corporation",
+  "polygon_ticker": "FTV",
+  "registered_at": "2026-09-12T15:19:34+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-12",
+    "ticker": "FTV",
+    "to": null
+   }
+  ]
+ },
  "US35137L1052": {
   "asset_class": "equity",
   "cik": "0001754301",
@@ -2035,6 +2091,23 @@
    {
     "from": "2026-08-12",
     "ticker": "HON",
+    "to": null
+   }
+  ]
+ },
+ "US4404521001": {
+  "asset_class": "equity",
+  "cik": "0000048465",
+  "cusip": "440452100",
+  "figi": "BBG000BLF8D2",
+  "name": "Hormel Foods Corporation",
+  "polygon_ticker": "HRL",
+  "registered_at": "2026-09-12T15:19:35+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-12",
+    "ticker": "HRL",
     "to": null
    }
   ]
@@ -3148,7 +3221,7 @@
   "asset_class": "equity",
   "cik": "0001039684",
   "cusip": "682680103",
-  "figi": "BBG000JBSHW1",
+  "figi": "BBG024TZWVN1",
   "name": "Oneok, Inc.",
   "polygon_ticker": "OKE",
   "registered_at": "2026-08-12T06:53:13+00:00",
@@ -3208,6 +3281,23 @@
    {
     "from": "2026-08-12",
     "ticker": "OBDC",
+    "to": null
+   }
+  ]
+ },
+ "US69331C1080": {
+  "asset_class": "equity",
+  "cik": "0001004980",
+  "cusip": "69331C108",
+  "figi": "BBG000BQWPC5",
+  "name": "PG&E Corporation",
+  "polygon_ticker": "PCG",
+  "registered_at": "2026-09-15T12:42:46+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-15",
+    "ticker": "PCG",
     "to": null
    }
   ]
@@ -4364,6 +4454,23 @@
    {
     "from": "2026-08-12",
     "ticker": "VLTO",
+    "to": null
+   }
+  ]
+ },
+ "US92345Y1064": {
+  "asset_class": "equity",
+  "cik": "0001442145",
+  "cusip": "92345Y106",
+  "figi": "BBG000BCZL41",
+  "name": "Verisk Analytics, Inc. Common Stock",
+  "polygon_ticker": "VRSK",
+  "registered_at": "2026-09-12T15:19:41+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-12",
+    "ticker": "VRSK",
     "to": null
    }
   ]

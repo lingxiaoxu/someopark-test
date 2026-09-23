@@ -1076,6 +1076,14 @@
     "confirmDeploy": "Confirmar despliegue"
   },
   "strategyPerf": {
+    "pairCorrelation": "Correlación ρ",
+    "pairCovariance": "Covarianza (%²)",
+    "pairSamples": "Rendimientos comunes · n={{n}}",
+    "pairInsufficient": "Menos de 3 observaciones válidas",
+    "pairNoVariation": "Rendimientos constantes · ρ / β no disponibles",
+    "pairUnavailable": "Datos no disponibles",
+    "pairShortSample": "Muestra pequeña · resultado orientativo",
+    "pairIncludesStrategy": "La cartera incluye esta estrategia",
     "mrpt": "MRPT",
     "mtfs": "MTFS",
     "combined": "Combinado",
@@ -2442,6 +2450,10 @@
     "qcAllPass": "Todos los quality checks superados",
     "qcFail": "Quality check fallido",
     "qcPending": "Quality checks",
+    "statusNormal": "Estado normal",
+    "statusWarning": "Estado con advertencias",
+    "statusAbnormal": "Estado anormal",
+    "qualityDetails": "Detalles",
     "qcDual": "doble motor",
     "qcFresh": "precios frescos",
     "qcHeartbeat": "latido",
@@ -2506,7 +2518,7 @@
     "cohortSShort": "×k fijo",
     "cohortFShort": "×1 total",
     "cardOfficialTitleAdd": "Base oficial (EOD oficial {{date}} + P&L del libro de hoy; familia aditiva official = ledger − C, el P&L diario coincide dólar a dólar)",
-    "rolloffDone": "legacy/S totalmente retiradas · K fijado en {{k}} (medido el {{date}}) · patrimonio QC + K ≡ NAV del panel",
+    "rolloffDone": "Conciliación QC",
     "rolloffTitle": "Medido el día de retirada: patrimonio de la cuenta QC {{qc}} + K = total en base oficial del panel {{panel}}.\nCon ambas cohortes vacías, QC mantiene exactamente el número de acciones de la base oficial en cada valor, por lo que la diferencia de NAV es solo efectivo y deja de moverse con el mercado.\nCualquier desviación residual posterior proviene únicamente de diferencias de precio de ejecución (QC ejecuta a mercado, el libro contabiliza el precio de apertura de DailySignal)."
   },
   "vp": {

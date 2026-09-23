@@ -2614,5 +2614,89 @@
     "mrpt_dd": -2.76,
     "mtfs_dd": -43.22,
     "combined_dd": -21.66
+  },
+  {
+    "date": "2026-09-11",
+    "mrpt_equity": 609148.64,
+    "mtfs_equity": 330158.88,
+    "combined_equity": 939307.52,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": -4096.33,
+    "combined_pnl": -4096.33,
+    "mrpt_dd": -2.76,
+    "mtfs_dd": -43.92,
+    "combined_dd": -22.0
+  },
+  {
+    "date": "2026-09-14",
+    "mrpt_equity": 608598.5,
+    "mtfs_equity": 276308.98,
+    "combined_equity": 884907.48,
+    "mrpt_pnl": -550.14,
+    "mtfs_pnl": -53849.9,
+    "combined_pnl": -54400.04,
+    "mrpt_dd": -2.85,
+    "mtfs_dd": -53.07,
+    "combined_dd": -26.52
+  },
+  {
+    "date": "2026-09-15",
+    "mrpt_equity": 608598.5,
+    "mtfs_equity": 314836.45,
+    "combined_equity": 923434.95,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": 38527.47,
+    "combined_pnl": 38527.47,
+    "mrpt_dd": -2.85,
+    "mtfs_dd": -46.52,
+    "combined_dd": -23.32
+  },
+  {
+    "date": "2026-09-16",
+    "mrpt_equity": 608598.5,
+    "mtfs_equity": 317166.75,
+    "combined_equity": 925765.25,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": 2330.3,
+    "combined_pnl": 2330.3,
+    "mrpt_dd": -2.85,
+    "mtfs_dd": -46.13,
+    "combined_dd": -23.13
+  },
+  {
+    "date": "2026-09-17",
+    "mrpt_equity": 608598.5,
+    "mtfs_equity": 365597.25,
+    "combined_equity": 974195.75,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": 48430.5,
+    "combined_pnl": 48430.5,
+    "mrpt_dd": -2.85,
+    "mtfs_dd": -37.9,
+    "combined_dd": -19.11
+  },
+  {
+    "date": "2026-09-18",
+    "mrpt_equity": 608598.5,
+    "mtfs_equity": 354149.19,
+    "combined_equity": 962747.69,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": -11448.06,
+    "combined_pnl": -11448.06,
+    "mrpt_dd": -2.85,
+    "mtfs_dd": -39.85,
+    "combined_dd": -20.06
+  },
+  {
+    "date": "2026-09-21",
+    "mrpt_equity": 608691.89,
+    "mtfs_equity": 379725.17,
+    "combined_equity": 988417.06,
+    "mrpt_pnl": 93.39,
+    "mtfs_pnl": 25575.98,
+    "combined_pnl": 25669.37,
+    "mrpt_dd": -2.84,
+    "mtfs_dd": -35.5,
+    "combined_dd": -17.93
   }
 ]

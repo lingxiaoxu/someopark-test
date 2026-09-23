@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -8,6 +8,7 @@ import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import { API_BASE, apiHeaders } from '../../lib/api';
 import SizedChart from './SizedChart';
+import { analyzePerformancePair, type PerformancePairAnalysis } from '../../../shared/performancePairAnalysis';
 
 
 interface DayData {
@@ -55,7 +56,7 @@ const COLORS: Record<string, string> = {
 };
 const LABELS: Record<string, string> = {
   mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', aiss: 'AISS', aeus: 'AEUS', bdc: 'PC BDC',
-  combined: 'COMBINED 4 AI ENABLED SYSTEMATIC STRATEGIES',
+  combined: 'COMBINED 5 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
   spy: 'SPY', smh: 'SMH', soxx: 'SOXX', mags: 'MAGS', xlu: 'XLU', grid: 'GRID',
 };
@@ -83,6 +84,59 @@ const TOOLTIP_POS = { x: 70, y: 8 };
 // anchored by its BOTTOM edge (anchor="bottom"), so it grows upward and never
 // overflows even in Master mode with 10 rows.
 const TOOLTIP_POS_BOTTOM = { x: 70, y: 148 };
+const COMPACT_TOOLTIP_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)', fontSize: '8px', lineHeight: 1.5,
+  background: 'rgba(255,255,255,0.94)', border: '1px solid #111',
+  padding: '3px 5px', pointerEvents: 'none',
+};
+
+function PairAnalysisTooltip({ analysis, t }: {
+  analysis: PerformancePairAnalysis;
+  t: (key: string, values?: Record<string, unknown>) => string;
+}) {
+  const { keyA, keyB, correlation, covariance, beta, sampleCount, status } = analysis;
+  const a = TOOLTIP_LABELS[keyA], b = TOOLTIP_LABELS[keyB];
+  const includesStrategy = (keyA === 'master' && MASTER_KEYS.includes(keyB))
+    || (keyB === 'master' && MASTER_KEYS.includes(keyA))
+    || (keyA === 'combined' && STRAT_KEYS.includes(keyB))
+    || (keyB === 'combined' && STRAT_KEYS.includes(keyA));
+  const fixed = (value: number | null) => value === null ? '—'
+    : (Math.abs(value) < 0.005 ? 0 : value).toFixed(2);
+  // 协方差按百分数收益率展示,单位 %²;不使用本金或金额,也不年化。
+  const cov = covariance === null || !Number.isFinite(covariance * 10000) ? '—'
+    : covariance === 0 ? '0' : (covariance * 10000).toPrecision(3);
+  const metrics = [
+    [t('strategyPerf.pairCorrelation'), fixed(correlation)],
+    [t('strategyPerf.pairCovariance'), cov],
+    [`β ${a}/${b}`, fixed(beta)],
+  ];
+  const note = status === 'insufficient_samples' ? t('strategyPerf.pairInsufficient')
+    : status === 'zero_variance' ? t('strategyPerf.pairNoVariation')
+    : status !== 'ok' ? t('strategyPerf.pairUnavailable')
+    : sampleCount < 30 ? t('strategyPerf.pairShortSample') : null;
+  return (
+    <div data-pair-analysis="true" style={{ ...COMPACT_TOOLTIP_STYLE, minWidth: 128 }}>
+      <div style={{ fontWeight: 700, marginBottom: 1 }}>
+        <span style={{ color: COLORS[keyA] }}>{a}</span>
+        <span style={{ color: '#777' }}> ↔ </span>
+        <span style={{ color: COLORS[keyB] }}>{b}</span>
+      </div>
+      {metrics.map(([label, value]) => (
+        <div key={label} style={{ display: 'flex', gap: 6, color: '#333' }}>
+          <span>{label}</span><span style={{ marginLeft: 'auto' }}>{value}</span>
+        </div>
+      ))}
+      <div style={{ marginTop: 2, color: '#777' }}>
+        {t('strategyPerf.pairSamples', { n: sampleCount })}
+      </div>
+      {analysis.firstIntervalStartDate && analysis.sampleEndDate && (
+        <div style={{ color: '#777' }}>{analysis.firstIntervalStartDate} → {analysis.sampleEndDate}</div>
+      )}
+      {note && <div style={{ color: '#b45309' }}>{note}</div>}
+      {includesStrategy && <div style={{ color: '#777' }}>{t('strategyPerf.pairIncludesStrategy')}</div>}
+    </div>
+  );
+}
 
 /**
  * Compact tooltip pinned to the chart's top-left (via Tooltip `position`) so it can
@@ -102,9 +156,7 @@ function CompactTooltip({ active, payload, label, suffix, renderValue, anchor }:
   if (rows.length === 0) return null;
   return (
     <div style={{
-      fontFamily: 'var(--font-mono)', fontSize: '8px', lineHeight: 1.5,
-      background: 'rgba(255,255,255,0.94)', border: '1px solid #111',
-      padding: '3px 5px', pointerEvents: 'none',
+      ...COMPACT_TOOLTIP_STYLE,
       // anchor="bottom" → grow upward from the given y instead of downward
       ...(anchor === 'bottom' ? { transform: 'translateY(-100%)' } : null),
     }}>
@@ -119,9 +171,28 @@ function CompactTooltip({ active, payload, label, suffix, renderValue, anchor }:
   );
 }
 
-// Default start of the visible window when a view first opens. The picker's `min` still
-// exposes the full history, so earlier dates remain selectable — this only sets the default.
-const DEFAULT_START_DATE = '2025-11-11';
+// Default only: yesterday in the US market's timezone, then 180 calendar days back.
+// Resolve both boundaries inward using recorded trading dates (weekends/holidays
+// need no separate calendar). The pickers still expose all history for manual use.
+function defaultPerformanceRange(dates: string[], now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now);
+  const part = (type: string) => Number(parts.find(p => p.type === type)!.value);
+  const end = new Date(Date.UTC(part('year'), part('month') - 1, part('day')));
+  end.setUTCDate(end.getUTCDate() - 1);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 180);
+  const targetStart = start.toISOString().slice(0, 10);
+  const targetEnd = end.toISOString().slice(0, 10);
+  const available = [...new Set(dates)].filter(date => date <= targetEnd).sort();
+  if (available.length === 0) return { startDate: targetStart, endDate: targetEnd };
+  const endDate = available[available.length - 1];
+  // Short history starts at its first date; entirely stale history shows its
+  // latest point instead of silently expanding the default to all old history.
+  const startDate = available.find(date => date >= targetStart) ?? endDate;
+  return { startDate, endDate };
+}
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
@@ -137,20 +208,13 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'aiss', 'aeus', 'combined']));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const defaultRangeInitialized = useRef(false);
 
   // Load strategy_performance.json
   useEffect(() => {
     fetch(`${API_BASE}/data/strategy_performance.json`, { headers: apiHeaders() })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((d: DayData[]) => {
-        setStratData(d);
-        if (d.length > 0) {
-          const first = d[0].date, last = d[d.length - 1].date;
-          // Default the window start to DEFAULT_START_DATE, clamped into the available range.
-          setStartDate(DEFAULT_START_DATE >= first && DEFAULT_START_DATE <= last ? DEFAULT_START_DATE : first);
-          setEndDate(last);
-        }
-      })
+      .then((d: DayData[]) => setStratData(d))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -167,6 +231,16 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   // Both modes use masterData (it has all fields: mrpt, mtfs, sr, aiss, combined, master)
   // Fall back to stratData only if masterData hasn't loaded yet
   const data = masterData || stratData;
+
+  // Initialize once from the dataset actually displayed, after both requests
+  // settle. Later responses and mode changes must not reset a manual selection.
+  useEffect(() => {
+    if (loading || masterLoading || !data?.length || defaultRangeInitialized.current) return;
+    const range = defaultPerformanceRange(data.map(row => row.date));
+    defaultRangeInitialized.current = true;
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+  }, [data, loading, masterLoading]);
 
   const toggle = (key: string) => {
     setActiveStrategies(prev => {
@@ -193,6 +267,12 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const activeKeys = viewMode === 'master' ? MASTER_KEYS : STRAT_KEYS;
   // The "total" key (for right axis $ scale)
   const totalKey = viewMode === 'master' ? 'master' : 'combined';
+  const pairAnalysis = useMemo(() => {
+    const visible = [...activeKeys, ...(viewMode === 'master' ? BENCHMARK_KEYS : [])]
+      .filter(key => activeStrategies.has(key));
+    return visible.length === 2
+      ? analyzePerformancePair(filteredData, visible[0], visible[1]) : null;
+  }, [filteredData, activeStrategies, viewMode]);
 
   // Recompute drawdown relative to filtered window — dynamic for all keys
   const windowData = useMemo(() => {
@@ -313,12 +393,13 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     return result;
   }, [filteredData, windowData, viewMode]);
 
-  if (loading) return <LoadingState />;
+  if (loading || masterLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
   if (!data || !stats) return null;
 
   const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
   const fmtMoney = (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const constituentLabels = activeKeys.filter(k => k !== totalKey).map(k => LABELS[k]).join(' + ');
 
   const inputStyle: React.CSSProperties = {
     padding: '3px 6px',
@@ -420,6 +501,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         {cardKeys.map(key => {
           const s = stats?.[key];
           if (!s) return null;
+          const isBenchmark = BENCHMARK_KEYS.includes(key);
           return (
             <div key={key} style={{ background: '#fff', border: '2px solid #111', padding: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COLORS[key], marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
@@ -435,18 +517,20 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                   <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>SHARPE</div>
                   <div style={{ fontWeight: 700 }}>{s.sharpe.toFixed(2)}</div>
                 </div>
-                <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>MAX DD</div>
-                  <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
-                </div>
-                <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>WIN RATE</div>
-                  <div style={{ fontWeight: 700 }}>{s.winRate.toFixed(0)}%</div>
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>NET PnL</div>
-                  <div style={{ fontWeight: 700, color: s.totalPnL >= 0 ? '#16a34a' : '#dc2626' }}>{fmtMoney(s.totalPnL)}</div>
-                </div>
+                {!isBenchmark && (<>
+                  <div>
+                    <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>MAX DD</div>
+                    <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>WIN RATE</div>
+                    <div style={{ fontWeight: 700 }}>{s.winRate.toFixed(0)}%</div>
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>NET PnL</div>
+                    <div style={{ fontWeight: 700, color: s.totalPnL >= 0 ? '#16a34a' : '#dc2626' }}>{fmtMoney(s.totalPnL)}</div>
+                  </div>
+                </>)}
               </div>
             </div>
           );
@@ -459,6 +543,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.equityCurveTitle')}
         </div>
+        <div style={{ position: 'relative' }}>
         <SizedChart height={280}>
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
             <LineChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
@@ -504,6 +589,13 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
             </LineChart>
           </ResponsiveContainer>
         </SizedChart>
+        {pairAnalysis && (
+          <div style={{ position: 'absolute', top: 8, right: 48,
+            maxWidth: 'calc(100% - 120px)', zIndex: 1, pointerEvents: 'none' }}>
+            <PairAnalysisTooltip analysis={pairAnalysis} t={t} />
+          </div>
+        )}
+        </div>
       </div>
 
       {/* Drawdown (% and $) */}
@@ -596,8 +688,8 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       {/* Footer metadata */}
       <div style={{ fontSize: '9px', color: '#999', letterSpacing: '.04em', textTransform: 'uppercase' }}>
         {viewMode === 'strategies'
-          ? `${filteredData.length} Trading Days · MRPT + MTFS + SSRS Strategies`
-          : `${filteredData.length} Trading Days · Master AI Portfolio · Equal 1/3 (Strategies / SSRS / AISS)`
+          ? `${filteredData.length} Trading Days · ${constituentLabels} Strategies`
+          : `${filteredData.length} Trading Days · Master AI Portfolio · ${constituentLabels}`
         }
       </div>
     </div>

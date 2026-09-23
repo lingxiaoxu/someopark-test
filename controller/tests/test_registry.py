@@ -5,7 +5,9 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
 
 from controller.registry import (isin_check_digit, isin_from_cusip, validate_isin,
                                  make_spid, validate_spid, _b36_luhn,
@@ -69,4 +71,138 @@ ok("pair spid X!=Y", make_spid("pair", kAB_long) != make_spid("pair", kAB_short)
 # ── base36 luhn 自洽 ────────────────────────────────────────────────────────
 ok("b36 luhn stable", _b36_luhn("SPPFABC123") == _b36_luhn("SPPFABC123"))
 
+# ── 公司行为登记处接线(2026-09-21,BK→BNY 实证;全部 I/O 进 /tmp)──────────────
+import json as _json
+import tempfile as _tf
+from contextlib import contextmanager as _contextmanager
+
+import ticker_aliases as _ta
+import controller.registry as _R
+
+
+def _registry_state():
+    return (_R.REG_DIR, _R.MASTER_PATH, _R.NODES_PATH, _R.CHANGELOG,
+            _ta.ALIAS_PATH, dict(_ta._CACHE))
+
+
+@_contextmanager
+def _isolated_registry():
+    # 可嵌套:恢复调用者原本的路径和已预热缓存,不假定调用者使用生产目录。
+    # REG_DIR 也隔离,因为 _log_change 会 mkdir(REG_DIR)。缓存字典保留身份,
+    # 同时恢复原嵌套值的引用;别名加载器只替换 data/delist,不修改旧映射。
+    saved = _registry_state()
+    with _tf.TemporaryDirectory(prefix="registry_alias_test_", dir="/tmp") as directory:
+        try:
+            _R.REG_DIR = directory
+            _R.MASTER_PATH = os.path.join(directory, "security_master.json")
+            _R.NODES_PATH = os.path.join(directory, "node_registry.json")
+            _R.CHANGELOG = os.path.join(directory, "changelog.jsonl")
+            _ta.ALIAS_PATH = _ta.Path(directory) / "ticker_aliases.json"
+            _ta._CACHE.clear()
+            _ta._CACHE.update(mtime=None, data={}, delist={})
+            yield directory
+        finally:
+            (_R.REG_DIR, _R.MASTER_PATH, _R.NODES_PATH, _R.CHANGELOG,
+             _ta.ALIAS_PATH, cache) = saved
+            _ta._CACHE.clear()
+            _ta._CACHE.update(cache)
+
+
+_SAVED = _registry_state()
+with _isolated_registry():
+    _ta.ALIAS_PATH.write_text(_json.dumps({
+        "schema": "v2",
+        "aliases": {"OLDT": {"current": "NEWT", "changed": "2026-01-02",
+                             "figi": "BBGTEST", "cik": "0000000001"}},
+        "delistings": {"GONE": {"delisted": "2026-08-18", "name": "Gone Inc"}},
+    }))
+    _ta._CACHE.update(mtime=None, data={}, delist={})   # 强制重读
+
+    reg = _R.Registry()
+    _isin = reg.register_security("OLDT", "037833100", "BBGTEST", None,
+                                  "Old Name", "equity")
+    ok("register under old name", reg.isin_of("OLDT") == _isin)
+    # 旧名→现名重注册:走 ticker 漂移分支
+    reg.register_security("NEWT", "037833100", "BBGTEST", "0000000001",
+                          "New Name", "equity")
+    ok("drift: polygon_ticker flipped", reg.master[_isin]["polygon_ticker"] == "NEWT")
+    _hist = reg.master[_isin]["ticker_history"]
+    ok("drift: old window closed", _hist[0]["ticker"] == "OLDT" and _hist[0]["to"] is not None)
+    ok("drift: new window open", _hist[-1]["ticker"] == "NEWT" and _hist[-1]["to"] is None)
+    _events = [_json.loads(l)["event"] for l in open(_R.CHANGELOG)]
+    ok("drift: changelog 留痕", "ticker_drift" in _events)
+    reg.save()
+
+    # 新实例(只认 NEWT):旧名经登记处解析,未登记名仍然 raise(绝不静默 fallback)
+    reg2 = _R.Registry()
+    ok("fresh load: NEWT direct", reg2.isin_of("NEWT") == _isin)
+    ok("fresh load: OLDT via aliases(锚一致)", reg2.isin_of("OLDT") == _isin)
+    try:
+        reg2.isin_of("NOPE")
+        ok("unknown ticker still raises", False)
+    except RegistryError:
+        ok("unknown ticker still raises", True)
+    # 身份锚守卫:BADX 也映射到 NEWT,但 FIGI/CIK 与目标不符 → 必须 raise 不解析
+    # 毒饵在合法解析验证后加入:同一目标的冲突应让整组拒绝,不混进正向场景。
+    aliases = _json.loads(_ta.ALIAS_PATH.read_text())
+    aliases["aliases"]["BADX"] = {"current": "NEWT", "changed": "2026-01-02",
+                                  "figi": "BBGWRONG", "cik": "0000000999"}
+    _ta.ALIAS_PATH.write_text(_json.dumps(aliases))
+    _ta._CACHE.update(mtime=None, data={}, delist={})
+    try:
+        reg2.isin_of("BADX")
+        ok("anchor mismatch raises", False)
+    except RegistryError as e:
+        ok("anchor mismatch raises", "身份锚不符" in str(e))
+    ok("_anchor_mismatch cik 前导零归一",
+       _R._anchor_mismatch({"cik": "0000000001"}, {"cik": 1}) is None)
+    ok("_anchor_mismatch 缺共同身份锚拒绝",
+       _R._anchor_mismatch({}, {"figi": "X"}) is not None)
+    # 退市判定可用(build_master 的跳过分支依赖它)
+    ok("delisting_of window", _ta.is_delisted("GONE") and not _ta.is_delisted("GONE", "2026-08-17"))
+ok("调用者路径与缓存完整恢复", _registry_state() == _SAVED)
+
 print(f"\nall {N} checks passed")
+
+
+# 在同一个进程重复导入本测试模块。外层也使用 /tmp 正式形状的输入,验证内层
+# 成功和异常退出都不会让后续 Registry/别名查询读到 OLDT/NEWT 假数据。
+import runpy as _runpy
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("fail_during_import", [False, True])
+def test_module_import_preserves_paths_and_warmed_cache(monkeypatch, fail_during_import):
+    with _isolated_registry():
+        _ta.ALIAS_PATH.write_text(_json.dumps({
+            "schema": "v2",
+            "aliases": {"OLD_BANK": {"current": "BNY", "changed": "2026-01-02",
+                                       "figi": "BBGBASE", "cik": "0000000001"}},
+            "delistings": {},
+        }))
+        registry = _R.Registry()
+        isin = registry.register_security("BNY", "064058100", "BBGBASE",
+                                          "0000000001", "Bank", "equity")
+        registry.save()
+        assert _ta.canonical("OLD_BANK") == "BNY"  # 预热调用者缓存
+        before = _registry_state()
+        cache_object, alias_map = _ta._CACHE, _ta._CACHE["data"]
+        paths = [_R.MASTER_PATH, _R.NODES_PATH, _ta.ALIAS_PATH]
+        before_bytes = {str(path): _ta.Path(path).read_bytes() for path in paths}
+
+        with monkeypatch.context() as patch:
+            if fail_during_import:
+                def fail(*args, **kwargs):
+                    raise RegistryError("injected import failure")
+                patch.setattr(_R.Registry, "register_security", fail)
+                with _pytest.raises(RegistryError, match="injected import failure"):
+                    _runpy.run_path(__file__, run_name="registry_isolation_probe")
+            else:
+                _runpy.run_path(__file__, run_name="registry_isolation_probe")
+
+        assert _registry_state() == before
+        assert _ta._CACHE is cache_object and _ta._CACHE["data"] is alias_map
+        assert {str(path): _ta.Path(path).read_bytes() for path in paths} == before_bytes
+        assert _R.Registry().isin_of("BNY") == isin
+        assert _R.Registry().isin_of("OLD_BANK") == isin
+        assert _ta.canonical("OLD_BANK") == "BNY"

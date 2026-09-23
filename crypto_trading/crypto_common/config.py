@@ -75,6 +75,20 @@ def kalshi_key(namespace: str = "margin", *, borrowed_ok: bool = True) -> Kalshi
     kid, kpath = env(f"{prefix}_KEY_ID"), env(f"{prefix}_PRIVATE_KEY_PATH")
     if kid and kpath:
         return KalshiKey(kid, kpath, borrowed=False)
+    if not borrowed_ok:
+        # ORDER paths only (borrowed_ok=False == the prod-orders path): the
+        # user's own PROD account key, named KALSHI_PROD_* in the
+        # prediction_market env, is a dedicated credential for this account —
+        # designated for crypto live use by the user on 2026-09-12 ("env 里
+        # 已有所有 prod 所需的 key"). It must NOT be returned for demo/read
+        # paths (borrowed_ok=True): a prod key does not authenticate against
+        # the demo host, and the demo mirror must keep using the demo key.
+        pr_kid = env("KALSHI_PROD_API_KEY_ID") or _PM_ENV.get(
+            "KALSHI_PROD_API_KEY_ID", "")
+        pr_path = env("KALSHI_PROD_PRIVATE_KEY_PATH") or _PM_ENV.get(
+            "KALSHI_PROD_PRIVATE_KEY_PATH", "")
+        if pr_kid and pr_path:
+            return KalshiKey(pr_kid, pr_path, borrowed=False)
     pm_kid = _PM_ENV.get("KALSHI_API_KEY_ID", "")
     pm_path = _PM_ENV.get("KALSHI_PRIVATE_KEY_PATH", "")
     if pm_kid and pm_path:

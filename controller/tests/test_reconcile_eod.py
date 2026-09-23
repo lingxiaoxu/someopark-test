@@ -1,11 +1,18 @@
 """M5覆盖回归:只用/tmp输入输出和内存行情,不读真实持仓、不调用网络。"""
 import csv
 import json
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pytest
+
+# 与同目录测试一致,支持 repo 根/ controller 目录的 -m 和 console 启动。
+_REPO = str(Path(__file__).resolve().parents[2])
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
 
 from controller import reconcile_eod as mod
 

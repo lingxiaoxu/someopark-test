@@ -29,6 +29,13 @@ IRREPLACEABLE = [
     "kalshi/event_strips",
     "index_proxy/live",
     "offshore/okx/liquidations",
+    # 2026-09-14: two trees that were unprotected. w8_complete_set holds the
+    # 15M orderbook observations AND the settlement ledgers the W8 verdict is
+    # computed from - the books cannot be re-fetched once the market settles.
+    # hyperliquid is the alt-data set and is unbackfillable BY CONSTRUCTION:
+    # the venue serves current state only, so a lost day is gone for good.
+    "kalshi/w8_complete_set",
+    "hyperliquid",
 ]
 
 

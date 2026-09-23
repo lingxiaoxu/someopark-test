@@ -33,7 +33,7 @@ from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData
 
 # Kalshi's own league string per competition, harvested from live milestone details on
 # 2026-09-13 (one open event per series). The schedule proof compared it to comp.name
-# verbatim, so SEVEN of twelve competitions could never pass it — any fixture whose
+# verbatim, so EIGHT of twelve competitions could never pass it — any fixture whose
 # Kalshi ticker date differs from ours falls back to that proof and was rejected as
 # schedule_metadata_unverified, losing Kalshi quotes entirely (2 fixtures on
 # 2026-09-12; the shape recurs on Brasileirão/Argentine evening kickoffs, whose tickers
@@ -41,6 +41,9 @@ from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData
 # ucl/uecl were initially absent because sampling only OPEN events returned no milestones
 # (their next fixtures are 2026-10-13/14, which carry none yet); sampling CLOSED events —
 # September's played matchdays — gives them, verified 2026-09-13.
+# The four competitions with no entry (laliga/seriea/bundesliga/ligue1) fall back to
+# comparing against comp.name, which is the behaviour that predates this table. That
+# they match was never harvested, only never observed to fail.
 _VENUE_LEAGUE_NAMES = {
     'epl': 'EPL',
     'ucl': 'Champions League',

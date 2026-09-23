@@ -1076,6 +1076,14 @@
     "confirmDeploy": "デプロイ確認"
   },
   "strategyPerf": {
+    "pairCorrelation": "相関係数 ρ",
+    "pairCovariance": "共分散（%²）",
+    "pairSamples": "同期間リターン · n={{n}}",
+    "pairInsufficient": "有効サンプルが3件未満",
+    "pairNoVariation": "変動なし・ρ / β は算出不可",
+    "pairUnavailable": "データ利用不可",
+    "pairShortSample": "少数サンプル・参考値",
+    "pairIncludesStrategy": "ポートフォリオに当戦略を含む",
     "mrpt": "MRPT",
     "mtfs": "MTFS",
     "combined": "統合",
@@ -2442,6 +2450,10 @@
     "qcAllPass": "全クオリティチェック合格",
     "qcFail": "クオリティチェック不合格",
     "qcPending": "クオリティチェック",
+    "statusNormal": "状態正常",
+    "statusWarning": "警告あり",
+    "statusAbnormal": "状態異常",
+    "qualityDetails": "詳細",
     "qcDual": "二重エンジン照合",
     "qcFresh": "価格鮮度",
     "qcHeartbeat": "ハートビート",
@@ -2506,7 +2518,7 @@
     "cohortSShort": "×k 据置",
     "cohortFShort": "×1 全額",
     "cardOfficialTitleAdd": "公式ベース(公式EOD {{date}} + 当日の台帳損益;加法系 official = ledger − C、日次損益は1ドル単位で一致)",
-    "rolloffDone": "legacy/S は全て退場 · K を {{k}} で固定（{{date}} 実測）· QC 純資産 + K ≡ パネル NAV",
+    "rolloffDone": "QC照合",
     "rolloffTitle": "退場日の実測：QC 口座純資産 {{qc}} + K = パネル公式ベース合計 {{panel}}。\n両コホートが空になると QC は全銘柄で公式ベースと同じ株数を保有するため、純資産差は現金項のみとなり相場で動かなくなります。\n以降の残差は約定価格差のみ（QC は成行約定、台帳は DailySignal の建値で記帳）。"
   },
   "vp": {

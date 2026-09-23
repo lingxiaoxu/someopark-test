@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Maximize2, Minimize2, Download } from 'lucide-react';
 import PredictionArtifact, { isPredictionArtifact } from './prediction/PredictionArtifact';
 import SoccerArtifact, { isSoccerArtifact } from './soccer/SoccerArtifact';
+import CryptoPanelContent, { isCryptoArtifact, cryptoArtifactTitle } from '../crypto-markets/CryptoPanelContent';
 import EquityChart from './artifacts/EquityChart';
 import SignalTable from './artifacts/SignalTable';
 import RegimeDashboard from './artifacts/RegimeDashboard';
@@ -56,12 +57,13 @@ function getDownloadUrl(artifact: any): string | null {
   }
 }
 
-export default function RightPanel({ artifact, appMode, onClose, onMaximize, isMaximized }: { artifact: any, appMode?: 'stock' | 'prediction' | 'soccer', onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
+export default function RightPanel({ artifact, appMode, onClose, onMaximize, isMaximized }: { artifact: any, appMode?: 'stock' | 'prediction' | 'soccer' | 'crypto', onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
   const { t } = useTranslation();
   const params = artifact.params || {};
 
   const titleKey = ARTIFACT_TITLE_KEYS[artifact.type];
-  const displayTitle = titleKey ? t(titleKey) : artifact.title;
+  const cryptoArtifact = isCryptoArtifact(artifact.type);
+  const displayTitle = cryptoArtifact ? cryptoArtifactTitle(artifact.type) : titleKey ? t(titleKey) : artifact.title;
 
   const handleDownload = () => {
     const url = getDownloadUrl(artifact);
@@ -116,13 +118,14 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
         {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
           {[
-            { icon: Download, action: handleDownload },
-            { icon: MaxIcon, action: onMaximize || (() => {}) },
-            { icon: X, action: onClose },
-          ].map(({ icon: Icon, action }, i) => (
+            ...(!cryptoArtifact ? [{ icon: Download, action: handleDownload, label: undefined }] : []),
+            { icon: MaxIcon, action: onMaximize || (() => {}), label: cryptoArtifact ? (isMaximized ? '还原详情面板' : '最大化详情面板') : undefined },
+            { icon: X, action: onClose, label: cryptoArtifact ? '关闭详情面板' : undefined },
+          ].map(({ icon: Icon, action, label }, i) => (
             <button
               key={i}
               onClick={action}
+              aria-label={label}
               style={{
                 padding: '5px',
                 background: 'transparent',
@@ -154,6 +157,7 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
       <div className="flex-1 overflow-y-auto p-4">
         {isPredictionArtifact(artifact.type)   && <PredictionArtifact type={artifact.type} params={params} />}
         {isSoccerArtifact(artifact.type)       && <SoccerArtifact type={artifact.type} params={params} />}
+        {cryptoArtifact                       && <CryptoPanelContent artifact={artifact} />}
         {artifact.type === 'chart'             && <EquityChart params={params} />}
         {artifact.type === 'table'             && <SignalTable params={params} />}
         {artifact.type === 'dashboard'         && <RegimeDashboard params={params} />}

@@ -1078,6 +1078,14 @@
     "confirmDeploy": "Confirm Deploy"
   },
   "strategyPerf": {
+    "pairCorrelation": "Correlation ρ",
+    "pairCovariance": "Covariance (%²)",
+    "pairSamples": "Matched returns · n={{n}}",
+    "pairInsufficient": "Fewer than 3 valid samples",
+    "pairNoVariation": "Constant returns; ρ / β unavailable",
+    "pairUnavailable": "Data unavailable",
+    "pairShortSample": "Small sample; use with care",
+    "pairIncludesStrategy": "Portfolio includes this strategy",
     "mrpt": "MRPT",
     "mtfs": "MTFS",
     "combined": "Combined",
@@ -2444,6 +2452,10 @@
     "qcAllPass": "All quality checks passed",
     "qcFail": "Quality check failed",
     "qcPending": "Quality checks",
+    "statusNormal": "Status normal",
+    "statusWarning": "Status warning",
+    "statusAbnormal": "Status abnormal",
+    "qualityDetails": "Details",
     "qcDual": "dual-engine match",
     "qcFresh": "price freshness",
     "qcHeartbeat": "heartbeat",
@@ -2510,7 +2522,7 @@
     "cohortSShort": "×k frozen",
     "cohortFShort": "×1 full",
     "cardOfficialTitleAdd": "Official basis (official EOD {{date}} + today's ledger P&L; additive family official = ledger − C, daily P&L matches dollar for dollar)",
-    "rolloffDone": "legacy/S fully rolled off · K frozen at {{k}} (measured {{date}}) · QC equity + K ≡ panel NAV",
+    "rolloffDone": "QC reconciliation",
     "rolloffTitle": "Measured on roll-off day: QC account equity {{qc}} + K = panel official-basis total {{panel}}.\nWith both cohorts empty QC holds exactly the official-basis share count in every name, so the NAV difference is pure cash and no longer drifts with the market.\nAny residual drift after this comes only from execution price differences (QC fills at market, the ledger books DailySignal's open price)."
   },
   "vp": {

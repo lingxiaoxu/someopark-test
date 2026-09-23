@@ -1078,6 +1078,14 @@
     "confirmDeploy": "确认部署"
   },
   "strategyPerf": {
+    "pairCorrelation": "相关性 ρ",
+    "pairCovariance": "协方差（%²）",
+    "pairSamples": "同期净值收益 · n={{n}}",
+    "pairInsufficient": "有效样本不足 3 个",
+    "pairNoVariation": "收益无波动，ρ / β 不可用",
+    "pairUnavailable": "数据不可用",
+    "pairShortSample": "样本较少，仅供参考",
+    "pairIncludesStrategy": "组合包含该策略",
     "mrpt": "MRPT",
     "mtfs": "MTFS",
     "combined": "组合",
@@ -2444,6 +2452,10 @@
     "qcAllPass": "Quality checks 全部通过",
     "qcFail": "Quality check 未过",
     "qcPending": "Quality checks",
+    "statusNormal": "状态正常",
+    "statusWarning": "状态有警告",
+    "statusAbnormal": "状态不正常",
+    "qualityDetails": "详情",
     "qcDual": "双引擎对拍",
     "qcFresh": "价格新鲜",
     "qcHeartbeat": "心跳",
@@ -2510,7 +2522,7 @@
     "cohortSShort": "×k 冻结",
     "cohortFShort": "×1 全额",
     "cardOfficialTitleAdd": "官方口径(官方 EOD {{date}} + 当日账本盈亏;加性族 official = ledger − C,日 P&L 逐美元相等)",
-    "rolloffDone": "legacy/S 已全部退场 · K 定格 {{k}}(测于 {{date}})· QC 净值 + K ≡ 面板净值",
+    "rolloffDone": "QC对账",
     "rolloffTitle": "退场日实测:QC 账户净值 {{qc}} + K = 面板官方口径合计 {{panel}}。\n两队清空后 QC 逐票持有与官方口径相同的股数,净值差只剩现金项,不再随行情漂移。\n此后的残余偏离只来自成交价差(QC 按市价成交,账本按 DailySignal 开仓价记账)。"
   },
   "vp": {

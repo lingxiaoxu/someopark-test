@@ -3,6 +3,10 @@
 // Reference: CC src/Tool.ts (Tool interface), src/tools.ts (getAllTools pattern)
 
 // === CC src/Tool.ts: AgentTool interface ===
+export interface ToolExecutionContext {
+  signal?: AbortSignal
+}
+
 export interface AgentTool {
   definition: {
     name: string
@@ -13,7 +17,8 @@ export interface AgentTool {
       required: string[]
     }
   }
-  execute(input: any): Promise<string | object>
+  execute(input: any, context?: ToolExecutionContext): Promise<string | object>
+  maxResultSizeChars?: number        // CC: default 50k; paged readers may opt out
   isConcurrencySafe?: () => boolean   // CC buildTool default: false (conservative)
   isReadOnly?: () => boolean          // CC buildTool default: false (assume write)
 }
@@ -49,10 +54,10 @@ export function getAgentTools(): AgentTool[] {
   return Object.values(toolRegistry).filter(t => !disabled.has(t.definition.name))
 }
 
-export async function executeTool(name: string, input: any): Promise<string | object> {
+export async function executeTool(name: string, input: any, context?: ToolExecutionContext): Promise<string | object> {
   const tool = toolRegistry[name]
   if (!tool) throw new Error(`Unknown tool: "${name}". Available: ${Object.keys(toolRegistry).join(', ')}`)
-  return tool.execute(input)
+  return tool.execute(input, context)
 }
 
 // === CC src/tools.ts: assembleToolPool() — stable ordering for prompt cache (Section 13.4.3) ===
@@ -93,6 +98,7 @@ import { inventoryHistoryTool } from './inventoryHistoryTool.js'
 import { predictionMarketTool, predictionMarketTeamTool, predictionMarketMatchTool, predictionMarketCompareTool, predictionMarketTrackRecordTool } from './predictionMarketTool.js'
 import { soccerMarketTool, soccerClubTool, soccerMatchTool, soccerCompareTool, soccerTrackRecordTool } from './soccerMarketTool.js'
 import { macroMarketDataTool } from './macroMarketDataTool.js'
+import { cryptoMarketTool, cryptoContractTool, cryptoTrackRecordTool } from './cryptoMarketTool.js'
 
 // General-purpose data tools
 import { mongodbTool } from './mongodbTool.js'
@@ -109,6 +115,7 @@ import { pairStatsTool } from './pairStatsTool.js'
 
 // Phase 2 tools — web search, content search, notebook, python, task mgmt, config, sleep
 import { webSearchTool } from './webSearchTool.js'
+import { webFetchTool } from './webFetchTool.js'
 import { searchContentTool } from './searchContentTool.js'
 import { readNotebookTool } from './notebookTool.js'
 import { runPythonTool } from './runPythonTool.js'
@@ -159,12 +166,14 @@ export function registerAllTools() {
     soccerMarketTool, soccerClubTool, soccerMatchTool,
     soccerCompareTool, soccerTrackRecordTool,
     macroMarketDataTool,
+    // Crypto binary markets — same dashboard export, three read-only skills.
+    cryptoMarketTool, cryptoContractTool, cryptoTrackRecordTool,
     // General-purpose data (11)
     mongodbTool, calculatorTool, statisticsTool, readFileTool,
     parseXlsxTool, listFilesTool, queryJsonTool, httpRequestTool,
     dateTimeTool, compareStrategiesTool, pairStatsTool,
     // Phase 2 tools (8)
-    webSearchTool, searchContentTool, readNotebookTool, runPythonTool,
+    webSearchTool, webFetchTool, searchContentTool, readNotebookTool, runPythonTool,
     taskOutputTool, stopTaskTool, sleepTool, configTool,
     // Private Credit — Excel template models (7)
     pcListModelsTool, pcReadModelTool, pcComputeTool, pcSensitivityTool,

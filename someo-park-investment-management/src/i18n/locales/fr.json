@@ -1076,6 +1076,14 @@
     "confirmDeploy": "Confirmer le deploiement"
   },
   "strategyPerf": {
+    "pairCorrelation": "Corrélation ρ",
+    "pairCovariance": "Covariance (%²)",
+    "pairSamples": "Rendements appariés · n={{n}}",
+    "pairInsufficient": "Moins de 3 observations valides",
+    "pairNoVariation": "Rendements constants · ρ / β indisponibles",
+    "pairUnavailable": "Données indisponibles",
+    "pairShortSample": "Peu d’observations · résultat indicatif",
+    "pairIncludesStrategy": "Le portefeuille inclut cette stratégie",
     "mrpt": "MRPT",
     "mtfs": "MTFS",
     "combined": "Combine",
@@ -2442,6 +2450,10 @@
     "qcAllPass": "Tous les quality checks réussis",
     "qcFail": "Quality check échoué",
     "qcPending": "Quality checks",
+    "statusNormal": "État normal",
+    "statusWarning": "Avertissement",
+    "statusAbnormal": "État anormal",
+    "qualityDetails": "Détails",
     "qcDual": "double moteur",
     "qcFresh": "prix frais",
     "qcHeartbeat": "battement",
@@ -2506,7 +2518,7 @@
     "cohortSShort": "×k figé",
     "cohortFShort": "×1 total",
     "cardOfficialTitleAdd": "Base officielle (EOD officiel {{date}} + P&L du registre du jour ; famille additive official = ledger − C, P&L quotidien identique au dollar près)",
-    "rolloffDone": "legacy/S entièrement sorties · K figé à {{k}} (mesuré le {{date}}) · VNI QC + K ≡ VNI du panneau",
+    "rolloffDone": "Rapprochement QC",
     "rolloffTitle": "Mesuré au jour de sortie : capitaux propres du compte QC {{qc}} + K = total base officielle du panneau {{panel}}.\nLes deux cohortes vidées, QC détient exactement le nombre d'actions de la base officielle sur chaque ligne ; l'écart de VNI n'est plus que de la trésorerie et ne dérive plus avec le marché.\nToute dérive résiduelle ne provient ensuite que des écarts de prix d'exécution (QC exécute au marché, le registre comptabilise le prix d'ouverture de DailySignal)."
   },
   "vp": {

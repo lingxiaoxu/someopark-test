@@ -18,13 +18,18 @@ import { StanseAgentSchema } from './lib/schema';
 import { ExecutionResult } from './lib/types';
 import { Message } from './lib/messages';
 import { DeepPartial } from 'ai';
+import { CryptoPredictionProvider } from './crypto-markets/CryptoContext';
+import { isCryptoArtifact } from './crypto-markets/CryptoPanelContent';
+import { isPredictionArtifact } from './components/prediction/PredictionArtifact';
 
 export type AgentMode = 'cloud' | 'local';
+type AppMode = 'stock' | 'prediction' | 'macro' | 'soccer' | 'crypto';
 
 type ChatEntry = { id: number; title: string };
 
-function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+function useLocalStorage<T>(key: string, initialValue: T, initialOverride?: T): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
+    if (initialOverride !== undefined) return initialOverride;
     try {
       const item = localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
@@ -112,17 +117,19 @@ function deleteChatMessages(chatId: number) {
   localStorage.removeItem(`sp-chat-${chatId}`);
 }
 
-export default function App() {
+export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {}) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
   const [isLocalConnected, setIsLocalConnected] = useState(false);
-  // App mode: 'stock' (default, pixel-identical to before) | 'prediction' | 'macro' | 'soccer'.
+  // Crypto shares the existing shell; only its overview and artifact contents differ.
   // The attribute lives on <html> so the whole viewport (incl. <body>) inverts.
-  const [appModeRaw, setAppMode] = useLocalStorage<'stock' | 'prediction' | 'macro' | 'soccer'>('sp-appMode', 'stock');
+  const [appModeRaw, setAppMode] = useLocalStorage<AppMode>('sp-appMode', 'stock', initialAppMode);
   // Unknown/legacy stored values fall back to 'stock'.
-  const appMode: 'stock' | 'prediction' | 'macro' | 'soccer' =
-    appModeRaw === 'prediction' || appModeRaw === 'macro' || appModeRaw === 'soccer' ? appModeRaw : 'stock';
+  const appMode: AppMode =
+    appModeRaw === 'prediction' || appModeRaw === 'macro' || appModeRaw === 'soccer' || appModeRaw === 'crypto' ? appModeRaw : 'stock';
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
+  const appModeRef = useRef(appMode);
+  appModeRef.current = appMode;
   // Global "card categorization" toggle (Settings page) — applies to the home-screen
   // artifact grids in all three modes (stock / prediction / macro). Default false
   // (flat list) matches the pre-existing stock & prediction behavior; macro used to
@@ -130,12 +137,17 @@ export default function App() {
   const [cardCategorized, setCardCategorized] = useLocalStorage<boolean>('sp-cardCategorized', false);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-mode', appMode);
+    document.documentElement.setAttribute('data-mode', appMode === 'crypto' ? 'prediction' : appMode);
   }, [appMode]);
 
   // Direct-entry mode buttons (no more toggle/flip semantics) — clicking a
   // button always enters that mode; clicking the already-active one is a no-op.
-  const enterAppMode = useCallback((m: 'stock' | 'prediction' | 'macro' | 'soccer') => {
+  const enterAppMode = useCallback((m: AppMode) => {
+    if (m === 'crypto' || appModeRef.current === 'crypto') {
+      setLastClosedArtifact(null);
+      setCodePreview(null);
+      setIsMaximized(false);
+    }
     setActiveArtifact(null);   // drop any open artifact so modes never cross-render
     setShowSettings(false);
     setAppMode(m);
@@ -251,6 +263,17 @@ export default function App() {
   const [authView, setAuthView] = useState<ViewType>('sign_in');
   const { session } = useAuth(setIsAuthDialogOpen, setAuthView);
 
+  const setModeArtifact = useCallback((artifact: any) => {
+    // Delayed chat responses must not open another module's artifact in crypto.
+    if (artifact && (appModeRef.current === 'crypto') !== isCryptoArtifact(artifact.type)) return;
+    // Reuse the stock artifact login gate for every entry point; only World Cup is public.
+    if (artifact && !isPredictionArtifact(artifact.type) && !session) {
+      setIsAuthDialogOpen(true);
+      return;
+    }
+    setActiveArtifact(artifact);
+  }, [session]);
+
   // Keep refs current for the debounced/deferred chat-sync closures above.
   useEffect(() => { sessionRef.current = session; }, [session]);
   useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
@@ -305,6 +328,7 @@ export default function App() {
   }, [setLanguageModel]);
 
   const handleCodePreview = useCallback((preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => {
+    if (appModeRef.current === 'crypto') return;
     if (preview.isLoading) {
       setIsPreviewLoading(true);
       setCodePreview({ stanseAgent: preview.stanseAgent });
@@ -379,8 +403,9 @@ export default function App() {
   const showRightPanel = activeArtifact || codePreview;
 
   return (
-    <ArtifactProvider value={setActiveArtifact}>
+    <ArtifactProvider value={setModeArtifact}>
     <AdvanceModeProvider>
+    <CryptoPredictionProvider enabled={appMode === 'crypto'}>
     <div ref={appRef} className="flex h-full w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
       <div className="shrink-0 z-20 bg-[var(--bg-primary)] relative flex" style={{ width: sidebarWidth }}>
         <div className="flex-1 min-w-0">
@@ -439,8 +464,14 @@ export default function App() {
               appMode={appMode}
               isLocalConnected={isLocalConnected}
               cardCategorized={cardCategorized}
-              setActiveArtifact={(a: any) => { setActiveArtifact(a); setShowSettings(false); setCodePreview(null); }}
-              onCodePreview={handleCodePreview}
+              setActiveArtifact={(a: any) => {
+                if ((appMode === 'crypto') !== (appModeRef.current === 'crypto')) return;
+                setModeArtifact(a); setShowSettings(false); setCodePreview(null);
+              }}
+              onCodePreview={(preview) => {
+                if ((appMode === 'crypto') !== (appModeRef.current === 'crypto')) return;
+                handleCodePreview(preview);
+              }}
               languageModel={languageModel}
               onLanguageModelChange={handleLanguageModelChange}
               useMorphApply={useMorphApply}
@@ -461,7 +492,7 @@ export default function App() {
         {!showRightPanel && lastClosedArtifact && (
           <div className="absolute top-3 right-3 z-30">
             <button
-              onClick={() => { setActiveArtifact(lastClosedArtifact); setLastClosedArtifact(null); }}
+              onClick={() => { setModeArtifact(lastClosedArtifact); setLastClosedArtifact(null); }}
               style={{
                 padding: '5px',
                 background: 'transparent',
@@ -543,6 +574,7 @@ export default function App() {
         <AuthDialog open={isAuthDialogOpen} setOpen={setIsAuthDialogOpen} supabase={supabase} view={authView} />
       )}
     </div>
+    </CryptoPredictionProvider>
     </AdvanceModeProvider>
     </ArtifactProvider>
   );

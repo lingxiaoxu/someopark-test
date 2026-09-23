@@ -120,6 +120,14 @@ for i in "${!NAMES[@]}"; do
 
   mkdir -p "$DST"
 
+  # 2026-09-12:活目录(public_quote_captures 每 20 分钟新增 302 个文件)必须
+  # **先冻结源清单**再传。否则事后拿新的源清单去比对,会把「备份完成之后才出现的
+  # 文件」误判成「盘上缺失」——实测两个文件创建于 15:57:41,而 rsync 15:49:57 就结束了。
+  # 正确语义:本次备份只对「rsync 开始那一刻存在的文件」负责。
+  SNAP=$(mktemp -t bkgaps_snap)
+  find "$SRC" -type f ! -name "*.db" ! -name "*.db-wal" ! -name "*.db-shm" 2>/dev/null > "$SNAP"
+  log "  源清单已冻结: $(wc -l < "$SNAP" | tr -d ' ') 个非 sqlite 文件"
+
   # ── 阶段 1：rsync 普通文件（排除 sqlite，避免撕裂）────────────────────
   log "  阶段1/2 rsync 普通文件…"
   rsync -a --partial \
@@ -169,15 +177,35 @@ for i in "${!NAMES[@]}"; do
   # 变量后紧跟全角字符必须用 ${} —— 否则 bash 会把全角括号读进变量名(实测炸过)
   log "  校验 1/3 文件数: 源 ${SN_EFF}（已扣除 ${WS} 个 -wal/-shm）vs 盘 ${DN}  $([[ "$DN" -ge "$SN_EFF" ]] && echo ✓ || echo ✗)"
   log "  校验 2/3 字节数: 源 $SB vs 盘 $DB_ （sqlite 快照会因 vacuum 略小，属正常）"
-  SF=0; SC=0
+  # MD5 抽样(活动目录会有竞争:抽样瞬间文件正被写入)。
+  # 2026-09-12 加定向重试:不符 → 单独重传该文件再比一次,**第二次仍不符才算真失败**。
+  # 这样才能把「活文件churn」与「真损坏」分开——此前两次误报都属前者。
+  SF=0; SC=0; SR=0
   while IFS= read -r f; do
     rel="${f#"$SRC/"}"
-    [[ -f "$DST/$rel" ]] || { log "    ✗ 缺失: $rel"; SF=$((SF+1)); continue; }
-    [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]] || SF=$((SF+1))
     SC=$((SC+1))
-  done < <(find "$SRC" -type f ! -name "*.db" ! -name "*.db-wal" ! -name "*.db-shm" 2>/dev/null \
-           | awk 'NR%7==1' | head -"$MD5_SAMPLE")
-  log "  校验 3/3 MD5 抽样(非 sqlite): $SC 个, 失败 $SF  $([[ "$SF" -eq 0 ]] && echo ✓ || echo ✗)"
+    # 源文件在备份后被删/轮转 → 不计入(本次不对它负责)
+    [[ -f "$f" ]] || { SC=$((SC-1)); continue; }
+    if [[ ! -f "$DST/$rel" ]]; then
+      # 盘上缺失 → 定向补传一次再判(活目录常见)
+      SR=$((SR+1)); mkdir -p "$(dirname "$DST/$rel")"
+      rsync -a --partial "$f" "$DST/$rel" 2>>"$LOG"
+      if [[ -f "$DST/$rel" ]]; then log "    · 盘上原缺失,已定向补传: $rel"
+      else log "    ✗ 补传后仍缺失: $rel"; SF=$((SF+1)); fi
+      continue
+    fi
+    if [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]]; then continue; fi
+    # 第一次不符 → 定向重传后复比
+    SR=$((SR+1))
+    rsync -a --partial "$f" "$DST/$rel" 2>>"$LOG"
+    if [[ "$(md5 -q "$f" 2>/dev/null)" == "$(md5 -q "$DST/$rel" 2>/dev/null)" ]]; then
+      log "    · 活文件竞争,已定向重传并复比通过: $rel"
+    else
+      log "    ✗ 重传后仍不符(疑似真损坏): $rel"; SF=$((SF+1))
+    fi
+  done < <(sort -R "$SNAP" | head -"$MD5_SAMPLE")
+  rm -f "$SNAP"
+  log "  校验 3/3 MD5 抽样(非 sqlite): $SC 个, 定向重传 $SR 个, 最终失败 $SF  $([[ "$SF" -eq 0 ]] && echo ✓ || echo ✗)"
 
   if [[ "$DN" -ge "$SN_EFF" && "$SF" -eq 0 && "$DBBAD" -eq 0 ]]; then
     log "  ★ $NAME 备份完成并校验通过"

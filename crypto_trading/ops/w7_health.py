@@ -72,6 +72,18 @@ TAPE_MAX_GAP_MIN = 4.0         # 90s recorder: 2-3 missed cycles. A hole inside
                                # 15-min bar was too slack to see them.
 INDEX_MAX_GAP_S = 120.0        # 5s recorder
 CYCLE_MAX_AGE_S = 300.0        # 60s cadence
+HL_MAX_GAP_S = 180.0           # 5s recorder, plus room for its 429 backoff
+OKX_HEARTBEAT_MAX_AGE_S = 90.0
+OKX_EVENT_QUIET_S = 1800.0    # event-driven: quiet is WARN, not a false disconnect
+
+# The two matched sets. They must stay the same universe: the alt-data half is
+# only interpretable against a spot index for the SAME coin, and W8 trades
+# BTC/ETH/DOGE/XRP while the index set originally covered BTC/ETH/SOL - so DOGE
+# and XRP were flying with no underlying feed at all until 2026-09-14.
+INDEX_ASSETS = ("BTC", "ETH", "SOL", "DOGE", "XRP")
+HL_STREAMS = tuple(f"{kind}/{coin}" for kind in ("context", "book", "trades")
+                   for coin in INDEX_ASSETS) + ("accounts", "twap_fills",
+                                                "address_pool")
 
 
 def _fmt(age_s: float) -> str:
@@ -89,6 +101,16 @@ def _lines(path: Path):
     else:
         with open(p, errors="ignore") as fh:
             yield from fh
+
+
+def _json_lines(path: Path):
+    for ln in _lines(path):
+        if not ln.strip():
+            continue
+        try:
+            yield json.loads(ln)
+        except json.JSONDecodeError:
+            continue
 
 
 def check_daemon(now: float) -> dict:
@@ -320,6 +342,49 @@ def check_mirror(now: float, hours: float = 6.0) -> dict:
                       + f"{hours:.0f}h: {counts}, codes {codes}"}
 
 
+def check_okx_liquidations(now: float) -> dict:
+    """Bounded status read: live connection != successfully recorded events."""
+    path = PRICE_DATA / "offshore" / "okx" / "liquidations" / "recorder_status.json"
+    try:
+        st = json.loads(path.read_text())
+        if not isinstance(st, dict) or st.get("schema_version") != 1 or st.get("driver") != "okx":
+            raise ValueError("invalid recorder status schema/driver")
+        ages = {}
+        for field in ("updated_at", "last_message_at", "last_event_at"):
+            value = st.get(field)
+            if value is None and field != "updated_at":
+                ages[field] = None
+                continue
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or value <= 0 or value > now + 5):
+                raise ValueError(f"invalid {field}")
+            ages[field] = max(0.0, now - value)
+    except (OSError, ValueError, TypeError) as exc:
+        return {"status": FAIL, "detail": f"okx liquidation status unreadable: {exc}",
+                "connection_state": "unknown", "connected_at": None,
+                "last_message_at": None, "last_event_at": None}
+    result = {"connection_state": st.get("state"), "subscribed": st.get("subscribed"),
+              "connected_at": st.get("connected_at"), "last_message_at": st.get("last_message_at"),
+              "updated_at": st.get("updated_at"),
+              "heartbeat_age_s": round(ages["updated_at"], 1),
+              "message_age_s": None if ages["last_message_at"] is None else round(ages["last_message_at"], 1),
+              "event_age_s": None if ages["last_event_at"] is None else round(ages["last_event_at"], 1),
+              "last_event_at": st.get("last_event_at"), "events_written": st.get("events_written"),
+              "open_files": st.get("open_files"), "max_open_files": st.get("max_open_files")}
+    if ages["updated_at"] > OKX_HEARTBEAT_MAX_AGE_S:
+        result.update(status=FAIL, detail=f"okx liquidation heartbeat silent {_fmt(ages['updated_at'])}")
+    elif st.get("state") != "connected" or st.get("subscribed") is not True:
+        result.update(status=FAIL, detail=f"okx liquidation connection {st.get('state')}, subscribed={st.get('subscribed')}")
+    elif ages["last_message_at"] is None or ages["last_message_at"] > OKX_HEARTBEAT_MAX_AGE_S:
+        result.update(status=FAIL, detail="okx liquidation connection has no recent message/pong")
+    elif ages["last_event_at"] is None or ages["last_event_at"] > OKX_EVENT_QUIET_S:
+        quiet = "none recorded yet" if ages["last_event_at"] is None else f"last event {_fmt(ages['last_event_at'])} ago"
+        result.update(status=WARN, detail=f"okx connected and responsive; event stream quiet ({quiet})")
+    else:
+        result.update(status=PASS, detail=f"okx connected; last recorded event {_fmt(ages['last_event_at'])} ago")
+    return result
+
+
 def check_recorders(now: float) -> dict:
     """Freshness of every live stream, then the 15M tape's actual cadence.
     File mtime alone is not enough: a recorder can hold a file open and append
@@ -344,7 +409,11 @@ def check_recorders(now: float) -> dict:
         elif biggest > TAPE_MAX_GAP_MIN:
             warn.append(f"{series}: {biggest:.0f}m gap today")
 
-    for asset in ("BTC", "ETH", "SOL"):
+    # 2026-09-14: DOGE and XRP were added so the spot-index set covers the same
+    # universe as the Hyperliquid alt-data set below. They run as a SECOND
+    # instance of the same recorder (`--assets DOGE,XRP`) so the original
+    # BTC/ETH/SOL process is never interrupted; both write disjoint asset dirs.
+    for asset in INDEX_ASSETS:
         p = PRICE_DATA / "index_proxy" / "live" / asset / f"{day}.jsonl"
         ts = []
         for ln in _lines(p):
@@ -367,6 +436,33 @@ def check_recorders(now: float) -> dict:
             bad.append(f"index {asset}: silent {_fmt(age)}")
         elif max(gaps) > INDEX_MAX_GAP_S:
             warn.append(f"index {asset}: {max(gaps):.0f}s gap today")
+
+    # The Hyperliquid alt-data set. Unlike prices, none of it is backfillable -
+    # the venue serves current state only - so a silent day here is a day of
+    # evidence that can never be recovered, which is exactly why it is watched
+    # beside the tape rather than trusted to run.
+    for stream in HL_STREAMS:
+        p = PRICE_DATA / "hyperliquid" / stream / f"{day}.jsonl"
+        ts = sorted(j["recv_ts"] for j in _json_lines(p) if j.get("recv_ts"))
+        if not ts:
+            # trades/accounts/twap_fills are event-driven: quiet is not broken
+            # as long as the polled streams are alive, so only context is FAIL.
+            (bad if stream.startswith("context/") else warn).append(
+                f"hl {stream}: no data today")
+            continue
+        gaps = [b - a for a, b in zip(ts, ts[1:])] or [0]
+        age = now - ts[-1]
+        rows.append({"stream": f"hl/{stream}", "ticks": len(ts),
+                     "max_gap_s": round(max(gaps)), "age_s": round(age)})
+        if stream.startswith(("context/", "book/")) and age > HL_MAX_GAP_S:
+            bad.append(f"hl {stream}: silent {_fmt(age)}")
+
+    okx = check_okx_liquidations(now)
+    rows.append({"stream": "okx/liquidations", **okx})
+    if okx["status"] == FAIL:
+        bad.append(okx["detail"])
+    elif okx["status"] == WARN:
+        warn.append(okx["detail"])
 
     status = FAIL if bad else (WARN if warn else PASS)
     return {"status": status,
@@ -514,8 +610,15 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     ap.add_argument("--contracts", type=int, default=25)
+    ap.add_argument("--okx-only", action="store_true",
+                    help="read only the liquidation recorder status; no account/API or full tape scan")
     args = ap.parse_args(argv)
-    res = run(contracts=args.contracts)
+    if args.okx_only:
+        check = check_okx_liquidations(time.time())
+        res = {"overall": check["status"], "checks": {"okx_liquidations": check},
+               "checked_at": time.time()}
+    else:
+        res = run(contracts=args.contracts)
     if args.json:
         print(json.dumps(res, indent=1, default=str))
     else:

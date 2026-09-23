@@ -132,7 +132,9 @@ def _live_quote_sources(conn) -> dict:
     comps={c.api_football_id:c for c in active()}
     cmap={r['api_id']:r['canonical_team_id'] for r in conn.execute('SELECT api_id,canonical_team_id FROM team_meta')}
     kd={}
-    try: pd=PolymarketUSDiscovery(conn=conn)
+    # In-play quotes can reach a paper decision, so this caller outranks the
+    # upcoming sweep on the one shared Polymarket US read budget.
+    try: pd=PolymarketUSDiscovery(conn=conn, priority='live')
     except Exception as exc:
         log.warning('Polymarket US discovery unavailable: %s',type(exc).__name__)
         pd=None

@@ -7,11 +7,17 @@ import fcntl
 from contextlib import contextmanager
 import os
 import tempfile
+import sqlite3
+import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
 from prediction_market_soccer.config import CONFIG
+
+
+# Backoff is additional to SQLite's configured busy timeout (60 s in the store).
+_LOCK_RETRY_BASE_S = 5.0
 
 
 def utc_now() -> str:
@@ -128,6 +134,20 @@ def read_status(name: str) -> dict:
         return {}
 
 
+
+def _call_retrying_locks(fn, attempts, name):
+    """Call fn, retrying only SQLite write contention, with a short linear backoff."""
+    for remaining in range(attempts, -1, -1):
+        try:
+            return fn()
+        except sqlite3.OperationalError as exc:
+            if remaining == 0 or "locked" not in str(exc).lower():
+                raise
+            wait = float(attempts - remaining + 1) * _LOCK_RETRY_BASE_S
+            print(f"  ↻ {name}: {exc} — retrying in {wait:.0f}s ({remaining} left)", flush=True)
+            time.sleep(wait)
+
+
 class RunStatus:
     def __init__(self, name: str):
         self.name = name
@@ -141,12 +161,29 @@ class RunStatus:
         self.doc["last_activity_at"] = utc_now()
         atomic_json(status_path(self.name), self.doc)
 
-    def step(self, name, fn, *, required=True, result_validator=None):
+    def step(self, name, fn, *, required=True, result_validator=None, retry_on_lock=0):
+        """Run one named stage.
+
+        ``retry_on_lock`` re-runs the step after SQLite reports write contention.
+        It is opt-in per step and NOT a default, because a retry is only safe for
+        an idempotent one: re-running a ledger append (settled_bet,
+        strategy_book_append) after a partial failure would double-append. Ingest
+        projections may opt in only when the callable also owns its transaction
+        rollback and post-commit availability recovery.
+
+        Why it exists: a transient `database is locked` inside the required
+        ``club_recent`` projection aborts the whole refresh (2026-09-11 18:33 and
+        2026-09-13 15:46). ``match_trigger`` does recover it — the results stay
+        unacknowledged so the next tick returns RUN — but recovery cost a full
+        re-ingest and 19 minutes of stale exports on 09-13 (15:46 failed, 16:05
+        succeeded). The two retries add 5 s then 10 s of backoff to SQLite's own
+        busy timeout; a persistent lock still fails the required step.
+        """
         item = {"name": name, "state": "running", "required": required, "started_at": utc_now()}
         self.doc["steps"].append(item)
         self.save()
         try:
-            result = fn()
+            result = _call_retrying_locks(fn, retry_on_lock, name)
             complete = result_validator(result) if result_validator else not (
                 isinstance(result, dict) and result.get('complete') is False)
             item["state"] = "ok" if complete else "partial"

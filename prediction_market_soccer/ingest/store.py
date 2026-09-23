@@ -485,6 +485,47 @@ def persist_calibration(conn: sqlite3.Connection, run_ts: str, metrics: dict[str
 
 
 # ── Idempotent upsert ────────────────────────────────────────────────────────
+# Every versioned table carries exactly one bookkeeping write clock, and it is
+# rewritten on every upsert whether or not anything was actually observed to
+# change. stage_version dedupes on the payload hash, so that one moving field
+# defeated it: on 2026-09-14 the history held 8,873,916 table revisions of which
+# 8,780,602 (98.9%) differed from their predecessor in nothing but this clock —
+# 6.4M of them for a 12,473-row table — and rebuilding a decision-time view from
+# them took 371 seconds, past the 120-second observation-freshness guard, so a
+# match day settled with zero paper legs.
+#
+# A write clock is not an observation. The clock is still written to the table and
+# still stored in the payload of any revision that does get staged; it just cannot
+# by itself make a new revision. Decision-time provenance is carried by
+# source_observation_v1.captured_at and source_availability_v1.available_at, never
+# by these columns.
+_WRITE_CLOCK_COLUMNS = frozenset(("updated_at", "fetched_at"))
+
+
+def _substantive(payload: dict) -> dict:
+    return {k: v for k, v in payload.items() if k not in _WRITE_CLOCK_COLUMNS}
+
+
+def _write_clock_repeat(conn: sqlite3.Connection, source: str, entity_key: dict, payload: dict) -> bool:
+    """True when this row differs from its last revision only by a write clock."""
+    from prediction_market_soccer.util.source_history import canonical
+    try:
+        previous = conn.execute(
+            "SELECT payload,complete FROM source_observation_v1 WHERE source=? AND entity_key=? "
+            "ORDER BY rowid DESC LIMIT 1", (source, canonical(entity_key))).fetchone()
+    except sqlite3.OperationalError:
+        return False        # history not created yet — stage_version will ensure() it
+    # A complete re-observation must recover an incomplete predecessor even when
+    # its row values match. This preserves stage_version's completeness contract.
+    if previous is None or not bool(previous[1]):
+        return False
+    try:
+        before = json.loads(previous[0])
+    except (TypeError, ValueError):
+        return False
+    return isinstance(before, dict) and _substantive(before) == _substantive(payload)
+
+
 def upsert(conn: sqlite3.Connection, table: str, row: dict[str, Any], pk: list[str]) -> None:
     """INSERT ... ON CONFLICT(pk) DO UPDATE — idempotent on natural keys."""
     cols = list(row.keys())
@@ -503,7 +544,9 @@ def upsert(conn: sqlite3.Connection, table: str, row: dict[str, Any], pk: list[s
         values = saved.fetchone()
         if values is not None:
             payload = dict(zip((d[0] for d in saved.description), values))
-            stage_version(conn, 'table:' + table, {k: row[k] for k in pk}, payload)
+            key = {k: row[k] for k in pk}
+            if not _write_clock_repeat(conn, 'table:' + table, key, payload):
+                stage_version(conn, 'table:' + table, key, payload)
     if table == "fixture":
         from prediction_market_soccer.util.timing_provenance import record_fixture_result
         record_fixture_result(conn, row)

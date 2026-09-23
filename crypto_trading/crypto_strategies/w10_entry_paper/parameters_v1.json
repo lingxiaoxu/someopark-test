@@ -1,0 +1,21 @@
+{
+  "policy": "aligned_price_flow_v1",
+  "mode": "prospective_conditional_whole_market_paper",
+  "parent": "W8 tilted only, all paper entry/management fills and fees",
+  "accept_if": "held_direction * momentum_1m_bp > 0 AND held_direction * observed_flow_imbalance_1m > 0",
+  "held_direction": {"yes": 1, "no": -1},
+  "legacy_control": "price_flow_reversal_v1 on the exact same prospective classified cohort",
+  "feature_clock": "recorder receipt timestamp <= original first order created_ts",
+  "source_discovery_max_delay_seconds": 90,
+  "source_heartbeat_max_age_seconds": 90,
+  "publication_rule": "unconfirmed publication or first parent fill at/before durable decision publication is excluded from matched results",
+  "missing_data": "unclassified; never counted as avoided loss",
+  "first_review_parent_filled_expiry_windows": 300,
+  "historical_selection_disclosure": "Selected after inspecting historical and later registered W10 samples through 2026-09-16 02:51:48 UTC; neither is an untouched holdout for this new rule.",
+  "research_report": "trading_signals/reports/w8_w10_profitability_research_20260916T025148Z",
+  "replacement_quote_analysis": "diagnostics only, no counterfactual per-fill PNL or independent inventory simulation",
+  "network_enabled": false,
+  "demo_orders_enabled": false,
+  "prod_orders_enabled": false,
+  "frontend_enabled": false
+}
