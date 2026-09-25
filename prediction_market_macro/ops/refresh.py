@@ -169,6 +169,16 @@ def _run(weekly: bool = False) -> dict:
     # non-member rate limit is ~6/min and the AEUS strategy owns the bulk pulls.
     from prediction_market_macro.ingest import pjm
     step("pjm", lambda: pjm.refresh(conn))
+    # 2026-09-25: the exact defect the 09-13 note above fixed for ERCOT, found again on
+    # the PJM twin — ercot_eia930 was added alone, pjm.backfill_eia930 kept its zero
+    # callers, and every eia_* metric in pjm_daily froze at the 09-02 manual backfill
+    # (found 09-25 at 09-01, 24 days stale). Downstream that froze PJM_GASBURN_W and
+    # PJM_DEMAND_W at the 09-05 week — and pjm_demand is the PR-34-ADOPTED context
+    # column of the energy_weekly DFM panel, so the 09-06/13/20 weekly regens ran with
+    # a staling conditioning tail. Same 90-day rolling window, same idempotence
+    # argument (INSERT OR REPLACE + COALESCE first_seen_ts) as the ERCOT step.
+    step("pjm_eia930", lambda: pjm.backfill_eia930(
+        conn, start=(date.today() - timedelta(days=90)).isoformat()))
     step("pjm_mirror", lambda: pjm.mirror_weekly_burn(conn))
     step("pjm_mirror_demand", lambda: pjm.mirror_weekly_demand(conn))
     # Cleveland Fed daily inflation nowcasts (2026-08-15, shadow per §7-bis —
