@@ -225,13 +225,20 @@ function parseWarnings(raw: string[], inv: Record<string, any>) {
     }
   }
   // null-ed 行:路径尾巴是票名(…adv_forecast.AVB);全部被上面某条公司行为覆盖 → 吞掉
+  // (explained 必须用**未过滤**的 corp 构建:即便公司行为卡片因全空槽被隐藏,
+  //  对应的 null-ed 行仍已被解释,不能回流成原始告警)
   const explained = new Set(corp.map(c => c.ticker));
   for (const w of nulled) {
     const tickers = [...w.matchAll(/\.([A-Z][A-Z0-9.\-]*)'/g)].map(x => x[1]);
     if (tickers.length && tickers.every(t => explained.has(t))) continue;
     rest.push(w);
   }
-  return { corp, rest };
+  // 2026-09-25:全部受影响槽位都是 universe 空槽(无一真持仓)的公司行为不下发 ——
+  // 适配器已自动处理(stale 拦截 / 取数转发),没有持仓就没有需要人看的决策;
+  // 否则 AVB 退市、BK→BNY 这类条目会在面板上永远挂着。文本告警仍留在
+  // 建议文件里,审计不丢;一旦哪个受影响槽位重新有持仓,条目自动回来。
+  const corpShown = corp.filter(c => c.slots.some(sl => sl.active));
+  return { corp: corpShown, rest };
 }
 
 // 单端点:health + 当前策略最新 advice + AB 近 5 行,切策略一次取齐
