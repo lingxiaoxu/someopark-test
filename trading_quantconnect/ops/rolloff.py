@@ -346,6 +346,11 @@ QC_SYMBOL_ALIAS = {
     # Houston Industries 的历史首名);Polygon 现今无 HOU 在市,无碰撞。
     # 三方互证:fill ticker、portfolio 键、本地 target 同为 −1296。
     "HOU": "CNP",
+    # 2026-09-28 核实 9/25 起对账 breach:订单 303 成交记录为 JBL −359 @317.48
+    # (9/25 09:31,MRPT 腿),portfolio 键为 "JBIL"(Jabil 的 QC 历史首名);
+    # Polygon 现今 JBL=Jabil Inc. 在市、JBIL 无此票(无碰撞)。三方互证:
+    # fill ticker、portfolio 键、本地 target 同为 −359。
+    "JBIL": "JBL",
 }
 
 

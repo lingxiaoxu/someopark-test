@@ -896,7 +896,17 @@ def corrob(perf_dir, monkeypatch, tmp_path):
     close = datetime(2026, 8, 27, 16, 0, tzinfo=_ET).timestamp()
 
     def setup(perf_value=943_460.12, corrob_value=943_460.12,
-              corrob_hours=0.12, write_corrob=True, perf_date="2026-08-27"):
+              corrob_hours=0.12, write_corrob=True, perf_date="2026-08-27",
+              recompute=943_460.12):
+        # 2026-09-23 起复制品一致只是必要条件,放行还需独立重算佐证。
+        # recompute=数值 → 桩返回该值;None → 桩抛 SourceError(重算不可得)。
+        if recompute is None:
+            def _rc(session):
+                raise qr.SourceError("测试桩:重算不可得")
+        else:
+            def _rc(session, _v=recompute):
+                return _v
+        monkeypatch.setattr(qr, "_recompute_bdc_equity", _rc)
         p = perf_dir("private_credit_bdc_performance.json", -5.7)   # 10:18
         p.write_text(json.dumps([{"date": perf_date,
                                   "bdc_equity": perf_value}]))
@@ -915,8 +925,33 @@ def corrob(perf_dir, monkeypatch, tmp_path):
 
 
 def test_corroborated_value_match_clears_stale_mtime(corrob):
-    """收盘后独立产物的值与 perf 末行一致 → 那行是真收盘值,放行。"""
+    """复制品一致 + 独立重算吻合 → 那行是真收盘值,放行。"""
     corrob()
+    assert qr.intraday_official_files("2026-08-27") == []
+
+
+def test_recompute_mismatch_blocks_even_when_copy_matches(corrob):
+    """复制品与 perf 分毫不差、但独立重算(股数×官方收盘)差 $2k → 照拦。
+
+    这正是复制品佐证抓不到的病:perf 盘中定稿陈值,Step D 收盘后照抄,
+    抄本==原件。2026-09-23 前这里会被放行。"""
+    corrob(recompute=941_460.12)
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "独立重算" in got[0] and "不是收盘值" in got[0]
+
+
+def test_recompute_unavailable_blocks_no_fallback(corrob):
+    """独立重算不可得(inventory 日期不符/收盘价缺票/key 缺)→ 判不了就不放行。
+
+    绝不退化回"复制品一致就放行"—— 那等于把 2026-09-23 补的闸门又拆掉。"""
+    corrob(recompute=None)
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "独立重算不可得" in got[0]
+
+
+def test_recompute_within_tolerance_passes(corrob):
+    """±$1 容差内(perf 落盘 2dp 四舍五入)不算病。"""
+    corrob(recompute=943_460.62)
     assert qr.intraday_official_files("2026-08-27") == []
 
 
@@ -1657,3 +1692,29 @@ def test_hou_first_name_maps_to_cnp_and_keeps_real_share_breaches(target_file):
     assert row["status"] == "breach"
     assert row["diffs"] == [{"ticker": "CNP", "qc": -1297,
                              "target": -1296, "diff": -1}]
+
+
+def test_jbil_first_name_maps_to_jbl_and_keeps_real_share_breaches(target_file):
+    """9/25 实测:order 303 成交 JBL −359,portfolio 键为历史首名 JBIL。
+    映射后逐票配平;真实股数差仍按 JBL 名义原样报 breach。"""
+    class Client:
+        def live_read(self, pid):
+            return {"status": "Running", "deployId": "test-deploy"}
+
+        def live_portfolio(self, pid):
+            return {"portfolio": {
+                "holdings": {"JBIL R735QTJ8XC9X": {
+                    "q": -359, "p": 317.48, "v": -113975.32}},
+                "cash": {"USD": {"amount": 100_000.0}},
+            }}
+
+    qc = rolloff.qc_snapshot(client=Client(), pid=1)
+    assert qc["shares"] == {"JBIL": -359}
+    target_file(56, {"JBL": -359})
+    row = qr.holdings_plane(qc, 56)
+    assert row["status"] == "ok" and row["diffs"] == []
+    qc["shares"]["JBIL"] += 1
+    row = qr.holdings_plane(qc, 56)
+    assert row["status"] == "breach"
+    assert row["diffs"] == [{"ticker": "JBL", "qc": -358,
+                             "target": -359, "diff": 1}]
