@@ -384,9 +384,13 @@ def record_evaluation(conn, version, fixture_id, track, milestone, payload, *, p
 def positions(conn, version_id=None):
     if not _table_exists(conn, 'paper_entry'):
         return []
+    # Sort in Python, not SQL: ORDER BY here has no covering index, so SQLite
+    # spills the whole result — every multi-MB payload — into a ~330 MB temp
+    # B-tree on disk per call (and this runs every idle live-refresh minute).
     rows = conn.execute('SELECT e.*,x.payload exit_payload,c.payload completion_payload FROM paper_entry e LEFT JOIN paper_exit x ON x.entry_id=e.decision_id LEFT JOIN paper_completion c ON c.book_version_id=e.book_version_id AND c.fixture_api_id=e.fixture_api_id ' +
-                        ('WHERE e.book_version_id=? ' if version_id else '') + 'ORDER BY e.decision_at,e.decision_id',
+                        ('WHERE e.book_version_id=? ' if version_id else ''),
                         (version_id,) if version_id else ()).fetchall()
+    rows.sort(key=lambda r: (r['decision_at'], r['decision_id']))
     return [{'book_version_id': r['book_version_id'], 'fixture_api_id': r['fixture_api_id'], 'track': r['track'],
              'entry': json.loads(r['payload']), 'exit': json.loads(r['exit_payload']) if r['exit_payload'] else None,
              'settlement': json.loads(r['completion_payload']) if r['completion_payload'] else None,
@@ -492,5 +496,9 @@ def settle(conn, fixture_ids=None, now=None):
 def completed_records(conn, version_id=None):
     if not _table_exists(conn, 'paper_completion'):
         return []
-    return [json.loads(r[0]) for r in conn.execute('SELECT payload FROM paper_completion ' +
-            ('WHERE book_version_id=? ' if version_id else '') + 'ORDER BY settled_at,source_id', (version_id,) if version_id else ())]
+    # Same temp-B-tree spill as positions(): keep the sort out of SQL.
+    rows = conn.execute('SELECT settled_at,source_id,payload FROM paper_completion ' +
+                        ('WHERE book_version_id=? ' if version_id else ''),
+                        (version_id,) if version_id else ()).fetchall()
+    rows.sort(key=lambda r: (r[0], r[1]))
+    return [json.loads(r[2]) for r in rows]
