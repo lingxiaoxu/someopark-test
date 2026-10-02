@@ -133,15 +133,20 @@ def _event(conn, intent, status, payload, now):
 
 
 def _attempts(conn, entry_id=None):
-    sql = '''SELECT i.*,CASE WHEN e.status IN ('filled','unfilled','rejected','absent') THEN e.status ELSE 'pending' END status,COALESCE(e.payload,'{}') event_payload,e.observed_at
+    # Sorted in Python: intent payloads are ~1.5 MB each, and an SQL ORDER BY
+    # spills the whole joined result to an on-disk temp B-tree every call.
+    sql = '''SELECT i.rowid AS _sort_rowid,i.*,CASE WHEN e.status IN ('filled','unfilled','rejected','absent') THEN e.status ELSE 'pending' END status,COALESCE(e.payload,'{}') event_payload,e.observed_at
       FROM demo_forward_intent i LEFT JOIN demo_forward_event e ON e.id=(
        SELECT MAX(id) FROM demo_forward_event WHERE client_order_id=i.client_order_id)'''
     args = ()
     if entry_id is not None:
         sql += ' WHERE i.paper_entry_id=?'
         args = (entry_id,)
-    sql += ' ORDER BY i.created_at,i.rowid'
-    return [dict(r) for r in conn.execute(sql, args)]
+    rows = [dict(r) for r in conn.execute(sql, args)]
+    rows.sort(key=lambda r: (r['created_at'], r['_sort_rowid']))
+    for r in rows:
+        del r['_sort_rowid']
+    return rows
 
 
 class DemoTickers:

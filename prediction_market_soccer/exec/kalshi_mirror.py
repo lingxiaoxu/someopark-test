@@ -1154,10 +1154,12 @@ def run_cycle(conn, inplay_doc: dict | None = None) -> dict:
 
 def _export(conn, broker: DemoBroker | None, last: dict) -> None:
     from prediction_market_soccer.util.timing_provenance import demo_execution_summary
+    # raw_json is dropped from the export, so never pull it into the sort:
+    # with it, ORDER BY spills every row's raw payload to an on-disk temp B-tree.
+    cols = ",".join(f'"{r[1]}"' for r in conn.execute("PRAGMA table_info(kalshi_mirror)")
+                    if r[1] != "raw_json")
     rows = [dict(r) for r in conn.execute(
-        "SELECT * FROM kalshi_mirror ORDER BY submitted_at DESC LIMIT 200").fetchall()]
-    for r in rows:
-        r.pop("raw_json", None)
+        f"SELECT {cols} FROM kalshi_mirror ORDER BY submitted_at DESC LIMIT 200").fetchall()]
     bal = None
     if broker is not None:
         try:
