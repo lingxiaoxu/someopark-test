@@ -798,6 +798,11 @@ _ODDS_PROBE_EVERY_H = 24.0
 _ODDS_FIXTURE_COOLDOWN_S = 6 * 3600
 _ODDS_ERROR_COOLDOWN_S = 10 * 60
 _ODDS_SELECTION_VERSION = "odds:selection:v2"
+# A fixture's bookmaker odds were pulled once, when it first entered the 7-day window,
+# and never again — the 2026-10-02 cards compared tonight's prices with odds from 09-28.
+# Re-pull once a fixture is this close to kickoff and its odds are this old.
+_ODDS_REFRESH_WITHIN_H = 36
+_ODDS_REFRESH_AGE_H = 12
 
 
 def _odds_lane_state(conn) -> tuple[int, str | None]:
@@ -859,6 +864,8 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
     args += [now.isoformat(), (now + timedelta(days=7)).isoformat()]
     if include_settled:
         args += [(now - timedelta(days=1)).isoformat(), now.isoformat()]
+    args += [(now + timedelta(hours=_ODDS_REFRESH_WITHIN_H)).isoformat(),
+             (now - timedelta(hours=_ODDS_REFRESH_AGE_H)).isoformat()]
     args += [now.isoformat()]
     rows = conn.execute(
         "SELECT f.api_id, w.resource, w.last_synced_at, w.note FROM fixture f "
@@ -869,8 +876,11 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
         # in-play `live_consensus` row (written by the live loop) would otherwise
         # permanently block the pre-match odds pull for that fixture — and it is
         # useless as a pre-match reference (it was captured at 4-1 up).
-        "AND f.api_id NOT IN (SELECT fixture_api_id FROM match_odds "
-        "                   WHERE bookmaker <> 'live_consensus') "
+        "AND (f.api_id NOT IN (SELECT fixture_api_id FROM match_odds "
+        "                    WHERE bookmaker <> 'live_consensus') "
+        "     OR (f.status_short='NS' AND julianday(f.kickoff_ts) <= julianday(?) "
+        "         AND (SELECT MAX(fetched_at) FROM match_odds WHERE fixture_api_id=f.api_id "
+        "              AND bookmaker <> 'live_consensus') < ?)) "
         "ORDER BY (f.status_short<>'NS'), COALESCE(w.last_synced_at, ''), "
         "ABS(julianday(f.kickoff_ts)-julianday(?)), f.api_id", args).fetchall()
     rows = [r for r in rows if force or not r["resource"] or not store.is_fresh(
