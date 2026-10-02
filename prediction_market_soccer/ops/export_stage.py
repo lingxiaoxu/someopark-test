@@ -19,10 +19,32 @@ def _digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+STAGE_ORPHAN_HOURS = 24      # a live cycle lasts seconds, a full batch at most hours
+
+
+def _sweep_orphan_stages(data_dir):
+    """Remove .refresh-stage-* left behind by killed processes and machine crashes.
+
+    __exit__ is the only cleanup, so every crash strands one (ten dirs / 1.3G found by
+    the 2026-10-02 audit, the oldest from 09-10). Age-gated so a concurrently RUNNING
+    stage is never touched: nothing legitimate lives longer than STAGE_ORPHAN_HOURS.
+    """
+    import shutil as _sh, time as _t
+    cutoff = _t.time() - STAGE_ORPHAN_HOURS * 3600
+    for d in Path(data_dir).glob(".refresh-stage-*"):
+        try:
+            if d.is_dir() and d.stat().st_mtime < cutoff:
+                _sh.rmtree(d, ignore_errors=True)
+                print(f"  清扫崩溃残留 stage: {d.name}")
+        except OSError:
+            continue
+
+
 class ExportStage:
     def __enter__(self):
         self.original = CONFIG.paths
         self.original.ensure()
+        _sweep_orphan_stages(self.original.data)
         self.root = Path(tempfile.mkdtemp(prefix=".refresh-stage-", dir=self.original.data))
         self.baseline = {}
         for key in ("output", "frontend_data"):

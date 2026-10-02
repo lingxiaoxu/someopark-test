@@ -67,6 +67,18 @@ def _reap_superseded_recovery_dbs() -> None:
         except (OSError, ValueError):
             continue
         candidates.append((backup.stat().st_mtime, backup))
+    # 2026-10-02 audit: this function only ran inside manual epoch updates, so after the
+    # last epoch (09-15) the superseded 09-14 snapshot (16.4G) sat forever; and the
+    # epoch_* glob means an unmanaged directory (leakfix-20260911, 18G, no journal) is
+    # never even SEEN. Deleting outside epoch_* stays a human decision — but hiding is
+    # not allowed: report any heavyweight stranger so it cannot silently eat the disk.
+    for directory in sorted(root.iterdir()):
+        if not directory.is_dir() or directory.name.startswith("epoch_"):
+            continue
+        size = sum(f.stat().st_size for f in directory.rglob("*") if f.is_file())
+        if size > 2**30:
+            print(f"  ! book_candidates 盲区目录 {directory.name}: {size / 2**30:.1f}G "
+                  f"(非 epoch_*,回收不会碰它——确认后人工处理)")
     for _, backup in sorted(candidates)[:-1]:     # keep the newest verified snapshot
         size = backup.stat().st_size
         try:

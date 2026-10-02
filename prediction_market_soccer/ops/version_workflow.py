@@ -19,6 +19,25 @@ from prediction_market_soccer.util.research_inputs import _path, digest
 NAMES = ('performance_report.json', 'milestone_marks.json', 'performance_report.pdf')
 
 
+def _require_backup_headroom(conn, recovery_dir):
+    """Refuse a whole-database backup without 2x the database's size free.
+
+    2026-10-02 audit: every epoch activation copies the entire database (24 GB today);
+    the 2026-09-11 outage began with three such copies eating 38 GB in one night, and on
+    2026-10-02 the machine went down with 3.6 GB free. Refusing up front turns "the disk
+    filled mid-copy and the box crashed" into a clean error the operator can act on.
+    2x = the copy itself plus WAL growth while it runs, with margin.
+    """
+    import os, shutil
+    db_path = conn.execute("PRAGMA database_list").fetchone()[2]
+    need = 2 * os.path.getsize(db_path)
+    free = shutil.disk_usage(os.path.dirname(db_path) or ".").free
+    if free < need:
+        raise RuntimeError(
+            f"refusing whole-db backup: {free / 2**30:.1f}G free < 2x database "
+            f"({need / 2**30:.1f}G needed) — reap book_candidates or free space first")
+
+
 def _sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
@@ -227,6 +246,7 @@ def switch(conn, *, root, directories, recovery_dir, operation_id, expected_head
                         atomic_bytes(recovery_dir / 'previous' / str(i) / name, path.read_bytes())
             # A consistent backup is supplementary recovery evidence. Recovery
             # preserves append-only journals; it never copies this over the live DB.
+            _require_backup_headroom(conn, recovery_dir)
             backup = sqlite3.connect(recovery_dir / 'database-before.db')
             try:
                 conn.backup(backup)
@@ -351,6 +371,7 @@ def activate_forward_method(conn, *, root, directories, recovery_dir, operation_
                 _pending_completion(conn)
                 current = methods.active_epoch(conn)
                 recovery_dir.mkdir(parents=True, exist_ok=False)
+                _require_backup_headroom(conn, recovery_dir)
                 backup = sqlite3.connect(recovery_dir / 'database-before.db')
                 try:
                     conn.backup(backup)

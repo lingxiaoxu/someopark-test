@@ -454,14 +454,34 @@ def _maybe_refresh_champion(conn) -> None:
         except Exception as exc:
             print(f"[live_refresh] topscorers refresh warning: {exc}")
         from prediction_market_soccer.ops.export_stage import ExportStage
+        # 2026-10-02: macOS flagged this very block for 8.6 GB written in 340 s
+        # (resource-violation diag, PID 7096) and the after-the-fact trail was cold.
+        # Per-stage disk-write deltas make the next incident attributable on sight.
+        import resource as _res
+
+        def _dw():
+            try:
+                return _res.getrusage(_res.RUSAGE_SELF).ru_oublock * 512
+            except Exception:                                    # noqa: BLE001
+                return 0
+        _w0 = _dw()
+
+        def _mark(label, _prev=[_w0]):
+            w = _dw()
+            print(f"  [diskio] {label}: +{(w - _prev[0]) / 2**20:.0f} MiB (cum {(w - _w0) / 2**20:.0f} MiB)")
+            _prev[0] = w
         with ExportStage() as stage:
+            _mark("export_stage_copytree")
             from prediction_market_soccer.model.run_model import refresh_model
             from prediction_market_soccer.ops import form_export, season_odds_export, schedule_export
             payload = refresh_model()
+            _mark("refresh_model")
             _write_both("form.json", form_export.build(conn))
             _write_both("season_odds.json", season_odds_export.build(conn))
             _write_both("schedule.json", schedule_export.build(conn))
+            _mark("exports")
             stage.promote()
+            _mark("promote")
         atomic_bytes(wm, str(settled).encode())
         print(f"[live_refresh] new result: {len(payload.get('leagues', []))} leagues refreshed")
     finally:

@@ -101,6 +101,13 @@ def _refresh(conn, args, status):
     from prediction_market_soccer.ops import backfill_price_ticks, param_select_club
     from prediction_market_soccer.ops.daily_collection import run as collect_daily
     status.step("price_ticks", lambda: collect_daily(conn, collector='ticks'), required=False)
+    # 2026-10-02 audit: the recovery-snapshot reaper only ever ran inside manual epoch
+    # updates, so dead 16G snapshots outlived their epochs by weeks and the disk filled.
+    # Daily is the right cadence — the reaper is a no-op unless an epoch happened.
+    def _reap():
+        from prediction_market_soccer.ops.forward_epoch_update import _reap_superseded_recovery_dbs
+        _reap_superseded_recovery_dbs()
+    status.step("reap_recovery_snapshots", _reap, required=False)
     status.step("club_priors", lambda: build_all(conn))
     # Validate the anchor before expensive model work; a failed gate cannot be published.
     status.step("clubelo_quality", lambda: _quality(conn))
