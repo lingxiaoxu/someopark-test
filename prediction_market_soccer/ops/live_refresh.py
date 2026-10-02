@@ -431,6 +431,30 @@ def _maybe_refresh_reports(conn):
     print("[live_refresh] pending settle reports spawned in background")
 
 
+def _disk_bytes_written() -> int:
+    """Bytes this process has actually written to disk (macOS proc_pid_rusage).
+
+    getrusage's ru_oublock is always 0 on macOS, so it cannot attribute a write burst."""
+    import ctypes
+    import os
+
+    class _RUsageInfoV2(ctypes.Structure):
+        _fields_ = [("ri_uuid", ctypes.c_uint8 * 16)] + [(n, ctypes.c_uint64) for n in (
+            "ri_user_time", "ri_system_time", "ri_pkg_idle_wkups", "ri_interrupt_wkups",
+            "ri_pageins", "ri_wired_size", "ri_resident_size", "ri_phys_footprint",
+            "ri_proc_start_abstime", "ri_proc_exit_abstime", "ri_child_user_time",
+            "ri_child_system_time", "ri_child_pkg_idle_wkups", "ri_child_interrupt_wkups",
+            "ri_child_pageins", "ri_child_elapsed_abstime", "ri_diskio_bytesread",
+            "ri_diskio_byteswritten")]
+    try:
+        info = _RUsageInfoV2()
+        if ctypes.CDLL("/usr/lib/libproc.dylib").proc_pid_rusage(os.getpid(), 2, ctypes.byref(info)):
+            return 0
+        return info.ri_diskio_byteswritten
+    except Exception:                                    # noqa: BLE001
+        return 0
+
+
 def _maybe_refresh_champion(conn) -> None:
     settled = _settled_count(conn)
     wm = CONFIG.paths.output / ".champion_watermark"
@@ -457,13 +481,7 @@ def _maybe_refresh_champion(conn) -> None:
         # 2026-10-02: macOS flagged this very block for 8.6 GB written in 340 s
         # (resource-violation diag, PID 7096) and the after-the-fact trail was cold.
         # Per-stage disk-write deltas make the next incident attributable on sight.
-        import resource as _res
-
-        def _dw():
-            try:
-                return _res.getrusage(_res.RUSAGE_SELF).ru_oublock * 512
-            except Exception:                                    # noqa: BLE001
-                return 0
+        _dw = _disk_bytes_written
         _w0 = _dw()
 
         def _mark(label, _prev=[_w0]):

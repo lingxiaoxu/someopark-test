@@ -19,6 +19,21 @@ def _digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _clone_or_copy(src, dst):
+    """APFS copy-on-write clone; a real copy only where cloning is unavailable.
+
+    The stage copies ~300 MB of output + frontend data on every settlement-triggered
+    refresh; as clones those copies cost no disk writes until a file is changed."""
+    import ctypes
+    import os
+    try:
+        if ctypes.CDLL(None, use_errno=True).clonefile(os.fsencode(src), os.fsencode(dst), 0) == 0:
+            return dst
+    except (AttributeError, OSError):
+        pass
+    return shutil.copy2(src, dst)
+
+
 STAGE_ORPHAN_HOURS = 24      # a live cycle lasts seconds, a full batch at most hours
 
 
@@ -50,7 +65,7 @@ class ExportStage:
         for key in ("output", "frontend_data"):
             source = getattr(self.original, key)
             target = self.root / key
-            shutil.copytree(source, target)
+            shutil.copytree(source, target, copy_function=_clone_or_copy)
             self.baseline[key] = {p.relative_to(target): _digest(p) for p in target.rglob("*") if p.is_file()}
         object.__setattr__(CONFIG, "paths", replace(self.original, output=self.root / "output",
                                                   frontend_data=self.root / "frontend_data"))

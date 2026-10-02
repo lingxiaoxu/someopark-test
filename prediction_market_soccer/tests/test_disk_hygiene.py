@@ -69,6 +69,28 @@ def test_orphan_sweep_is_age_gated(tmp_path):
     assert fresh.exists() and other.exists()
 
 
+def test_stage_clone_is_an_independent_copy(tmp_path):
+    src = tmp_path / "src"
+    (src / "sub").mkdir(parents=True)
+    (src / "sub" / "a.json").write_text('{"v": 1}')
+    dst = tmp_path / "dst"
+    shutil.copytree(src, dst, copy_function=export_stage._clone_or_copy)
+    assert (dst / "sub" / "a.json").read_text() == '{"v": 1}'
+    (dst / "sub" / "a.json").write_text('{"v": 2}')
+    assert (src / "sub" / "a.json").read_text() == '{"v": 1}'
+
+
+def test_stage_clone_falls_back_to_a_real_copy(tmp_path, monkeypatch):
+    import ctypes
+
+    def unavailable(*a, **k):
+        raise OSError("no clonefile")
+    monkeypatch.setattr(ctypes, "CDLL", unavailable)
+    (tmp_path / "a").write_text("x")
+    export_stage._clone_or_copy(tmp_path / "a", tmp_path / "b")
+    assert (tmp_path / "b").read_text() == "x"
+
+
 def test_backup_headroom_refuses_below_twice_db_size(tmp_path, monkeypatch):
     path = tmp_path / "soccer.db"
     conn = sqlite3.connect(path)
