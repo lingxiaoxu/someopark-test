@@ -861,6 +861,8 @@ def _record_totals(records):
     model = [row for row in records if row.get('model_won') is not None]
     priced = [row for row in records if row.get('argmax_pnl_cents') is not None]
     def win_loss(rows, key):
+        # A venue-settled (postponed) contract neither won nor lost.
+        rows = [row for row in rows if row.get(key) is not None or row.get('settlement_basis') is None]
         wins = sum(bool(row.get(key)) for row in rows)
         return f'{wins}W-{len(rows)-wins}L'
     def pnl_record(rows, key):
@@ -1077,6 +1079,8 @@ def validate_strategy_views(directory, ledger):
             exit_ = record.get('inplay_exit' if ip else 'smart_exit')
             won = record.get('inplay_won' if ip else 'won')
             terminal = (100.0 if won is True else 0.0 if won is False else None) if ip else record.get('settle_cents')
+            if record.get('settlement_basis') == 'venue_final_settlement':
+                terminal = record['venue_settle_cents'].get('inplay' if ip else 'pre')
             terminal = exit_.get('sold_c') if exit_ else terminal
             if terminal is not None:
                 tokens.append(f'{float(terminal):.1f}¢')
@@ -1148,6 +1152,8 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
         pnl=row.get('inplay_pnl_cents') if inplay else row.get('realized_pnl_cents')
         if exit_:
             ending=f"{escape(str(exit_.get('sold_min','—')))}′ 卖出 {price(exit_.get('sold_c'))}"
+        elif row.get('settlement_basis')=='venue_final_settlement':
+            ending='比赛延期·按场所规则结算 '+price(row['venue_settle_cents'].get('inplay' if inplay else 'pre'))
         else:
             ending='结算赢' if won is True else ('结算输' if won is False else '结算未知')
             settlement=(100.0 if won is True else (0.0 if won is False else None)) if inplay else row.get('settle_cents')

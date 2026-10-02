@@ -25,6 +25,10 @@ def _sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def _sha_text(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
 def _equal(actual, expected, message):
     if canonical(actual) != canonical(expected):
         raise ValueError(message)
@@ -351,6 +355,23 @@ def _audit(source, root, fixture_ids, tracks):
                 'exit_id':exit_['decision_id'] if exit_ else None,'exit_hash':digest(exit_) if exit_ else None,
                 'epoch_id':entry['forward_epoch_id'],'decision_at':at,'state_manifest':state_manifest,'model_proofs':model_proofs})
         result_input = completion['result_input']; end = completion['settled_at']
+        if completion.get('settlement_basis') == 'venue_final_settlement':
+            venue = completion['venue_settlements']
+            if sorted(venue) != sorted(legs):
+                raise ValueError('Venue settlement does not cover every recorded leg')
+            for track, item in venue.items():
+                stored = source.conn.execute('SELECT * FROM paper_venue_settlement WHERE fixture_api_id=? AND track=?',(fid,track)).fetchone()
+                if (not stored or stored['raw_sha256'] != item['raw_sha256'] or _sha_text(stored['raw']) != item['raw_sha256']
+                        or stored['entry_id'] != legs[track]['entry']['decision_id'] or stored['settle_price'] != item['settle_price']):
+                    raise ValueError('Venue settlement evidence differs from the completion')
+            if any(sh._utc(end) < sh._utc((p['exit'] or p['entry'])['decision_at']) for p in rows):
+                raise ValueError('Venue settlement was observed before the alleged paper decision')
+            cents = {track: round(item['settle_price']*100,1) for track, item in venue.items()}
+            _equal(ps._render(result_input,legs,'postponed',None,end,venue_cents=cents),completion['record'],'Completion financial projection differs from its original decisions')
+            records.append(deepcopy(completion['record']))
+            proofs.append({'fixture_id':fid,'completion_id':completion['source_id'],'completion_hash':digest(completion),
+                           'venue_evidence':{track:item['raw_sha256'] for track,item in venue.items()}})
+            continue
         if result_input.get('status_short') not in ('FT','AET','PEN') or result_input.get('home_goals') is None or result_input.get('away_goals') is None:
             raise ValueError('Replay requires an observed terminal fixture, not a claimed sealed flag')
         result_raw=json.loads(result_input['raw_json'] or '{}')

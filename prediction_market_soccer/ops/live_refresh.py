@@ -693,6 +693,15 @@ def refresh_once(conn=None) -> dict:
     # Complete any existing paper positions before a report process can advance
     # its result watermark. This is bookkeeping only and never recalculates a bet.
     from prediction_market_soccer.util.paper_store import settle
+    # A postponed/cancelled match's contracts are settled by the venue's own rules long
+    # before any rescheduled fixture is played; record that settlement so it can seal.
+    try:
+        from prediction_market_soccer.util import venue_settlement
+        _vs = venue_settlement.observe(conn)
+        if _vs["recorded"] or _vs["errors"]:
+            print(f"[live_refresh] venue settlement of displaced legs: {_vs}")
+    except Exception as e:                                       # noqa: BLE001
+        print(f"[live_refresh] venue settlement check skipped: {type(e).__name__}: {str(e)[:120]}")
     settle(conn)
     try:
         _maybe_refresh_reports(conn)

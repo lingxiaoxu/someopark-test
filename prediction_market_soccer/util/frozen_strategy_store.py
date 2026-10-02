@@ -459,7 +459,20 @@ def _append_completed_row(conn, completion, version):
         raise FrozenBookConflict('A frozen fixture cannot acquire another or changed strategy row')
     if not record.get('bet') and not record.get('inplay_side'):
         raise FrozenBookConflict('A completion must contain an actual forward paper entry')
-    if record.get('result') not in ('home', 'draw', 'away') or not record.get('score'):
+    if record.get('settlement_basis') == 'venue_final_settlement':
+        venue = data.get('venue_settlements') or {}
+        entered = [track for track, key in (('pre', 'bet'), ('inplay', 'inplay_side')) if record.get(key)]
+        if (record.get('result') != 'postponed' or data.get('settlement_basis') != 'venue_final_settlement'
+                or sorted(venue) != sorted(entered)
+                or any(record.get('venue_settle_cents', {}).get(track) != round(venue[track]['settle_price'] * 100, 1)
+                       for track in entered)):
+            raise FrozenBookConflict('A venue-settled completion must carry its recorded venue settlement')
+        for track in entered:
+            stored = conn.execute('SELECT raw_sha256, entry_id FROM paper_venue_settlement WHERE fixture_api_id=? AND track=?',
+                                  (record['fixture_id'], track)).fetchone()
+            if not stored or tuple(stored) != (venue[track]['raw_sha256'], venue[track]['entry_id']):
+                raise FrozenBookConflict('Venue settlement evidence is missing or changed')
+    elif record.get('result') not in ('home', 'draw', 'away') or not record.get('score'):
         raise FrozenBookConflict('A forward completion requires a sealed result and score')
     # Each newly journaled leg owns its method identity. A PRE/INPLAY pair may
     # straddle epochs after PRE has closed; never replace either with the book label.

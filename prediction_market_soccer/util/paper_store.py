@@ -397,8 +397,11 @@ def positions(conn, version_id=None):
              'status': 'settled' if r['completion_payload'] else ('exited' if r['exit_payload'] else 'open')} for r in rows]
 
 
-def _render(fixture, legs, result, score, closed_at):
-    """Project only recorded financial inputs; no model/market/history lookup."""
+def _render(fixture, legs, result, score, closed_at, venue_cents=None):
+    """Project only recorded financial inputs; no model/market/history lookup.
+
+    ``venue_cents`` ({track: ¢}) replaces the 100/0 regulation payout with the
+    venue's declared final settlement of a displaced match's contract."""
     from prediction_market_soccer.util.pricing import pnl_cents, sized_pnl_cents
     base = next(iter(legs.values()))['entry']
     labels = {'home': base.get('home', base['home_id']), 'draw': 'Draw', 'away': base.get('away', base['away_id'])}
@@ -416,13 +419,21 @@ def _render(fixture, legs, result, score, closed_at):
            'inplay_won': None, 'inplay_exit': None, 'inplay_pnl_cents': None,
            'model_pick': None, 'model_pick_team': None, 'model_won': None, 'argmax_entry_cents': None,
            'argmax_settle_cents': None, 'argmax_pnl_cents': None, 'argmax_cum_pnl_cents': None}
+    if venue_cents is not None:
+        row.update(settlement_basis='venue_final_settlement', venue_settle_cents=dict(venue_cents))
     for track, pos in legs.items():
         entry, exit_ = pos['entry'], pos['exit']
         side, cents, stake = entry['side'], entry['entry_cents'], entry['stake_usd']
-        won = side == result
-        unit = pnl_cents(cents, won)
+        if venue_cents is None:
+            won = side == result
+            unit = pnl_cents(cents, won)
+            terminal = 100.0 if won else 0.0
+        else:
+            won = None
+            terminal = float(venue_cents[track])
+            unit = round(terminal - float(cents), 1)
         sx = ({**exit_, 'pnl_c': round(exit_['sold_c'] - cents, 1),
-               'vs_hold': round(exit_['sold_c'] - (100.0 if won else 0), 1)} if exit_ else None)
+               'vs_hold': round(exit_['sold_c'] - terminal, 1)} if exit_ else None)
         realized = sized_pnl_cents(cents, sx['pnl_c'] if sx else unit, stake)
         hold = sized_pnl_cents(cents, unit, stake)
         row[track + '_decision_id'] = entry['decision_id']
@@ -433,12 +444,12 @@ def _render(fixture, legs, result, score, closed_at):
         if track == 'pre':
             row.update(pick=side, pick_team=labels[side], bet_kind=entry['bet_kind'], entry_cents=cents,
                        entry_source=entry['ledger_venue'], stake_usd=stake, won=won,
-                       settle_cents=100.0 if won else 0.0, smart_exit=sx, realized_pnl_cents=realized,
+                       settle_cents=terminal, smart_exit=sx, realized_pnl_cents=realized,
                        pnl_cents=hold, pnl=round(hold / 100, 3), price=cents / 100,
                        dec_odds=round(100 / cents, 3), edge=entry.get('net_edge'), model_prob=entry['model'][side],
                        confidence_k=entry.get('confidence_k'), clv_cents=None,
                        model_pick=entry.get('model_pick'), model_pick_team=labels.get(entry.get('model_pick')),
-                       model_won=entry.get('model_pick') == result)
+                       model_won=None if venue_cents is not None else entry.get('model_pick') == result)
         else:
             row.update(inplay_side=side, inplay_side_team=labels[side], inplay_milestone=entry['milestone'],
                        inplay_entry_cents=cents, inplay_stake_usd=stake, inplay_won=won, inplay_exit=sx,
@@ -448,6 +459,36 @@ def _render(fixture, legs, result, score, closed_at):
         values = {p['entry'].get(key) for p in legs.values()}
         row[key] = next(iter(values)) if len(values) == 1 else None
     return row
+
+
+def _settle_by_venue(conn, version_id, fid, fx, legs, clock):
+    """Seal a displaced match's legs at the venue-declared final settlement of each contract."""
+    from prediction_market_soccer.util import venue_settlement as vs
+    if not fx:
+        return 0
+    rows = vs.evidence(conn, fid, legs)
+    if rows is None:
+        return 0
+    available = max((row['observed_at'] for row in rows.values()), key=dt)
+    times = [p['entry']['decision_at'] for p in legs.values()]
+    exit_times = [p['exit']['decision_at'] for p in legs.values() if p['exit']]
+    if dt(available) > clock or dt(available) < max(map(dt, times + exit_times)):
+        return 0
+    cents = {track: round(row['settle_price'] * 100, 1) for track, row in rows.items()}
+    source_id = hashlib.sha256(f'{version_id}:{fid}:settled'.encode()).hexdigest()
+    payload = {'source_id': source_id, 'book_version_id': version_id, 'origin': 'paper_forward',
+               'fixture_id': fid, 'settled_at': available, 'sealed': True, 'result_input': dict(fx),
+               'settlement_basis': 'venue_final_settlement',
+               'venue_settlements': {track: {key: row[key] for key in
+                                             ('entry_id', 'provider', 'market_id', 'outcome', 'settle_price',
+                                              'observed_at', 'raw_sha256')} for track, row in rows.items()},
+               'entry_decision_at_min': min(times, key=dt), 'entry_decision_at_max': max(times, key=dt),
+               'entry_ids': [p['entry']['decision_id'] for p in legs.values()],
+               'exit_ids': [p['exit']['decision_id'] for p in legs.values() if p['exit']],
+               'record': _render(fx, legs, 'postponed', None, available, venue_cents=cents)}
+    cur = conn.execute('INSERT OR IGNORE INTO paper_completion VALUES (?,?,?,?,?)',
+                       (source_id, version_id, fid, available, _json(payload)))
+    return bool(cur.rowcount)
 
 
 @writer
@@ -467,6 +508,7 @@ def settle(conn, fixture_ids=None, now=None):
         for (version_id, fid), legs in grouped.items():
             fx = conn.execute('SELECT * FROM fixture WHERE api_id=?', (fid,)).fetchone()
             if not fx or fx['status_short'] not in ('FT', 'AET', 'PEN') or fx['home_goals'] is None or fx['away_goals'] is None:
+                count += _settle_by_venue(conn, version_id, fid, fx, legs, clock)
                 continue
             # ET-inclusive goals alone cannot settle a regulation contract.
             raw = json.loads(fx['raw_json'] or '{}')
