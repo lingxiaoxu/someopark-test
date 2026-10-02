@@ -91,6 +91,8 @@ def _calibration_records(conn, epoch=None):
         if not e.get('forward_epoch_id') or e['forward_epoch_id'] not in compatible:
             continue
         result = terminal['record']['result']
+        if result not in _SIDES:
+            continue          # a venue-settled (postponed) contract has no regulation outcome
         out.append({'fid': p['fixture_api_id'], 'kickoff': e['kickoff_ts'],
                     'prediction_observed_at': e['decision_at'], 'result_available_at': terminal['settled_at'],
                     'forward_epoch_id': e['forward_epoch_id'], 'method_manifest_id': e['method_manifest']['manifest_id'],

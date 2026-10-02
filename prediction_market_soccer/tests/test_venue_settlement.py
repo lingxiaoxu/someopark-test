@@ -32,6 +32,7 @@ def _db(kickoff=ORIGINAL, status="NS", goals=(None, None), provider="poly_us"):
              "side": "home", "entry_cents": 29.0, "stake_usd": 0.75, "bet_kind": "value", "ledger_venue": "poly_us",
              "home": "Levante", "away": "Athletic Club", "home_id": "levante", "away_id": "athletic_club",
              "comp": "laliga", "kickoff_ts": ORIGINAL, "stage": "group", "model": {"home": 0.3665},
+             "raw_model": {"home": 0.37, "draw": 0.27, "away": 0.36},
              "model_pick": "home", "net_edge": 0.0658, "model_version": "m", "method_version": "v",
              "forward_epoch_id": "ep", "method_manifest": {"manifest_id": "x"},
              "selected_quote": {"receipt_id": "r1", "venue": provider, "price": 0.29}}
@@ -105,3 +106,12 @@ def test_short_side_contract_takes_the_complement():
     conn.execute("UPDATE quote_receipt_v1 SET payload=?", (json.dumps(payload),))
     venue_settlement.observe(conn, fetchers=_closed(0.28))
     assert conn.execute("SELECT settle_price FROM paper_venue_settlement").fetchone()[0] == 0.72
+
+
+def test_postponed_settlement_is_not_calibration_evidence():
+    from prediction_market_soccer.ops import paper_trading
+    conn = _db(kickoff="2026-10-21T18:00:00+00:00")
+    venue_settlement.observe(conn, fetchers=_closed(0.28))
+    paper_store.settle(conn)
+    epoch = {"epoch_id": "ep", "manifest": {"compatible_epoch_ids": []}}
+    assert paper_trading._calibration_records(conn, epoch) == []
