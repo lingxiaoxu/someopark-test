@@ -41,6 +41,14 @@ def _conn():
     return store.init_db()
 
 
+# The whole-database backup lives here. A `.noindex` directory is skipped by Spotlight:
+# each 24 GB copy landing in an indexed folder was followed within 10–20 minutes by an
+# index rebuild that filled the disk (2026-10-02 17:27→17:48, 10-03 00:05→00:13).
+# Epochs activated before 2026-10-03 used plain `recovery/`; both are recognised.
+RECOVERY_DIRNAME = "recovery.noindex"
+RECOVERY_DIRNAMES = (RECOVERY_DIRNAME, "recovery")
+
+
 def _reap_superseded_recovery_dbs() -> None:
     """Drop the pre-change DB snapshots of epochs this one has superseded.
 
@@ -57,8 +65,10 @@ def _reap_superseded_recovery_dbs() -> None:
         return
     candidates = []
     for directory in sorted(root.glob("epoch_*")):
-        backup = directory / "recovery" / "database-before.db"
-        journal = directory / "recovery" / "method-journal.json"
+        recovery = next((directory / name for name in RECOVERY_DIRNAMES
+                         if (directory / name).is_dir()), directory / RECOVERY_DIRNAME)
+        backup = recovery / "database-before.db"
+        journal = recovery / "method-journal.json"
         if not backup.exists() or not journal.exists():
             continue
         try:
@@ -83,7 +93,7 @@ def _reap_superseded_recovery_dbs() -> None:
         size = backup.stat().st_size
         try:
             backup.unlink()
-            print(f"  回收 {backup.parent.parent.name}/recovery/database-before.db "
+            print(f"  回收 {backup.parent.parent.name}/{backup.parent.name}/database-before.db "
                   f"({size / 2**30:.1f}G,journal 已 verified)")
         except OSError as exc:
             print(f"  回收跳过 {backup}: {exc}")
@@ -132,7 +142,7 @@ def activate(args) -> None:
     dur.mkdir(parents=True, exist_ok=True)
     (dur / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
     dirs = [MOD / "data" / "output", FRONTEND]
-    # activate_forward_method creates recovery/ itself (exist_ok=False — do not pre-create);
+    # activate_forward_method creates the recovery dir itself (exist_ok=False — do not pre-create);
     # an interrupted attempt leaves its operation_id fsynced in the maintenance marker: reuse it.
     stop = MOD / "data" / ".soccer-maintenance.json"
     operation_id = f"epoch-update-{_now()}"
@@ -141,7 +151,7 @@ def activate(args) -> None:
         if prior:
             operation_id = prior
             print("复用残留 operation_id:", operation_id)
-    VW.activate_forward_method(conn, root=REPO, directories=dirs, recovery_dir=dur / "recovery",
+    VW.activate_forward_method(conn, root=REPO, directories=dirs, recovery_dir=dur / RECOVERY_DIRNAME,
                                operation_id=operation_id,
                                expected_head=VW.head(conn, dirs), manifest=manifest)
     ep = FM.active_epoch(conn)

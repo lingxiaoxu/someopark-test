@@ -105,3 +105,37 @@ def test_backup_headroom_refuses_below_twice_db_size(tmp_path, monkeypatch):
 
     monkeypatch.setattr(shutil, "disk_usage", lambda p: usage(0, 0, 2 * size))
     version_workflow._require_backup_headroom(conn, tmp_path / "recovery")
+
+
+def test_reaper_handles_noindex_and_legacy_recovery_dirs(tmp_path, monkeypatch):
+    monkeypatch.setattr(forward_epoch_update, "MOD", tmp_path)
+
+    def epoch(name, dirname, mtime):
+        rec = tmp_path / "data" / "book_candidates" / name / dirname
+        rec.mkdir(parents=True)
+        (rec / "method-journal.json").write_text(json.dumps({"phase": "verified"}))
+        db = rec / "database-before.db"
+        db.write_bytes(b"x")
+        os.utime(db, (mtime, mtime))
+        return db
+    legacy = epoch("epoch_v21", "recovery", 1_000)
+    newest = epoch("epoch_v22", forward_epoch_update.RECOVERY_DIRNAME, 2_000)
+    forward_epoch_update._reap_superseded_recovery_dbs()
+    assert not legacy.exists() and newest.exists()
+
+
+def test_activation_writes_its_backup_under_a_noindex_dir(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from prediction_market_soccer.util import forward_methods as FM
+    monkeypatch.setattr(forward_epoch_update, "MOD", tmp_path)
+    monkeypatch.setattr(forward_epoch_update, "_conn", lambda: None)
+    current = {"epoch_id": "e1", "model_version": "m", "method_version": "v", "book_version_id": "b1", "manifest": {"compatible_epoch_ids": [], "rules": {"r": 1}}}
+    monkeypatch.setattr(FM, "active_epoch", lambda conn: current)
+    monkeypatch.setattr(FM, "build_manifest", lambda **kw: {"rules": {"r": 1}, "manifest_id": "x"})
+    seen = {}
+    monkeypatch.setattr(version_workflow, "head", lambda conn, dirs: "h")
+    monkeypatch.setattr(version_workflow, "activate_forward_method",
+                        lambda conn, **kw: seen.setdefault("recovery_dir", kw["recovery_dir"]))
+    forward_epoch_update.activate(SimpleNamespace(method_version="v", durable="epoch_test"))
+    assert seen["recovery_dir"].name.endswith(".noindex")
+    assert seen["recovery_dir"].parent.name == "epoch_test"
