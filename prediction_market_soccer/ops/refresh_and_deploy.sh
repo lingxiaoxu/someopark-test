@@ -22,6 +22,9 @@ if [ "${1:-}" != "--locked" ]; then
     # Pre-match sentry: 15-min guard for calendar/PRE-staging/PIT-cache/disk/poly-global
     # reference prices. Fail-open — the sentry must never block the trigger path.
     conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.pre_match_sentry 2>&1 | tail -3 || true
+    # Today's UTC daily models, built before the first decision after 00:00 UTC needs
+    # them (no-op once present). Fail-open, like the sentry.
+    conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.daily_model_prewarm 2>&1 | tail -2 || true
     echo "$TOUT" | grep -q "^RUN" || exit 0
   fi
   exec conda run -n someopark_run --no-capture-output python -m prediction_market_soccer.ops.proc_lock \
