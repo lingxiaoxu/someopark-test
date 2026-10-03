@@ -94,13 +94,29 @@ def ensure(conn):
 @contextmanager
 def _transaction(conn):
     # SAVEPOINT preserves a caller's existing transaction; no executescript auto-commit.
-    conn.execute('SAVEPOINT frozen_strategy_store')
+    # On its own a top-level SAVEPOINT is a DEFERRED transaction: it reads first, and the
+    # first INSERT must then upgrade to a writer. In WAL that upgrade fails at once with
+    # "database is locked" — busy_timeout never applies — if any other connection
+    # committed since the read began, which the minute live loop does constantly
+    # (2026-10-03: four appends in a row failed this way). Own the write lock up front.
+    if conn.in_transaction:
+        conn.execute('SAVEPOINT frozen_strategy_store')
+        try:
+            yield
+            conn.execute('RELEASE SAVEPOINT frozen_strategy_store')
+        except BaseException:
+            conn.execute('ROLLBACK TO SAVEPOINT frozen_strategy_store')
+            conn.execute('RELEASE SAVEPOINT frozen_strategy_store')
+            raise
+        return
+    # SQL-level COMMIT/ROLLBACK, exactly as RELEASE did: the connection's own commit()
+    # would also finalize the caller's pending source revisions, which this never did.
+    conn.execute('BEGIN IMMEDIATE')
     try:
         yield
-        conn.execute('RELEASE SAVEPOINT frozen_strategy_store')
+        conn.execute('COMMIT')
     except BaseException:
-        conn.execute('ROLLBACK TO SAVEPOINT frozen_strategy_store')
-        conn.execute('RELEASE SAVEPOINT frozen_strategy_store')
+        conn.execute('ROLLBACK')
         raise
 
 
