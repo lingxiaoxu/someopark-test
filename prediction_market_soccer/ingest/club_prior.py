@@ -579,23 +579,54 @@ def _current_table(conn, comp, season, as_of: str, *, point_in_time: bool = Fals
 
     For a PAST date the table is therefore reconstructed from the fixtures that had
     actually finished by then — the only source that can answer the question. For today
-    the official `standing` feed is used unchanged, because it is authoritative (it
-    carries points deductions and administrative rulings that fixtures cannot show).
+    the official `standing` feed is used, because it is authoritative (it carries points
+    deductions and administrative rulings that fixtures cannot show) — unless it covers
+    only part of the season (see below), where the same reconstruction is used.
     Explicit point-in-time builds always use fixtures before the supplied UTC day,
     including when that day is today: today's current table is not a midnight snapshot.
     """
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if not point_in_time and (not as_of or as_of >= today):
-        return {r["team_api_id"]: dict(r) for r in conn.execute(
+        official = {r["team_api_id"]: dict(r) for r in conn.execute(
             "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
             (comp.api_football_id, (season or comp.season)))}
+        # Split-season leagues (Argentina's Apertura/Clausura): the official feed lists
+        # only the CURRENT half-season, while every point-in-time build — backtests,
+        # calibration, walk-forward — reconstructs the whole season from fixtures. On
+        # 2026-10-04 the feed read Estudiantes L.P. at 1.00 ppr from 10 Clausura games
+        # against 1.58 from its 26 season games: live anchors the model was never
+        # validated on. When the feed covers a clearly smaller sample than the season's
+        # own fixtures, use the same reconstruction; otherwise keep the feed, which also
+        # carries points deductions and rulings that fixtures cannot show.
+        rebuilt = _fixture_table(conn, comp, season, datetime.now(timezone.utc).isoformat())
+        return rebuilt if _covers_partial_season(official, rebuilt) else official
+    return _fixture_table(conn, comp, season, as_of)
+
+
+# The official table counts as partial when it holds under this share of the games the
+# season's finished fixtures already contain (Argentina mid-Clausura: ~0.40). A feed one
+# round behind the fixtures still clears it comfortably.
+_PARTIAL_SEASON_SHARE = 0.75
+
+
+def _covers_partial_season(official: dict, rebuilt: dict) -> bool:
+    common = [tid for tid in official if tid in rebuilt]
+    if not common:
+        return False
+    listed = sum(official[tid].get("played") or 0 for tid in common)
+    played = sum(rebuilt[tid]["played"] for tid in common)
+    return played > 0 and listed < _PARTIAL_SEASON_SHARE * played
+
+
+def _fixture_table(conn, comp, season, before: str) -> dict:
+    """{team_api_id: {points, played}} from LEAGUE-stage fixtures that kicked off before ``before``."""
     from prediction_market_soccer.config.leagues import Stage, stage_of
     out: dict[int, dict] = {}
     for r in conn.execute(
         "SELECT round, home_api_id, away_api_id, home_goals, away_goals FROM fixture "
         "WHERE league_id=? AND season=? AND status_short IN ('FT','AET','PEN') "
         "AND home_goals IS NOT NULL AND kickoff_ts < ?",
-            (comp.api_football_id, (season or comp.season), as_of)):
+            (comp.api_football_id, (season or comp.season), before)):
         if stage_of(comp.key, r["round"]) != Stage.LEAGUE:
             continue          # a cup round is not a league table
         hg, ag = int(r["home_goals"]), int(r["away_goals"])
