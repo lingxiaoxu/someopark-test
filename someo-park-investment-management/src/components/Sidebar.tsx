@@ -1,10 +1,11 @@
-import { MessageSquare, Plus, Terminal, Settings, SlidersHorizontal, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark, Goal } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, SlidersHorizontal, KeyRound, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark, Goal, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useState, useRef, useEffect } from 'react';
 import i18n from '../i18n';
 import CryptoNavEntry from '../crypto-markets/CryptoNavEntry';
+import ApiKeysPanel from './ApiKeysPanel';
 
 const LANGUAGES = [
   { code: 'en', flag: 'EN', label: 'EN' },
@@ -15,6 +16,8 @@ const LANGUAGES = [
 ];
 
 export default function Sidebar({
+  collapsed,
+  onToggleCollapse,
   onConnectClick,
   agentMode,
   setAgentMode,
@@ -33,6 +36,8 @@ export default function Sidebar({
   onSelectChat,
   onDeleteChat,
 }: {
+  collapsed: boolean,
+  onToggleCollapse: () => void,
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
@@ -59,6 +64,7 @@ export default function Sidebar({
   const [showAbout, setShowAbout] = useState(false);
   const [showAboutDev, setShowAboutDev] = useState(false);
   const [showCardSettings, setShowCardSettings] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const autoOpenedForRef = useRef<string | null>(null);
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +83,7 @@ export default function Sidebar({
         setShowAbout(false);
         setShowAboutDev(false);
         setShowCardSettings(false);
+        setShowApiKeys(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -106,18 +113,63 @@ export default function Sidebar({
 
   return (
     <div className="sidebar flex flex-col h-full">
-      {/* Logo — h-14 matches ChatArea header (both 3.5rem); style matches bottom divider */}
-      <div className="flex items-center gap-2 h-14 mb-5" style={{ borderBottom: '2px solid var(--border-subtle)', marginTop: '-16px' }}>
-        <a href="https://www.someopark.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
-          <Terminal className="w-5 h-5" style={{ color: 'var(--ink)' }} />
-          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '20px', color: 'var(--ink)', letterSpacing: '.06em', lineHeight: 1 }}>{t('sidebar.appName')}</span>
-        </a>
+      {/* Logo — h-14 matches ChatArea header (both 3.5rem); style matches bottom divider.
+          Right edge holds the collapse toggle; collapsed state shows only the expand button. */}
+      <div className="flex items-center gap-2 h-14 mb-5" style={{ borderBottom: '2px solid var(--border-subtle)', marginTop: '-16px', justifyContent: collapsed ? 'center' : undefined }}>
+        {!collapsed && (
+          <a href="https://www.someopark.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0" style={{ textDecoration: 'none' }}>
+            <Terminal className="w-5 h-5 shrink-0" style={{ color: 'var(--ink)' }} />
+            <span className="truncate" style={{ fontFamily: 'var(--font-pixel)', fontSize: '20px', color: 'var(--ink)', letterSpacing: '.06em', lineHeight: 1 }}>{t('sidebar.appName')}</span>
+          </a>
+        )}
+        <button
+          onClick={onToggleCollapse}
+          title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+          aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+          className={collapsed ? '' : 'ml-auto'}
+          style={{
+            width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--paper)', color: 'var(--ink)', border: '2px solid var(--ink)',
+            boxShadow: 'var(--shadow-pixel-sm)', cursor: 'pointer', flexShrink: 0,
+          }}
+        >
+          {collapsed ? <ChevronsRight style={{ width: 14, height: 14 }} /> : <ChevronsLeft style={{ width: 14, height: 14 }} />}
+        </button>
       </div>
 
       {/* App Mode Selector — three direct-entry buttons (stock / WC prediction /
           macro prediction). Each button always shows ITS OWN mode's label and
           enters it on click (no more toggle/flip-label semantics); the active
           button INVERTS (white bg) same as before. */}
+      {collapsed ? (
+        /* Icon-only rail: one square per app mode, same active inversion, label via tooltip. */
+        <div className="mb-5 flex flex-col gap-2 items-center">
+          {([
+            { mode: 'stock' as const, Icon: Brain, label: t('sidebar.aiQuant') },
+            { mode: 'prediction' as const, Icon: Trophy, label: t('sidebar.predictionMarket') },
+            { mode: 'macro' as const, Icon: Landmark, label: t('sidebar.macroMarket') },
+            { mode: 'soccer' as const, Icon: Goal, label: t('sidebar.soccerMarket') },
+          ]).map(({ mode, Icon, label }) => (
+            <button
+              key={mode}
+              onClick={() => onSetAppMode(mode)}
+              title={label}
+              aria-label={label}
+              style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: appMode === mode ? '#fff' : '#111',
+                color: appMode === mode ? '#111' : '#fff',
+                border: '2px solid var(--ink)',
+                boxShadow: 'var(--shadow-pixel-sm)',
+                cursor: 'pointer',
+              }}
+            >
+              <Icon style={{ width: 16, height: 16 }} />
+            </button>
+          ))}
+          <CryptoNavEntry active={appMode === 'crypto'} onSelect={() => onSetAppMode('crypto')} collapsed />
+        </div>
+      ) : (
       <div className="mb-5">
         <div className="section-label">{t('sidebar.appMode')}</div>
         <button
@@ -222,8 +274,34 @@ export default function Sidebar({
         </button>
         <CryptoNavEntry active={appMode === 'crypto'} onSelect={() => onSetAppMode('crypto')} />
       </div>
+      )}
 
       {/* Agent Mode Selector */}
+      {collapsed ? (
+        <div className="mb-5 flex flex-col gap-2 items-center">
+          {([
+            { key: 'cloud' as const, Icon: Cloud, label: t('sidebar.cloudVps'), onClick: () => setAgentMode('cloud') },
+            { key: 'local' as const, Icon: Laptop, label: t('sidebar.localOpenClaw'), onClick: () => isLocalConnected ? setAgentMode('local') : onConnectClick() },
+          ]).map(({ key, Icon, label, onClick }) => (
+            <button
+              key={key}
+              onClick={onClick}
+              title={label}
+              aria-label={label}
+              style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: agentMode === key ? 'var(--ink)' : 'var(--paper)',
+                color: agentMode === key ? 'var(--paper)' : 'var(--ink-dim)',
+                border: '2px solid var(--ink)',
+                boxShadow: agentMode === key ? 'var(--shadow-pixel-sm)' : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <Icon style={{ width: 16, height: 16 }} />
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="mb-5">
         <div className="section-label">{t('sidebar.agentRuntime')}</div>
         <div className="flex flex-col gap-2">
@@ -269,13 +347,34 @@ export default function Sidebar({
           </button>
         </div>
       </div>
+      )}
 
-      {/* New Chat button */}
+      {/* New Chat button — icon-only square in the collapsed rail */}
+      {collapsed ? (
+        <div className="mb-5 flex justify-center">
+          <button
+            onClick={onNewChat}
+            title={t('sidebar.newChat')}
+            aria-label={t('sidebar.newChat')}
+            style={{
+              width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--ink)', color: 'var(--paper)', border: '2px solid var(--ink)',
+              boxShadow: 'var(--shadow-pixel-sm)', cursor: 'pointer',
+            }}
+          >
+            <Plus style={{ width: 16, height: 16 }} />
+          </button>
+        </div>
+      ) : (
       <button className="button button-primary w-full mb-5" onClick={onNewChat}>
         <Plus className="w-4 h-4" />
         {t('sidebar.newChat')}
       </button>
+      )}
 
+      {/* Chat history is hidden entirely while collapsed (per spec); spacer keeps
+          the bottom block pinned to the bottom of the rail. */}
+      {collapsed ? <div className="flex-1" /> : (
       <div className="flex-1 overflow-y-auto flex flex-col gap-1">
         {chatHistory && chatHistory.length > 0 && (
           <div className="text-xs font-medium text-[var(--text-muted)] mb-2 uppercase tracking-wider">{t('sidebar.recentChats')}</div>
@@ -316,11 +415,13 @@ export default function Sidebar({
           </div>
         )}
       </div>
+      )}
 
       {/* Bottom area */}
       <div className="mt-auto pt-4" style={{ borderTop: '2px solid var(--border-subtle)' }}>
 
-        {/* Language flags */}
+        {/* Language flags — no room on the icon rail */}
+        {!collapsed && (
         <div className="flex items-center gap-1 px-1 mb-3">
           {LANGUAGES.map(lang => (
             <button
@@ -356,12 +457,29 @@ export default function Sidebar({
             </button>
           ))}
         </div>
+        )}
 
-        {/* Auth section */}
-        {session ? (
+        {/* Auth section — collapsed rail shows one icon; clicking it expands the
+            sidebar first (the account popup needs the full width to be usable). */}
+        {collapsed ? (
+          <div className="flex justify-center">
+            <button
+              onClick={onToggleCollapse}
+              title={session ? (session.user?.email ?? '') : t('sidebar.signIn')}
+              aria-label={session ? (session.user?.email ?? '') : t('sidebar.signIn')}
+              style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--paper)', color: 'var(--ink)', border: '2px solid var(--ink)',
+                cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              }}
+            >
+              {session ? (session.user?.email?.[0]?.toUpperCase() ?? '?') : <LogIn style={{ width: 14, height: 14 }} />}
+            </button>
+          </div>
+        ) : session ? (
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => { setMenuOpen(prev => !prev); setShowAbout(false); setShowAboutDev(false); setShowCardSettings(false); }}
+              onClick={() => { setMenuOpen(prev => !prev); setShowAbout(false); setShowAboutDev(false); setShowCardSettings(false); setShowApiKeys(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
             >
               <div className="w-7 h-7 rounded-full bg-[var(--accent-primary)]/20 flex items-center justify-center text-xs font-semibold text-[var(--accent-primary)] shrink-0">
@@ -374,7 +492,9 @@ export default function Sidebar({
 
             {menuOpen && (
               <div className="auth-light absolute bottom-full left-0 right-0 mb-1 overflow-hidden z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
-                {showCardSettings ? (
+                {showApiKeys ? (
+                  <ApiKeysPanel onBack={() => setShowApiKeys(false)} />
+                ) : showCardSettings ? (
                   <>
                     {/* Card Categorization settings header — same shell as About/About Developer */}
                     <div style={{ padding: '8px 12px', borderBottom: '2px solid #111', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -522,6 +642,13 @@ export default function Sidebar({
                       {t('sidebar.aboutDevTitle')}
                     </button>
                     <button
+                      onClick={() => setShowApiKeys(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {t('sidebar.apiKeysTitle', 'API Keys')}
+                    </button>
+                    <button
                       onClick={() => setShowCardSettings(true)}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
                     >
@@ -530,7 +657,7 @@ export default function Sidebar({
                     </button>
                     <div className="border-t border-[var(--border-subtle)]" />
                     <button
-                      onClick={() => { setMenuOpen(false); setShowAbout(false); setShowAboutDev(false); onSignOut?.(); }}
+                      onClick={() => { setMenuOpen(false); setShowAbout(false); setShowAboutDev(false); setShowApiKeys(false); onSignOut?.(); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
                     >
                       <span className="w-3.5 h-3.5 text-sm">↩</span>

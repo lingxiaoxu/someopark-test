@@ -5,6 +5,7 @@ import { glob } from 'glob'
 import path from 'path'
 import { getBackendPath } from '../config.js'
 import type { AgentTool } from './index.js'
+import { resolveAllowed, isListable } from './pathGuard.js'
 
 const ALLOWED_ROOT = path.resolve(getBackendPath('.'))
 
@@ -25,17 +26,11 @@ export const listFilesTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ pattern, directory, limit = 50 }) {
-    const base = directory
-      ? path.resolve(getBackendPath(directory))
-      : ALLOWED_ROOT
+    const base = directory ? resolveAllowed(directory) : ALLOWED_ROOT
 
-    if (!base.startsWith(ALLOWED_ROOT)) {
-      throw new Error('Directory must be within project root')
-    }
-
-    const files = await glob(pattern, { cwd: base, absolute: true })
+    const files = await glob(pattern, { cwd: base, absolute: true, dot: false })
     const sorted = files
-      .filter(f => f.startsWith(ALLOWED_ROOT))
+      .filter(f => isListable(f))
       .sort()
       .reverse()
       .slice(0, limit)

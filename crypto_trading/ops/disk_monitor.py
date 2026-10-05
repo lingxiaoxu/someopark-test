@@ -66,6 +66,8 @@ CULPRITS = {
     "w8_tape": CRYPTO_ROOT / "price_data" / "kalshi" / "w8_complete_set",
     "codex_backups": Path.home() / ".codex" / "backups",
     "mlruns_root": REPO_ROOT / "mlruns",
+    # 2026-09-28: found eating ~24 GB untracked during the 41.7G low-space warn
+    "soccer_db": REPO_ROOT / "prediction_market_soccer" / "data",
 }
 CULPRIT_INTERVAL_S = 6 * 3600
 MLRUNS_WARN_GB = 60.0         # weekly cleanup keeps it ~25 GB; 60 means the

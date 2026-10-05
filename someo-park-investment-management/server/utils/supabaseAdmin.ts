@@ -29,3 +29,47 @@ export async function emailFromToken(accessToken?: string): Promise<string | nul
     return null
   }
 }
+
+// Verify a Supabase access token and return { id, email }, or null.
+// The id (auth.users.id) is the ONLY identity the Kalshi-key routes trust —
+// never a client-supplied user id.
+export type SupabaseIdentity = {
+  id: string
+  email: string | null
+  email_confirmed?: boolean
+  provider?: string | null
+}
+
+function toIdentity(u: any): SupabaseIdentity | null {
+  if (!u?.id) return null
+  return {
+    id: u.id,
+    email: u.email ?? null,
+    email_confirmed: !!u.email_confirmed_at,
+    provider: u.app_metadata?.provider ?? null,
+  }
+}
+
+export async function userFromToken(accessToken?: string): Promise<SupabaseIdentity | null> {
+  if (!supabaseAdmin || !accessToken) return null
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(accessToken)
+    if (error) return null
+    return toIdentity(data.user)
+  } catch {
+    return null
+  }
+}
+
+// Re-read one user straight from auth.users by id (service key) - the
+// independent cross-check of id + email before a Kalshi key is activated.
+export async function supabaseUserById(id: string): Promise<SupabaseIdentity | null> {
+  if (!supabaseAdmin) return null
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(id)
+    if (error) return null
+    return toIdentity(data.user)
+  } catch {
+    return null
+  }
+}

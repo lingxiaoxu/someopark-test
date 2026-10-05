@@ -1,0 +1,65 @@
+{
+  "as_of": "2026-10-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 16812.46,
+  "positions": {
+    "ARM": {
+      "shares": 124,
+      "avg_cost": 271.682537,
+      "entry_date": "2026-05-29"
+    },
+    "AMD": {
+      "shares": 363,
+      "avg_cost": 481.117303,
+      "entry_date": "2026-07-01"
+    },
+    "INTC": {
+      "shares": 349,
+      "avg_cost": 94.884726,
+      "entry_date": "2026-07-01"
+    },
+    "AMAT": {
+      "shares": 22,
+      "avg_cost": 441.85,
+      "entry_date": "2026-09-01"
+    },
+    "KLAC": {
+      "shares": 967,
+      "avg_cost": 170.89,
+      "entry_date": "2026-09-01"
+    },
+    "LRCX": {
+      "shares": 106,
+      "avg_cost": 289.87,
+      "entry_date": "2026-09-01"
+    },
+    "AVGO": {
+      "shares": 710,
+      "avg_cost": 343.64,
+      "entry_date": "2026-10-01"
+    },
+    "CRDO": {
+      "shares": 72,
+      "avg_cost": 210.17,
+      "entry_date": "2026-10-01"
+    },
+    "MRVL": {
+      "shares": 170,
+      "avg_cost": 268.02,
+      "entry_date": "2026-10-01"
+    },
+    "NVDA": {
+      "shares": 1547,
+      "avg_cost": 230.86,
+      "entry_date": "2026-10-01"
+    }
+  },
+  "cumulative_realized": 126026.02,
+  "cumulative_dividends": 1052.44,
+  "cumulative_fees": 1298.98,
+  "equity": 1221697.58,
+  "liabilities": {},
+  "unrealized": 95918.13,
+  "position_value": 1204885.12
+}

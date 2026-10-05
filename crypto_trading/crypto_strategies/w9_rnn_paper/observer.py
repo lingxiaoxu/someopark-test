@@ -21,11 +21,18 @@ from ..downside_paper.sources import make_parent_binding, w7_candidates_from_sta
 from ..downside_paper.tape import ExistingTape, JsonlTail
 from . import policy
 
+from ...crypto_common.checkpoint import Checkpoint
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'trading_signals/live_watch/w7_noisefade_state.json'
 RUNTIME = ROOT / 'trading_signals/w9_rnn_paper'
 PARAMETERS = Path(__file__).with_name('parameters.json')
 PARENT_FILES = [ROOT/'crypto_strategies/live_watch'/n for n in ['w7_noisefade.py','common.py','config.yaml']]
+# Per-cycle heartbeat/diagnostic fields. 2026-10-02: rewriting the 62 MB state every
+# 2 s just for these was ~1.7 TB/day of SSD writes; decisions/settlements still
+# reach disk in the cycle they happen.
+VOLATILE = ('last_tick', 'cycles', 'live_prediction_health')
+CHECKPOINT_INTERVAL_SECONDS = 60
 
 
 def digest(value):
@@ -131,6 +138,7 @@ class Observer:
         self.tape=ExistingTape(ROOT/'price_data/hyperliquid')
         self.forecasts=ForecastTape(self.output/'live_predictions.jsonl')
         self.state_path=self.output/'state.json'
+        self.checkpoint=Checkpoint(atomic_json,volatile=VOLATILE,interval=CHECKPOINT_INTERVAL_SECONDS)
         self.parent_signature=None
         self.parent=None
         self.last_hash_check=0
@@ -232,9 +240,9 @@ class Observer:
             'parse_errors':self.forecasts.tail.errors,
             'flow_parse_errors':self.tape.tail.errors}
         self.state['errors']=self.state['errors'][-100:]
-        atomic_json(self.state_path,self.state)
-        sync_journal(self.output/'decisions.jsonl',self.state['decision_events'])
-        sync_journal(self.output/'settlements.jsonl',self.state['settlement_events'])
+        if self.checkpoint.save(self.state_path,self.state):
+            sync_journal(self.output/'decisions.jsonl',self.state['decision_events'])
+            sync_journal(self.output/'settlements.jsonl',self.state['settlement_events'])
         return {'at':now,'new_decisions':len(decisions),'new_settlements':len(settlements),
                 'new_admissions_allowed':self.state['new_admissions_allowed'],'summary':self.state['summary']}
 
@@ -254,7 +262,7 @@ def main():
             message={'at':time.time(),'type':type(error).__name__,'detail':str(error)}
             observer.state['errors'].append(message)
             observer.state['last_error']=message
-            atomic_json(observer.state_path,observer.state)
+            observer.checkpoint.save(observer.state_path,observer.state,force=True)
             print(json.dumps({'error':message}),flush=True)
             if not args.loop:
                 raise

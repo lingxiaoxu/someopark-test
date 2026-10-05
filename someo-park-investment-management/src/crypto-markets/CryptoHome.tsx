@@ -20,13 +20,14 @@ function quote(value: number | null) {
 }
 
 function participation(strategy: Strategy, market: Market) {
+  const env = strategy.ledger_source === "prod" ? "实盘" : "Demo";
   const orders = strategy.orders.filter((order) => order.ticker === market.ticker);
-  if (!orders.length) return `${strategy.acronym} · Demo 暂无归属订单`;
+  if (!orders.length) return `${strategy.acronym} · ${env}暂无归属订单`;
   const verified = orders.filter((order) => order.verified && order.filled !== null);
-  if (!verified.length) return `${strategy.acronym} · Demo ${orders.length} 单，成交待核验`;
+  if (!verified.length) return `${strategy.acronym} · ${env} ${orders.length} 单，成交待核验`;
   const filled = verified.reduce((total, order) => total + order.filled!, 0);
   const pending = orders.length - verified.length;
-  return `${strategy.acronym} · Demo 已核验成交 ${number(filled)} 张${pending ? ` · ${pending} 单待核验` : ` · ${orders.length} 单`}`;
+  return `${strategy.acronym} · ${env}已核验成交 ${number(filled)} 张${pending ? ` · ${pending} 单待核验` : ` · ${orders.length} 单`}`;
 }
 
 /** Uses the existing welcome-card chrome; App and ChatArea own all navigation. */
@@ -67,11 +68,15 @@ export function CryptoUpcoming() {
           </button>
           <span className="crypto-result-divider" aria-hidden="true">/</span>
           <button type="button" className="crypto-demo-result" onClick={() => {
-            setResultBasis("demo");
+            setResultBasis(strategy.ledger_source === "prod" ? "prod" : "demo");
             setArtifact({ type: "crypto_performance", title: "收益与回撤", strategyId: selected });
-          }} aria-label={`${strategy.acronym} Kalshi Demo 执行验证详情`} title={`${resultNetLabel("demo", strategy.demo)} · 来源 ${age(strategy.demo.source_as_of, now)} · 点击查看独立执行账本`}>
-            <span>Demo 已镜像部分</span>
-            <strong className={strategy.demo.net_pnl_usd !== null && strategy.demo.net_pnl_usd < 0 ? "crypto-negative" : "crypto-positive"}>{strategy.demo.net_pnl_usd !== null && strategy.demo.net_pnl_usd > 0 ? "+" : ""}{money(strategy.demo.net_pnl_usd)}</strong>
+          }} aria-label={strategy.ledger_source === "prod" ? `${strategy.acronym} Kalshi Prod 实盘详情` : `${strategy.acronym} Kalshi Demo 执行验证详情`} title={strategy.ledger_source === "prod" && strategy.prod ? `${resultNetLabel("prod", strategy.prod)} · 来源 ${age(strategy.prod.source_as_of, now)} · 点击查看实盘账本` : `${resultNetLabel("demo", strategy.demo)} · 来源 ${age(strategy.demo.source_as_of, now)} · 点击查看独立执行账本`}>
+            <span>{strategy.ledger_source === "prod" ? "Prod 实盘已镜像" : "Demo 已镜像部分"}</span>
+            {strategy.ledger_source === "prod" && strategy.prod ? (
+              <strong className={strategy.prod.net_pnl_usd !== null && strategy.prod.net_pnl_usd < 0 ? "crypto-negative" : "crypto-positive"}>{strategy.prod.net_pnl_usd !== null && strategy.prod.net_pnl_usd > 0 ? "+" : ""}{money(strategy.prod.net_pnl_usd)}</strong>
+            ) : (
+              <strong className={strategy.demo.net_pnl_usd !== null && strategy.demo.net_pnl_usd < 0 ? "crypto-negative" : "crypto-positive"}>{strategy.demo.net_pnl_usd !== null && strategy.demo.net_pnl_usd > 0 ? "+" : ""}{money(strategy.demo.net_pnl_usd)}</strong>
+            )}
           </button>
         </div>
       )}
@@ -79,7 +84,7 @@ export function CryptoUpcoming() {
         <span>{strategy ? `${strategy.acronym} · ${strategy.name}` : `${selected.toUpperCase()} · 数据待取得`}</span>
         <div className="crypto-view-tabs" role="group" aria-label="市场时段">
           <button type="button" aria-pressed={view === "active"} onClick={() => setView("active")}>当前合约</button>
-          <button type="button" aria-pressed={view === "recent"} onClick={() => setView("recent")}>Demo 近期结算</button>
+          <button type="button" aria-pressed={view === "recent"} onClick={() => setView("recent")}>{strategy?.ledger_source === "prod" ? "实盘近期结算" : "Demo 近期结算"}</button>
         </div>
       </div>
 
@@ -146,14 +151,14 @@ export function CryptoUpcoming() {
               key={settlement.ticker}
               className="pair-card crypto-market-row"
               onClick={() => setArtifact({ type: "crypto_settlements", title: "结算账本", strategyId: selected, ticker: settlement.ticker })}
-              aria-label={`${settlement.asset} ${closeTime(settlement.at)} Demo 结算详情`}
+              aria-label={`${settlement.asset} ${closeTime(settlement.at)} ${strategy?.ledger_source === "prod" ? "实盘" : "Demo"}结算详情`}
             >
               <span className="crypto-market-row-heading">
                 <span><ChevronRight className="w-3 h-3" /><strong>{settlement.asset}</strong><span className="crypto-home-muted">{settlement.result.toUpperCase()} 结算</span></span>
                 <time>{closeTime(settlement.at)}</time>
               </span>
               <span className="crypto-market-row-detail">
-                <span>{strategy.acronym} · Demo 归属成交 {number(settlement.quantity)} 张</span>
+                <span>{strategy.acronym} · {strategy?.ledger_source === "prod" ? "实盘" : "Demo"}归属成交 {number(settlement.quantity)} 张</span>
                 <strong className={settlement.net_usd < 0 ? "crypto-negative" : "crypto-positive"}>{settlement.net_usd > 0 ? "+" : ""}{money(settlement.net_usd)}</strong>
               </span>
               <span className="crypto-market-row-detail crypto-home-muted">
@@ -164,7 +169,7 @@ export function CryptoUpcoming() {
           ))}
           {!(view === "active" ? marketRows.length : settlements.length) && (
             <div className="text-xs py-2" style={{ color: "var(--text-muted)" }}>
-              {view === "active" ? "当前市场录制未取得，等待数据更新；不能据此判断交易所没有合约。" : "当前策略没有可核验的 Demo 结算记录。"}
+              {view === "active" ? "当前市场录制未取得，等待数据更新；不能据此判断交易所没有合约。" : (strategy?.ledger_source === "prod" ? "当前策略没有可核验的实盘结算记录。" : "当前策略没有可核验的 Demo 结算记录。")}
             </div>
           )}
         </div>
@@ -179,7 +184,7 @@ export function CryptoUpcoming() {
       )}
       <div className="crypto-overview-footer">
         <span>
-          {view === "active" ? "Prod 行情 · Demo 执行" : `Demo 官方结算 · 最近 ${settlements.length} 个市场`}
+          {view === "active" ? (strategy?.ledger_source === "prod" ? "Prod 行情 · Prod 实盘执行" : "Prod 行情 · Demo 执行") : `${strategy?.ledger_source === "prod" ? "实盘" : "Demo"}官方结算 · 最近 ${settlements.length} 个市场`}
           {data && ` · 快照 ${age(data.generated_at, now)}`}
         </span>
         <span className="flex items-center gap-2">

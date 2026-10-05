@@ -136,7 +136,7 @@ class Parameters:
     clips) and adds the missing half: leg_stop_c, and an unwind moved to
     where the book is still two-sided (one-sided rate outside the last 30s:
     1.1%). Stops/windows chosen a priori, not fitted; observation judges."""
-    version: str = "w8_v8a_20260914"
+    version: str = "w8_v10_20260930"
     # Research default. The LIVE clip comes from config (`contracts`), which
     # v8 cuts 5 -> 1 so the $100 backstop stops binding five times earlier than
     # the 300-window latch; `as_dict()` records the effective value.
@@ -154,6 +154,43 @@ class Parameters:
     taker_coefficient: float = 0.07
     # v8: completion is the EXPERIMENT, not a constant. See the v8 note below.
     complete_sets: bool = True
+    # v9 (2026-09-23): LIQUIDATION-REVERSION SIZING OVERLAY - the experiment.
+    # Trade-level dissection of the full v8a sample (2,183 entry fills, 753
+    # windows, 10 days) found maker fills realise FAIR (implied 73.0% vs
+    # realised 72.6%): every volume-preserving fix tried on the fill side is
+    # dead (33 cells, none significant; sweep-following taker t=-1.10; post-
+    # sweep re-timing PAIRED t=-3.19 against). The one candidate that cleared
+    # its pre-declared family (6 altdata features, Bonferroni 5% |t|>=2.64):
+    # OKX net liquidation flow over the trailing 15 min OPPOSING the quoted
+    # favourite. Favourite edge by flow state (2,987 decision points,
+    # close_ts-clustered): opposing +5.96c / none +2.28c / supporting -1.01c
+    # (monotone); all four coins same sign (+4.0..+11.5c); both half-periods
+    # same sign; magnitude carries nothing - the SIGN is the feature. Economic
+    # mechanism: liquidations are forced, uninformed flow; prices overshoot
+    # and revert, so the favourite still standing AGAINST that flow is
+    # underpriced. HONESTY: campaign-wide ~50 cells were searched and 2.86
+    # does NOT clear that bar (~3.26); within-band the effect localises to
+    # [0.55,0.75) (t 2.35/3.45) and is absent above - recorded as a
+    # pre-registered SECONDARY split only. The forward paired test decides.
+    # Overlay: when liq_overlay is on and the trailing flow opposes the
+    # favoured side, the fresh-entry cap rises from `clip` to `clip_signal`
+    # (1 -> 2 contracts). Sizing only: entries never fewer than control.
+    liq_overlay: bool = False
+    clip_signal: float = 2.0
+    # v10 (2026-09-30, user): the v9 overlay is RETIRED by its own latched
+    # verdict (400 signal windows, +$7.52, t=0.71, passed=False) - both books
+    # now run it OFF. The ONE registered difference becomes the FV60 FAIR-
+    # VALUE ENTRY GATE borrowed verbatim from W10 (fv60_features.ValuationTape
+    # + downside_paper.compute_features, computed by the observer and handed
+    # in as m["fv_prob_yes"]): P(yes) = Phi(z), z = aligned log(spot/strike)
+    # in bp over (HL 5-minute realised vol x sqrt((close-t-40)/300)). A fresh
+    # favoured-side entry is posted only while P(side) - quote_price > 0.
+    # Evidence: W10's forward cohort on W8 quotes, accept +1.67c/contract vs
+    # reject -0.02c. Gate only - it can never add contracts, so the paired
+    # difference isolates exactly the entries it removed. Missing valuation
+    # (None) fails OPEN - the quote goes out and fv_gate_unknown counts it -
+    # so a recorder gap can never masquerade as a skip.
+    fair_gate: bool = False
     latency_s: float = 0.5
     quote_ttl_s: float = 20.0
     stop_new_before_s: float = 180.0
@@ -434,6 +471,19 @@ def settle(m: dict, result: str | None) -> dict | None:
                 pairs_below_one=sum(p["quantity"] for p in m["pairs"] if p["cost_per_pair"] < 1),
                 stopped=m["stop_new"], coverage_gap=bool(m.get("coverage_gap")),
                 unverified_order_quantity=m.get("unverified_order_quantity", 0.),
+                # v9: whether the liquidation-reversion overlay armed at any
+                # posting in this market (filled or not) - the verdict's window
+                # selector, so it must be disclosed per window, not inferred.
+                liq_signal_seen=bool(m.get("liq_signal_seen")),
+                liq_flow_last_usd=m.get("liq_flow_usd"),
+                # v10: the gate's window selector and audit trail, disclosed
+                # per window (not inferred), plus the strata the registration
+                # pre-declares: first-fill side (entry direction).
+                fv_gate_seen=bool(m.get("fv_gate_seen")),
+                fv_gate_blocked=bool(m.get("fv_gate_blocked")),
+                fv_gate_unknown=int(m.get("fv_gate_unknown", 0)),
+                fv_edge_last=m.get("fv_edge_last"),
+                entry_side=(m["fills"][0]["side"] if m.get("fills") else None),
                 fill_model="trade_print_queue_conservative")
 
 
@@ -583,7 +633,18 @@ def update_quotes(m: dict, book: dict, now: float, p: Parameters,
         while price > 0 and exempt > 0 and (price+fee_usd(price, p.clip, p.maker_coefficient)/p.clip+worst > p.pair_cost_cap+1e-9):
             price = floor_price(price-.001)
         cap = p.max_net if residual else p.clip
-        quantity = min(p.clip, max(0., cap-own+opp),
+        # v9: the sizing overlay raises the per-quote clip - computed HERE,
+        # before quantity forms, because min(p.clip, ...) below is the
+        # binding cap. Signal latches only on the favoured side (the only
+        # side that quotes fresh) so the flag means "an overlay-sized fresh
+        # quote was actually attempted".
+        clip_eff = p.clip
+        if p.liq_overlay and not p.complete_sets and side == ("yes" if fair > .5 else "no"):
+            _flow = m.get("liq_flow_usd") or 0.0
+            if (_flow < 0 and side == "yes") or (_flow > 0 and side == "no"):
+                clip_eff = p.clip_signal
+                m["liq_signal_seen"] = True
+        quantity = min(clip_eff, max(0., cap-own+opp),
                        max(0., p.max_gross_per_market-m["turnover"]-_unread_order_risk(m, other, now)))
         # v3 (imitating the reference account where it can be imitated): FRESH
         # inventory only on the model-favored side; the other side quotes
@@ -639,7 +700,31 @@ def update_quotes(m: dict, book: dict, now: float, p: Parameters,
             # quote ever made - a rule the forward verdict is not registered
             # for. Seen within 90 minutes of v8 going live (DOGE yes 0.79 while
             # holding NO), so this is a live path, not a hypothetical.
-            quantity = min(quantity, max(0., p.clip-m["turnover"]))
+            # v9: the one-entry cap follows the SAME effective clip computed
+            # above - clip_signal while the trailing OKX net liquidation flow
+            # opposes the favoured side (m["liq_flow_usd"], YES-signed, from
+            # the observer's own recorder, recv_ts <= now; missing data reads
+            # 0.0 = base size = control behaviour).
+            quantity = min(quantity, max(0., clip_eff-m["turnover"]))
+        # v10: FV60 fair-value gate on FRESH favoured-side inventory only.
+        # Placed after every other entry rule so the flags mean "an entry the
+        # base rule WOULD have posted was evaluated" - windows where it never
+        # bites carry no information about the gate and are excluded from the
+        # verdict. Re-evaluated every cycle: a blocked favourite can still be
+        # entered later if its fresh value rises above the quote.
+        if (p.fair_gate and not m["stop_new"]
+                and side == ("yes" if fair > .5 else "no")
+                and max(0., quantity-exempt) > 1e-9):
+            prob = m.get("fv_prob_yes")
+            if prob is None:
+                m["fv_gate_unknown"] = m.get("fv_gate_unknown", 0) + 1
+            else:
+                edge = (prob if side == "yes" else 1-prob) - price
+                m["fv_gate_seen"] = True
+                m["fv_edge_last"] = round(edge, 4)
+                if edge <= 0:
+                    quantity = min(quantity, exempt)
+                    m["fv_gate_blocked"] = True
         if m["stop_new"]:
             quantity = min(quantity, exempt)  # keep only risk-reducing pair quotes
         desired[side] = (price, math.floor(quantity*100)/100)

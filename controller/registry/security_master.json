@@ -788,7 +788,7 @@
  },
  "US1258961002": {
   "asset_class": "equity",
-  "cik": "0000201533",
+  "cik": "0000811156",
   "cusip": "125896100",
   "figi": "BBG000BFVXX0",
   "name": "CMS Energy Corporation",
@@ -1377,6 +1377,23 @@
    {
     "from": "2026-08-12",
     "ticker": "D",
+    "to": null
+   }
+  ]
+ },
+ "US25754A2015": {
+  "asset_class": "equity",
+  "cik": "0001286681",
+  "cusip": "25754A201",
+  "figi": "BBG000P458P3",
+  "name": "Domino's Pizza Inc.",
+  "polygon_ticker": "DPZ",
+  "registered_at": "2026-09-26T12:50:27+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-26",
+    "ticker": "DPZ",
     "to": null
    }
   ]
@@ -2350,6 +2367,23 @@
    }
   ]
  },
+ "US4663131039": {
+  "asset_class": "equity",
+  "cik": "0000898293",
+  "cusip": "466313103",
+  "figi": "BBG000BJNGN9",
+  "name": "Jabil Inc.",
+  "polygon_ticker": "JBL",
+  "registered_at": "2026-09-25T12:49:04+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-25",
+    "ticker": "JBL",
+    "to": null
+   }
+  ]
+ },
  "US4781601046": {
   "asset_class": "equity",
   "cik": "0000200406",
@@ -3264,6 +3298,23 @@
    {
     "from": "2026-09-01",
     "ticker": "ORA",
+    "to": null
+   }
+  ]
+ },
+ "US68902V1070": {
+  "asset_class": "equity",
+  "cik": "0001781335",
+  "cusip": "68902V107",
+  "figi": "BBG00RP60KV0",
+  "name": "Otis Worldwide Corporation",
+  "polygon_ticker": "OTIS",
+  "registered_at": "2026-10-03T14:11:29+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-10-03",
+    "ticker": "OTIS",
     "to": null
    }
   ]
@@ -4930,6 +4981,23 @@
    {
     "from": "2026-08-12",
     "ticker": "WTW",
+    "to": null
+   }
+  ]
+ },
+ "USV7780T1035": {
+  "asset_class": "equity",
+  "cik": "0000884887",
+  "cusip": "V7780T103",
+  "figi": null,
+  "name": "Royal Caribbean Group",
+  "polygon_ticker": "RCL",
+  "registered_at": "2026-09-23T12:44:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-09-23",
+    "ticker": "RCL",
     "to": null
    }
   ]

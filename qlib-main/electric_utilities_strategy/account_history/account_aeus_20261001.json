@@ -1,0 +1,75 @@
+{
+  "as_of": "2026-10-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 9817.83,
+  "positions": {
+    "ETN": {
+      "shares": 209,
+      "avg_cost": 401.88,
+      "entry_date": "2026-08-31"
+    },
+    "EMR": {
+      "shares": 360,
+      "avg_cost": 152.44,
+      "entry_date": "2026-08-31"
+    },
+    "GEV": {
+      "shares": 46,
+      "avg_cost": 898.53,
+      "entry_date": "2026-08-31"
+    },
+    "POWL": {
+      "shares": 179,
+      "avg_cost": 179.73,
+      "entry_date": "2026-08-31"
+    },
+    "NEE": {
+      "shares": 2462,
+      "avg_cost": 80.279265,
+      "entry_date": "2026-08-31"
+    },
+    "SO": {
+      "shares": 1609,
+      "avg_cost": 86.527539,
+      "entry_date": "2026-08-31"
+    },
+    "DUK": {
+      "shares": 1180,
+      "avg_cost": 117.891678,
+      "entry_date": "2026-08-31"
+    },
+    "AEP": {
+      "shares": 672,
+      "avg_cost": 121.61244,
+      "entry_date": "2026-08-31"
+    },
+    "CEG": {
+      "shares": 237,
+      "avg_cost": 258.92,
+      "entry_date": "2026-10-01"
+    },
+    "NRG": {
+      "shares": 422,
+      "avg_cost": 96.93,
+      "entry_date": "2026-10-01"
+    },
+    "TLN": {
+      "shares": 63,
+      "avg_cost": 323.09,
+      "entry_date": "2026-10-01"
+    },
+    "VST": {
+      "shares": 585,
+      "avg_cost": 139.75,
+      "entry_date": "2026-10-01"
+    }
+  },
+  "cumulative_realized": -16688.28,
+  "cumulative_dividends": 964.5,
+  "cumulative_fees": 0.0,
+  "equity": 979173.7,
+  "liabilities": {},
+  "unrealized": -5102.52,
+  "position_value": 969355.87
+}

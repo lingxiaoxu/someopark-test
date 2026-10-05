@@ -21,6 +21,7 @@ from .sources import (SourceNotReady, make_parent_binding,
                       w8_candidate_from_order, w8_existing_tickers,
                       w8_outcomes_from_state)
 from .tape import ExistingTape, JsonlTail
+from ...crypto_common.checkpoint import Checkpoint
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "trading_signals/live_watch"
@@ -28,6 +29,10 @@ OUTPUT = ROOT / "trading_signals/w9_w10_paper"
 WATCHED = [ROOT / "crypto_strategies/live_watch" / n for n in
            ("w7_noisefade.py", "w8_complete_set.py", "config.yaml")]
 WATCHED += [ROOT / "crypto_strategies/event_binary/complete_set.py"]
+# Per-cycle heartbeat fields. 2026-10-02: rewriting the 24 MB state every 5 s
+# just for these was ~420 GB/day of SSD writes. Log cursors stay material.
+VOLATILE = ("last_tick", "cycles", "tape_parse_errors")
+CHECKPOINT_INTERVAL_SECONDS = 60
 
 
 def digest(value):
@@ -99,6 +104,7 @@ class Observer:
         self.tape = ExistingTape(ROOT / "price_data/hyperliquid")
         self.logs = JsonlTail()
         self.state_path = self.output / "state.json"
+        self.checkpoint = Checkpoint(atomic_json, volatile=VOLATILE, interval=CHECKPOINT_INTERVAL_SECONDS)
         if self.state_path.exists():
             self.state = json.loads(self.state_path.read_text())
             if self.state["parameters_sha256"] != digest(parameters):
@@ -218,7 +224,7 @@ class Observer:
         self.state["log_cursors"] = self.logs.cursors
         self.state["tape_parse_errors"] = self.tape.tail.errors
         self.state["source_errors"] = self.state["source_errors"][-1000:]
-        atomic_json(self.state_path, self.state)
+        self.checkpoint.save(self.state_path, self.state)
         return self.state["summary"]
 
 

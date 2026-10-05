@@ -253,10 +253,30 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
 
   // Sidebar resize
   const DEFAULT_SIDEBAR_WIDTH = 260;
-  const SIDEBAR_MIN = Math.round(DEFAULT_SIDEBAR_WIDTH * 0.82); // 213
-  const SIDEBAR_MAX = Math.round(DEFAULT_SIDEBAR_WIDTH * 1.18); // 307
+  const SIDEBAR_MIN_BASE = Math.round(DEFAULT_SIDEBAR_WIDTH * 0.82); // 213
+  // 侧栏最宽 = 浏览器宽度的 28%,随窗口缩放 / 转屏实时变化(iPad 横屏与 iPhone 竖屏上限不同)。
+  // 用应用根容器的 offsetWidth(本地 px,已含 html 全局 zoom),比例对视口同样成立。
+  const SIDEBAR_MAX_RATIO = 0.28;
+  const [appWidth, setAppWidth] = useState(0);
+  const sidebarMax = appWidth > 0 ? Math.round(appWidth * SIDEBAR_MAX_RATIO) : Math.round(DEFAULT_SIDEBAR_WIDTH * 1.18);
+  // 窄屏(如手机竖屏)28% 会小于常规最小宽度,此时最小值让位于上限,避免 min > max。
+  const sidebarMin = Math.min(SIDEBAR_MIN_BASE, sidebarMax);
+  const sidebarBoundsRef = useRef({ min: sidebarMin, max: sidebarMax });
+  sidebarBoundsRef.current = { min: sidebarMin, max: sidebarMax };
+  // Collapsed rail: sidebar shrinks to an icon-only strip (not fully hidden).
+  // 56 = 12px sidebar padding ×2 + 32px icon buttons. Persisted across reloads.
+  const SIDEBAR_RAIL_WIDTH = 56;
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sp-sidebar-collapsed') === '1'; } catch { return false; }
+  });
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      try { localStorage.setItem('sp-sidebar-collapsed', prev ? '0' : '1'); } catch { /* private mode */ }
+      return !prev;
+    });
+  }, []);
 
   // Auth
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -342,9 +362,15 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
   useEffect(() => {
     const handleMove = (clientX: number) => {
       if (!isResizing || !appRef.current) return;
+      // 比例法换算(2026-09-30):html 上有全局 zoom(index.css),鼠标坐标与
+      // getBoundingClientRect 处在同一坐标系,但该坐标系相对"本地 px"的比例
+      // 因浏览器对根 zoom 的实现而异。只取指针在容器内的**相对位置**,再乘
+      // offsetWidth(任何缩放下都是本地 px),两边单位约掉,与缩放机制无关。
+      // 此前按固定系数除,在坐标系假设不成立时面板会被钳死在最小宽度。
       const appRect = appRef.current.getBoundingClientRect();
-      const newWidth = appRect.right - clientX;
-      setRightPanelWidth(Math.min(Math.max(newWidth, 320), appRect.width * 0.6));
+      const localW = appRef.current.offsetWidth;
+      const newWidth = ((appRect.right - clientX) / appRect.width) * localW;
+      setRightPanelWidth(Math.min(Math.max(newWidth, 320), localW * 0.6));
     };
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
     const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientX); };
@@ -369,13 +395,26 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
     };
   }, [isResizing]);
 
+  // 探测浏览器宽度:窗口拉伸、转屏、缩放都会改变根容器宽度,ResizeObserver 统一捕获。
+  useEffect(() => {
+    const el = appRef.current;
+    if (!el) return;
+    const update = () => setAppWidth(el.offsetWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Sidebar resize effect
   useEffect(() => {
     const handleMove = (clientX: number) => {
       if (!isSidebarResizing || !appRef.current) return;
+      // 比例法换算,同右面板(见上方注释)。
       const appRect = appRef.current.getBoundingClientRect();
-      const newWidth = clientX - appRect.left;
-      setSidebarWidth(Math.min(Math.max(newWidth, SIDEBAR_MIN), SIDEBAR_MAX));
+      const newWidth = ((clientX - appRect.left) / appRect.width) * appRef.current.offsetWidth;
+      const { min, max } = sidebarBoundsRef.current;
+      setSidebarWidth(Math.min(Math.max(newWidth, min), max));
     };
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
     const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientX); };
@@ -407,9 +446,18 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
     <AdvanceModeProvider>
     <CryptoPredictionProvider enabled={appMode === 'crypto'}>
     <div ref={appRef} className="flex h-full w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
-      <div className="shrink-0 z-20 bg-[var(--bg-primary)] relative flex" style={{ width: sidebarWidth }}>
+      <div
+        className="shrink-0 z-20 bg-[var(--bg-primary)] relative flex"
+        style={{
+          width: sidebarCollapsed ? SIDEBAR_RAIL_WIDTH : Math.min(Math.max(sidebarWidth, sidebarMin), sidebarMax),
+          // Drag-resize must stay instant; only the collapse/expand animates.
+          transition: isSidebarResizing ? 'none' : 'width .15s ease',
+        }}
+      >
         <div className="flex-1 min-w-0">
           <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleSidebarCollapsed}
             onConnectClick={() => setIsModalOpen(true)}
             agentMode={agentMode}
             setAgentMode={setAgentMode}
@@ -429,8 +477,9 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
             onDeleteChat={handleDeleteChat}
           />
         </div>
-        {/* Sidebar resize handle — touch-friendly with wider hit area */}
-        <div
+        {/* Sidebar resize handle — touch-friendly with wider hit area.
+            Hidden while collapsed: the icon rail has a fixed width. */}
+        {!sidebarCollapsed && <div
           onMouseDown={() => setIsSidebarResizing(true)}
           onTouchStart={() => setIsSidebarResizing(true)}
           className="cursor-col-resize"
@@ -452,7 +501,7 @@ export default function App({ initialAppMode }: { initialAppMode?: AppMode } = {
             background: '#111',
             transition: 'width 0.15s',
           }} />
-        </div>
+        </div>}
       </div>
       <div className="flex-1 flex min-w-0 relative">
         <div className="flex-1 min-w-0">

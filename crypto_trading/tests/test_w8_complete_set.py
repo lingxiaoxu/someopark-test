@@ -124,22 +124,43 @@ def test_state_roundtrip_preserves_fill_dedup():
     assert k.inventory(recovered, "yes") == 2
 
 
+
+def _v10_rows(n, *, start=0, net_t=None, net_p=1.0, signal=True,
+              unverified=0.0, late=False, quantity=10.):
+    """Two-book window rows for the v10 paired-difference latch.
+
+    v10 (2026-09-30): the window selector is fv_gate_blocked (the FV60 gate
+    removed an entry) and n=300; every data-quality property below is the
+    same one v9's liq_signal_seen/400 version enforced. Tilted net defaults to
+    paired + 1+(i%2): the diff series the old single-book tests judged, so
+    every t-stat property carries over."""
+    T, P = [], []
+    for i in range(start, start+n):
+        T.append(dict(close_ts=i, fills=1, quantity=quantity,
+                      net_usd=(net_t(i) if net_t else net_p+1+(i % 2)),
+                      fv_gate_blocked=signal, coverage_gap=late,
+                      unverified_order_quantity=unverified))
+        P.append(dict(close_ts=i, fills=1, quantity=quantity, net_usd=net_p,
+                      coverage_gap=late, unverified_order_quantity=unverified))
+    return T, P
+
+
 def test_gapped_windows_are_discarded_not_judged():
     """A window whose fill ledger may be incomplete is missing data, not
     evidence: it is discarded and counted, never judged. (Merely looking
     late is a different thing - see the trustworthy-P&L test.)"""
     st = live._initial_state(k.Parameters())
-    rows = [dict(close_ts=i, fills=1, quantity=10., net_usd=1+(i%2),
-                 unverified_order_quantity=(5.0 if i == 0 else 0.0))
-            for i in range(300)]
-    st["books"]["tilted"]["trades"] = rows
+    T, P = _v10_rows(300)
+    T[0]["unverified_order_quantity"] = 5.0    # poisons window 0
+    st["books"]["tilted"]["trades"] = T
+    st["books"]["paired"]["trades"] = P
     live._latch(st)
-    assert st.get("verdict") is None          # 299 clean < 300: keep waiting
-    rows.append(dict(close_ts=300, fills=1, quantity=10., net_usd=2,
-                     unverified_order_quantity=0.0))
+    assert st["verdicts"].get("fair_gate_diff") is None   # 299 signal < 300
+    T2, P2 = _v10_rows(1, start=300)
+    T += T2; P += P2
     live._latch(st)
-    v = st["verdict"]
-    assert v["passed"] is True and v["windows"] == 300
+    v = st["verdicts"]["fair_gate_diff"]
+    assert v["passed"] is True and v["signal_windows"] == 300
     assert v["gapped_windows_discarded"] == 1 and v["t_window"] > 2.5
 
 
@@ -171,14 +192,15 @@ def test_unread_cancel_interval_blocks_replacement_and_taker_hedge():
 
 def test_latch_waits_for_all_known_same_window_markets():
     st = live._initial_state(k.Parameters())
-    st["books"]["tilted"]["trades"] = [dict(close_ts=i, fills=1,
-        net_usd=1+(i%2), coverage_gap=False) for i in range(300)]
-    st["books"]["tilted"]["positions"]["pending_eth"] = {"close_ts": 299}
+    T, P = _v10_rows(300)
+    st["books"]["tilted"]["trades"] = T
+    st["books"]["paired"]["trades"] = P
+    st["books"]["paired"]["positions"]["pending_eth"] = {"close_ts": 299}
+    live._latch(st)                            # 任一书边界窗未结算都必须等
+    assert st["verdicts"].get("fair_gate_diff") is None
+    st["books"]["paired"]["positions"].clear()
     live._latch(st)
-    assert st["verdict"] is None
-    st["books"]["tilted"]["positions"].clear()
-    live._latch(st)
-    assert st["verdict"]["passed"] is True
+    assert st["verdicts"]["fair_gate_diff"]["passed"] is True
 
 
 def test_final_settlement_drains_unread_prints(monkeypatch):
@@ -249,14 +271,14 @@ def test_zero_fill_peer_gap_discards_that_whole_window():
     the P&L of that window cannot be trusted even though OUR leg looks fine,
     because the legs settle one macro move together."""
     st = live._initial_state(k.Parameters())
-    rows = [dict(close_ts=i, fills=1, quantity=10., net_usd=1+i%2,
-                 unverified_order_quantity=0.0) for i in range(301)]
-    rows.append(dict(close_ts=100, fills=0, net_usd=0,
-                     unverified_order_quantity=5.0))
-    st["books"]["tilted"]["trades"] = rows
+    T, P = _v10_rows(301)
+    P.append(dict(close_ts=100, fills=0, net_usd=0,
+                  unverified_order_quantity=5.0))   # 对等书同窗的坏腿
+    st["books"]["tilted"]["trades"] = T
+    st["books"]["paired"]["trades"] = P
     live._latch(st)
-    v = st["verdict"]
-    assert v["windows"] == 300 and v["gapped_windows_discarded"] == 1
+    v = st["verdicts"]["fair_gate_diff"]
+    assert v["signal_windows"] == 300 and v["gapped_windows_discarded"] == 1
     assert v["passed"] is True
 
 
@@ -792,21 +814,23 @@ def test_clean_window_means_trustworthy_pnl_not_perfect_watching():
                 for i in range(n)]
 
     # late revisits only -> trustworthy, counted, and disclosed
-    st["books"]["tilted"]["trades"] = rows(300, late=True)
+    T, P = _v10_rows(300, late=True)
+    st["books"]["tilted"]["trades"] = T
+    st["books"]["paired"]["trades"] = P
     live._latch(st)
-    v = st["verdicts"]["tilted"]
-    assert v["windows"] == 300 and v["gapped_windows_discarded"] == 0
+    v = st["verdicts"]["fair_gate_diff"]
+    assert v["signal_windows"] == 300 and v["gapped_windows_discarded"] == 0
     assert v["management_gap_windows"] == 300      # measured and reported
 
     # an unread order lifetime -> the P&L may be wrong -> discarded
     st2 = live._initial_state(k.Parameters())
-    bad = rows(5, unverified=5.0)
-    for i, r in enumerate(bad):
-        r["close_ts"] = 1000 + i
-    st2["books"]["tilted"]["trades"] = rows(300) + bad
+    T2, P2 = _v10_rows(300)
+    Tb, Pb = _v10_rows(5, start=1000, unverified=5.0)
+    st2["books"]["tilted"]["trades"] = T2 + Tb
+    st2["books"]["paired"]["trades"] = P2 + Pb
     live._latch(st2)
-    v2 = st2["verdicts"]["tilted"]
-    assert v2["windows"] == 300 and v2["gapped_windows_discarded"] == 5
+    v2 = st2["verdicts"]["fair_gate_diff"]
+    assert v2["signal_windows"] == 300 and v2["gapped_windows_discarded"] == 5
 
 
 def test_v6_no_timed_unwind_but_guards_still_fire():
@@ -874,3 +898,31 @@ def test_v7_entry_confined_to_price_band_and_time_window():
     assert quotes_at(540., rich)[0] == []             # .90 above the band
     cheap = k.normalize_book({"yes_dollars": [[.41, 50]], "no_dollars": [[.57, 50]]})
     assert quotes_at(540., cheap)[0] == []            # .57 below the band
+
+
+def test_liq_flow_reader_sign_window_and_degradation(tmp_path, monkeypatch):
+    """v9 flow reader: sell-liq negative / buy-liq positive, trailing-window
+    filter, torn final line ignored, and every failure path reads 0.0 (the
+    recorder being down must degrade to CONTROL behaviour, not to a guess)."""
+    import crypto_trading.crypto_strategies.live_watch.w8_complete_set as l2
+    from datetime import datetime, timezone
+    monkeypatch.setattr(l2, "OKX_LIQ_ROOT", tmp_path)
+    monkeypatch.setattr(l2, "_LIQ_CACHE", {})
+    now = 1790200000.0
+    day = datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%d")
+    d = tmp_path / "BTCUSDT"; d.mkdir()
+    import json as J
+    lines = [
+        J.dumps({"recv_ts": now-100, "side": "sell", "price": "100", "qty": "2"}),   # -200
+        J.dumps({"recv_ts": now-200, "side": "buy",  "price": "50",  "qty": "1"}),   # +50
+        J.dumps({"recv_ts": now-2000, "side": "sell", "price": "999", "qty": "9"}),  # 窗外
+        '{"recv_ts": ' + str(now) + ', "side": "sell", "price": "7"',                # 撕裂行
+    ]
+    (d / f"{day}.jsonl").write_text("\n".join(lines[:3]) + "\n" + lines[3])
+    assert l2.liq_flow_usd("KXBTC15M", now) == -150.0
+    # 撕裂行补全后增量读取拾起
+    (d / f"{day}.jsonl").write_text("\n".join(lines[:3]) + "\n"
+        + J.dumps({"recv_ts": now-10, "side": "sell", "price": "7", "qty": "1"}) + "\n")
+    assert l2.liq_flow_usd("KXBTC15M", now) == -157.0
+    assert l2.liq_flow_usd("KXETH15M", now) == 0.0       # 无文件 → 0
+    assert l2.liq_flow_usd("KXAAA15M", now) == 0.0       # 未知系列 → 0

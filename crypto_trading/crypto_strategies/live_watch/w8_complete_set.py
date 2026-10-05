@@ -56,9 +56,37 @@ import requests
 from crypto_trading.crypto_common.config import PRICE_DATA
 from crypto_trading.crypto_common.kalshi.enums import rest_base
 from crypto_trading.crypto_strategies.event_binary import complete_set as kernel
+# v10: W10's valuation, reused verbatim (no re-derivation here).
+from crypto_trading.crypto_strategies.downside_paper.features import compute_features
+from crypto_trading.crypto_strategies.downside_paper.tape import ExistingTape
+from crypto_trading.crypto_strategies.w10_entry_paper.fv60_features import ValuationTape
+from crypto_trading.crypto_common.checkpoint import Checkpoint
 from . import common, w7_noisefade
 
 NAME = "w8_complete_set"
+
+# 2026-10-02 disk incident: the 2 s loop re-read and rewrote (fsync) the whole
+# state every tick, mostly for observation-only fields. The daemon now keeps
+# its state in memory between ticks (re-reading only if someone else replaced
+# the file) and writes when anything material changes - orders, fills, trade
+# watermarks, settlements, gaps, verdicts - or at least every 15 s, which keeps
+# last_tick_ts well inside the demo mirror's 60 s and W10's 90 s freshness
+# limits. Only these fields may lag on disk:
+_VOLATILE = ("ticks", "last_tick", "last_tick_ts", "last_cycle", "http_read_control",
+             "book_source", "inputs", "status",
+             "books/*/positions/*/mid_history", "books/*/positions/*/last_fair_proxy")
+_CHECKPOINT = Checkpoint(lambda _path, st: common.save_state(NAME, st),
+                         volatile=_VOLATILE, interval=15.0)
+_MEMORY: dict | None = None        # last state this process wrote or kept
+_MEMORY_SIG = None                 # signature of the state file it corresponds to
+
+
+def _file_sig(path: Path):
+    try:
+        s = path.stat()
+    except FileNotFoundError:
+        return None
+    return (s.st_ino, s.st_size, s.st_mtime_ns)
 # v5 (2026-09-12, user decision "加系列不放宽 range"): DOGE and XRP join.
 # Same rule, same band, evaluated on 17 days of our own tape - passive entry
 # on the favoured side inside [0.60,0.78], one observation per window, pooled
@@ -91,7 +119,106 @@ SERIES = ("KXBTC15M", "KXETH15M", "KXDOGE15M", "KXXRP15M")
 # is paired on identical close_ts. The pre-v8 difference (a 1.44x directional
 # residual) was void: its only executed effect was an undocumented clip floor,
 # now removed - see complete_set.py's residual allowance note.
-BOOK_COMPLETES = {"paired": True, "tilted": False}
+# v9 (2026-09-23): the completion experiment is DECIDED (paired latched
+# failed at t=-3.54; tilted latched not-passed at t=+0.24, realising ~fair).
+# Both books now run the surviving base rule (hold, complete_sets=False) and
+# differ in exactly ONE registered way: the TREATMENT book ("tilted") arms the
+# liquidation-reversion sizing overlay - +1 contract while the trailing 15-min
+# OKX net liquidation flow OPPOSES the quoted favourite. Sizing only: the
+# treatment can never trade fewer contracts than the control, so the paired
+# per-window difference isolates the marginal signal contracts. Evidence and
+# multiplicity honesty live in complete_set.py's v9 parameter note.
+# v10 (2026-09-30, user "改造 w8 不要新建"): the v9 overlay experiment is
+# DECIDED (latched 2026-09-29, 400 signal windows, t=0.71, passed=False) and
+# retired in BOTH books. The one registered difference is now the FV60 fair-
+# value entry gate (W10's method): "tilted" = TREATMENT (gate on), "paired" =
+# CONTROL (gate off). Book labels are kept for tape/mirror continuity only.
+BOOK_COMPLETES = {"paired": False, "tilted": False}
+BOOK_LIQ_OVERLAY = {"paired": False, "tilted": False}
+BOOK_FAIR_GATE = {"paired": False, "tilted": True}
+FV_ASSETS = ("BTC", "ETH", "DOGE", "XRP")
+_HL_TAPE = None
+_VAL_TAPE = None
+
+
+def _fv_tapes_update(now: float) -> None:
+    """Advance W10's two read-only tapes once per cycle (bounded tails)."""
+    global _HL_TAPE, _VAL_TAPE
+    if _HL_TAPE is None:
+        _HL_TAPE = ExistingTape(PRICE_DATA / "hyperliquid", assets=FV_ASSETS)
+        _VAL_TAPE = ValuationTape(PRICE_DATA, assets=FV_ASSETS)
+    _HL_TAPE.update(now)
+    _VAL_TAPE.update(now)
+
+
+def fv_prob_yes(series: str, ticker: str, close_ts: float, now: float):
+    """W10 FV60 P(yes) at `now`, or None (-> the kernel fails OPEN).
+
+    Same functions, same availability rules as the W10 observer; the price
+    argument is only range-checked by ValuationTape, the probability does not
+    depend on it (edge is recomputed in the kernel against the real quote).
+    """
+    try:
+        asset = series[2:-3]
+        hl = compute_features(*_HL_TAPE.for_asset(asset), now)
+        f = _VAL_TAPE.features(asset, ticker, "yes", 0.5, now, close_ts, hl)
+        return float(f["probability_proxy"]) if f.get("valid") else None
+    except Exception:
+        return None
+OKX_LIQ_ROOT = PRICE_DATA / "offshore" / "okx" / "liquidations"
+SERIES_TO_OKX = {"KXBTC15M": "BTCUSDT", "KXETH15M": "ETHUSDT",
+                 "KXDOGE15M": "DOGEUSDT", "KXXRP15M": "XRPUSDT"}
+LIQ_WINDOW_S = 900.0
+_LIQ_CACHE: dict = {}
+
+
+def liq_flow_usd(series: str, now: float) -> float:
+    """Signed OKX liquidation notional over the trailing LIQ_WINDOW_S.
+
+    Sign is the YES (upward) direction: a "buy" liquidation is a short forced
+    to buy (+); a "sell" liquidation is a long forced out (-). Reads the OKX
+    recorder's own files incrementally (read-only tail, per-file offsets, same
+    reuse pattern as the strips books) and uses only rows with recv_ts <= now,
+    so the value is exactly what was observable at decision time. Any missing
+    or unreadable data reads as 0.0 = base size - the recorder being down must
+    degrade to the CONTROL behaviour, never to a guess.
+    """
+    sym = SERIES_TO_OKX.get(series)
+    if not sym:
+        return 0.0
+    cache = _LIQ_CACHE.setdefault(series, {"offsets": {}, "rows": []})
+    try:
+        days = {datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
+                for t in (now, now - LIQ_WINDOW_S - 300)}
+        for day in sorted(days):
+            path = OKX_LIQ_ROOT / sym / f"{day}.jsonl"
+            try:
+                size = path.stat().st_size
+            except OSError:
+                continue
+            off = cache["offsets"].get(str(path), 0)
+            if size <= off:
+                continue
+            with open(path, "rb") as fh:
+                fh.seek(off)
+                chunk = fh.read(size - off)
+            cut = chunk.rfind(b"\n") + 1          # never parse a torn line
+            cache["offsets"][str(path)] = off + cut
+            for raw in chunk[:cut].splitlines():
+                try:
+                    j = json.loads(raw)
+                    sign = -1.0 if j.get("side") == "sell" else 1.0
+                    cache["rows"].append((float(j["recv_ts"]),
+                                          sign*float(j["price"])*float(j["qty"])))
+                except (ValueError, KeyError, TypeError):
+                    continue
+        floor = now - LIQ_WINDOW_S - 600
+        cache["rows"] = [r for r in cache["rows"] if r[0] >= floor]
+        return sum(v for ts, v in cache["rows"] if now - LIQ_WINDOW_S <= ts <= now)
+    except Exception:                              # noqa: BLE001 - degrade to control
+        return 0.0
+
+
 TAPE_ROOT = PRICE_DATA / "kalshi" / NAME / "prod"
 logger = logging.getLogger(__name__)
 _HTTP_RESUME_TS = 0.0
@@ -309,6 +436,8 @@ def _initial_state(params: kernel.Parameters) -> dict:
                     # HERE and not only in `parameters`, which carries the
                     # kernel default and so cannot describe a per-book rule.
                     complete_sets=BOOK_COMPLETES[b],
+                    liq_overlay=BOOK_LIQ_OVERLAY[b],
+                    fair_gate=BOOK_FAIR_GATE[b],
                     stopped_new=False)
                     for b in ("paired", "tilted")}, errors={}, gaps=[],
                 verdict=None, verdicts={}, stopped_new=False)
@@ -465,48 +594,74 @@ def _window_sums(book: dict, clean_only: bool = True) -> list[float]:
 
 
 def _latch(st: dict):
-    """W7-style: each book latches ONCE, at 300 CLEAN windows.
+    """v10 verdict: ONE decision, on the PAIRED DIFFERENCE, at 300 SIGNAL windows.
 
-    v1 required the FIRST 300 windows to all be gap-free; with 429s gapping
-    most windows that verdict was unreachable by construction. v2 judges on
-    clean windows only (a gapped window is missing data, not evidence) and
-    reports how many were discarded - data quality gates evidence honestly
-    instead of blocking it forever. Judged per book; the decision never
-    re-opens (optional stopping is the 6.2%-type-I lesson from W7).
+    D_w = tilted_net - paired_net on windows where (a) BOTH books are clean and
+    (b) the treatment book reports fv_gate_blocked - the gate removed at least
+    one entry the base rule would have posted. Where it never bit, D ~ 0 and
+    carries no information about the gate. PRIMARY (the pass criterion,
+    pre-declared 2026-09-30 before any v10 data): sum(D) > 0 and window-
+    clustered t >= 2.5. HONEST PRIOR, also recorded at registration: W10's
+    forward cohort on W8 v9 quotes (1,829 episodes / 586 windows) measured the
+    same valuation gate at +$0.32 total - avoided $221.79 vs sacrificed
+    $221.48 - on ~23% of the volume, i.e. an efficiency effect, not an
+    income effect; the primary is expected to be near zero. SECONDARY (report
+    only, never a pass criterion): per-contract net and window-risk of the
+    two books over the same windows. Latched once, never re-opened (optional
+    stopping measured 6.2% type-I on W7). Per-book dollar backstops and the
+    always-valid evidence kill stay active as safety, not as the verdict.
     """
     verdicts = st.setdefault("verdicts", {})
-    for label, book in st["books"].items():
-        if verdicts.get(label) is not None:
-            continue
-        ws = _window_rows(book)
-        clean = {ts: rs for ts, rs in ws.items() if _clean(rs)}
-        if len(clean) < 300:
-            continue
-        selected = sorted(clean)[:300]
-        boundary = selected[-1]
+    if verdicts.get("fair_gate_diff") is not None:
+        return
+    wsP = _window_rows(st["books"]["paired"])
+    wsT = _window_rows(st["books"]["tilted"])
+    common_ts = [t for t in wsP if t in wsT
+                 and _clean(wsP[t]) and _clean(wsT[t])]
+    signal = sorted(t for t in common_ts
+                    if any(r.get("fv_gate_blocked") for r in wsT[t]))
+    if len(signal) < 300:
+        return
+    selected = signal[:300]
+    boundary = selected[-1]
+    for book in st["books"].values():
         if any(m["close_ts"] <= boundary for m in book["positions"].values()):
-            continue  # BTC and ETH in the same window must both settle first
-        sums = [sum(r["net_usd"] for r in clean[t]) for t in selected]
-        n, mu, t_stat = kernel.window_sum_stats(sums)
-        contracts = sum(r.get("quantity", 0.) for t in selected for r in clean[t])
-        verdicts[label] = dict(
-            registered_at=st["registered_at"], evaluated_at=iso(), book=label,
-            windows=n, net_usd=round(sum(sums), 4),
-            management_gap_windows=sum(_managed_gap(clean[t]) for t in selected),
-            mean_usd_per_window=round(mu, 4), t_window=round(t_stat, 3),
-            net_c_per_contract=(round(sum(sums)/contracts*100, 3)
-                                if contracts else None),
-            gapped_windows_discarded=len(ws)-len(clean),
-            passed=bool(sum(sums) > 0 and t_stat >= 2.5),
-            scope="paper queue model only; not live execution approval")
-        common.log_line(NAME, dict(action="verdict_latched", **verdicts[label]))
-    if st.get("verdict") is None and verdicts.get("tilted") is not None:
-        st["verdict"] = verdicts["tilted"]  # v1 field kept for readers
+            return  # every coin in the boundary window must settle first
+    netT = [sum(r["net_usd"] for r in wsT[t]) for t in selected]
+    netP = [sum(r["net_usd"] for r in wsP[t]) for t in selected]
+    diffs = [a-b for a, b in zip(netT, netP)]
+    n, mu, t_stat = kernel.window_sum_stats(diffs)
+    qT = sum(r.get("quantity", 0.) for t in selected for r in wsT[t])
+    qP = sum(r.get("quantity", 0.) for t in selected for r in wsP[t])
+
+    def _risk(v):
+        s = sorted(v)
+        k = max(1, len(s)//20)
+        return dict(worst_window_usd=round(s[0], 4),
+                    worst_5pct_mean_usd=round(sum(s[:k])/k, 4))
+    verdicts["fair_gate_diff"] = dict(
+        registered_at=st["registered_at"], evaluated_at=iso(),
+        signal_windows=n, sum_diff_usd=round(sum(diffs), 4),
+        mean_diff_usd_per_window=round(mu, 4), t_window=round(t_stat, 3),
+        removed_contracts=round(qP-qT, 2),
+        clean_windows_total=len(common_ts),
+        nonsignal_windows=len(common_ts)-len(signal),
+        gapped_windows_discarded=len(set(wsP) | set(wsT))-len(common_ts),
+        management_gap_windows=sum(_managed_gap(wsT[t]+wsP[t]) for t in selected),
+        fail_open_quotes=sum(r.get("fv_gate_unknown", 0) for t in selected for r in wsT[t]),
+        passed=bool(sum(diffs) > 0 and t_stat >= 2.5),
+        secondary_report_only=dict(
+            treatment_c_per_contract=(round(sum(netT)/qT*100, 3) if qT > 1 else None),
+            control_c_per_contract=(round(sum(netP)/qP*100, 3) if qP > 1 else None),
+            treatment_contracts=round(qT, 2), control_contracts=round(qP, 2),
+            treatment_risk=_risk(netT), control_risk=_risk(netP)),
+        scope="paper queue model only; FV60 entry gate judged on paired diff")
+    common.log_line(NAME, dict(action="verdict_latched", **verdicts["fair_gate_diff"]))
 
 
 def run(cfg: dict | None = None, **_) -> dict:
     global _HTTP_RESUME_TS, _HTTP_MIN_INTERVAL, _HTTP_RATE_STREAK, _HTTP_LAST_RATE_TS
-    global _HTTP_LAST_DECAY_TS, _HTTP_LAST_SUCCESS_TS
+    global _HTTP_LAST_DECAY_TS, _HTTP_LAST_SUCCESS_TS, _MEMORY, _MEMORY_SIG
     c = (cfg or common.load_cfg()).get(NAME, {})
     if c.get("enabled") or c.get("demo_mirror"):
         raise ValueError("W8 is observation-only; account execution is not implemented")
@@ -517,7 +672,13 @@ def run(cfg: dict | None = None, **_) -> dict:
         except BlockingIOError:
             return {"strategy": NAME, "status": "BUSY"}
         p = _params(c)
-        st = json.loads(state_path.read_text()) if state_path.exists() else _initial_state(p)
+        if _MEMORY is not None and _MEMORY_SIG == _file_sig(state_path):
+            st = _MEMORY
+        else:
+            st = json.loads(state_path.read_text()) if state_path.exists() else _initial_state(p)
+        # An exception below leaves a half-updated dict: drop it, so the next
+        # tick re-reads the last coherent file instead.
+        _MEMORY = None
         _HTTP_RESUME_TS = max(_HTTP_RESUME_TS, st.get("http_resume_ts", 0.))
         http = st.get("http_read_control", {})
         _HTTP_MIN_INTERVAL = max(_HTTP_MIN_INTERVAL, http.get("min_interval_s", 1.))
@@ -531,11 +692,13 @@ def run(cfg: dict | None = None, **_) -> dict:
             raise ValueError("W8 parameters changed; register a new version instead of mixing books")
         now = time.time()
         if now-st.get("last_tick_ts", 0) < 1.0:
+            _MEMORY = st                       # untouched: keep it
             return {"strategy": NAME, "status": "CADENCE_SKIP"}
         if now < max(_HTTP_RESUME_TS, st.get("http_resume_ts", 0.)):
             # In cooldown no request goes out and no book can change; v1 still
             # rewrote (and fsynced) the whole multi-hundred-KB state every 2s
             # tick - 1.2 GB/h of no-op writes on the recorders' volume.
+            _MEMORY = st                       # untouched: keep it
             return {"strategy": NAME, "status": "RATE_LIMIT_BACKOFF",
                     "resume_at": iso(max(_HTTP_RESUME_TS, st.get("http_resume_ts", 0.)))}
         fee_ok = _refresh_fees(st, now)
@@ -565,6 +728,10 @@ def run(cfg: dict | None = None, **_) -> dict:
                 common.log_line(NAME, dict(action="book_stopped", book=label,
                                            reason=book["stopped_reason"]))
         cycle = dict(strategy=NAME, ts=iso(now), status="OBSERVING", markets={})
+        try:
+            _fv_tapes_update(time.time())
+        except Exception as e:  # valuation outage -> every quote fails open
+            st["errors"]["fv60_tapes"] = str(e)[:180]
         for series in SERIES:
             snap = w7_noisefade.latest_snapshot(series)  # discovery ONLY, never price
             if snap is None or not 0 <= now-snap.get("recv_ts", 0) <= 240:
@@ -629,9 +796,12 @@ def run(cfg: dict | None = None, **_) -> dict:
             # Record it once per ticker (it is static for a window).
             meta_key = hashlib.sha256(json.dumps(meta, sort_keys=True,
                                                  default=str).encode()).hexdigest()[:16]
+            liq_flow = liq_flow_usd(series, received)
+            fv_prob = fv_prob_yes(series, ticker, timestamp(meta["close_time"]), received)
             tape_row = dict(kind="observation", recv_ts=received, ticker=ticker,
                             series=series, metadata_sha=meta_key, orderbook=raw,
-                            book_source=book_source,
+                            book_source=book_source, liq_flow_usd=liq_flow,
+                            fv_prob_yes=fv_prob,
                             trades=trades, complete_trade_interval=complete,
                             interval_start=previous, interval_end=trade_end)
             if inp.get("metadata_sha") != meta_key:
@@ -659,6 +829,8 @@ def run(cfg: dict | None = None, **_) -> dict:
                     fills = []
                 if tape_complete:
                     m["unverified_order_quantity"] = 0.
+                m["liq_flow_usd"] = liq_flow
+                m["fv_prob_yes"] = fv_prob
                 # Completed fill interval ends BEFORE the new quote is posted.
                 # Do not prune an order until all trades through its life are read.
                 active_risk = sum(abs(kernel.net_quantity(x)) for x in ledger["positions"].values())
@@ -667,7 +839,10 @@ def run(cfg: dict | None = None, **_) -> dict:
                     for t, x in ledger["positions"].items() if t != ticker)
                 local_p = replace(p, max_net=max(0., min(p.max_net,
                     float(c.get("max_total_net_contracts", 30))-other_risk)),
-                    complete_sets=BOOK_COMPLETES[label])
+                    complete_sets=BOOK_COMPLETES[label],
+                    liq_overlay=BOOK_LIQ_OVERLAY[label],
+                    fair_gate=BOOK_FAIR_GATE[label],
+                    clip_signal=float(c.get("contracts_signal", 2)))
                 m["stop_new"] = m["stop_new"] or not fee_ok or active_risk > float(c.get("max_total_net_contracts", 30))
                 if ledger["cum_net_usd"] < -float(c.get("max_cum_loss_usd", 100)):
                     ledger["stopped_new"] = True
@@ -754,7 +929,8 @@ def run(cfg: dict | None = None, **_) -> dict:
                     note="Source revision recorded; parameters remain immutable. Review before interpreting results."))
         st["last_cycle"] = cycle
         _latch(st)
-        common.save_state(NAME, st)
+        _CHECKPOINT.save(state_path, st)
+        _MEMORY, _MEMORY_SIG = st, _file_sig(state_path)
         return cycle
 
 

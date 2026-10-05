@@ -177,3 +177,104 @@ def test_treatment_arm_takes_one_entry_per_market_even_if_the_favourite_flips():
     assert any(o["side"] == "yes"
                for o in k.update_quotes(c, b_yes, 540.,
                                         replace(k.Parameters(), clip=1.), residual=True))
+
+
+def test_liq_overlay_raises_entry_cap_only_on_opposing_flow():
+    """v9: the sizing overlay. +1 contract ONLY while trailing OKX liquidation
+    flow opposes the quoted favourite; the flag is latched for the verdict's
+    window selector; the control book ignores the flow entirely."""
+    base = replace(k.Parameters(), complete_sets=False, clip=1., clip_signal=2.)
+    b = k.normalize_book({"yes_dollars": [[.70, 50]], "no_dollars": [[.29, 50]]})
+    # YES is favoured; NEGATIVE flow (longs liquidated) opposes it -> cap 2.
+    m = k.new_market("BTC-t1", "KXBTC15M", 1000., 100.)
+    m["liq_flow_usd"] = -5e4
+    p = replace(base, liq_overlay=True)
+    made = k.update_quotes(m, b, 520., p, residual=True)
+    assert made and made[0]["quantity"] == 2. and m.get("liq_signal_seen") is True
+    # Supporting flow -> base size, flag never set.
+    m2 = k.new_market("BTC-t2", "KXBTC15M", 1000., 100.)
+    m2["liq_flow_usd"] = +5e4
+    made2 = k.update_quotes(m2, b, 520., p, residual=True)
+    assert made2 and made2[0]["quantity"] == 1. and not m2.get("liq_signal_seen")
+    # Missing flow (recorder down) -> base size: degrade to CONTROL, not a guess.
+    m3 = k.new_market("BTC-t3", "KXBTC15M", 1000., 100.)
+    made3 = k.update_quotes(m3, b, 520., p, residual=True)
+    assert made3 and made3[0]["quantity"] == 1.
+    # Control book: same opposing flow, overlay off -> untouched.
+    m4 = k.new_market("BTC-t4", "KXBTC15M", 1000., 100.)
+    m4["liq_flow_usd"] = -5e4
+    made4 = k.update_quotes(m4, b, 520., replace(base, liq_overlay=False), residual=True)
+    assert made4 and made4[0]["quantity"] == 1. and not m4.get("liq_signal_seen")
+    # NO favoured + positive flow (shorts liquidated, upward pressure) opposes it.
+    bn = k.normalize_book({"yes_dollars": [[.29, 50]], "no_dollars": [[.70, 50]]})
+    m5 = k.new_market("BTC-t5", "KXBTC15M", 1000., 100.)
+    m5["liq_flow_usd"] = +5e4
+    made5 = k.update_quotes(m5, bn, 520., p, residual=True)
+    assert made5 and made5[0]["side"] == "no" and made5[0]["quantity"] == 2.
+
+
+def test_settle_summary_discloses_liq_signal():
+    m = k.new_market("BTC-t", "KXBTC15M", 1000., 100.)
+    m["liq_signal_seen"] = True; m["liq_flow_usd"] = -123.0
+    k.add_fill(m, "yes", 1., .70, 400., 0., liquidity="maker_model", source="e")
+    row = k.settle(m, "yes")
+    assert row["liq_signal_seen"] is True and row["liq_flow_last_usd"] == -123.0
+    m2 = k.new_market("BTC-u", "KXBTC15M", 1000., 100.)
+    k.add_fill(m2, "yes", 1., .70, 400., 0., liquidity="maker_model", source="e")
+    assert k.settle(m2, "yes")["liq_signal_seen"] is False
+
+
+def test_fair_gate_blocks_only_negative_edge_fresh_entries():
+    """v10: the FV60 gate. A fresh favoured-side entry posts only while
+    P(side) - quote > 0; the flags feed the verdict's window selector; a
+    missing valuation fails OPEN (quote goes out, counted as unknown); the
+    control book ignores the valuation entirely; NO-favoured uses 1-P(yes)."""
+    base = replace(k.Parameters(), complete_sets=False, clip=1.)
+    p = replace(base, fair_gate=True)
+    b = k.normalize_book({"yes_dollars": [[.70, 50]], "no_dollars": [[.29, 50]]})
+    # Fresh value BELOW the quote -> blocked, flag latched, nothing posted.
+    m = k.new_market("BTC-g1", "KXBTC15M", 1000., 100.)
+    m["fv_prob_yes"] = 0.60
+    assert k.update_quotes(m, b, 520., p, residual=True) == []
+    assert m.get("fv_gate_blocked") is True and m.get("fv_gate_seen") is True
+    assert m["fv_edge_last"] < 0
+    # Fresh value ABOVE the quote -> posted, seen but not blocked.
+    m2 = k.new_market("BTC-g2", "KXBTC15M", 1000., 100.)
+    m2["fv_prob_yes"] = 0.90
+    made2 = k.update_quotes(m2, b, 520., p, residual=True)
+    assert made2 and made2[0]["side"] == "yes" and made2[0]["quantity"] == 1.
+    assert m2.get("fv_gate_seen") is True and not m2.get("fv_gate_blocked")
+    # Valuation unavailable -> FAIL OPEN: posted exactly like the control.
+    m3 = k.new_market("BTC-g3", "KXBTC15M", 1000., 100.)
+    made3 = k.update_quotes(m3, b, 520., p, residual=True)
+    assert made3 and made3[0]["quantity"] == 1.
+    assert m3.get("fv_gate_unknown", 0) >= 1 and not m3.get("fv_gate_blocked")
+    # Control book, same bad valuation, gate off -> untouched.
+    m4 = k.new_market("BTC-g4", "KXBTC15M", 1000., 100.)
+    m4["fv_prob_yes"] = 0.60
+    made4 = k.update_quotes(m4, b, 520., base, residual=True)
+    assert made4 and made4[0]["quantity"] == 1. and not m4.get("fv_gate_seen")
+    # NO favoured: the gate prices the NO side with 1 - P(yes).
+    bn = k.normalize_book({"yes_dollars": [[.29, 50]], "no_dollars": [[.70, 50]]})
+    m5 = k.new_market("BTC-g5", "KXBTC15M", 1000., 100.)
+    m5["fv_prob_yes"] = 0.10                     # P(no) = 0.90 > quote
+    made5 = k.update_quotes(m5, bn, 520., p, residual=True)
+    assert made5 and made5[0]["side"] == "no"
+    m6 = k.new_market("BTC-g6", "KXBTC15M", 1000., 100.)
+    m6["fv_prob_yes"] = 0.50                     # P(no) = 0.50 < quote
+    assert k.update_quotes(m6, bn, 520., p, residual=True) == []
+    assert m6.get("fv_gate_blocked") is True
+
+
+def test_settle_summary_discloses_fair_gate_and_entry_side():
+    m = k.new_market("BTC-s", "KXBTC15M", 1000., 100.)
+    m["fv_gate_seen"] = True; m["fv_gate_blocked"] = True
+    m["fv_gate_unknown"] = 2; m["fv_edge_last"] = -0.05
+    k.add_fill(m, "no", 1., .70, 400., 0., liquidity="maker_model", source="e")
+    row = k.settle(m, "no")
+    assert row["fv_gate_blocked"] is True and row["fv_gate_seen"] is True
+    assert row["fv_gate_unknown"] == 2 and row["fv_edge_last"] == -0.05
+    assert row["entry_side"] == "no"
+    m2 = k.new_market("BTC-s2", "KXBTC15M", 1000., 100.)
+    row2 = k.settle(m2, "yes")
+    assert row2["fv_gate_blocked"] is False and row2["entry_side"] is None

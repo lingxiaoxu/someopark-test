@@ -218,7 +218,7 @@ for (const [label, mutate, code] of [
   ['future snapshot', (s: any) => { s.generated_at = iso(61_000) }, 'SOURCE_FUTURE'],
   ['schema drift', (s: any) => { s.extra = 'unexpected' }, 'SOURCE_INVALID_SCHEMA'],
   ['wrong strategy identity', (s: any) => { s.strategies.pfme.id = 'fave' }, 'SOURCE_INVALID_SCHEMA'],
-  ['unexpected Prod trading', (s: any) => { s.prod_execution_enabled = true }, 'SOURCE_INVALID_SCHEMA'],
+  ['malformed Prod flag', (s: any) => { s.prod_execution_enabled = 'yes' }, 'SOURCE_INVALID_SCHEMA'],
 ] as const) {
   test(`${label} is explicitly unavailable in tools and ordinary chat`, async t => {
     const data = snapshot()

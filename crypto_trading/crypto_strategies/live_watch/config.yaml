@@ -73,7 +73,7 @@ w7_noisefade:             # v3 RE-FROZEN 2026-08-31 (user): symmetric-favorite
   demo_mirror: true       # v3.3 (user 2026-09-12): demo rehearses the LIVE
                           # rule — MAIN [0.78,0.98] entries ONLY. The wide
                           # band stays paper-recorded but is not mirrored.
-  live_orders: false      # ⚠️ THE ARMING FLAG. false = every MAIN entry logs
+  live_orders: true       # ⚠️ ARMED 2026-09-28 (user): mirror MAIN paper entries to PROD. false = every MAIN entry logs
                           # a live_order_result audit row (live_disarmed) of
                           # exactly what would be sent. Flipping to true makes
                           # REAL prod orders IF AND ONLY IF the whole gate is

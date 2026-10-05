@@ -153,7 +153,7 @@ function PerformanceView({ strategy }: { strategy: Strategy }) {
       {selector}
       <div className="cm-source-banner"><strong>{book.title}</strong><span>{basis === "paper" ? "主评估口径" : "独立执行账本"}</span></div>
       <p className="cm-note">
-        {book.role} {basis === "demo" && "只统计本策略归属且已核验的结算；未结算仓位不计入已实现收益。"}{" "}
+        {book.role}{" "}
         {publicText(data.scope)}
       </p>
       <div className="cm-metrics">
@@ -176,8 +176,7 @@ function PerformanceView({ strategy }: { strategy: Strategy }) {
         <Metric label="独立观察窗口" value={number(data.sample_windows, 0)} />
       </div>
       <p className="cm-note">
-        来源时间：{date(data.source_as_of)}。待解决 / 未核验记录：
-        {number(data.unresolved_count, 0)}。{publicText(data.note)}
+        数据 {date(data.source_as_of)} · 未核验 {number(data.unresolved_count, 0)}。{publicText(data.note)}
       </p>
       {curve.length === 0 ? (
         <Empty>当前账本没有可核验的收益曲线；未使用其他账本替代。</Empty>
@@ -354,8 +353,9 @@ function OrdersView({ strategy }: { strategy: Strategy }) {
         </label>
       </div>
       <p className="cm-note">
-        Kalshi Demo ·
-        数量单位为张。退出单是买入对侧合约以抵消净仓，不是卖出；待核验记录不代表已成交。
+        {strategy.ledger_source === "prod"
+          ? "Kalshi Prod · 数量单位为张；申请数为分时段实盘规模，限价含缓冲；跳单与零成交为跟踪差异。"
+          : "Kalshi Demo · 数量单位为张。退出单是买入对侧合约以抵消净仓，不是卖出；待核验记录不代表已成交。"}
       </p>
       {rows.length === 0 ? (
         <Empty>该筛选条件下没有订单记录。</Empty>
@@ -444,6 +444,70 @@ function OrdersView({ strategy }: { strategy: Strategy }) {
                 ? "已按实际成交记录核验"
                 : "尚未完成核验，不能视为最终成交"}
             </dd>
+            {detail.detail?.avg_fill_price != null && (
+              <>
+                <dt>成交均价（本方向）</dt>
+                <dd>{price(detail.detail.avg_fill_price)}</dd>
+              </>
+            )}
+            {detail.detail?.remaining_count != null && (
+              <>
+                <dt>剩余未成</dt>
+                <dd>{number(detail.detail.remaining_count)} 张（IOC 已撤）</dd>
+              </>
+            )}
+            {detail.detail?.role && (
+              <>
+                <dt>成交角色</dt>
+                <dd>Taker · {detail.detail.tif === "immediate_or_cancel" ? "IOC" : publicText(detail.detail.tif ?? "")}</dd>
+              </>
+            )}
+            {detail.detail?.paper_price != null && (
+              <>
+                <dt>纸面价 / 限价</dt>
+                <dd>
+                  {price(detail.detail.paper_price)} → {price(detail.price)}
+                  {detail.detail.buffer_c ? "（含 +1c 缓冲）" : "（无缓冲）"}
+                </dd>
+              </>
+            )}
+            {detail.detail?.size_mult != null && detail.detail.size_mult !== 1 && (
+              <>
+                <dt>急跌降仓</dt>
+                <dd>前30min {number(detail.detail.trend_bp ?? null)}bp → ×{detail.detail.size_mult}</dd>
+              </>
+            )}
+            {detail.detail?.gate && (
+              <>
+                <dt>闸口判定</dt>
+                <dd>
+                  {orderStatusLabel(detail.detail.gate)}
+                  {detail.detail.gate_flow != null &&
+                    `（流 ${number(detail.detail.gate_flow)} · 动量 ${number(detail.detail.gate_momentum ?? null)}bp）`}
+                </dd>
+              </>
+            )}
+            {detail.detail?.venue_ts && (
+              <>
+                <dt>交易所回执时间</dt>
+                <dd>{date(detail.detail.venue_ts)}</dd>
+              </>
+            )}
+            {detail.detail?.client_order_id && (
+              <>
+                <dt>客户端订单号</dt>
+                <dd className="cm-break">{detail.detail.client_order_id}</dd>
+              </>
+            )}
+            {detail.detail?.http_status != null && (
+              <>
+                <dt>HTTP / STP</dt>
+                <dd>
+                  {detail.detail.http_status}
+                  {detail.detail.stp ? ` · ${publicText(detail.detail.stp)}` : ""}
+                </dd>
+              </>
+            )}
           </dl>
         </Panel>
       )}
@@ -455,12 +519,13 @@ function PositionsView({ strategy }: { strategy: Strategy }) {
   return (
     <>
       <p className="cm-note">
-        仅本策略 Demo 归属仓位。净仓 = YES 数量 − NO 数量；正数偏 YES，负数偏
-        NO。双边配对数量单列，结算前不提前记为收益。
+        {strategy.ledger_source === "prod"
+          ? "仅本策略 Prod 实盘归属仓位。净仓 = YES 数量 − NO 数量；正数偏 YES，负数偏 NO。结算前不提前记为收益。"
+          : "仅本策略 Demo 归属仓位。净仓 = YES 数量 − NO 数量；正数偏 YES，负数偏 NO。双边配对数量单列，结算前不提前记为收益。"}
       </p>
       {strategy.positions.length === 0 ? (
         <Empty>
-          {strategy.demo.status === "verified"
+          {(strategy.ledger_source === "prod" ? strategy.prod?.status : strategy.demo.status) === "verified"
             ? "当前可核验账本中没有未结算持仓。"
             : "当前快照未提供可确认的持仓记录，请结合数据健康检查覆盖范围。"}
         </Empty>
@@ -571,8 +636,9 @@ function SettlementsView({
         </button>
       )}
       <p className="cm-note">
-        Demo 官方结算方向与本策略实际成交归属。净收益 = 兑付 − 成交成本 −
-        费用。表内没有将账户其他策略的结算收益分摊到本策略。
+        {strategy.ledger_source === "prod"
+          ? "Prod 官方结算方向与本策略实盘成交归属。净收益 = 兑付 − 成交成本 − 费用；不含其他策略或账户层收益。"
+          : "Demo 官方结算方向与本策略实际成交归属。净收益 = 兑付 − 成交成本 − 费用。表内没有将账户其他策略的结算收益分摊到本策略。"}
       </p>
       {rows.length === 0 ? (
         <Empty>该筛选条件下没有已核验的结算记录。</Empty>
@@ -808,9 +874,9 @@ function MarketDetail({
               ? "市场摘要报价，非盘口深度"
               : "行情不可用"}
         </dd>
-        <dt>本策略 Demo 订单</dt>
+        <dt>{strategy.ledger_source === "prod" ? "本策略实盘订单" : "本策略 Demo 订单"}</dt>
         <dd>{orders.length} 条</dd>
-        <dt>本策略 Demo 持仓记录</dt>
+        <dt>{strategy.ledger_source === "prod" ? "本策略实盘持仓记录" : "本策略 Demo 持仓记录"}</dt>
         <dd>{positions.length} 条</dd>
       </dl>
       <div className="cm-metrics">
@@ -826,8 +892,8 @@ function MarketDetail({
         />
       </div>
       <p className="cm-note">
-        YES 买价由 NO 最高买价的补数换算；NO 买价同理。Prod 行情不能作为 Demo
-        可成交的证明，也不能重建未录制时点的成交条件。
+        YES 买价由 NO 最高买价的补数换算；NO 买价同理。行情快照不能重建
+        未录制时点的成交条件；成交以订单回执为准。
       </p>
     </Panel>
   );
@@ -872,7 +938,7 @@ function MarketsView({
     <>
       <div className="cm-env-note">
         <b>Prod 行情</b>
-        <span>当前交易执行：Kalshi Demo</span>
+        <span>当前交易执行：{strategy.ledger_source === "prod" ? "Kalshi Prod（实盘）" : "Kalshi Demo"}</span>
       </div>
       <div className="cm-toolbar">
         <label className="cm-filter">
@@ -1058,8 +1124,13 @@ function RulesView({ strategy }: { strategy: Strategy }) {
             value={number(strategy.paper.sample_windows, 0)}
           />
           <Metric
-            label="Demo 结算记录"
-            value={number(strategy.demo.settled_count, 0)}
+            label={strategy.ledger_source === "prod" ? "实盘结算记录" : "Demo 结算记录"}
+            value={number(
+              strategy.ledger_source === "prod"
+                ? (strategy.prod?.settled_count ?? strategy.settlements.length)
+                : strategy.demo.settled_count,
+              0,
+            )}
           />
         </div>
         <p className="cm-prose">
@@ -1074,14 +1145,16 @@ function RulesView({ strategy }: { strategy: Strategy }) {
       <Panel title="执行环境">
         <dl className="cm-details">
           <dt>当前下单</dt>
-          <dd>Kalshi Demo</dd>
+          <dd>{strategy.ledger_source === "prod" ? "Kalshi Prod（实盘）" : "Kalshi Demo"}</dd>
           <dt>市场行情</dt>
           <dd>Kalshi Prod，只读</dd>
           <dt>Prod 交易</dt>
-          <dd>未开启</dd>
+          <dd>{strategy.ledger_source === "prod" ? "已武装（2026-09-28 起）" : "未开启"}</dd>
           <dt>验收口径</dt>
           <dd>
-            以纸面账本评估策略；Demo 用于验证实际下单和管理。未来 Prod 交易账本独立保存，不与纸面或 Demo 收益合并。Prod 可用盘口只是行情。
+            {strategy.ledger_source === "prod"
+              ? "以纸面账本评估策略；Prod 实盘账本独立保存并按官方回执与结算核验，不与纸面收益合并；Demo 评估块单列保留。"
+              : "以纸面账本评估策略；Demo 用于验证实际下单和管理。未来 Prod 交易账本独立保存，不与纸面或 Demo 收益合并。Prod 可用盘口只是行情。"}
           </dd>
         </dl>
       </Panel>
@@ -1094,7 +1167,7 @@ function HealthView({ strategy, now }: { strategy: Strategy; now: number }) {
     <>
       <p className="cm-note">
         按每个来源自身时间判断新鲜度。刚生成快照不等于行情或订单刚更新；限流等待与请求失败不会被新心跳掩盖。
-        快照发布与网页读取各约 60 秒，Demo 账户完整核验至少间隔 180 秒；结果为分钟级更新。
+        快照发布与网页读取各约 60 秒{strategy.ledger_source === "prod" ? "；实盘账本随快照周期更新" : "，Demo 账户完整核验至少间隔 180 秒"}；结果为分钟级更新。
       </p>
       <Panel title="运行来源">
         {strategy.runtime.length === 0 ? (
@@ -1139,7 +1212,9 @@ function HealthView({ strategy, now }: { strategy: Strategy; now: number }) {
         </div>
         <div className="cm-runtime">
           <div className="cm-runtime-heading">
-            <b>Kalshi Demo · 独立执行账本</b>
+            <b>{strategy.ledger_source === "prod"
+              ? "Kalshi Prod · 实盘执行账本"
+              : "Kalshi Demo · 独立执行账本"}</b>
             <Status value={strategy.demo.status} />
           </div>
           <p className="cm-note">
@@ -1148,7 +1223,11 @@ function HealthView({ strategy, now }: { strategy: Strategy; now: number }) {
             {publicText(strategy.demo.note)}
           </p>
         </div>
-        <p className="cm-note">Kalshi Prod 交易账本尚未接入；纸面、Demo 和未来 Prod 的核验状态分别记录，不以收益正负替代验证。</p>
+        <p className="cm-note">
+          {strategy.ledger_source === "prod"
+            ? "纸面、Demo 与 Prod 实盘的核验状态分别记录，不以收益正负替代验证。"
+            : "Kalshi Prod 交易账本尚未接入；纸面、Demo 和未来 Prod 的核验状态分别记录，不以收益正负替代验证。"}
+        </p>
       </Panel>
       <Panel title={`运行提示（${strategy.issues.length}）`}>
         <p className="cm-note">近期记录不等同于当前停机；是否恢复仍以最新来源证据为准。待核验项目不会标为已恢复。</p>

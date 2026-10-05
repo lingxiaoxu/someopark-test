@@ -724,14 +724,54 @@ def intraday_official_files(session: str) -> list[str]:
 
 # 收盘后独立产物,用来给"盘中定稿"的官方 EOD 文件做值级佐证。
 # 路径含 {session};取值路径是嵌套 key 序列;只覆盖列出的字段。
+#
+# 2026-09-23 修正:daily_report 的 stock_layer 是 perf 末行的**逐字复制品**
+# (RunBDCLookThrough 如今也在字段里如实标注 source=copy_of_perf_last_row)。
+# "复制品==原件"证明不了值是收盘值 —— perf 若是盘中陈值,收盘后的复制照样
+# 相等,这层佐证会把要抓的病原样放行。故复制品一致从"充分条件"降为"必要
+# 条件",另加 recompute:inventory_bdc 股数 × Polygon 官方收盘价独立重算,
+# 与 UpdateBDCPerformance 同一价源族;重算取不到=拒绝,绝不退到别的价格源
+# (official_close 模块的既有纪律)。
 CORROBORATORS = {
     "private_credit_bdc_performance.json": {
         "path": "portfolio_of_private_credit_deals/bdc_results/"
                 "daily_report_{session}.json",
         "value_at": ("stock_layer", "bdc_equity"),
         "field": "bdc_equity",
+        "recompute": "bdc_equity_from_inventory",
     },
 }
+
+# 独立重算与 perf 末行的容差:两边同股数×同一收盘价源,理论应逐分吻合;
+# 留 $1 吸收 perf 落盘时的 2dp 四舍五入与浮点链差。盘中值与收盘值的典型
+# 差距是数百到数万美元(8/27 实测 bdc 袖内约数千),$1 不会误放。
+BDC_RECOMPUTE_TOL = 1.00
+
+
+def _recompute_bdc_equity(session: str) -> float:
+    """inventory_bdc.json 股数 × session 官方收盘价(Polygon 日 K,未复权)
+    独立重算 bdc_equity(BDC 五票 + BIL 现金袖,与 UpdateBDCPerformance 同构)。
+
+    任何一环缺席(inventory 缺/as_of 不是 session、收盘价缺一只)一律
+    SourceError:本函数只服务"拒绝/放行"判定,判不了就拒绝 —— 不退旧股数、
+    不退别的价格源、不跳过缺价的票(少算一只会被差额全额吸收且不报错)。"""
+    inv = _load(REPO / "inventory_bdc.json")
+    if not inv:
+        raise SourceError("inventory_bdc.json 缺失或读不出,独立重算不可得")
+    if str(inv.get("as_of")) != session:
+        raise SourceError(f"inventory_bdc as_of {inv.get('as_of')} ≠ {session},"
+                          "股数不可用于该日重算")
+    shares: dict[str, float] = {}
+    for t, h in (inv.get("holdings") or {}).items():
+        shares[str(t)] = shares.get(str(t), 0.0) + float(h["shares"])
+    cash = inv.get("cash") or {}
+    if cash.get("ticker") and cash.get("shares") is not None:
+        ct = str(cash["ticker"])
+        shares[ct] = shares.get(ct, 0.0) + float(cash["shares"])
+    if not shares:
+        raise SourceError("inventory_bdc 无持仓股数")
+    closes = official_close.closes_for(session, shares)     # 缺一只都抛
+    return sum(sh * closes[t] for t, sh in shares.items())
 
 
 def _corroborated(fn: str, session: str, close, et) -> tuple[bool, str]:
@@ -757,6 +797,17 @@ def _corroborated(fn: str, session: str, close, et) -> tuple[bool, str]:
     if got is None or abs(float(got) - float(doc)) > 0.01:
         return False, (f"佐证值 {doc} 与 perf 末行 {got} 不符 —— "
                        f"perf 里那行确实是陈的")
+    # 复制品一致只证明 Step D 收盘后看到的是同一个值;perf 若本身是盘中陈值,
+    # 复制品会原样继承(2026-09-23 定案)。独立重算才是充分条件。
+    if spec.get("recompute") == "bdc_equity_from_inventory":
+        try:
+            indep = _recompute_bdc_equity(session)
+        except SourceError as e:
+            return False, f"独立重算不可得({e}),判不了就不放行"
+        if abs(indep - float(got)) > BDC_RECOMPUTE_TOL:
+            return False, (f"独立重算 {indep:,.2f} 与 perf 末行 {float(got):,.2f} "
+                           f"差 {indep - float(got):+,.2f} 超 ±{BDC_RECOMPUTE_TOL:.2f}"
+                           " —— perf 值不是收盘值")
     return True, ""
 
 

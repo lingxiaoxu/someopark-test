@@ -25,27 +25,28 @@ const BOOK_METADATA: Record<
   paper: {
     source: "paper",
     title: "纸面策略评估",
-    role: "策略评估主口径；采用纸面成交及费用模型，不代表实际账户盈亏。",
+    role: "纸面模拟（主口径），非实际账户盈亏。",
   },
   demo: {
     source: "kalshi_demo",
     title: "Kalshi Demo 执行验证",
-    role: "独立模拟账户的实际成交与官方结算，用于验证下单和持仓管理。",
+    role: "Demo 账户实际成交与官方结算。",
   },
   prod: {
     source: "kalshi_prod",
     title: "Kalshi Prod 实盘结果",
-    role: "尚未接入交易结果；Prod 只读行情不等于实盘成交或收益。",
+    role: "实盘账户：按交易所回执与官方结算计账。",
   },
 };
 
-/** The v1 contract has no Prod ledger. Never infer it from Demo or quotes. */
+/** Prod connected 2026-09-28 (W7). A strategy without a prod book (W8)
+ * simply has no `prod` leg and renders as not_connected. */
 export function selectResultBook(
   strategy: Strategy | undefined,
   basis: ResultBasis,
 ): ResultBook {
   const metadata = BOOK_METADATA[basis];
-  if (basis === "prod") {
+  if (basis === "prod" && !strategy?.prod) {
     return {
       basis,
       ...metadata,
@@ -69,7 +70,12 @@ export function resultNetLabel(
   basis: ResultBasis,
   performance: Performance | null,
 ): string {
-  if (basis === "prod") return "Prod 实盘净收益（未接入）";
+  if (basis === "prod") {
+    if (!performance) return "Prod 实盘净收益（未接入）";
+    return performance.status === "partial"
+      ? "Prod 实盘净收益（部分待核验）"
+      : "Prod 实盘已结算净收益";
+  }
   if (basis === "paper") {
     // PFME paper totals include all booked trades, including windows whose
     // execution-model quantities remain unverified. This is not a clean subset.

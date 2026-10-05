@@ -1,1 +1,18 @@
 {"date": "2026-09-08", "ticker": "AEE", "side": "DIV", "shares": 1286, "price": 0.75, "gross": 964.5, "dedup_key": "2026-09-08-AEE-DIV"}
+{"date": "2026-10-01", "ticker": "AEE", "side": "SELL", "shares": 1286, "price": 99.64, "gross": 128137.04, "avg_cost_at_trade": 105.26, "realized_pnl": -7227.32, "dedup_key": "2026-10-01-AEE-SELL"}
+{"date": "2026-10-01", "ticker": "ATO", "side": "SELL", "shares": 461, "price": 156.38, "gross": 72091.18, "avg_cost_at_trade": 166.13, "realized_pnl": -4494.75, "dedup_key": "2026-10-01-ATO-SELL"}
+{"date": "2026-10-01", "ticker": "EMR", "side": "SELL", "shares": 29, "price": 158.57, "gross": 4598.53, "avg_cost_at_trade": 152.44, "realized_pnl": 177.77, "dedup_key": "2026-10-01-EMR-SELL"}
+{"date": "2026-10-01", "ticker": "ETN", "side": "SELL", "shares": 26, "price": 437.28, "gross": 11369.28, "avg_cost_at_trade": 401.88, "realized_pnl": 920.4, "dedup_key": "2026-10-01-ETN-SELL"}
+{"date": "2026-10-01", "ticker": "GEV", "side": "SELL", "shares": 5, "price": 986.95, "gross": 4934.75, "avg_cost_at_trade": 898.53, "realized_pnl": 442.1, "dedup_key": "2026-10-01-GEV-SELL"}
+{"date": "2026-10-01", "ticker": "LNT", "side": "SELL", "shares": 1424, "price": 63.71, "gross": 90723.04, "avg_cost_at_trade": 67.98, "realized_pnl": -6080.48, "dedup_key": "2026-10-01-LNT-SELL"}
+{"date": "2026-10-01", "ticker": "OGE", "side": "SELL", "shares": 1683, "price": 45.2413, "gross": 76141.02, "avg_cost_at_trade": 45.63, "realized_pnl": -654.27, "dedup_key": "2026-10-01-OGE-SELL"}
+{"date": "2026-10-01", "ticker": "POWL", "side": "SELL", "shares": 21, "price": 190.6, "gross": 4002.6, "avg_cost_at_trade": 179.73, "realized_pnl": 228.27, "dedup_key": "2026-10-01-POWL-SELL"}
+{"date": "2026-10-01", "ticker": "AEP", "side": "BUY", "shares": 205, "price": 119.75, "gross": -24548.75, "dedup_key": "2026-10-01-AEP-BUY"}
+{"date": "2026-10-01", "ticker": "CEG", "side": "BUY", "shares": 237, "price": 258.92, "gross": -61364.04, "dedup_key": "2026-10-01-CEG-BUY"}
+{"date": "2026-10-01", "ticker": "DUK", "side": "BUY", "shares": 386, "price": 113.74, "gross": -43903.64, "dedup_key": "2026-10-01-DUK-BUY"}
+{"date": "2026-10-01", "ticker": "NEE", "side": "BUY", "shares": 847, "price": 76.35, "gross": -64668.45, "dedup_key": "2026-10-01-NEE-BUY"}
+{"date": "2026-10-01", "ticker": "NRG", "side": "BUY", "shares": 422, "price": 96.93, "gross": -40904.46, "dedup_key": "2026-10-01-NRG-BUY"}
+{"date": "2026-10-01", "ticker": "SO", "side": "BUY", "shares": 523, "price": 83.47, "gross": -43654.81, "dedup_key": "2026-10-01-SO-BUY"}
+{"date": "2026-10-01", "ticker": "TLN", "side": "BUY", "shares": 63, "price": 323.09, "gross": -20354.67, "dedup_key": "2026-10-01-TLN-BUY"}
+{"date": "2026-10-01", "ticker": "VST", "side": "BUY", "shares": 585, "price": 139.75, "gross": -81753.75, "dedup_key": "2026-10-01-VST-BUY"}
+{"date": "2026-10-01", "ticker": "", "side": "FEE", "gross": -327.57, "dedup_key": "2026-10-01-FEE"}

@@ -241,3 +241,117 @@ soccer.db 做排序/聚合时溢写),进程退出即释放,所以磁盘净空间
 - `ops/forward_epoch_update.py`:新 epoch 的整库备份改写到 `recovery.noindex/`(Spotlight 自动跳过 `.noindex` 目录);回收函数同时识别新旧两种目录名(当前 v21 仍在旧的 `recovery/` 下)。该文件不在运行指纹内,无需登记 epoch。455 tests passed。
 
 **以后若要重新开启 Spotlight**:先在"系统设置 → Spotlight → 隐私"排除 `/Users/xuling/code`,再 `sudo mdutil -a -i on`。研究沙箱一律放在 `*.noindex` 目录下。频繁追加的大日志宜做滚动(世界杯模块已完赛,仍每 30 秒空写一行)。
+
+---
+
+## 六、Spotlight 风暴:机器级根因(10/3 00:50 补,证据链完整)
+
+> 本节是机器级问题,不只是 soccer 的;放在这里是因为 soccer 是 Spotlight 负担的最大来源,
+> 且 `.noindex` 的改动点在 soccer 代码里。
+
+### 6.1 先更正一个错误假说
+
+此前有一个说法:「每次 epoch 更新 → 15–20 分钟后 Spotlight 风暴」。按 Spotlight 工作进程
+(`mds` / `mds_stores` / `mdworker_shared`)的每分钟日志量核对今天四次 epoch,**这个规律不成立**:
+
+| epoch | 创建时间 | 之后 40 分钟内 Spotlight 活动 |
+|---|---|---|
+| v18 venue_postponement | 15:04:06 | 无 |
+| v19 postponed_calibration | 16:54:50 | 无 |
+| v20 odds_refresh | 17:26:05 | 17:46 起风暴(21 分钟后) |
+| v21 ledger_lock | 23:58:18 | 风暴 **23:51 已开始,比 epoch 早 7 分钟** |
+
+四次只对上一次,且另一次时间顺序颠倒。epoch 的 24 GB 整库副本会加重 Spotlight 的负担,但**不是触发器**。
+
+### 6.2 真正的触发器:mds 的「低磁盘空间重试」循环
+
+mds 自己的日志里有一个明确事件 `directVolumeLowDiskSpaceRetry`:磁盘空间不足时 mds 会**挂起索引**并给卷打上
+"低空间待重试"标记;一旦检测到空间恢复,立即**恢复**积压的索引工作。把今天全部该事件按分钟列出,
+与每一次空间崩塌逐一对照:
+
+| mds 低空间重试事件 | 紧随其后发生的事 |
+|---|---|
+| 04:11、04:21、05:19 | diskmon 04:10 → 05:41 持续告警(7.8 → 0.6 GB);05:52 MTFS `ENOSPC` 失败 |
+| 06:40 | 05:58 清理刚释放 54 GB 后 |
+| **09:42** | 09:54 WindowServer 看门狗超时 → **09:58 内核 panic 重启** |
+| **10:39、10:49** | 10:40 diskmon 3.6 GB → **11:02 按键强制重启** |
+| 11:03、11:04、11:13、11:14、11:25、11:26 | 11:04 diskmon 2.0 GB、11:26 diskmon 0.9 GB → 11:2x 第三次重启 |
+| 11:36、11:45、11:52、12:26 | 12:25–12:35 的 10 分钟监测测到全盘平均 20 MB/s、峰值 300–500 MB/s 的"来源不明"写入 |
+| **17:46、17:51、17:53** | **17:47–17:53 空间 120 → 5 GB**(本审计第二、三节讨论的那次) |
+| **23:51** | 23:52 起 Spotlight 工作进程日志 2–2.7 万条/分钟;**00:14–00:17 空间 48 → 1.8 GB**;MRPT WF `IO_ENOSPC` 失败 |
+| 00:16、00:18、00:30、00:31 | 00:19 前后用户执行 `mdutil -a -i off`,之后再无事件,空间回到 266 GB 并保持稳定 |
+
+**今天每一次空间崩塌之前,都有一次 mds 低空间重试事件**,包括导致两次死机的那两次。
+两次大崩塌期间的现场快照也一致:用户态所有进程写盘合计 < 0.5 MB/s,而 `mds_stores`/`mds` 占 CPU 前列并不断
+派生 `mdworker_shared`。关闭索引后循环立即终止。
+
+循环的形状:
+```
+磁盘变低 ──► mds 挂起索引、标记待重试
+   ▲                      │
+   │                      ▼ 空间一旦被释放(清理 / 进程退出 / 重启后回收)
+   │                 mds 恢复索引积压 ──► 以数百 MB/s 写索引
+   └──────────────────────┘ 几分钟内再次写满
+```
+这正是全天反复出现的"刚清出空间,几分钟后又消失"的来源。空间被释放这件事本身,就是下一次风暴的扳机。
+
+**为什么积压这么大**:这台机器的仓库对 Spotlight 来说是极端环境——
+- `soccer.db`(24 GB)每分钟被 live 周期修改一次,Spotlight 每次都要重新审视(上午三份 Spotlight 写盘超限报告里,`soccerlive` 两次排第一);最近一小时 soccer 目录被改动的文件合计 48.7 GB
+- `mlruns/` 里有数十万个 `code_diff.txt` 文本文件,Spotlight 会做**全文内容索引**
+- w9/w10 纸面观察器曾每 2 秒整份重写 59 MB 状态文件(10/2 中午已加节流)
+- 每次 epoch 新增一个 24 GB 库副本
+
+**另一会话(673d1085,10/3 04:26 UTC)的独立证据,与上表互为印证**:每一轮**第一个**撞 ENOSPC 的进程都是
+`mds_stores`(10/2 04:07、10:55、11:19、11:43、17:48,10/3 00:13),且它每次申请的空间是固定的 **75.5 G 或
+151.1 G**——即约 75 G 的索引整体复制一份或两份(索引合并 OuterMerge),而当时空闲只有 62–115 G,于是逐块写到满、
+失败释放、下次重试再来。这也回答了"单次写多少"的问题。`mdutil -s` 曾显示 "Index is read-only",与反复合并失败一致。
+
+### 6.3 现状与建议
+
+**已做(10/3 00:19)**:`sudo mdutil -a -i off`,全部卷索引关闭,循环终止。重启后依然关闭。
+
+**建议(按优先级)**:
+
+1. **不要重新全局打开 Spotlight,除非先把仓库和外置盘排除**。精准做法:
+   - 系统设置 → Spotlight → 搜索隐私,添加 `/Users/xuling/code/someopark-test`
+   - `sudo mdutil -i off "/Volumes/Someo Park PRO-BLADE"`
+   - 然后才 `sudo mdutil -i on /System/Volumes/Data` 恢复个人文件的搜索
+2. **`.noindex` 后缀——但对象要选对**。另一会话用 `mdimport -t` 实测:Spotlight 的导入器**不解析 `.db` /
+   `.jsonl` / `.json`**(只记文件名、日期等基础元数据);而 `.log` / `.csv` / `.txt` / `.md` 走 RichText 导入器做
+   **全文索引**,且文件每变一次就整篇重索引。所以给 epoch 的 `recovery/`(内容是 `.db`)加 `.noindex` 无害但收益很小;
+   真正喂大 Spotlight 的是频繁追加的文本,应优先处理(或直接整仓排除):
+   - `prediction_market_soccer/data/logs/`——`live.out.log` 16 MB 每 60 秒追加一次 → 每天约 23 GB 文本进出索引
+   - `prediction_market/data/logs/`——世界杯 `live.out.log` 15.9 MB 每 30 秒一次;目录内 10,448 个日志文件
+   - `prediction_market_macro/data/logs/`、`crypto_trading/logs/`(1.6 GB)
+   - `mlruns/`、`qlib-main/mlruns/`——合计 24,825 个 `code_diff.txt`,4.9 GB 纯文本
+   macOS 自动跳过任何名字以 `.noindex` 结尾的目录(Xcode 的 DerivedData 就是这个约定);修 soccer 的会话已在自己的
+   临时目录上采用(`lock.noindex`、`final.noindex`)。日志目录改名要同步改写入路径与 launchd plist 的 StandardOutPath。
+   若仍要对 `recovery/` 做,代码触点必须**同时**改,否则回收函数找不到路径:`ops/version_workflow.py:241、373`(mkdir)、
+   `ops/forward_epoch_update.py:60–61、86、144`、`ops/leak_correction_switch.py:201、217、260、263`、
+   `ops/leak_corrected_book.py:691`;已存在的 epoch 目录需迁移,或让回收函数同时 glob 新旧两个名字。
+3. **live 空闲周期不要碰 `soccer.db`**(第四节的建议):没有实际写入就不该更新 mtime。这一条同时减轻
+   Spotlight、备份脚本和 APFS 的负担,是 soccer 侧性价比最高的改动。
+4. 事后排查这类问题的方法(供下次用):
+   ```bash
+   log show --start "<时间>" --style compact \
+     --predicate 'process == "mds" AND eventMessage CONTAINS "LowDiskSpaceRetry"'
+   ```
+   有这个事件紧跟着空间崩塌,就是 Spotlight;没有,再查别处。
+
+---
+
+## 七、live 空闲周期写入:已修复并复测(10/3 00:50)
+
+第四、五节及两处更正里的"每周期 159–218 MB"测于 10/2 13:10,**恰在三个修复提交之间**(12:53 `2e49d9fc`、
+13:18 `b62f0ee1`、13:32 `48708633`),现已过时。修复会话查明的元凶:对含 MB 级 payload 的结果集做 SQL `ORDER BY`
+→ SQLite 磁盘临时 B 树(`paper_store.positions()` 328 MB/次、`demo_forward._attempts()` 50 MB/次、
+`kalshi_mirror._export` 带 41 MB raw_json 排序),已改为 Python 端排序/不取大列;结算触发刷新的 `ExportStage`
+`copytree` 改 `clonefile`(315 → 7 MiB/次)。
+
+**修复后复测**(10/3 04:46–04:52 UTC,4 个周期,进程自身 `ri_diskio_byteswritten`):每个 live 进程写盘
+**0.00 MB**,SQLite 临时文件(`etilqs_*`)峰值 **0**。
+
+第四节建议的现状:1(回收函数独立运行)、2(`leakfix-20260911` 处置)、3(`.refresh-stage-*` 残留清扫)、
+5(epoch 整库复制前空间预检)、6(大 payload 移出数据库)**仍然有效**;4(写盘打点)已由修复会话完成
+(`live_refresh` 的 `[diskio]` 打点改用 `proc_pid_rusage`)。第五节"空闲 Demo reconciliation 每分钟 `needed: True`"
+的现象仍在,但已不产生可测写入,优先级降为低。

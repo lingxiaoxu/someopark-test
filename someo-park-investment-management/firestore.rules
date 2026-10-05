@@ -4,8 +4,14 @@ service cloud.firestore {
     // bot_commands: frontend writes new commands (unauthenticated via Firebase Auth,
     // uses Supabase auth instead). Server-side updates via Admin SDK bypass rules.
     match /bot_commands/{docId} {
+      // 2026-09-24 收紧:此前 read: if true = 任何人可枚举全部指令原文与
+      // SomeoClaw 回复。前端只需监听自己刚 create 的那个 doc(onSnapshot 按
+      // docId 单取 = get),docId 是 Firestore 随机 auto-ID 不可猜 → get 保留、
+      // list 关死。create 维持无鉴权(前端走 Supabase 身份,无 Firebase 登录;
+      // 第二相引入匿名 Firebase Auth + fbUid 绑定后再收 create)。
+      allow get: if true;
+      allow list: if false;
       allow create: if true;
-      allow read: if true;
       allow update, delete: if false;
     }
   }

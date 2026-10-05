@@ -8,16 +8,12 @@
       "param_set": "default",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -32,40 +28,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -74,16 +74,12 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -98,40 +94,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -140,16 +140,12 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -164,40 +160,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -206,16 +206,12 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -230,40 +226,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -272,16 +272,12 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -296,40 +292,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -338,16 +338,12 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -362,40 +358,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -404,16 +404,12 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -428,40 +424,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -470,16 +470,12 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -494,40 +490,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -536,16 +536,12 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -560,40 +556,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -602,16 +602,12 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -626,40 +622,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -668,16 +668,12 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -692,40 +688,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -734,16 +734,12 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -758,40 +754,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -800,16 +800,12 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -824,40 +820,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -866,16 +866,12 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -890,40 +886,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -932,16 +932,12 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -956,40 +952,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -998,16 +998,12 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1022,40 +1018,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1064,16 +1064,12 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1088,40 +1084,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1130,16 +1130,12 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1154,40 +1150,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1196,16 +1196,12 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1220,40 +1216,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1262,16 +1262,12 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1286,40 +1282,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1328,16 +1328,12 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1352,40 +1348,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1394,16 +1394,12 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1418,40 +1414,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1460,16 +1460,12 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1484,40 +1480,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1526,16 +1526,12 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1550,40 +1546,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1592,16 +1592,12 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1616,40 +1612,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1658,16 +1658,12 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1682,40 +1678,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1724,16 +1724,12 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1748,40 +1744,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1790,16 +1790,12 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1814,40 +1810,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1856,16 +1856,12 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1880,40 +1876,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1922,16 +1922,12 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -1946,40 +1942,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -1988,16 +1988,12 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -2012,40 +2008,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -2054,16 +2054,12 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -2078,40 +2074,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -2120,16 +2120,12 @@
       "param_set": "vol_release",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -2144,40 +2140,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -2186,16 +2186,12 @@
       "param_set": "vol_release_deep",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -2210,40 +2206,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     },
@@ -2252,16 +2252,12 @@
       "param_set": "aggressive_vol_release",
       "pairs": [
         [
-          "SBUX",
-          "WYNN"
-        ],
-        [
           "HWM",
           "ODFL"
         ],
         [
-          "PG",
-          "SYY"
+          "SBUX",
+          "WYNN"
         ],
         [
           "IDXX",
@@ -2276,40 +2272,44 @@
           "WMT"
         ],
         [
-          "FTV",
-          "JBHT"
-        ],
-        [
-          "AIZ",
-          "MS"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
           "NTAP",
           "PANW"
         ],
         [
-          "CINF",
-          "GL"
+          "FTV",
+          "JBHT"
         ],
         [
           "CVX",
           "KMI"
         ],
         [
-          "LEN",
-          "ROST"
+          "PG",
+          "SYY"
         ],
         [
           "CSX",
           "HWM"
         ],
         [
-          "CDW",
-          "PAYC"
+          "CINF",
+          "GL"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "AIZ",
+          "MS"
+        ],
+        [
+          "ADBE",
+          "PLTR"
+        ],
+        [
+          "CINF",
+          "MS"
         ]
       ]
     }

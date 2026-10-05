@@ -85,12 +85,18 @@ export default function CryptoPanelContent({ artifact }: { artifact: any }) {
           </p>
         </div>
       )}
-      {["orders", "positions", "settlements", "execution"].includes(type) && (
-        <div className="cm-source-banner">
-          <strong>Kalshi Demo · 执行账本</strong>
-          <span>此页仅展示 Demo 归属记录；纸面主评估见「收益与回撤」，Prod 交易未接入。</span>
-        </div>
-      )}
+      {["orders", "positions", "settlements", "execution"].includes(type) &&
+        (strategy?.ledger_source === "prod" ? (
+          <div className="cm-source-banner">
+            <strong>Kalshi Prod · 实盘执行账本</strong>
+            <span>此页展示交易所回执与官方结算的归属记录；纸面主评估见「收益与回撤」。</span>
+          </div>
+        ) : (
+          <div className="cm-source-banner">
+            <strong>Kalshi Demo · 执行账本</strong>
+            <span>此页仅展示 Demo 归属记录；纸面主评估见「收益与回撤」。</span>
+          </div>
+        ))}
       {strategy ? (
         <CryptoArtifact
           key={`${type}:${selected}`}

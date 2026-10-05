@@ -20,6 +20,7 @@ import { tCountry, countryKey } from '../../i18n/countries';
 import CountryName from './CountryName';
 import { PredictionFocusContext, usePredictionFocus, useCountryFocusScroll } from '../../contexts/PredictionFocusContext';
 import { tDyn, overviewHeadline } from '../../i18n/predictionStrings';
+import { useKalshiUser, withUserKalshiProd } from '../../lib/kalshiUser';
 import { usePoll } from './usePoll';
 import { AdvanceModeToggle, useAdvanceMode } from './AdvanceMode';
 
@@ -1258,8 +1259,9 @@ function BetLog({ data }: { data: any }) {
 function RiskCard() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
+  const kalshi = useKalshiUser();
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
+  const g = data?.gates ?? {}, b = withUserKalshiProd(data?.venue_balances ?? {}, kalshi, money), ab = data?.api_budget ?? {};
   return (
     <div>
       <Title sub={tr('prediction.subRisk')}>Risk Report</Title>
@@ -1422,8 +1424,9 @@ function OverviewModelNotes() {
 function VenuesApi() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
+  const kalshi = useKalshiUser();
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
+  const g = data?.gates ?? {}, b = withUserKalshiProd(data?.venue_balances ?? {}, kalshi, money), ab = data?.api_budget ?? {};
   const cal = data?.calibration_gate ?? {};
   // Dedupe: blocked_summary always ends with the static "Every order hard-capped at $X notional."
   // guardrail line — the Order-cap row above already shows exactly that, so drop it here. (Kept

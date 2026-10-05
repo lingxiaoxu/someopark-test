@@ -48,6 +48,23 @@ PUBLIC_DATA = os.path.join(_ROOT, "someo-park-investment-management", "public", 
 
 DIFF_KEYS = ["principal", "spread", "all_in_rate", "pik_rate", "fair_value", "cost"]
 
+# canon 匹配层(2026-09-23):deal_uid 对分隔符/内嵌 par 金额敏感(A 通道 " | " vs
+# B 通道 ", ";TSLX 每季摊销改写 par 文本),同一笔贷款换通道/换季度会得到全新 uid,
+# 9/22 实测 1978 new / 1950 exited 中约一半是这种伪漂移。存量 uid 禁改(改
+# normalize_issuer/uid 输入=全量重排、diff 大爆炸),因此 diff 时用即时计算的
+# canon key 做第二遍匹配;drop_subtotal_rows 同源复用,对旧快照对称剔除小计行。
+from RefreshBDCHoldings import deal_match_key, drop_subtotal_rows  # noqa: E402
+
+
+def _canon_keys(df: pd.DataFrame) -> list:
+    if "cik" not in df.columns or "identifier" not in df.columns:
+        return [None] * len(df)
+    def _cik(c):
+        cs = str(c).strip()
+        return (cs[:-2] if cs.endswith(".0") else cs).lstrip("0")
+    return [deal_match_key(_cik(c), i) if (pd.notna(c) and pd.notna(i)) else None
+            for c, i in zip(df["cik"], df["identifier"])]
+
 
 def _alert(msg: str) -> None:
     banner = "!" * 70
@@ -74,72 +91,132 @@ def _prev_snapshot_paths(store: str, manifest: dict) -> dict:
     return prev
 
 
+def _compare_pair(uid, c, p, changed, warnings, counters, matched_by):
+    """一对已配对 (cur, prev) 行的全部比较;结果就地追加。"""
+    delta = {}
+    for k in DIFF_KEYS:
+        cv, pv = pd.to_numeric(c.get(k), errors="coerce"), pd.to_numeric(p.get(k), errors="coerce")
+        if pd.notna(cv) and pd.notna(pv) and abs(cv - pv) > (abs(pv) * 1e-4 + 1e-9):
+            delta[k] = {"prev": float(pv), "cur": float(cv)}
+    if delta:
+        changed.append({"deal_uid": uid, "company": c.get("company"),
+                        "bdc": c.get("bdc"), "matched_by": matched_by, "delta": delta})
+    # early warnings — severity 区分季度例行重标(info)与真实信用恶化(alert)。
+    cm = _mark(c); pm = _mark(p)
+    if pd.isna(cm) or pd.isna(pm):
+        counters["mark_check_skipped"] += 1          # 缺 fv/cost 无法验 mark,如实计数
+    elif (pm - cm) > 0.05:
+        # 2026-09-23 修订:旧规则只对 [0.30,0.90) 报 alert,cm<0.30 反而静音 ——
+        # 恰好把跌得最惨的静音了。现在 cm≥0.90(仍近平价)或 pm>3(垃圾前值)
+        # 归 info,其余全 alert;cm<0.30 加 suspect_data 标(<0.05 几乎必是解析伪值)。
+        sev = "info" if (cm >= 0.90 or pm > 3.0) else "alert"
+        # company 键名: diff 输入帧统一 rename issuer→company(见 run());此前误取
+        # c.get("issuer") 恒 None,91 条 alert 点不出借款人 —— 2026-08-10 修复。
+        w = {"type": "mark_deterioration", "severity": sev,
+             "deal_uid": uid, "company": c.get("company"),
+             "bdc": c.get("bdc"), "from": round(pm, 3), "to": round(cm, 3)}
+        if cm < 0.30:
+            w["suspect_data"] = bool(cm < 0.05)
+        warnings.append(w)
+    cpik = pd.to_numeric(c.get("pik_rate"), errors="coerce")
+    ppik = pd.to_numeric(p.get("pik_rate"), errors="coerce")
+    if pd.notna(cpik) and (pd.isna(ppik) or cpik > (ppik or 0)) and cpik > 0:
+        # PIK turning on/up is a soft signal → info (not a standalone alert)
+        warnings.append({"type": "pik_increase", "severity": "info",
+                         "deal_uid": uid, "company": c.get("company"),
+                         "bdc": c.get("bdc"), "from": (float(ppik) if pd.notna(ppik) else 0.0),
+                         "to": float(cpik)})
+    # 2026-09-23:模块 docstring 一直宣称监控 "new non-accrual" 但从未实现 —— 落地。
+    cna, pna = c.get("non_accrual"), p.get("non_accrual")
+    cna_t = bool(cna) and pd.notna(cna)
+    pna_t = bool(pna) and pd.notna(pna)
+    if cna_t and not pna_t:
+        warnings.append({"type": "new_non_accrual", "severity": "alert",
+                         "deal_uid": uid, "company": c.get("company"), "bdc": c.get("bdc"),
+                         "fair_value": float(pd.to_numeric(c.get("fair_value"),
+                                                           errors="coerce") or 0)})
+
+
 def diff_holdings(cur: pd.DataFrame, prev: pd.DataFrame) -> dict:
-    """new / changed / exited by deal_uid + credit-quality early warnings."""
+    """new / changed / exited + credit-quality early warnings。
+
+    两遍匹配(2026-09-23 重建):第 1 遍 deal_uid 精确匹配(与历史行为一致);
+    第 2 遍对残余 new/exited 按 canon key(cik+规范化 identifier)再配,吸收
+    分隔符/par 金额造成的 uid 伪漂移;canon key 撞多条时先按 (key, round(fv,1))
+    精确配,余下按 fv 排序顺配并计入 ambiguous_matches。"""
+    counters = {"mark_check_skipped": 0, "ambiguous_matches": 0,
+                "matched_uid": 0, "matched_canon": 0}
+    cur = cur.copy(); prev = prev.copy()
+    cur["_ck"] = _canon_keys(cur)
+    prev["_ck"] = _canon_keys(prev)
     cur = cur.set_index("deal_uid")
     prev = prev.set_index("deal_uid")
+    counters["dup_uid_cur"] = int(cur.index.duplicated().sum())
+    counters["dup_uid_prev"] = int(prev.index.duplicated().sum())
+    cur = cur[~cur.index.duplicated(keep="first")]     # 旧实现 iloc[0] 同语义,现计数
+    prev = prev[~prev.index.duplicated(keep="first")]
     cur_ids, prev_ids = set(cur.index), set(prev.index)
+    common = cur_ids & prev_ids
+    changed, warnings = [], []
+    for uid in sorted(common):
+        _compare_pair(uid, cur.loc[uid], prev.loc[uid], changed, warnings, counters, "deal_uid")
+    counters["matched_uid"] = len(common)
     new_ids = cur_ids - prev_ids
     exit_ids = prev_ids - cur_ids
-    common = cur_ids & prev_ids
 
-    changed, warnings = [], []
-    for uid in common:
-        c, p = cur.loc[uid], prev.loc[uid]
-        if isinstance(c, pd.DataFrame):
-            c = c.iloc[0]
-        if isinstance(p, pd.DataFrame):
-            p = p.iloc[0]
-        delta = {}
-        for k in DIFF_KEYS:
-            cv, pv = pd.to_numeric(c.get(k), errors="coerce"), pd.to_numeric(p.get(k), errors="coerce")
-            if pd.notna(cv) and pd.notna(pv) and abs(cv - pv) > (abs(pv) * 1e-4 + 1e-9):
-                delta[k] = {"prev": float(pv), "cur": float(cv)}
-        if delta:
-            changed.append({"deal_uid": uid, "company": c.get("company"),
-                            "bdc": c.get("bdc"), "delta": delta})
-        # early warnings — tagged with severity so routine quarterly re-marks (info) can be
-        # told apart from genuine credit stress (alert). On a quarter-roll every persisting
-        # loan re-marks at once, so the bulk is expected drift; only the tail is alarming.
-        cm = _mark(c); pm = _mark(p)
-        if pd.notna(cm) and pd.notna(pm) and (pm - cm) > 0.05:
-            # alert = current mark sits in the genuine-distress band [0.30, 0.90).
-            # Deliberately excludes: near-par marks >=0.90 (normal), fv/cost marks >1.1
-            # (unreliable — a small/missing cost inflates the ratio, e.g. 3.0 artifacts), and
-            # <0.30 (data error, not a real loan mark). A drop-based rule was rejected:
-            # on real quarter-roll data it fired on the garbage highs (3.0 -> 0.99).
-            sev = "alert" if (0.30 <= cm < 0.90) else "info"
-            # company 键名: diff 输入帧的列叫 "company"(见 run() 里 cur_all 的列选择,
-            # 历史帧也已 rename issuer→company)。此前误取 c.get("issuer") 恒为 None,
-            # 91 条 alert 全部点不出借款人 —— 2026-08-10 修复,并带上 deal_uid 供回溯。
-            warnings.append({"type": "mark_deterioration", "severity": sev,
-                             "deal_uid": uid, "company": c.get("company"),
-                             "bdc": c.get("bdc"), "from": round(pm, 3), "to": round(cm, 3)})
-        cpik = pd.to_numeric(c.get("pik_rate"), errors="coerce")
-        ppik = pd.to_numeric(p.get("pik_rate"), errors="coerce")
-        if pd.notna(cpik) and (pd.isna(ppik) or cpik > (ppik or 0)) and cpik > 0:
-            # PIK turning on/up is a soft signal → info (not a standalone alert)
-            warnings.append({"type": "pik_increase", "severity": "info",
-                             "deal_uid": uid, "company": c.get("company"),
-                             "bdc": c.get("bdc"), "from": (float(ppik) if pd.notna(ppik) else 0.0),
-                             "to": float(cpik)})
+    # 第 2 遍:canon key 匹配残余
+    resid_cur = cur.loc[sorted(new_ids)]
+    resid_prev = prev.loc[sorted(exit_ids)]
+    ck_cur, ck_prev = {}, {}
+    for uid, ck in resid_cur["_ck"].items():
+        if ck: ck_cur.setdefault(ck, []).append(uid)
+    for uid, ck in resid_prev["_ck"].items():
+        if ck: ck_prev.setdefault(ck, []).append(uid)
+    matched_new, matched_exit = set(), set()
+    def _fv1(frame, u):
+        return round(float(pd.to_numeric(frame.loc[u].get("fair_value"), errors="coerce") or 0), 1)
+    for ck in sorted(ck_cur):
+        cu, pu = ck_cur[ck], ck_prev.get(ck)
+        if not pu:
+            continue
+        if len(cu) == 1 and len(pu) == 1:
+            pairs = [(cu[0], pu[0])]
+        else:
+            pairs, rest_cu = [], []
+            by_fv = {}
+            for u in pu: by_fv.setdefault(_fv1(resid_prev, u), []).append(u)
+            for u in cu:
+                b = by_fv.get(_fv1(resid_cur, u))
+                if b: pairs.append((u, b.pop(0)))
+                else: rest_cu.append(u)
+            rest_pu = [u for b in by_fv.values() for u in b]
+            rest_cu.sort(key=lambda u: _fv1(resid_cur, u))
+            rest_pu.sort(key=lambda u: _fv1(resid_prev, u))
+            n_ord = min(len(rest_cu), len(rest_pu))
+            pairs += list(zip(rest_cu[:n_ord], rest_pu[:n_ord]))
+            counters["ambiguous_matches"] += n_ord
+        for cu_id, pu_id in pairs:
+            _compare_pair(cu_id, resid_cur.loc[cu_id], resid_prev.loc[pu_id],
+                          changed, warnings, counters, "canon_key")
+            matched_new.add(cu_id); matched_exit.add(pu_id)
+    counters["matched_canon"] = len(matched_new)
+    new_ids -= matched_new
+    exit_ids -= matched_exit
 
     def _rows(ids, frame):
-        return [{"deal_uid": u, "company": frame.loc[u].get("company")
-                 if not isinstance(frame.loc[u], pd.DataFrame) else frame.loc[u].iloc[0].get("company"),
-                 "bdc": frame.loc[u].get("bdc") if not isinstance(frame.loc[u], pd.DataFrame)
-                 else frame.loc[u].iloc[0].get("bdc"),
-                 "fair_value": float(pd.to_numeric(
-                     frame.loc[u].get("fair_value") if not isinstance(frame.loc[u], pd.DataFrame)
-                     else frame.loc[u].iloc[0].get("fair_value"), errors="coerce") or 0)}
-                for u in ids]
+        return [{"deal_uid": u, "company": frame.loc[u].get("company"),
+                 "bdc": frame.loc[u].get("bdc"),
+                 "fair_value": float(pd.to_numeric(frame.loc[u].get("fair_value"),
+                                                   errors="coerce") or 0)}
+                for u in sorted(ids)]
     return {"new": _rows(new_ids, cur), "exited": _rows(exit_ids, prev),
             "changed": changed, "warnings": warnings,
             "counts": {"new": len(new_ids), "exited": len(exit_ids),
                        "changed": len(changed), "warnings": len(warnings),
                        # additive severity split (existing 'warnings' kept for back-compat):
                        "warnings_alert": sum(1 for w in warnings if w.get("severity") == "alert"),
-                       "warnings_info": sum(1 for w in warnings if w.get("severity") == "info")}}
+                       "warnings_info": sum(1 for w in warnings if w.get("severity") == "info"),
+                       **counters}}
 
 
 def _mark(row):
@@ -160,7 +237,26 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
         return {}
     manifest = json.load(open(manifest_path))
     as_of = max(mf["reportDate"] for mf in manifest.values())
+    rds = sorted({mf["reportDate"] for mf in manifest.values()})
+    if len(rds) > 1:
+        _alert(f"mixed reportDates across BDCs {rds} — as_of=max;逐家日期见 freshness")
+    asof_age_days = (date.today() - date.fromisoformat(as_of)).days
+    if asof_age_days > 135:
+        _alert(f"holdings as_of {as_of} 已 {asof_age_days} 天(>135)——下季 10-Q 逾期或 ingest 卡死")
     rates_date = date.today().isoformat()
+    # rates_date 是**运行日**;曲线真实新鲜度 = fred_rates.csv 末行日期(通常 T-1)。
+    # 2026-09-23 前两者混用,STEP A 静默失败时日报会顶着当天日期用陈旧曲线。
+    rates_date_actual = None
+    try:
+        _rc = os.path.join(_MODULE, "fred_rates.csv")
+        if os.path.exists(_rc):
+            _rd = pd.read_csv(_rc, usecols=[0]).iloc[:, 0]
+            rates_date_actual = str(pd.to_datetime(_rd, errors="coerce").max().date())
+            _lag = (date.today() - date.fromisoformat(rates_date_actual)).days
+            if _lag > 4:
+                _alert(f"rate curve stale: fred_rates.csv 末行 {rates_date_actual} 落后今天 {_lag} 天")
+    except Exception as e:  # noqa: BLE001
+        _alert(f"fred_rates.csv freshness check failed: {e!r}")
 
     # idempotency guard
     mhash = hashlib.sha1(json.dumps({t: manifest[t]["adsh"] for t in sorted(manifest)},
@@ -187,6 +283,7 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
                                              bdc_non_accrual=bdc_na)
     summary, deals = lt["summary"], lt["deals"]
     summary["rates_date"] = rates_date
+    summary["rates_date_actual"] = rates_date_actual
 
     # 2b) §7.3 scenario stress matrix — rate ladder ±300bp + three macro scenarios
     # (mild/severe recession, stagflation) over the SAME enriched book, survival-
@@ -213,17 +310,29 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
                        "warnings_alert": 0, "warnings_info": 0},
             "note": "no prior snapshot for any BDC (first run)"}
     if prev_paths:
-        cur_all = deals[["deal_uid", "company", "bdc"] + DIFF_KEYS].copy()
-        prev_frames = []
-        for t, p in prev_paths.items():
-            pf = pd.read_parquet(p).rename(columns={"issuer": "company"})
-            prev_frames.append(pf)
-        prev_all = pd.concat(prev_frames, ignore_index=True) if prev_frames else pd.DataFrame()
-        # only diff BDCs that actually have a prior snapshot
-        bdcs_with_prev = set(prev_paths)
-        diff = diff_holdings(cur_all[cur_all["bdc"].isin(bdcs_with_prev)],
-                             prev_all[prev_all["bdc"].isin(bdcs_with_prev)])
-        diff["bdcs_diffed"] = sorted(bdcs_with_prev)
+        # 2026-09-23 重建:cur 侧此前取自 deals CSV(loader 输出),不带 cik/identifier,
+        # canon 二次匹配无从谈起;现两侧一律直读快照 parquet(schema 相同),并对称
+        # 剔除小计行(旧快照由旧版 ingest 写入,仍含发行人合计行,不剔会伪造 exited)。
+        cur_frames, prev_frames, diffed = [], [], []
+        sub_dropped = {}
+        for t in sorted(prev_paths):
+            mf_t = manifest[t]
+            cp = os.path.join(store, t, f"soi_{mf_t['reportDate']}_{mf_t['adsh']}.parquet")
+            if not os.path.exists(cp):
+                _alert(f"{t}: current snapshot missing ({os.path.basename(cp)}) — excluded from diff")
+                continue
+            cf, n_cur, _ = drop_subtotal_rows(pd.read_parquet(cp))
+            pf, n_prev, _ = drop_subtotal_rows(pd.read_parquet(prev_paths[t]))
+            if n_cur or n_prev:
+                sub_dropped[t] = {"cur": int(n_cur), "prev": int(n_prev)}
+            cur_frames.append(cf); prev_frames.append(pf); diffed.append(t)
+        if cur_frames:
+            cur_all = pd.concat(cur_frames, ignore_index=True).rename(columns={"issuer": "company"})
+            prev_all = pd.concat(prev_frames, ignore_index=True).rename(columns={"issuer": "company"})
+            diff = diff_holdings(cur_all, prev_all)
+            diff["bdcs_diffed"] = diffed
+            if sub_dropped:
+                diff["subtotal_rows_dropped"] = sub_dropped
 
     # G7: stock layer (BDC share-price sleeve equity, daily) alongside the look-through
     # layer (latest disclosed holdings × today's rates) — each with its own as-of.
@@ -235,12 +344,25 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
             if isinstance(perf, list) and perf:
                 last = perf[-1]
                 stock_layer = {"as_of": last.get("date"), "bdc_equity": last.get("bdc_equity"),
-                               "bdc_pnl": last.get("bdc_pnl"), "bdc_dd_pct": last.get("bdc_dd")}
-        except Exception:  # noqa: BLE001
-            pass
+                               "bdc_pnl": last.get("bdc_pnl"), "bdc_dd_pct": last.get("bdc_dd"),
+                               # 出处如实声明(2026-09-23):perf json 末行的逐字复制,
+                               # 不是独立计算 —— qc_reconcile 拿它当"旁证"是循环验证;
+                               # 改判定属 M4 对账红线,等用户拍板,这里先把出处钉死。
+                               "source": "copy_of_perf_last_row"}
+                try:
+                    _age = (date.today() - date.fromisoformat(str(last.get("date")))).days
+                    stock_layer["age_days"] = _age
+                    if _age > 4:
+                        _alert(f"stock_layer stale: perf 末行 {last.get('date')} 已 {_age} 天未更新")
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception as e:  # noqa: BLE001
+            _alert(f"stock_layer read failed: {e!r}")
 
     daily = {
         "date": rates_date, "as_of": as_of,
+        "asof_age_days": asof_age_days, "mixed_asof": (len(rds) > 1),
+        "rates_date_actual": rates_date_actual,
         "stock_layer": stock_layer,                       # G7: share-price sleeve (daily)
         "lookthrough_layer": {                            # disclosed holdings × today's rates
             "as_of": as_of, "revaluation": summary["weighted"],

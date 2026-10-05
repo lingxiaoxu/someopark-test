@@ -29,6 +29,7 @@ import electricRoutes from './routes/electric.js';
 import microfootballAnalyzeRoutes from './routes/microfootballAnalyze.js';
 import macroAnalyzeRoutes from './routes/macroAnalyze.js';
 import volumePredictionRoutes from './routes/volumePrediction.js';
+import kalshiKeysRoutes from './routes/kalshiKeys.js';
 import { registerAllTools } from './tools/index.js';
 
 const app = express();
@@ -93,6 +94,8 @@ app.use('/api/publish', publishRoutes);
 app.use('/api/pnl-report', pnlReportRoutes);
 app.use('/api/risk-report', riskReportRoutes);
 app.use('/api/ssrs', sectorRotationRoutes);
+// Per-user Kalshi PROD credentials (verified Supabase JWT required inside).
+app.use('/api/kalshi-keys', kalshiKeysRoutes);
 app.use('/api/aiss', semiconductorRoutes);
 app.use('/api/aeus', electricRoutes);
 app.use('/api/agent', agentRoutes);

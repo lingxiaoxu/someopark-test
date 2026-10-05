@@ -351,6 +351,12 @@ QC_SYMBOL_ALIAS = {
     # Polygon 现今 JBL=Jabil Inc. 在市、JBIL 无此票(无碰撞)。三方互证:
     # fill ticker、portfolio 键、本地 target 同为 −359。
     "JBIL": "JBL",
+    # 2026-10-05 v68 开盘实测:订单 367 成交 OTIS −772 @63.85(09:31,MTFS
+    # PANW/OTIS 空腿),完整 SID "OTISW XCXKP5JBIR1H" 与 portfolio 键逐字一致
+    # (Otis 2020 年自 UTX 分拆时的 when-issued 代码,同 GEVW 一例);Polygon
+    # 现今 OTIS=Otis Worldwide 在市、OTISW 404(无碰撞)。三方互证:fill ticker、
+    # portfolio 键、本地 target 同为 −772。
+    "OTISW": "OTIS",
 }
 
 

@@ -1718,3 +1718,29 @@ def test_jbil_first_name_maps_to_jbl_and_keeps_real_share_breaches(target_file):
     assert row["status"] == "breach"
     assert row["diffs"] == [{"ticker": "JBL", "qc": -358,
                              "target": -359, "diff": 1}]
+
+
+def test_otisw_first_name_maps_to_otis_and_keeps_real_share_breaches(target_file):
+    """10/05 实测:order 367 成交 OTIS −772,portfolio 键为历史首名 OTISW。
+    映射后逐票配平;真实股数差仍按 OTIS 名义原样报 breach。"""
+    class Client:
+        def live_read(self, pid):
+            return {"status": "Running", "deployId": "test-deploy"}
+
+        def live_portfolio(self, pid):
+            return {"portfolio": {
+                "holdings": {"OTISW XCXKP5JBIR1H": {
+                    "q": -772, "p": 63.85, "v": -49292.2}},
+                "cash": {"USD": {"amount": 100_000.0}},
+            }}
+
+    qc = rolloff.qc_snapshot(client=Client(), pid=1)
+    assert qc["shares"] == {"OTISW": -772}
+    target_file(68, {"OTIS": -772})
+    row = qr.holdings_plane(qc, 68)
+    assert row["status"] == "ok" and row["diffs"] == []
+    qc["shares"]["OTISW"] += 1
+    row = qr.holdings_plane(qc, 68)
+    assert row["status"] == "breach"
+    assert row["diffs"] == [{"ticker": "OTIS", "qc": -771,
+                             "target": -772, "diff": 1}]

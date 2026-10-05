@@ -2,18 +2,18 @@
   "param_set": "low_beta_bab",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-09-22",
-  "last_updated": "2026-09-22",
-  "mcps_oos_filtered": 1.066,
-  "recent_sharpe_12m": 0.8796,
-  "full_period_sharpe": 0.7929,
-  "full_period_calmar": 0.3867,
+  "selected_at": "2026-10-02",
+  "last_updated": "2026-10-02",
+  "mcps_oos_filtered": 0.5955,
+  "recent_sharpe_12m": 0.636,
+  "full_period_sharpe": 0.7669,
+  "full_period_calmar": 0.3727,
   "top_candidates": [
     {
       "name": "tech_bull_2023",
       "version": "v1",
       "composite": 0.5,
-      "mcps_score": 0.7287
+      "mcps_score": 0.6783
     }
   ],
   "n_candidates": 41,
@@ -21,8 +21,8 @@
   "oos_filter_applied": true,
   "oos_mean_sharpe": null,
   "oos_n_selected": null,
-  "wf_mean_wfe": 1.2836,
-  "macro_data_days": 2064,
+  "wf_mean_wfe": 1.277,
+  "macro_data_days": 2072,
   "switch_history": [],
   "health": {
     "days_since_switch": 1,
@@ -35,6 +35,6 @@
   "composite_score": null,
   "version_selector": {
     "recommended": "v1",
-    "v1_confidence": 1.0
+    "v1_confidence": 0.8
   }
 }

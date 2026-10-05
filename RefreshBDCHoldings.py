@@ -325,26 +325,54 @@ def extract_non_accrual_bdc(root) -> dict:
     out = {"borrowers": None, "loans": None, "non_accrual_pct_fv": None, "source_text": None}
 
     # targeted MD&A phrasings (one per filer style); first confident match wins.
-    val = None
-    # GBDC: "...as a percentage of total investments at cost and fair value were X.X% and Y.Y%"
-    m = re.search(r"non[- ]?accru\w*[^.]{0,80}?percentage of total investments[^.]{0,60}?"
-                  r"(\d{1,2}\.\d)\s*%?\s*(?:and|,)\s*(\d{1,2}\.\d)\s*%", txt, re.I)
+    # 2026-09-23 复审重写:三家取错列/口径 —— BXSL 旧正则抓到"上期固定利率占比"0.4
+    # (实为 FV 口径 1.8);TSLX 抓到 12/31 对照列的 99.4→0.6(实为 1.3);ARCC 把摊余
+    # 成本口径 2.4 存进了 pct_fv(FV 口径 1.4)。SEC 表格惯例:当期列在前、对照列在后。
+    val = cost_val = None
+    # ARCC 句式(双口径同句): "represented 2.4% of the total investments at amortized
+    # cost (or 1.4% at fair value) and 1.8% ... respectively"
+    m = re.search(r"non[- ]?accru\w*[^.]{0,60}?represent\w*\s*(\d{1,2}\.\d)\s*%"
+                  r"[^.]{0,40}?at amortized cost\s*\(or\s*(\d{1,2}\.\d)\s*%\s*at fair value\)",
+                  txt, re.I)
     if m:
-        val = float(m.group(2))                       # 2nd number = fair-value basis
-    if val is None:  # ARCC/OBDC: "non-accrual ... represent(s/ed) X.X%"
+        cost_val, val = float(m.group(1)), float(m.group(2))
+    if val is None:
+        # GBDC: "...percentage of total investments at cost and fair value were X.X% and Y.Y%"
+        m = re.search(r"non[- ]?accru\w*[^.]{0,80}?percentage of total investments[^.]{0,60}?"
+                      r"(\d{1,2}\.\d)\s*%?\s*(?:and|,)\s*(\d{1,2}\.\d)\s*%", txt, re.I)
+        if m:
+            cost_val, val = float(m.group(1)), float(m.group(2))   # (cost, fair value)
+    if val is None:
+        # BXSL 指标表(带脚注号,当期列在前): "Percentage of assets on non-accrual,
+        # at fair value (5) 1.8 % 0.5 %" / "... at amortized cost (5) 3.6 % 0.6 %"
+        m = re.search(r"on non[- ]?accrual,?\s*at fair value\s*(?:\(\d+\))?\s*"
+                      r"(\d{1,2}\.\d)\s*%\s*(\d{1,2}\.\d)\s*%", txt, re.I)
+        if m:
+            val = float(m.group(1))                                # 当期 FV 口径
+            mc = re.search(r"on non[- ]?accrual,?\s*at amortized cost\s*(?:\(\d+\))?\s*"
+                           r"(\d{1,2}\.\d)\s*%", txt, re.I)
+            cost_val = float(mc.group(1)) if mc else None
+    if val is None:
+        # TSLX Performing/Non-accrual 表(FV 表在前、成本表在后;当期列在前):
+        # "Performing $3,259.4 98.7 % $3,327.3 99.4 % Non-accrual (1) 42.7 1.3 20.0 0.6"
+        m = re.search(r"Performing\s*\$?\s*[\d,.]+\s*9\d\.\d\s*%\s*\$?\s*[\d,.]+\s*9\d\.\d\s*%\s*"
+                      r"Non[- ]?accrual\s*(?:\(\d+\))?\s*[\d,.]+\s*(\d{1,2}\.\d)", txt, re.I)
+        if m:
+            val = float(m.group(1))                                # 当期 FV 口径
+    if val is None:
+        # OBDC/泛化: "non-accrual ... represent(s/ed) X.X%"(单口径句式)
         m = re.search(r"non[- ]?accru\w*[^.]{0,50}?represent\w*[^.]{0,15}?(\d{1,2}\.\d)\s*%", txt, re.I)
         if m:
             val = float(m.group(1))
-    if val is None:  # BXSL: "X.X% Percentage of assets on non-accrual"
-        m = re.search(r"(\d{1,2}\.\d)\s*%\s*(?:percentage of assets[^.]{0,10}?)?on non[- ]?accru", txt, re.I)
-        if m:
-            val = float(m.group(1))
-    if val is None:  # TSLX: "99.4% Non-accrual" (accruing share → 100 − x)
-        m = re.search(r"(9\d\.\d)\s*%\s*non[- ]?accru", txt, re.I)
+    if val is None:
+        # 兜底: accruing 份额 → 100 − x。成对出现时取**第一个**(当期列)。
+        m = re.search(r"(9\d\.\d)\s*%(?:\s*\$?\s*[\d,.]+\s*9\d\.\d\s*%)?\s*non[- ]?accru", txt, re.I)
         if m:
             val = round(100.0 - float(m.group(1)), 2)
     if val is not None and 0 <= val <= 25:
         out["non_accrual_pct_fv"] = round(val / 100.0, 5)
+        if cost_val is not None and 0 <= cost_val <= 25:
+            out["non_accrual_pct_cost"] = round(cost_val / 100.0, 5)
         out["source_text"] = txt[max(0, m.start() - 20):m.start() + 120].strip()[:160]
 
     bm = re.search(r"([\w-]+)\s+borrowers?\s*\(?(?:across\s+)?([\w-]+)?\s*loans?\)?[^.]{0,40}?non[- ]?accru",
@@ -457,10 +485,23 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
     XBRLI = "{http://www.xbrl.org/2003/instance}"
     XBRLDI = "{http://xbrl.org/2006/xbrldi}"
     inv_ctx = {}
+    n_prior_ctx = 0
     for c in root.iter(f"{XBRLI}context"):
         tm = c.find(f".//{XBRLDI}typedMember")
-        if tm is not None and "InvestmentIdentifierAxis" in (tm.get("dimension") or ""):
-            inv_ctx[c.get("id")] = "".join(tm.itertext()).strip()
+        if tm is None or "InvestmentIdentifierAxis" not in (tm.get("dimension") or ""):
+            continue
+        # 2026-09-23 根因修复:文件里上期(12/31)SOI 表排在前,first-fact-wins 曾
+        # 吃进上期行 —— 脚注编号跨期错位把 TSLX 四条权益行伪标非应计((12) 在上期
+        # 表是另一条定义),上期独有的 tranche 还伪造"当期标记落不了行"。只收
+        # period 终点 == report_date 的 context,上期行整体出局。
+        per = c.find(f"{XBRLI}period")
+        end = None
+        if per is not None:
+            end = per.findtext(f"{XBRLI}endDate") or per.findtext(f"{XBRLI}instant")
+        if end is None or end.strip() != report_date:
+            n_prior_ctx += 1
+            continue
+        inv_ctx[c.get("id")] = "".join(tm.itertext()).strip()
     full_text = re.sub(r"\s+", " ", " ".join(root.itertext()))
     na_fn = _non_accrual_footnote_num(full_text)
     # per-loan rate floors via footnote definitions (BXSL style): the SOI footnotes
@@ -685,6 +726,61 @@ def normalize_issuer(identifier: str) -> str:
     return base or s
 
 
+# ── 跨通道/跨季度规范化(2026-09-23;仅用于 diff 匹配与展示,绝不进 deal_uid)──
+# 背景:channel A 的 identifier 用 " | " 分隔、channel B 用 ", ",ARCC Q1→Q2 跨通道后
+# uid 全变(1478 行只配上 45 行);TSLX 把 par 金额写进 identifier,每季摊还一次 uid
+# 就换一次。deal_uid 保持原样(2026-08-14 记忆:重排 uid = diff 大爆炸,禁);
+# 跨季匹配改用下面的 canon 键,在 diff 时对两侧**现算**,旧 parquet 无需迁移。
+_SEP_PIPE = re.compile(r"\s*\|\s*")
+_PAR_AMT = re.compile(r"\(\s*(?:[A-Z]{3}\s*)?\$?\s*[\d,]+(?:\.\d+)?\s*par", re.IGNORECASE)
+_THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
+
+
+def canon_identifier_display(identifier: str) -> str:
+    """通道归一(保大小写,供展示/issuer 提取):' | ' → ', ',去千分位逗号。"""
+    s = _SEP_PIPE.sub(", ", str(identifier).strip())
+    return _THOUSANDS.sub("", s)
+
+
+def canon_identifier(identifier: str) -> str:
+    """匹配用规范形(小写):通道归一 + 抹掉逐季摊还的 par 金额。"""
+    s = canon_identifier_display(identifier)
+    s = _PAR_AMT.sub("($PAR", s)
+    return s.lower()
+
+
+_AFFIL_WORDS = re.compile(r"\b(non-affiliated issuer|non-affiliated|affiliated issuer|"
+                          r"affiliated|non-controlled|controlled)\b")
+_ACQ_TAIL = re.compile(r"initial acquisition date.*$")
+
+def relaxed_na_key(identifier: str) -> str:
+    """canon 之上的松弛键(2026-09-23,只用于非应计标记兜底 join):去归属后缀/
+    收购日尾巴,去全部数字与标点(tranche 编号、股数、发行人尾点),逐词轻词干
+    (Holdings/Holding 单复归一)。同一发行人同一证券类的各 tranche 归并为一键。"""
+    s = canon_identifier(identifier)
+    s = _AFFIL_WORDS.sub(" ", s)
+    s = _ACQ_TAIL.sub(" ", s)
+    s = re.sub(r"[^a-z]+", " ", s)
+    toks = [t[:-1] if (t.endswith("s") and len(t) > 3) else t for t in s.split()]
+    return " ".join(toks)
+
+
+def deal_match_key(cik, identifier) -> str:
+    """跨季度匹配键(diff 专用)。不含 issuer:issuer 本就派生自 identifier。"""
+    return f"{cik}|{canon_identifier(identifier)}"
+
+
+_TSLX_PREFIX = re.compile(r"^(?:Debt|Equity)\s+Investments?\s+", re.IGNORECASE)
+
+
+def issuer_display(identifier: str) -> str:
+    """展示/聚合用 issuer:先通道归一再走 normalize_issuer(函数本身不改),
+    然后剥 TSLX 的 'Debt Investments ' 句式前缀(normalize_issuer 里那支是死代码,
+    禁改故在此补)。**绝不回填进 uid 输入链。**"""
+    base = normalize_issuer(canon_identifier_display(identifier))
+    return _TSLX_PREFIX.sub("", base).strip() or base
+
+
 def fka_alias(identifier: str) -> str | None:
     m = _FKA.search(str(identifier))
     return m.group(1).strip() if m else None
@@ -817,6 +913,7 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
         rows.append({
             "bdc": ticker, "cik": cik, "as_of": rd, "adsh": adsh,
             "identifier": ident, "issuer": issuer, "fka": fka_alias(ident),
+            "issuer_clean": issuer_display(ident),
             # uid keyed on the FULL identifier (the SOI's own stable per-tranche key) —
             # unique within a filing AND stable across quarters (same loan keeps its
             # identifier string), which is exactly what the cross-period diff needs.
@@ -906,12 +1003,60 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     # P1.5-C/D: per-loan maturity from the primary-HTML SOI table (authoritative; works
     # where the filer tabulates dates in <tr> rows, e.g. TSLX/GBDC) overrides the
     # identifier regex; per-loan non-accrual from the row footnote markers.
-    df["non_accrual"] = [(html_attrs.get(i, {}) or {}).get("non_accrual") for i in df["identifier"]]
+    # ── html_attrs 三级解析(2026-09-23):exact → canon → (NA 专用) relaxed。
+    # 跨通道拼法漂移(A 通道 " | " vs B 通道 ", "、发行人尾点、单复数、tranche
+    # 编号错位)此前让脚注标记静默丢失;现在每一个当期标记要么落行、要么大声报。
+    _canon_attrs = {}
+    for _k, _v in html_attrs.items():
+        _ck = canon_identifier(_k)
+        if _ck in _canon_attrs:
+            _a = _canon_attrs[_ck]
+            _a["non_accrual"] = bool(_a.get("non_accrual")) or bool(_v.get("non_accrual"))
+            for _f in ("maturity", "maturity_source", "rate_floor"):
+                if _a.get(_f) is None and _v.get(_f) is not None:
+                    _a[_f] = _v[_f]
+        else:
+            _canon_attrs[_ck] = dict(_v)
+
+    def _hget(ident):
+        return html_attrs.get(ident) or _canon_attrs.get(canon_identifier(ident)) or {}
+
+    df["non_accrual"] = [_hget(i).get("non_accrual") for i in df["identifier"]]
+
+    _df_exact = set(df["identifier"].astype(str))
+    _df_canon = {canon_identifier(i) for i in _df_exact}
+    _na_keys = [k for k, v in html_attrs.items() if (v or {}).get("non_accrual")]
+    _stage = {"exact": 0, "canon": 0, "relaxed": 0}
+    _unjoined, _multi_rows = [], 0
+    from collections import defaultdict as _dd
+    _ridx = _dd(list)
+    for _pos, _ident in zip(df.index, df["identifier"].astype(str)):
+        _ridx[relaxed_na_key(_ident)].append(_pos)
+    for _k in _na_keys:
+        if _k in _df_exact:
+            _stage["exact"] += 1; continue
+        if canon_identifier(_k) in _df_canon:
+            _stage["canon"] += 1; continue
+        _rp = _ridx.get(relaxed_na_key(_k))
+        if _rp:
+            _stage["relaxed"] += 1
+            if len(_rp) > 1:
+                _multi_rows += len(_rp)   # 松弛键撞多行:整组打标(security-class 级,偏保守)
+            df.loc[_rp, "non_accrual"] = True
+        else:
+            _unjoined.append(_k)
+    _na_joined = int((df["non_accrual"] == True).sum())  # noqa: E712
+    na_join_stat = {"html": len(_na_keys), **_stage, "joined_rows": _na_joined,
+                    "multi_row_tagged": _multi_rows, "unjoined": len(_unjoined),
+                    "unjoined_keys": [k[:140] for k in _unjoined[:12]]}
+    if _unjoined:
+        _alert(f"{ticker}: {len(_unjoined)}/{len(_na_keys)} 非应计标记三级 join 后仍无法"
+               f"落行 — 样例 {_unjoined[0][:100]!r}")
     # per-loan floors from SOI footnote definitions (BXSL); XBRL-fact floors (none
     # tagged by our filers today) keep precedence if they ever appear
-    df["rate_floor"] = [f if pd.notna(f) else (html_attrs.get(i, {}) or {}).get("rate_floor")
+    df["rate_floor"] = [f if pd.notna(f) else _hget(i).get("rate_floor")
                         for i, f in zip(df["identifier"], df["rate_floor"])]
-    html_mat = [(html_attrs.get(i, {}) or {}).get("maturity") for i in df["identifier"]]
+    html_mat = [_hget(i).get("maturity") for i in df["identifier"]]
     df["maturity"] = [hm if hm else m for hm, m in zip(html_mat, df["maturity"])]
     df["maturity_source"] = ["primary_html" if hm else s
                              for hm, s in zip(html_mat, df["maturity_source"])]
@@ -922,6 +1067,15 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
                                                    df.loc[miss, "identifier"])]
     df.loc[miss, "maturity_source"] = "imputed_tenor"
     df = df.copy()                       # de-fragment after the per-column assignments
+
+    # 发行人小计行剔除(2026-09-23):SOI 里 cost 为空的"发行人合计"行被当成 deal
+    # 吃进来,ARCC 39 行/$5.07B、OBDC 等合计 ~$6B 被重复计数(gross−net 缺口分毫不差
+    # 等于这些行之和),并直接污染前端集中度表。判据:cost 为 NaN 且存在同前缀明细行,
+    # 且 FV ≈ Σ明细 或 ≈ 某单条明细。只剔本季构建,旧 PIT 快照不动(diff 侧对称过滤)。
+    df, n_subtotal, fv_subtotal = drop_subtotal_rows(df)
+    if n_subtotal:
+        _alert(f"{ticker}: dropped {n_subtotal} issuer-subtotal row(s) "
+               f"(${fv_subtotal/1e9:.2f}B double-counted FV)")
 
     # intra-BDC look-through weight denominator = Σtranche FV (gross, internally consistent;
     # weights within a BDC sum to 1). companyfacts net is the QA anchor, NOT the denominator
@@ -936,7 +1090,11 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     manifest = {
         "ticker": ticker, "cik": cik, "adsh": adsh, "reportDate": rd,
         "filingDate": filing["filingDate"], "form": filing["form"], "channel": channel,
-        "rows": len(df), "rows_dropped_no_fv": n_dropped, "fv_col": fv_col,
+        "rows": len(df), "rows_dropped_no_fv": n_dropped,
+        "rows_dropped_subtotal": n_subtotal,
+        "subtotal_fv_dropped": (round(fv_subtotal, 1) if n_subtotal else 0.0),
+        "non_accrual_join": na_join_stat,
+        "fv_col": fv_col,
         "companyfacts_net_fv": cf, "net_anchor_source": cf_source,
         "sum_tranche_fv": sum_tranche,
         "soi_total_row_fv": total_row_fv,
@@ -947,9 +1105,66 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
                                "pik_rate", "rate_floor", "non_accrual"] if k in df},
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "non_accrual": non_accrual_bdc,
+        "non_accrual_check": _na_cross_check(ticker, df, non_accrual_bdc),
         "qa": _qa_gate(ticker, df, cf, gross_net),
     }
     return {"df": df, "manifest": manifest}
+
+
+def _na_cross_check(ticker: str, df: pd.DataFrame, na_bdc: dict) -> dict:
+    """BDC 披露口径 vs 逐笔标记聚合的交叉对账(2026-09-23):两个估计量此前从未互验,
+    BXSL 0.4% vs 逐笔 1.81% 差 4.5 倍无人报警。差 >2 倍(双方都 >0.1%)即大声告警。"""
+    fv = pd.to_numeric(df.get("fair_value"), errors="coerce")
+    na_mask = df.get("non_accrual") == True  # noqa: E712
+    perloan = float(fv[na_mask].sum() / fv.sum()) if fv.sum() else None
+    disclosed = (na_bdc or {}).get("non_accrual_pct_fv")
+    out = {"perloan_pct_fv": (round(perloan, 5) if perloan is not None else None),
+           "disclosed_pct_fv": disclosed}
+    if perloan and disclosed and perloan > 0.001 and disclosed > 0.001:
+        ratio = perloan / disclosed
+        if ratio > 2.0 or ratio < 0.5:
+            _alert(f"{ticker}: non-accrual 双源不一致 disclosed={disclosed:.2%} "
+                   f"vs per-loan={perloan:.2%} (×{ratio:.1f}) — 至少一侧解析有误")
+            out["mismatch"] = round(ratio, 2)
+    elif disclosed is None and perloan and perloan > 0.001:
+        # 正则腐烂哨兵(2026-09-23):下季 MD&A 措辞漂移时 extract_non_accrual_bdc
+        # 会安静地返回 None,而逐笔脚注仍在 —— 这是"披露解析失败"最可靠的信号,
+        # 必须出声,不许静默降级成 null。
+        _alert(f"{ticker}: BDC 级非应计披露解析失败(None)而逐笔有标记 "
+               f"per-loan={perloan:.2%} — MD&A 措辞可能已漂移,查 extract_non_accrual_bdc")
+        out["disclosed_parse_failed"] = True
+    return out
+
+
+def drop_subtotal_rows(df: pd.DataFrame):
+    """剔除发行人小计行:cost 为 NaN、identifier 是若干明细行的公共前缀、
+    且 FV ≈ Σ明细(±0.5%)或 ≈ 某单条明细(重复表头)。返回 (df, 剔除行数, 剔除FV)。
+    diff 端(RunBDCLookThrough)对 prev 快照做同样过滤,保持两侧对称。"""
+    if df.empty or "cost" not in df.columns:
+        return df, 0, 0.0
+    canon_disp = df["identifier"].astype(str).map(canon_identifier_display)
+    fv = pd.to_numeric(df["fair_value"], errors="coerce")
+    cost = pd.to_numeric(df["cost"], errors="coerce")
+    drop_idx = []
+    bare = df.index[cost.isna() & fv.notna()]
+    for i in bare:
+        pref = canon_disp.loc[i]
+        if not pref or len(pref) < 8:
+            continue
+        kids = df.index[(df.index != i) & canon_disp.str.startswith(pref + ", ")]
+        if len(kids) == 0:
+            continue
+        kfv = fv.loc[kids].dropna()
+        if kfv.empty:
+            continue
+        v = float(fv.loc[i]); ks = float(kfv.sum())
+        tol_sum = max(1.0, 0.005 * abs(ks))
+        if abs(v - ks) <= tol_sum or (kfv.sub(v).abs() <= max(1.0, 0.001 * abs(v))).any():
+            drop_idx.append(i)
+    if not drop_idx:
+        return df, 0, 0.0
+    fv_dropped = float(fv.loc[drop_idx].sum())
+    return df.drop(index=drop_idx).reset_index(drop=True), len(drop_idx), fv_dropped
 
 
 def _qa_gate(ticker: str, df: pd.DataFrame, cf, gross_net) -> dict:
@@ -976,11 +1191,22 @@ def _qa_gate(ticker: str, df: pd.DataFrame, cf, gross_net) -> dict:
     return {"ok": ok, "flags": flags}
 
 
+def _snapshot_signature(df: pd.DataFrame) -> tuple:
+    """快照内容签名(重述检测用):行数、ΣFV、Σcost、非应计数、列集合。"""
+    fv = pd.to_numeric(df.get("fair_value"), errors="coerce")
+    cost = pd.to_numeric(df.get("cost"), errors="coerce")
+    return (len(df), round(float(fv.sum(skipna=True) or 0), 0),
+            round(float(cost.sum(skipna=True) or 0), 0),
+            int((df.get("non_accrual") == True).sum()),  # noqa: E712
+            tuple(sorted(df.columns)))
+
+
 # ── persistence (PIT, append-only) ──────────────────────────────────────────
 def persist(results: dict, store: str, write: bool) -> None:
     os.makedirs(store, exist_ok=True)
     manifest_path = os.path.join(store, "latest_manifest.json")
     manifest = {}
+    restated = set()   # 本次触发归档(重述)的 ticker,heartbeat 打 * 标
     if write and os.path.exists(manifest_path):
         try:
             manifest = json.load(open(manifest_path))
@@ -992,14 +1218,35 @@ def persist(results: dict, store: str, write: bool) -> None:
             tdir = os.path.join(store, t)
             os.makedirs(tdir, exist_ok=True)
             snap = os.path.join(tdir, f"soi_{mf['reportDate']}_{mf['adsh']}.parquet")
-            df.to_parquet(snap, index=False)            # PIT snapshot, never overwrite
+            # 2026-09-23:旧注释宣称 "never overwrite" 但 to_parquet 无条件执行 ——
+            # 9/8 的静默重解析把同 adsh 账本 457→601 行、loan_fv −$730.6M 追溯改写,
+            # 9/01–9/04 的日报从此不可复现。现改为**签名级守卫**:行数/ΣFV/Σcost/
+            # 列集合/非应计数任一变化 → 先把旧文件归档到 archive/ 再写(留 PIT 痕);
+            # 签名相同的日常幂等重写仍原地覆盖(微小 dtype 噪声不值得每日归档)。
+            if os.path.exists(snap):
+                try:
+                    old = pd.read_parquet(snap)
+                    if _snapshot_signature(old) != _snapshot_signature(df):
+                        adir = os.path.join(tdir, "archive")
+                        os.makedirs(adir, exist_ok=True)
+                        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                        arc = os.path.join(adir, os.path.basename(snap).replace(
+                            ".parquet", f".{stamp}.parquet"))
+                        os.replace(snap, arc)
+                        restated.add(t)
+                        _alert(f"{t}: snapshot content changed (restatement) — "
+                               f"archived prior version to archive/{os.path.basename(arc)}")
+                except Exception as e:  # noqa: BLE001 — 归档失败不阻塞写入,但要出声
+                    _alert(f"{t}: snapshot archive check failed: {e!r}")
+            df.to_parquet(snap, index=False)
             manifest[t] = mf
     if write:
         json.dump(manifest, open(manifest_path, "w"), indent=2)
         hb = os.path.join(store, "heartbeat.log")
         ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        line = " ".join(f"{t}:{results[t]['manifest']['reportDate']}({results[t]['manifest']['rows']})"
-                        for t in results)
+        line = " ".join(f"{t}{'*' if t in restated else ''}:"
+                        f"{results[t]['manifest']['reportDate']}({results[t]['manifest']['rows']})"
+                        for t in results)   # * = 本次发生重述归档
         with open(hb, "a") as fh:
             fh.write(f"{ts} refreshed {line}\n")
 

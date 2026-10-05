@@ -517,11 +517,11 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                   <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>SHARPE</div>
                   <div style={{ fontWeight: 700 }}>{s.sharpe.toFixed(2)}</div>
                 </div>
+                <div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>MAX DD</div>
+                  <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
+                </div>
                 {!isBenchmark && (<>
-                  <div>
-                    <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>MAX DD</div>
-                    <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
-                  </div>
                   <div>
                     <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>WIN RATE</div>
                     <div style={{ fontWeight: 700 }}>{s.winRate.toFixed(0)}%</div>

@@ -32,6 +32,7 @@ from urllib.parse import urlencode
 
 import requests
 
+from crypto_trading.crypto_common.checkpoint import Checkpoint
 from crypto_trading.crypto_common.config import SIGNALS_DIR
 from crypto_trading.crypto_common.kalshi.rest_event import KalshiEventOrderClient
 
@@ -40,7 +41,15 @@ OUT_DIR = SIGNALS_DIR / "w8_demo_mirror"
 DEMO_BASE = "https://external-api.demo.kalshi.co/trade-api/v2"
 SERIES = ("KXBTC15M", "KXETH15M", "KXDOGE15M", "KXXRP15M")
 BOOK = "tilted"
-VERSION = "w8_v8a_20260914"
+VERSION = "w8_v10_20260930"  # v10: mirrors the FV60-gated treatment book
+# 2026-10-02 disk incident: the 1 s loop rewrote the full ledger every second,
+# almost always only to bump these check timestamps (~105 GB/day). Order,
+# exit, settlement and retry changes are material and still written at once;
+# every save() at a crash-safety point stays unconditional.
+VOLATILE = ("last_heartbeat", "pid", "observer_status", "counters",
+            "markets/*/settlement_checked_ts", "markets/*/orders/*/checked_ts",
+            "markets/*/orders/*/error_logged_ts")
+CHECKPOINT_INTERVAL_SECONDS = 30
 MIN_REM_S, MAX_REM_S = 180., 960.
 MAX_SIGNAL_AGE = 15.
 MAX_OPEN_RISK = 6.
@@ -179,6 +188,12 @@ class Mirror:
         self.state.setdefault("queued", {})
         self.state.setdefault("deferred", {})
         self.state["execution_revision"] = "20260915_book_and_exit_recovery"
+        self.checkpoint = Checkpoint(lambda _path, _state: self.save(), volatile=VOLATILE,
+                                     interval=CHECKPOINT_INTERVAL_SECONDS)
+
+    def save_if_changed(self):
+        """Loop/heartbeat persistence: skip writes that would only move check timestamps."""
+        return self.checkpoint.save(self.path, self.state)
 
     def save(self):
         OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -611,7 +626,7 @@ class Mirror:
                           pending_orders=sum(len(self.pending(m)) for m in active.values()),
                           open_net_contracts=sum(abs(self.net(m)) for m in active.values()))
         self.event("heartbeat", **{k: self.state[k] for k in ("pid", "mode", "observer_status", "pending_orders", "open_net_contracts", "net_pnl_usd")})
-        self.save()
+        self.save_if_changed()
 
 
 def run(*, dry_run, limit=0):
@@ -634,7 +649,7 @@ def run(*, dry_run, limit=0):
             count += mirror.drain_queued()
             count += mirror.manage_exits()
             mirror.heartbeat()
-            mirror.save()
+            mirror.save_if_changed()
             if limit and count >= limit:
                 mirror.event("stop", reason="limit", count=count)
                 return count

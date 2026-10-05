@@ -12,7 +12,10 @@ refuse to run on a borrowed key — see ``kalshi_key(borrowed_ok=False)``.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,6 +65,178 @@ class KalshiKey:
 
     def expanded_path(self) -> str:
         return os.path.expanduser(self.private_key_path)
+
+
+# ── Per-user PROD accounts (2026-10-01) ────────────────────────────────────
+# Written by the web server's /api/kalshi-keys flow ONLY after a signed live
+# check passes; stored OUTSIDE the public repo. Owner orders always go first
+# (execution_events.submit); these accounts mirror the identical intent after.
+USER_KEY_DIR = Path(os.environ.get("KALSHI_USER_KEY_DIR")
+                    or (Path.home() / ".kalshi"))
+_USER_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+@dataclass(frozen=True)
+class UserAccount:
+    user_id: str            # Supabase auth.users.id
+    key: KalshiKey
+    ratio: float = 1.0      # owner-approved copy ratio: user contracts = floor(owner contracts x ratio)
+
+
+def trading_user_ids() -> set[str]:
+    """Owner-controlled live-trading allowlist (2026-10-01, user directive).
+
+    A validated key alone only lets that user SEE his own account; it never
+    starts trading. Mirroring W7 orders into a user's account requires the
+    owner, BY HAND, to record an approval with the copy ratio
+    (~/.kalshi/trading/approved/<uid>.json, see below), add the user id here
+    (crypto_trading/.env, gitignored: KALSHI_PROD_TRADING_USER_IDS=<uid>,<uid>)
+    and restart the runner at a safe point. Review first with the read-only
+    `ops/kalshi_users.sh review <email>`. Empty / missing = nobody but the
+    owner trades.
+    """
+    raw = env("KALSHI_PROD_TRADING_USER_IDS")
+    return {u.strip() for u in raw.split(",") if _USER_ID_RE.fullmatch(u.strip())}
+
+
+# ── Standard live-trading enable flow (2026-10-04, owner directive) ─────────
+# The user APPLIES on the web panel (risk acknowledgement + requested ratio):
+#   ~/.kalshi/trading/requests/<uid>.json   written by the web server; never trades by itself
+# the owner APPROVES by hand after `ops/kalshi_users.sh review <email>`:
+#   ~/.kalshi/trading/approved/<uid>.json   {"user_id": ..., "ratio": ...} written by the owner
+#   + the id in KALSHI_PROD_TRADING_USER_IDS + a runner restart at a safe point
+# the user (panel) or the owner (by hand) can STOP at any time:
+#   ~/.kalshi/trading/stopped/<uid>.json    honoured from the very next order
+# Starting to trade therefore always needs the owner's own hand and a restart;
+# stopping needs neither.
+MIRROR_RATIOS = (0.10, 0.25, 0.50, 1.00)
+
+
+def trading_dir() -> Path:
+    return USER_KEY_DIR / "trading"
+
+
+def approved_ratio(user_id: str) -> float | None:
+    """The owner-approved copy ratio (0 < r <= 1) for this user, else None."""
+    try:
+        rec = json.loads((trading_dir() / "approved" / f"{user_id}.json").read_text())
+        ratio = float(rec.get("ratio"))
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+    if rec.get("user_id") != user_id or not (0.0 < ratio <= 1.0):
+        return None
+    return ratio
+
+
+def trading_stopped(user_id: str) -> bool:
+    return (trading_dir() / "stopped" / f"{user_id}.json").exists()
+
+
+def kalshi_user_accounts() -> list[UserAccount]:
+    """Allowlisted, validated, not-disabled per-user PROD accounts.
+
+    Requires all of: the owner's allowlist entry, registry status 'active',
+    both suffixed env entries, the key file present, no disabled/<uid> marker,
+    an owner approval record with a valid ratio, no stop marker, and a key id
+    different from the owner's (an account can never be double-ordered). The
+    key files, approvals and stop markers are re-read on every call; the
+    allowlist is fixed for the life of the process (restart to add).
+    """
+    allowed = trading_user_ids()
+    if not allowed:
+        return []
+    try:
+        registry = json.loads((USER_KEY_DIR / "users.json").read_text())
+    except (OSError, ValueError):
+        return []
+    envf = _parse_env_file(USER_KEY_DIR / "users.env")
+    owner_kids, owner_pems = _owner_prod_identity()
+    out = []
+    for uid, rec in sorted(registry.items()):
+        if uid not in allowed or not _USER_ID_RE.fullmatch(uid) \
+                or not isinstance(rec, dict) or rec.get("status") != "active":
+            continue
+        if (USER_KEY_DIR / "disabled" / uid).exists():
+            continue
+        if trading_stopped(uid):
+            continue        # stopped by the user or the owner: no order from the next one on
+        ratio = approved_ratio(uid)
+        if ratio is None:
+            continue        # no owner approval on record (written by the owner by hand)
+        kid = envf.get(f"KALSHI_PROD_API_KEY_ID_{uid}", "")
+        kpath = envf.get(f"KALSHI_PROD_PRIVATE_KEY_PATH_{uid}", "")
+        if not kid or not kpath or kid in owner_kids or not Path(kpath).is_file():
+            continue
+        if _key_fingerprint(kpath) in owner_pems:
+            continue        # the owner's own private key re-uploaded under another login
+        out.append(UserAccount(uid, KalshiKey(kid, kpath, borrowed=False), ratio))
+    return _one_platform_account_per_kalshi_account(out, registry, owner_kids)
+
+
+def _one_platform_account_per_kalshi_account(accounts, registry, owner_kids):
+    """Drop EVERY user whose Kalshi account is also reachable through another
+    user id or the owner (same key id, or overlapping account key-id hashes
+    recorded at verification) - one Kalshi account is never ordered twice."""
+    import hashlib
+    owner_h = {hashlib.sha256(k.encode()).hexdigest() for k in owner_kids}
+    sets = {}
+    for a in accounts:
+        rec = registry.get(a.user_id) or {}
+        h = set(rec.get("account_key_hashes") or [])
+        h.add(hashlib.sha256(a.key.key_id.encode()).hexdigest())
+        sets[a.user_id] = h
+    keep = []
+    for a in accounts:
+        mine = sets[a.user_id]
+        shared = any(mine & other for uid, other in sets.items() if uid != a.user_id)
+        if not shared and not (mine & owner_h):
+            keep.append(a)
+    return keep
+
+
+def _key_fingerprint(path: str) -> str | None:
+    try:
+        import hashlib
+        return hashlib.sha256(Path(os.path.expanduser(path)).read_bytes().strip()).hexdigest()
+    except OSError:
+        return None
+
+
+def _owner_prod_identity() -> tuple[set[str], set[str]]:
+    """Every key id / key file the OWNER's orders can sign with - never a user.
+
+    Includes the key the order path actually resolves (kalshi_key('margin',
+    borrowed_ok=False) prefers KALSHI_MARGIN_* when set), not only
+    KALSHI_PROD_API_KEY_ID.
+    """
+    kids, pems = set(), set()
+    for k in ("KALSHI_PROD_API_KEY_ID", "KALSHI_MARGIN_KEY_ID"):
+        v = env(k) or _PM_ENV.get(k, "")
+        if v:
+            kids.add(v)
+    paths = [env(k) or _PM_ENV.get(k, "") for k in
+             ("KALSHI_PROD_PRIVATE_KEY_PATH", "KALSHI_MARGIN_PRIVATE_KEY_PATH")]
+    try:
+        live = kalshi_key("margin", borrowed_ok=False)
+        kids.add(live.key_id)
+        paths.append(live.private_key_path)
+    except Exception:
+        pass
+    for p in paths:
+        fp = _key_fingerprint(p) if p else None
+        if fp:
+            pems.add(fp)
+    return kids, pems
+
+
+def disable_user_account(user_id: str, reason: str) -> None:
+    """Stop routing to one user (e.g. 401/403); the web flow re-verifies."""
+    if not _USER_ID_RE.fullmatch(user_id or ""):
+        return
+    d = USER_KEY_DIR / "disabled"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / user_id).write_text(json.dumps({"reason": reason[:200],
+                                         "at": time.time()}))
 
 
 def kalshi_key(namespace: str = "margin", *, borrowed_ok: bool = True) -> KalshiKey:

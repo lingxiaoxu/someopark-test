@@ -10,10 +10,33 @@ const labels = {
 };
 
 // The fifth mode uses the same Sidebar and in-place mode switch as World Cup.
-export default function CryptoNavEntry({ active, onSelect }: { active: boolean; onSelect: () => void }) {
+export default function CryptoNavEntry({ active, onSelect, collapsed }: { active: boolean; onSelect: () => void; collapsed?: boolean }) {
   const { i18n } = useTranslation();
   const language = (i18n.resolvedLanguage || i18n.language).split("-")[0];
   const label = labels[language as keyof typeof labels] || labels.en;
+
+  // Collapsed sidebar rail: icon-only square, same active inversion as the full button.
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={active}
+        title={label.title}
+        aria-label={label.title}
+        style={{
+          width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+          background: active ? "#fff" : "#111",
+          color: active ? "#111" : "#fff",
+          border: "2px solid var(--ink)",
+          boxShadow: "var(--shadow-pixel-sm)",
+          cursor: "pointer",
+        }}
+      >
+        <Bitcoin style={{ width: 16, height: 16 }} aria-hidden="true" />
+      </button>
+    );
+  }
 
   return (
     <button

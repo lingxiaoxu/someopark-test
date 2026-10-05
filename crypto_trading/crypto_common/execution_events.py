@@ -25,7 +25,10 @@ whether it is a fill or a structural refusal is itself the probe's data.
 """
 from __future__ import annotations
 
+import json
 import logging
+import math
+import time
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -283,6 +286,28 @@ class LiveOrderRefused(RuntimeError):
     """A live intent hit a closed gate. Never downgraded silently."""
 
 
+def _trim_table(decision: dict) -> dict:
+    """Audit copy of a table decision for the order row (no bulky inputs)."""
+    keep = ("action", "reason", "bin", "slot", "mult", "scenario", "slots", "table_run",
+            "table_age_s", "cell_mean_c", "missing")
+    out = {k: decision[k] for k in keep if k in decision}
+    inp = decision.get("inputs") or {}
+    out["inputs"] = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in inp.items()
+                     if k in ("mkt_trend60", "mkt_vr2", "dev8h", "flow_1m", "mom_1m_bp", "flow_valid")}
+    return out
+
+
+def _fill_count(order_result: dict, default: float) -> float:
+    """Contracts filled according to the venue response; `default` (the count sent)
+    when the response cannot be read, so the window cap errs on the safe side."""
+    try:
+        resp = order_result.get("response")
+        resp = json.loads(resp) if isinstance(resp, str) else (resp or {})
+        return float(resp["fill_count"])
+    except (KeyError, TypeError, ValueError):
+        return float(default)
+
+
 class EventExecutionRouter:
     """Order router for Kalshi event contracts (binary settlement)."""
 
@@ -293,6 +318,85 @@ class EventExecutionRouter:
 
     # ── prod path: implemented, ARMED ONLY BY THE USER ────────────────────
     MIN_SHARD2_USD = 30.0       # one 25-lot at the band ceiling ≈ $24.50 + fee
+
+    # PROD-ONLY sizing override (user directives 2026-09-30): real orders are
+    # resized here; the paper book stays at config `contracts` (25 — the
+    # registered cell) and the demo mirror inherits the caller's size
+    # unchanged. Keyed strategy→series so no other caller is affected. This
+    # lives HERE and not in config.yaml / w7_noisefade.py because those files
+    # are byte-hash-bound by the w9/w10/w9rnn paper observers — editing them
+    # freezes their admissions (2026-09-29 incident).
+    #
+    # v2 (2026-09-30, user): sizes switch by UTC hour block. The 00-05 UTC
+    # night band (US evening / Asia morning) ran -1.55c/contract vs +1.81c
+    # for the other 18 hours (clustered t -2.28; negative in all 5 weeks,
+    # and all four synchronized cross-coin flip events fell inside it), so
+    # the night band trades small and the day band carries the size. The
+    # 29-day counterfactual beats an equal-average flat allocation +47%
+    # with a smaller drawdown; capacity per the 2026-09-29 ladder study.
+    PROD_SIZING: dict = {"w7_noisefade": {
+        "night_hours_utc": (0, 1, 2, 3, 4, 5),
+        # v3 (2026-10-02, user): day sizes 60/40 -> 40/30 after the table-driven
+        # entry went live (top1+top2 can both fire in one window).
+        # v4 (2026-10-04, user): night 15/10 -> 20/20 (BTC and alts alike).
+        "day":   {"KXBTC15M": 40, "default": 30},
+        "night": {"KXBTC15M": 20, "default": 20},
+        # no-after-dump tier (user directive 2026-09-30, armed directly): a
+        # DAY-band NO order is cut to x0.25 when the coin's own index fell
+        # more than 50bp over the prior 60 minutes — the "freshly-dumped
+        # favourite" cell ran -3.4c/contract and was negative in all three
+        # sample weeks (clustered t -1.52, threshold-robust 30..120bp; the
+        # mirror cell, yes-after-dump, was the strongest positive at t +2.30).
+        # YES orders, the night band, paper and demo are never touched, and a
+        # missing/stale index reading fails OPEN to full size.
+        "no_dump": {"threshold_bp": -50.0, "mult": 0.25, "lookback_s": 1800},
+    }}
+
+    # PROD-ONLY day-band flow gate (user directive 2026-09-30, applied at the
+    # user's explicit instruction WITHOUT the pre-registration wait — the rule
+    # was validated externally by the user; the in-house books read it as two
+    # same-sign but individually insignificant measurements). During the DAY
+    # band only, a prod order is SKIPPED when the frozen price_flow_reversal_v1
+    # rule fires: last-60s momentum AND observed HL taker flow both against
+    # the held side (aligned flow <= -0.5). The night band never consults it,
+    # paper and demo are untouched, and the gate is FAIL-OPEN by construction:
+    # missing data, thin prints, stale books or ANY exception send the order
+    # normally — the gate may only ever skip on positive evidence, so a broken
+    # recorder can never silently reduce fills. Disable = enabled False +
+    # runner restart. Features/policy are imported from the downside_paper
+    # package (the registered implementations), never re-derived here.
+    FLOW_GATE: dict = {"w7_noisefade": {"enabled": True}}
+
+    # PROD-ONLY table-driven entry (user directive 2026-10-02, go-live after
+    # tests): W7 prod orders follow the 4-hourly scenario tables - for each
+    # coin/window the scenario at the moment of each entry bin decides top1
+    # (x1.5/x1/x0.5) and top2 (x1/x0.5), latest bin T-5.25. The T-8 call that
+    # W7 itself makes is gated here; the other bins come from live_watch/
+    # w7_table.py through this same submit, so every prod rule below still
+    # applies. A missing/stale table or an unclassifiable scenario falls back
+    # to the pre-2026-10-02 T-8 order (x1). Paper W7 and its demo mirror are
+    # untouched. Disable = enabled False + runner restart.
+    TABLE_LIVE: dict = {"w7_noisefade": {"enabled": True,
+                                         # top1 + top2 bought on one coin-window may not exceed
+                                         # cap_mult x the band's base size (user 2026-10-02):
+                                         # day BTC 60 / others 45, night 22 / 15.
+                                         "window_cap_mult": 1.5,
+                                         # no single entry above the base size (user 2026-10-05:
+                                         # "去掉 1.5 倍" for W7 prod, W11, W13); x0.5 still applies.
+                                         "max_size_mult": 1.0}}
+    # PROD-ONLY macro-release guard (user directive 2026-10-04, deployed the same day): for `after_s`
+    # after a scheduled US macro release (CPI, NFP, PPI, GDP, PCE, retail sales, weekly claims, JOLTS,
+    # ISM, consumer confidence, FOMC statement - crypto_common.macro_calendar, refreshed 4-hourly from
+    # FRED + the Fed's calendar page) every W7 prod order is cut to `contracts` per coin-window: the
+    # first leg takes it, the window cap is the same number so a second leg gets nothing. The paper
+    # mirrors (W11/W13) inherit it through this router. A missing, stale or broken calendar fails
+    # OPEN (full size) and is flagged in the audit row as macro_guard: stale|error.
+    MACRO_GUARD: dict = {"w7_noisefade": {"enabled": True, "after_s": 45 * 60, "contracts": 5}}
+    # PROD-ONLY entry band (user 2026-10-02): the paper book and its demo mirror
+    # keep MAIN [0.78, 0.98]; real orders need the favourite priced >= 0.79.
+    # Checked on the paper price BEFORE the +1c limit buffer.
+    # v2 (2026-10-04, user): [0.79, 0.98] -> [0.80, 0.97] for W7 prod and its paper mirrors W11/W13.
+    PROD_BAND: dict = {"w7_noisefade": (0.80, 0.97)}
 
     def gate_status(self) -> dict:
         """Every condition between this code and real money; never raises.
@@ -335,8 +439,123 @@ class EventExecutionRouter:
                                    "dedicated_key", "shard2_funded"))
         return status
 
+    @staticmethod
+    def _utc_hour() -> int:
+        """Current UTC hour; a seam so tests can pin the sizing band."""
+        return datetime.now(timezone.utc).hour
+
+    @staticmethod
+    def _tail_rows(path, max_bytes: int) -> list:
+        """Parse the last ``max_bytes`` of a jsonl file; [] on any problem."""
+        try:
+            with open(path, "rb") as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - max_bytes))
+                lines = f.read().decode("utf-8", "ignore").split("\n")
+        except OSError:
+            return []
+        if len(lines) > 1 and size > max_bytes:
+            lines = lines[1:]                     # drop the torn first line
+        out = []
+        for ln in lines:
+            if ln.strip():
+                try:
+                    out.append(json.loads(ln))
+                except ValueError:
+                    pass
+        return out
+
+    @classmethod
+    def _trend_bp(cls, coin: str, lookback_s: float = 1800.0) -> float | None:
+        """ln(index_now / index_lookback_ago) in bp from the live index recorder.
+
+        2026-09-30 v2 (user): lookback 3600 -> 1800s — the 30-minute window
+        separated the fresh-dump cell at -6.39c/contract (clustered t -2.14,
+        negative in all three weeks) vs -2.97c for 60 minutes, and the
+        hour-old-but-stabilised cohort the old window kept firing on was
+        harmless (-0.90c). Tail-reads today's file only — the tier is
+        day-band-only (06-23 UTC), so the lookback never crosses the UTC
+        midnight boundary. None on any gap or failure (fail open, full size).
+        """
+        try:
+            from crypto_trading.crypto_common.config import PRICE_DATA
+            day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            rows = cls._tail_rows(
+                PRICE_DATA / "index_proxy" / "live" / coin / f"{day}.jsonl",
+                256_000)
+            now = datetime.now(timezone.utc).timestamp()
+            s_now = s_old = None
+            for r in rows:
+                ts = r.get("ts")
+                if ts is None or r.get("stale"):
+                    continue
+                if ts <= now - lookback_s:
+                    if s_old is None or ts > s_old[0]:
+                        s_old = (ts, r["index"])
+                if ts <= now and (s_now is None or ts > s_now[0]):
+                    s_now = (ts, r["index"])
+            if not s_now or not s_old:
+                return None
+            if now - s_now[0] > 90 or (now - lookback_s) - s_old[0] > 90:
+                return None                        # stale anchors: fail open
+            import math
+            return math.log(s_now[1] / s_old[1]) * 1e4
+        except Exception as e:                                    # noqa: BLE001
+            logger.warning("[%s] trend60 fail-open: %s", coin, str(e)[:80])
+            return None
+
+    def _flow_gate_decision(self, ticker: str, side: str) -> dict:
+        """price_flow_reversal_v1 gate for DAY-band prod orders.
+
+        Reuses the registered downside_paper feature/policy code verbatim on
+        the live Hyperliquid recorder tails. ALWAYS returns an audit record —
+        {"decision": off|night|accept|skip|unclassified|error, ...} — which
+        the caller attaches to every order row, so a fail-open send is
+        distinguishable from an evaluated accept in the logs (2026-09-30
+        audit: 7% of day-band sends were thin-print unclassified and were
+        previously indistinguishable). Only an explicit 'skip' blocks.
+        """
+        cfg = self.FLOW_GATE.get(self.strategy)
+        if not cfg or not cfg.get("enabled"):
+            return {"decision": "off"}
+        sizing = self.PROD_SIZING.get(self.strategy) or {}
+        if self._utc_hour() in sizing.get("night_hours_utc", ()):
+            return {"decision": "night"}      # night band: gate off (directive)
+        try:
+            from crypto_trading.crypto_common.config import PRICE_DATA
+            from crypto_trading.crypto_strategies.downside_paper.features import (
+                compute_features)
+            from crypto_trading.crypto_strategies.downside_paper.policy import (
+                decide)
+            coin = ticker.split("15M", 1)[0][2:]
+            day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            base = PRICE_DATA / "hyperliquid"
+            feats = compute_features(
+                self._tail_rows(base / "context" / coin / f"{day}.jsonl", 96_000),
+                self._tail_rows(base / "book" / coin / f"{day}.jsonl", 1_500_000),
+                self._tail_rows(base / "trades" / coin / f"{day}.jsonl", 2_500_000),
+                datetime.now(timezone.utc).timestamp())
+            verdict = decide({"side": side}, feats, {})
+            d = verdict.get("decision")
+            if d in ("skip", "accept"):
+                return {"decision": d,
+                        "aligned_observed_flow_1m":
+                            verdict.get("aligned_observed_flow_1m"),
+                        "aligned_momentum_1m_bp":
+                            verdict.get("aligned_momentum_1m_bp")}
+            return {"decision": "unclassified",
+                    "reason": str(verdict.get("reason"))[:80],
+                    "flow_errors": [str(x)[:60] for x in
+                                    (feats.get("flow_errors") or [])[:3]]}
+        except Exception as e:                                    # noqa: BLE001
+            logger.warning("[%s] flow gate fail-open: %s",
+                           self.strategy, str(e)[:120])
+            return {"decision": "error", "reason": str(e)[:80]}
+
     def submit(self, *, ticker: str, side: str, entry_price: float,
-               contracts: int, armed: bool = False) -> dict:
+               contracts: int, armed: bool = False, size_mult: float | None = None,
+               entry_source: str | None = None, table_decision: dict | None = None) -> dict:
         """Submit one PROD events order (IOC taker, V2 single book).
 
         ``armed=False`` (the default, and the shipped configuration) records a
@@ -346,25 +565,355 @@ class EventExecutionRouter:
         gate raises LiveOrderRefused rather than silently downgrading.
         """
         self.armed = armed
+        sizing = self.PROD_SIZING.get(self.strategy)
+        no_dump_audit = None
+        if sizing:
+            band = ("night" if self._utc_hour() in sizing["night_hours_utc"]
+                    else "day")
+            table = sizing[band]
+            contracts = int(table.get(ticker.split("-", 1)[0],
+                                      table["default"]))
+            base_contracts = contracts           # the band's base size: the window cap is 1.5x THIS
+            nd = sizing.get("no_dump")
+            if nd and band == "day" and side == "no":
+                lb = float(nd.get("lookback_s", 1800.0))
+                tr = self._trend_bp(ticker.split("15M", 1)[0][2:], lb)
+                if tr is not None and tr < nd["threshold_bp"]:
+                    contracts = max(1, int(round(contracts * nd["mult"])))
+                    no_dump_audit = {"trend_bp": round(tr, 1),
+                                     "lookback_s": lb, "mult": nd["mult"]}
+                else:
+                    no_dump_audit = {"trend_bp":
+                                     None if tr is None else round(tr, 1),
+                                     "lookback_s": lb, "mult": 1.0}
+        macro, macro_flag = None, None
+        mg = self.MACRO_GUARD.get(self.strategy)
+        if mg and mg.get("enabled"):
+            try:
+                from crypto_trading.crypto_common import macro_calendar
+                ev = macro_calendar.active(time.time(), after_s=float(mg.get("after_s") or 2700))
+                if ev is not None:
+                    macro = {"event": ev["key"], "name": ev.get("name"), "release_utc": ev["t_utc"], "until": ev.get("until"),
+                             "contracts": int(mg.get("contracts") or 5)}
+                elif macro_calendar.freshness().get("stale"):
+                    macro_flag = "stale"
+            except Exception as e:                                    # noqa: BLE001
+                logger.warning("[%s] macro guard unavailable (fail open): %s", self.strategy, str(e)[:120])
+                macro_flag = "error"
+        band_lohi = self.PROD_BAND.get(self.strategy)
+        if band_lohi and not (band_lohi[0] <= float(entry_price) <= band_lohi[1]):
+            logger.info("[%s] PROD-BAND SKIP %s %s @ %.4f (band %s)", self.strategy, ticker,
+                        side, float(entry_price), band_lohi)
+            return {"status": "skipped_by_prod_band", "strategy": self.strategy, "env": "prod",
+                    "ticker": ticker, "side": side, "paper_price_dollars": round(float(entry_price), 4),
+                    "prod_band": list(band_lohi), "entry_source": entry_source or "w7_t8"}
+        if not sizing:
+            base_contracts = contracts
+        # Paper costs are depth-weighted walk averages and carry sub-cent
+        # precision; prod rejected the first such price on 2026-09-28
+        # (DOGE 0.8876 -> wire ask 0.1124 -> HTTP 400 invalid_price, while
+        # 0.0960 passed: sub-cent ticks are only legal below $0.10). Round the
+        # limit to the nearest whole cent - the IOC still fills at the book's
+        # own levels, so the drift is bounded by half a cent and ~unbiased.
+        entry_price = int(float(entry_price)*100+0.5)/100.0
+        # +1c limit buffer (user directive 2026-09-30): the arrival-gap study
+        # showed IOC orders dying because the ask moved ~1c past the second-old
+        # paper price while the missed tickets were 98% winners (+5.6c/张), so
+        # the limit is lifted ONE cent, capped at 0.99. Kalshi IOC fills at the
+        # BOOK price, so the buffer never worsens a fill that was already
+        # available at the paper price — it only converts near-miss zeros.
+        # EXCLUDED by the user's design: a dump-quartered NO order (chasing
+        # there would buy back into the -3.4c/张 fresh-dump cell). Scoped to
+        # strategies with a PROD_SIZING entry (w7), never other callers.
+        paper_price = entry_price
+        buffer_c = 0
+        if self.strategy in self.PROD_SIZING and not (
+                no_dump_audit and no_dump_audit.get("mult") != 1.0):
+            cents = int(round(entry_price * 100))
+            if cents < 99:
+                buffer_c = 1
+                entry_price = (cents + 1) / 100.0
         intent = {"strategy": self.strategy, "env": "prod", "ticker": ticker,
                   "side": side, "price_dollars": round(entry_price, 4),
+                  "paper_price_dollars": round(paper_price, 4),
+                  "limit_buffer_c": buffer_c,
                   "contracts": contracts, "tif": "immediate_or_cancel"}
+        if no_dump_audit is not None:
+            intent["no_dump"] = no_dump_audit
+        if macro is not None:
+            intent["macro"] = macro
+        if macro_flag is not None:
+            intent["macro_guard"] = macro_flag
+        table_cfg = self.TABLE_LIVE.get(self.strategy)
+        reserved = 0                             # window-cap contracts reserved on the ledger (see below)
+        if table_cfg and table_cfg.get("enabled"):
+            if entry_source is None:
+                # W7's own T-8 call: ask the table about the T-8.25 bin.
+                try:
+                    from crypto_trading.crypto_strategies.w7_scenarios import live_plan
+                    table_decision = live_plan.decide(
+                        ticker.split("15M", 1)[0][2:], live_plan.close_ts_from_ticker(ticker),
+                        live_plan.LIVE_BIN, side, ticker=ticker)
+                except Exception as e:                            # noqa: BLE001
+                    table_decision = {"action": "fallback", "reason": f"error: {str(e)[:100]}"}
+                if table_decision["action"] == "skip":
+                    logger.info("[%s] TABLE SKIP %s %s at T-8.25 (%s)", self.strategy, ticker,
+                                side, table_decision.get("scenario"))
+                    return {"status": "skipped_by_table", **intent, "entry_source": "w7_t8",
+                            "table": _trim_table(table_decision)}
+                if table_decision["action"] == "trade":
+                    size_mult = table_decision["mult"]
+                    entry_source = f"table_{table_decision['slot']}_T-8.25"
+                else:
+                    entry_source = "t8_fallback"
+            max_mult = float(table_cfg.get("max_size_mult") or 1.0)
+            if size_mult is not None and float(size_mult) > max_mult:
+                intent["size_mult_table"] = float(size_mult)              # audit: what the table asked for
+                size_mult = max_mult
+            if size_mult is not None and size_mult != 1.0:
+                contracts = max(1, int(contracts * float(size_mult) + 0.5))   # same rounding as the backtest
+                intent["contracts"] = contracts
+            intent["entry_source"] = entry_source
+            intent["size_mult"] = 1.0 if size_mult is None else float(size_mult)
+            if macro is not None and contracts > macro["contracts"]:
+                logger.info("[%s] MACRO GUARD %s %s: %d -> %d contracts (%s until %s)", self.strategy, ticker, side,
+                            contracts, macro["contracts"], macro["event"], macro.get("until"))
+                contracts = macro["contracts"]
+                intent["contracts"] = contracts
+            if table_decision is not None:
+                intent["table"] = _trim_table(table_decision)
+            cap_mult = float(table_cfg.get("window_cap_mult") or 0)
+            if cap_mult > 0:
+                try:
+                    from crypto_trading.crypto_common.kalshi.rest_event import (
+                        KalshiEventOrderClient)  # noqa: F401  (import failure = no send below either)
+                    from crypto_trading.crypto_strategies.w7_scenarios import live_plan
+                    cap = int(base_contracts * cap_mult + 1e-9)
+                    if macro is not None:
+                        cap = min(cap, macro["contracts"])
+                    # Reserve atomically: two orders on the same ticker (top1 + top2,
+                    # or threads racing) can never both pass a check-then-send. The
+                    # reservation is replaced by the real fill after the send and
+                    # released on every path that does not send.
+                    granted, already = live_plan.reserve(ticker, contracts, cap)
+                    intent["window_cap"] = {"cap": cap, "already": already}
+                    if granted < 1:
+                        logger.info("[%s] WINDOW-CAP SKIP %s %s: %.0f/%d already bought",
+                                    self.strategy, ticker, side, already, cap)
+                        return {"status": "skipped_by_window_cap", **intent}
+                    if granted < contracts:
+                        intent["window_cap"]["trimmed_from"] = contracts
+                        contracts = granted
+                        intent["contracts"] = contracts
+                    reserved = granted
+                except Exception as e:                            # noqa: BLE001
+                    # the ledger is a safety net; a broken ledger must not stop the
+                    # base-size order, so fall back to the base size at most
+                    logger.warning("[%s] window cap unavailable (%s); capping at base size",
+                                   self.strategy, str(e)[:100])
+                    contracts = min(contracts, base_contracts)
+                    intent["contracts"] = contracts
+                    intent.pop("window_cap", None)
+                    reserved = 0
+
+        if macro is not None and not (table_cfg and table_cfg.get("enabled")) and contracts > macro["contracts"]:
+            contracts = macro["contracts"]
+            intent["contracts"] = contracts
+
+        def _release() -> None:
+            # give back a reservation on any path that does not send the order
+            if reserved:
+                try:
+                    from crypto_trading.crypto_common.kalshi.rest_event import (
+                        KalshiEventOrderClient)  # noqa: F401
+                    from crypto_trading.crypto_strategies.w7_scenarios import live_plan
+                    live_plan.settle(ticker, reserved, 0.0)
+                except Exception as e:                            # noqa: BLE001
+                    logger.warning("[%s] reservation release failed: %s", self.strategy, str(e)[:100])
+
+        gate = self._flow_gate_decision(ticker, side)
+        intent["flow_gate"] = gate
+        if gate.get("decision") == "skip":
+            _release()
+            logger.info("[%s] FLOW-GATE SKIP %s %s x%d @ %.4f",
+                        self.strategy, ticker, side, contracts, entry_price)
+            skipped = {"status": "skipped_by_flow_gate", **intent,
+                       "aligned_observed_flow_1m": gate.get("aligned_observed_flow_1m"),
+                       "aligned_momentum_1m_bp": gate.get("aligned_momentum_1m_bp")}
+            if armed:
+                # The same skip applies to every mirrored user account; journal it
+                # privately, only for users actually trading (allowlisted).
+                self._journal_user_skips(skipped)
+            return skipped
         if not armed:
+            _release()
             logger.info("[%s] LIVE-DISARMED %s %s x%d @ %.4f (audit only)",
                         self.strategy, ticker, side, contracts, entry_price)
             return {"status": "live_disarmed", **intent}
         gate = self.gate_status()
         if not gate["live_open"]:
+            _release()
             raise LiveOrderRefused(f"live events order refused — gate: {gate}")
+        if (table_decision or {}).get("action") == "trade" and table_decision.get("slot"):
+            # One top1 and one top2 per coin-window: claimed only once every gate
+            # has passed and the order is about to go out (the backtest marks a
+            # slot used only when it trades; an audit-only or refused order must
+            # not consume it).
+            try:
+                from crypto_trading.crypto_strategies.w7_scenarios import live_plan
+                if not live_plan.claim_slot(ticker, table_decision["slot"]):
+                    _release()
+                    return {"status": "skipped_by_table", **intent,
+                            "slot_reason": f"{table_decision['slot']}_already_used_this_window"}
+            except Exception as e:                                # noqa: BLE001
+                logger.warning("[%s] slot claim failed (sending anyway): %s",
+                               self.strategy, str(e)[:120])
+        # From here a raised exception keeps the reservation: the order may have
+        # reached the exchange, and over-counting exposure only ever buys less.
+        r = self._send(ticker, side, int(contracts), float(entry_price))
+        logger.warning("[%s] %s %s %s x%d @ %.4f -> HTTP %s",
+                       self.strategy, "PAPER ORDER SIMULATED" if r.get("paper") else "LIVE ORDER SENT",
+                       ticker, side, contracts, entry_price, r.get("status_code"))
+        out = {"status": "live_sent", **intent, **r}
+        if "window_cap" in intent:
+            try:
+                from crypto_trading.crypto_strategies.w7_scenarios import live_plan
+                code = int(r.get("status_code") or 0)
+                bought = 0.0 if 400 <= code < 500 else _fill_count(r, default=contracts)   # rejected: nothing bought
+                out["window_cap"] = {**intent["window_cap"], "bought": bought,
+                                     "total": live_plan.settle(ticker, reserved, bought)}
+            except Exception as e:                                # noqa: BLE001
+                logger.warning("[%s] exposure record failed: %s", self.strategy, str(e)[:100])
+        # Per-user PROD accounts (2026-10-01): the IDENTICAL intent (same
+        # ticker / side / size / limit, every rule already applied above) goes
+        # to each allowlisted user account ONLY AFTER the owner's order has
+        # returned - the owner's fill always has priority on the book. It runs
+        # in its own daemon thread so the owner's row is returned (and logged)
+        # immediately and NEVER carries user data; user results go to a
+        # private journal outside the repo (~/.kalshi/journal).
+        self._spawn_user_mirror(intent)
+        return out
+
+    def _send(self, ticker: str, side: str, contracts: int, price_dollars: float) -> dict:
+        """The one venue call of submit(): a PROD IOC order. Every rule above it is
+        shared with the paper mirror (w11_prod_mirror), which overrides only this."""
         from crypto_trading.crypto_common.kalshi.rest_event import (
             KalshiEventOrderClient)
-        r = KalshiEventOrderClient(env="prod").create_order(
+        return KalshiEventOrderClient(env="prod").create_order(
             ticker=ticker, side=side, count=int(contracts),
-            price_dollars=float(entry_price), tif="immediate_or_cancel")
-        logger.warning("[%s] LIVE ORDER SENT %s %s x%d @ %.4f -> HTTP %s",
-                       self.strategy, ticker, side, contracts, entry_price,
-                       r.get("status_code"))
-        return {"status": "live_sent", **intent, **r}
+            price_dollars=float(price_dollars), tif="immediate_or_cancel")
+
+    # ── per-user PROD mirror (2026-10-01) ─────────────────────────────────
+    _JOURNAL_LOCK = __import__("threading").Lock()
+
+    @classmethod
+    def _journal_user_rows(cls, rows: list[dict]) -> None:
+        """Append rows to ~/.kalshi/journal/<UTC day>.jsonl (dir 0700, file 0600)."""
+        if not rows:
+            return
+        import os
+        from crypto_trading.crypto_common.config import USER_KEY_DIR
+        d = USER_KEY_DIR / "journal"
+        with cls._JOURNAL_LOCK:
+            d.mkdir(parents=True, exist_ok=True)
+            os.chmod(d, 0o700)
+            path = d / f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.jsonl"
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+            with os.fdopen(fd, "a") as fh:
+                for r in rows:
+                    fh.write(json.dumps(r, default=str) + "\n")
+
+    def _user_row(self, intent: dict, account: str, **extra) -> dict:
+        return {"ts": datetime.now(timezone.utc).isoformat(), "strategy": self.strategy,
+                "action": "live_order_result", "account": account,
+                **{k: v for k, v in intent.items() if k != "status"}, **extra}
+
+    def _journal_user_skips(self, skipped: dict) -> None:
+        try:
+            from crypto_trading.crypto_common.config import kalshi_user_accounts, trading_user_ids
+            if self.strategy not in self.PROD_SIZING or not trading_user_ids():
+                return
+            self._journal_user_rows([self._user_row(skipped, a.user_id,
+                                                    status="skipped_by_flow_gate")
+                                     for a in kalshi_user_accounts()])
+        except Exception as e:                                    # noqa: BLE001
+            logger.warning("[%s] user skip journal failed: %s", self.strategy, str(e)[:120])
+
+    def _spawn_user_mirror(self, intent: dict) -> None:
+        try:
+            from crypto_trading.crypto_common.config import trading_user_ids
+            if self.strategy not in self.PROD_SIZING or not trading_user_ids():
+                return                       # nobody allowlisted: no thread, no I/O
+            import threading
+            threading.Thread(target=self._mirror_user_accounts, args=(dict(intent),),
+                             name="w7-user-mirror", daemon=True).start()
+        except Exception as e:                                    # noqa: BLE001
+            logger.warning("[%s] user mirror spawn failed: %s", self.strategy, str(e)[:120])
+
+    def _mirror_user_accounts(self, intent: dict) -> list[dict]:
+        """Send the owner's intent to every allowlisted user account, in parallel.
+
+        Never raises. Same ticker / side / limit as the owner; the size is the
+        owner's contracts x that user's owner-approved ratio, rounded DOWN and
+        never above the owner's (standard enable flow, 2026-10-04); below one
+        contract nothing is sent and a `skipped_below_one_contract` row is
+        journaled. Each account gets a `pending_send` journal row BEFORE the
+        request and a result row after, both keyed by mirror_id, so a runner
+        restart mid-request leaves a visible unresolved order rather than a
+        silent gap. A 401/403 disables only that account.
+        """
+        try:
+            from crypto_trading.crypto_common.config import (
+                disable_user_account, kalshi_user_accounts)
+            accounts = kalshi_user_accounts()
+            if not accounts:
+                return []
+            import uuid
+            from concurrent.futures import ThreadPoolExecutor
+            from crypto_trading.crypto_common.kalshi.rest_event import (
+                KalshiEventOrderClient)
+            ticker, side = intent["ticker"], intent["side"]
+            contracts, price = int(intent["contracts"]), float(intent["price_dollars"])
+
+            def one(acct):
+                ratio = float(getattr(acct, "ratio", 1.0))
+                n = min(contracts, int(math.floor(contracts * ratio + 1e-9)))
+                size = {"contracts": n, "owner_contracts": contracts, "ratio": ratio}
+                if n < 1:
+                    row = self._user_row(intent, acct.user_id,
+                                         status="skipped_below_one_contract", **size)
+                    self._journal_user_rows([row])
+                    return row
+                mid = str(uuid.uuid4())
+                pending = self._user_row(intent, acct.user_id, status="pending_send",
+                                         mirror_id=mid, **size)
+                self._journal_user_rows([pending])
+                extra = {}
+                try:
+                    rr = KalshiEventOrderClient(env="prod", key=acct.key).create_order(
+                        ticker=ticker, side=side, count=n,
+                        price_dollars=price, tif="immediate_or_cancel")
+                    extra.update(rr)
+                    if rr.get("status_code") in (401, 403):
+                        disable_user_account(acct.user_id, f"HTTP {rr.get('status_code')} on order")
+                        extra["disabled"] = True
+                except Exception as e:                            # noqa: BLE001
+                    extra["error"] = f"{type(e).__name__}: {str(e)[:160]}"
+                # keep the SEND time (the order's real time), not the response time
+                extra.update(size, ts=pending["ts"])
+                row = self._user_row(intent, acct.user_id, status="live_sent",
+                                     mirror_id=mid, **extra)
+                self._journal_user_rows([row])
+                return row
+            with ThreadPoolExecutor(max_workers=min(8, len(accounts))) as pool:
+                results = list(pool.map(one, accounts))
+            logger.warning("[%s] USER ORDERS %s %s owner x%d -> %s", self.strategy, ticker, side,
+                           contracts, [(r.get("contracts"), r.get("status_code", r.get("error") or r.get("status")))
+                                       for r in results])
+            return results
+        except Exception as e:                                    # noqa: BLE001
+            logger.warning("[%s] user mirror failed: %s", self.strategy, str(e)[:120])
+            return []
 
     # ── demo mirror ───────────────────────────────────────────────────────
     def _mirror_w7_demo(self, *, side: str, close_time: str, entry_price: float,

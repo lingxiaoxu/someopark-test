@@ -252,6 +252,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR6SLEC05": {
+  "aliases": [
+   "PANW/WYNN"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:US9831341071",
+  "display_name": "PANW/WYNN",
+  "first_seen": "2026-09-23T12:44:18+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR7LOZRE1": {
   "aliases": [
    "PSX/NI"
@@ -262,6 +277,51 @@
   "canonical_key": "mtfs|L:US7185461040|S:US65473P1057",
   "display_name": "PSX/NI",
   "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR861WBBA": {
+  "aliases": [
+   "PANW/RCL"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:USV7780T1035",
+  "display_name": "PANW/RCL",
+  "first_seen": "2026-09-23T12:44:18+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR8DXT0H5": {
+  "aliases": [
+   "PLTR/DOW"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US69608A1088|S:US2605571031",
+  "display_name": "PLTR/DOW",
+  "first_seen": "2026-09-25T12:49:14+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR9BTOR8D": {
+  "aliases": [
+   "NTAP/DOW"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US64110D1046|S:US2605571031",
+  "display_name": "NTAP/DOW",
+  "first_seen": "2026-09-23T12:44:18+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -372,6 +432,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRC79SVBK": {
+  "aliases": [
+   "PANW/OTIS"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:US68902V1070",
+  "display_name": "PANW/OTIS",
+  "first_seen": "2026-10-03T14:11:33+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRCGZAYV5": {
   "aliases": [
    "MU/HRL"
@@ -462,6 +537,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPREB0Q65O": {
+  "aliases": [
+   "HPE/PNR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:USG7S00T1042",
+  "display_name": "HPE/PNR",
+  "first_seen": "2026-09-30T12:54:51+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPREEZ25NW": {
   "aliases": [
    "ABNB/SRE"
@@ -472,6 +562,21 @@
   "canonical_key": "mtfs|L:US0090661010|S:US8168511090",
   "display_name": "ABNB/SRE",
   "first_seen": "2026-08-26T14:09:01+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPREGBOH7S": {
+  "aliases": [
+   "PANW/DPZ"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:US25754A2015",
+  "display_name": "PANW/DPZ",
+  "first_seen": "2026-09-26T12:50:36+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -547,6 +652,36 @@
   "canonical_key": "mtfs|L:US3030751057|S:US1011371077",
   "display_name": "FDS/BSX",
   "first_seen": "2026-08-29T13:43:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRI5VQEZ4": {
+  "aliases": [
+   "QCOM/VRSK"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US7475251036|S:US92345Y1064",
+  "display_name": "QCOM/VRSK",
+  "first_seen": "2026-09-23T12:44:18+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRI9Q7QU2": {
+  "aliases": [
+   "AKAM/JBL"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US00971T1016|S:US4663131039",
+  "display_name": "AKAM/JBL",
+  "first_seen": "2026-09-25T12:49:14+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -777,6 +912,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRPDWZW47": {
+  "aliases": [
+   "AMD/PCG"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US0079031078|S:US69331C1080",
+  "display_name": "AMD/PCG",
+  "first_seen": "2026-09-25T12:49:14+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRQ34B8D1": {
   "aliases": [
    "RMD/SYK"
@@ -822,6 +972,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRQLDITEP": {
+  "aliases": [
+   "AMD/PNR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US0079031078|S:USG7S00T1042",
+  "display_name": "AMD/PNR",
+  "first_seen": "2026-09-29T13:45:35+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRQSWOJ82": {
   "aliases": [
    "AMD/DOW"
@@ -832,6 +997,36 @@
   "canonical_key": "mtfs|L:US0079031078|S:US2605571031",
   "display_name": "AMD/DOW",
   "first_seen": "2026-09-20T06:58:07+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRR2MOG19": {
+  "aliases": [
+   "RVTY/FSLR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US7140461093|S:US3364331070",
+  "display_name": "RVTY/FSLR",
+  "first_seen": "2026-09-30T12:54:51+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRSCUEI5R": {
+  "aliases": [
+   "NTAP/HWM"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US64110D1046|S:US4432011082",
+  "display_name": "NTAP/HWM",
+  "first_seen": "2026-09-23T12:44:18+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -922,6 +1117,36 @@
   "canonical_key": "mtfs|L:US1598641074|S:US8725901040",
   "display_name": "CRL/TMUS",
   "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRW7DEB7H": {
+  "aliases": [
+   "HPE/LULU"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:US5500211090",
+  "display_name": "HPE/LULU",
+  "first_seen": "2026-09-23T12:44:18+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRWNW8ZMU": {
+  "aliases": [
+   "HPE/WYNN"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:US9831341071",
+  "display_name": "HPE/WYNN",
+  "first_seen": "2026-09-30T12:54:51+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -1177,6 +1402,21 @@
   "canonical_key": "aiss|SS:equipment",
   "display_name": "equipment",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSM5UX2PE": {
+  "aliases": [
+   "ipp_wholesale"
+  ],
+  "attrs": {
+   "strategy": "aeus"
+  },
+  "canonical_key": "aeus|SS:ipp_wholesale",
+  "display_name": "ipp_wholesale",
+  "first_seen": "2026-10-02T00:26:29+00:00",
   "kind": "subsector",
   "probe": 0,
   "retired_at": null,

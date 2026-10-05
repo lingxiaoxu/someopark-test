@@ -19,6 +19,14 @@ import { createToolResultStore } from '../utils/toolResultStorage.js'
 const UNLIMITED_EMAILS = new Set(['lxu912@gmail.com', 'yxc924@gmail.com', 'ethanyin2000@gmail.com'])
 const FREE_AGENT_QUESTIONS = 2   // allow 2 per week; block on the 3rd until Monday reset
 
+// 日志脱敏(2026-09-24):bucket 是用户真实邮箱,此前整串打进 api_server.log。
+// 保留前 2 字符 + 域名,足够排查配额问题,不落全量 PII。
+function maskEmail(s: string): string {
+  const at = s.indexOf('@')
+  if (at <= 0) return s === 'anonymous' ? s : s.slice(0, 2) + '***'
+  return s.slice(0, Math.min(2, at)) + '***' + s.slice(at)
+}
+
 // Quota-exhausted message, localized into the app's 5 languages (en/zh/ja/fr/es).
 const BLOCK_MSG: Record<string, string> = {
   zh: "你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。\n\n💡 建议马上关掉 Someo Agent 模式,就可以畅享 Someo Park 自研的 Local Model 无限对话啦!免费模式下也可以无限对话!",
@@ -279,7 +287,7 @@ router.post('/', async (req, res) => {
         const fresh = usageRow?.updated_at && new Date(usageRow.updated_at) >= weekStart()
         const used = fresh ? (usageRow?.count ?? 0) : 0
         if (used >= FREE_AGENT_QUESTIONS) {
-          console.log(`[Agent] usage gate: blocked ${bucket} (used ${used}/${FREE_AGENT_QUESTIONS} this week)`)
+          console.log(`[Agent] usage gate: blocked ${maskEmail(bucket)} (used ${used}/${FREE_AGENT_QUESTIONS} this week)`)
           send({ type: 'text', text: blockMsg(lang) })
           send({ type: 'done' })
           return // finally{} clears heartbeat + ends the SSE stream
@@ -289,7 +297,7 @@ router.post('/', async (req, res) => {
           { email: bucket, count: used + 1, updated_at: new Date().toISOString() },
           { onConflict: 'email' },
         )
-        console.log(`[Agent] usage gate: ${bucket} now ${used + 1}/${FREE_AGENT_QUESTIONS} this week`)
+        console.log(`[Agent] usage gate: ${maskEmail(bucket)} now ${used + 1}/${FREE_AGENT_QUESTIONS} this week`)
       }
     }
 

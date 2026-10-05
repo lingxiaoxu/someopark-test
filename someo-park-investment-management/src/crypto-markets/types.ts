@@ -76,6 +76,28 @@ export const OrderSchema = z
     fees_usd: N,
     status: z.string(),
     verified: z.boolean(),
+    // 2026-09-30: Prod 回执与执行审计详情(仅 FAVE 实盘账本填充;旧行与
+    // PFME 缺省)。均价为本方向成本口径;role 按构造为 taker(IOC)。
+    detail: z
+      .object({
+        client_order_id: z.string().nullable(),
+        venue_ts: T,
+        avg_fill_price: N,
+        remaining_count: N,
+        http_status: z.number().nullable(),
+        tif: z.string().nullable(),
+        stp: z.string().nullable(),
+        role: z.string().nullable(),
+        paper_price: N,
+        buffer_c: z.number().nullable(),
+        trend_bp: N,
+        size_mult: N,
+        gate: z.string().nullable(),
+        gate_flow: N,
+        gate_momentum: N,
+      })
+      .partial()
+      .optional(),
   })
   .strict();
 export const PositionSchema = z
@@ -145,6 +167,12 @@ export const StrategySchema = z
     runtime: z.array(RuntimeSchema),
     demo: PerformanceSchema,
     paper: PerformanceSchema,
+    // 2026-09-28: W7 armed on prod. Optional so pre-arming snapshots and
+    // strategies without a live book (W8) still validate.
+    prod: PerformanceSchema.optional(),
+    // 2026-09-30: FAVE 的账本视图(orders/positions/settlements/execution)
+    // 改为 Prod 实盘归属;缺省(demo)保持 PFME 的原语义。
+    ledger_source: z.enum(["demo", "prod"]).optional(),
     execution: z
       .object({
         all: ExecutionWindowSchema,
@@ -166,9 +194,11 @@ export const SnapshotSchema = z
     schema_version: z.literal(1),
     snapshot_id: z.string(),
     generated_at: z.string().datetime({ offset: true }),
-    execution_environment: z.literal("demo"),
+    // "demo" until 2026-09-28; "mixed" once W7 mirrors paper entries to prod
+    // while demo keeps running. The literals were pre-arming safety pins.
+    execution_environment: z.enum(["demo", "mixed"]),
     market_data_environment: z.literal("prod"),
-    prod_execution_enabled: z.literal(false),
+    prod_execution_enabled: z.boolean(),
     issues: z.array(IssueSchema),
     strategies: z
       .object({ fave: StrategySchema, pfme: StrategySchema })

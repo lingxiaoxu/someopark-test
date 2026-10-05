@@ -137,14 +137,18 @@ class KalshiEventOrderClient:
     URL at construction).
     """
 
-    def __init__(self, *, env: str | None = None, timeout: float = 15.0):
+    def __init__(self, *, env: str | None = None, timeout: float = 15.0,
+                 key=None):
+        """``key``: an explicit KalshiKey (per-user PROD account, 2026-10-01);
+        None keeps the owner's resolution exactly as before."""
         from crypto_trading.crypto_common.config import kalshi_key
         from crypto_trading.crypto_common.kalshi.auth import load_private_key
         from crypto_trading.crypto_common.kalshi.enums import rest_base
         self.env = env or "demo"
         self.base = rest_base(self.env)
         self.timeout = timeout
-        self._key = kalshi_key("margin", borrowed_ok=(self.env != "prod"))
+        self._key = key if key is not None else kalshi_key(
+            "margin", borrowed_ok=(self.env != "prod"))
         self._pk = load_private_key(self._key.expanded_path())
         import requests
         self._s = requests.Session()

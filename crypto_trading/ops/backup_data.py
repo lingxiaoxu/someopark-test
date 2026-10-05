@@ -36,6 +36,10 @@ IRREPLACEABLE = [
     # the venue serves current state only, so a lost day is gone for good.
     "kalshi/w8_complete_set",
     "hyperliquid",
+    # 2026-09-30: Deribit ATM option IV — Deribit serves no historical option
+    # tickers publicly, so this stream is unbackfillable (DVOL candles alone
+    # could be re-fetched; the tree is tiny, archive it whole).
+    "offshore/deribit",
 ]
 
 

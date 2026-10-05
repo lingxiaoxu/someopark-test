@@ -29,7 +29,7 @@ test("paper is the first result choice and each source retains its own real ledg
     assert.strictEqual(demo.performance, strategy.demo);
     assert.notStrictEqual(paper.performance, demo.performance);
     assert.match(paper.role, /主口径/);
-    assert.match(demo.role, /模拟账户/);
+    assert.match(demo.role, /Demo 账户/);
   }
 });
 
@@ -58,21 +58,25 @@ test("missing or unavailable paper results never borrow a healthy Demo ledger", 
   }
 });
 
-test("unconnected Prod has no numeric result even if a caller supplies a renamed Demo book", () => {
+test("Prod shows only the strategy's own prod book, never a Demo book", () => {
   for (const strategy of Object.values(snapshot.strategies)) {
-    const withUntrustedProd = Object.assign(structuredClone(strategy), {
-      prod: strategy.demo,
-    });
-    for (const input of [undefined, strategy, withUntrustedProd]) {
-      const prod = selectResultBook(input, "prod");
-      assert.equal(prod.source, "kalshi_prod");
+    const prod = selectResultBook(strategy, "prod");
+    assert.equal(prod.source, "kalshi_prod");
+    assert.match(prod.role, /实盘账户/);
+    if (strategy.prod) {
+      assert.strictEqual(prod.performance, strategy.prod);
+      assert.notStrictEqual(prod.performance, strategy.demo);
+    } else {
+      // a strategy without its own prod leg (W8) has no numeric prod result
       assert.equal(prod.availability, "not_connected");
       assert.equal(prod.performance, null);
       assert.equal(resultDrawdown(prod.performance), null);
-      assert.match(prod.role, /只读行情不等于实盘成交或收益/);
       assert.ok(!Object.values(prod).some((value) => typeof value === "number"));
     }
   }
+  const missing = selectResultBook(undefined, "prod");
+  assert.equal(missing.availability, "not_connected");
+  assert.equal(missing.performance, null);
 });
 
 test("partial paper describes the whole booked amount, while Demo identifies its verified subset", () => {
@@ -81,7 +85,8 @@ test("partial paper describes the whole booked amount, while Demo identifies its
   assert.equal(paperLabel, "纸面账本净收益（部分待核验）");
   assert.doesNotMatch(paperLabel, /已核验部分/);
   assert.equal(resultNetLabel("demo", partial), "Demo 已核验部分净收益");
-  assert.match(resultNetLabel("prod", partial), /未接入/);
+  assert.equal(resultNetLabel("prod", partial), "Prod 实盘净收益（部分待核验）");
+  assert.match(resultNetLabel("prod", null), /未接入/);
 });
 
 test("drawdown uses only the selected curve and keeps unknown fees unknown", () => {

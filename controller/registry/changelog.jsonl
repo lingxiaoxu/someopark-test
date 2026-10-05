@@ -3275,3 +3275,47 @@
 {"ts": "2026-09-21T07:31:53+00:00", "event": "ticker_drift", "isin": "US0640581007", "old": "BK", "new": "BNY"}
 {"ts": "2026-09-21T07:32:01+00:00", "event": "build_master", "total": 289, "cusip_hit": 288, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
 {"ts": "2026-09-22T12:46:32+00:00", "event": "build_master", "total": 289, "cusip_hit": 288, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-23T12:36:33+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:36:49+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:37:21+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:38:07+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:40:07+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:42:07+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:44:07+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:44:11+00:00", "event": "register_security", "isin": "USV7780T1035", "ticker": "RCL", "cusip": "V7780T103"}
+{"ts": "2026-09-23T12:44:14+00:00", "event": "build_master", "total": 290, "cusip_hit": 289, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPRI5VQEZ4", "kind": "pair", "key": "mtfs|L:US7475251036|S:US92345Y1064", "display": "QCOM/VRSK"}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPR861WBBA", "kind": "pair", "key": "mtfs|L:US6974351057|S:USV7780T1035", "display": "PANW/RCL"}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPRW7DEB7H", "kind": "pair", "key": "mtfs|L:US42824C1099|S:US5500211090", "display": "HPE/LULU"}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPR6SLEC05", "kind": "pair", "key": "mtfs|L:US6974351057|S:US9831341071", "display": "PANW/WYNN"}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPR9BTOR8D", "kind": "pair", "key": "mtfs|L:US64110D1046|S:US2605571031", "display": "NTAP/DOW"}
+{"ts": "2026-09-23T12:44:18+00:00", "event": "register_node", "spid": "SPPRSCUEI5R", "kind": "pair", "key": "mtfs|L:US64110D1046|S:US4432011082", "display": "NTAP/HWM"}
+{"ts": "2026-09-24T12:40:35+00:00", "event": "build_master", "total": 290, "cusip_hit": 289, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-25T12:49:04+00:00", "event": "register_security", "isin": "US4663131039", "ticker": "JBL", "cusip": "466313103"}
+{"ts": "2026-09-25T12:49:11+00:00", "event": "build_master", "total": 291, "cusip_hit": 290, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-25T12:49:14+00:00", "event": "register_node", "spid": "SPPRI9Q7QU2", "kind": "pair", "key": "mrpt|L:US00971T1016|S:US4663131039", "display": "AKAM/JBL"}
+{"ts": "2026-09-25T12:49:14+00:00", "event": "register_node", "spid": "SPPRPDWZW47", "kind": "pair", "key": "mtfs|L:US0079031078|S:US69331C1080", "display": "AMD/PCG"}
+{"ts": "2026-09-25T12:49:14+00:00", "event": "register_node", "spid": "SPPR8DXT0H5", "kind": "pair", "key": "mtfs|L:US69608A1088|S:US2605571031", "display": "PLTR/DOW"}
+{"ts": "2026-09-26T12:50:27+00:00", "event": "register_security", "isin": "US25754A2015", "ticker": "DPZ", "cusip": "25754A201"}
+{"ts": "2026-09-26T12:50:36+00:00", "event": "build_master", "total": 292, "cusip_hit": 291, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-26T12:50:36+00:00", "event": "register_node", "spid": "SPPREGBOH7S", "kind": "pair", "key": "mtfs|L:US6974351057|S:US25754A2015", "display": "PANW/DPZ"}
+{"ts": "2026-09-29T13:44:48+00:00", "event": "register_node", "spid": "SPPRQLDITEP", "kind": "pair", "key": "mtfs|L:US0079031078|S:USG7S00T1042", "display": "AMD/PNR"}
+{"ts": "2026-09-29T13:45:04+00:00", "event": "register_node", "spid": "SPPRQLDITEP", "kind": "pair", "key": "mtfs|L:US0079031078|S:USG7S00T1042", "display": "AMD/PNR"}
+{"ts": "2026-09-29T13:45:35+00:00", "event": "register_node", "spid": "SPPRQLDITEP", "kind": "pair", "key": "mtfs|L:US0079031078|S:USG7S00T1042", "display": "AMD/PNR"}
+{"ts": "2026-09-29T13:52:01+00:00", "event": "build_master", "total": 292, "cusip_hit": 291, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-09-30T12:54:03+00:00", "event": "register_node", "spid": "SPPRR2MOG19", "kind": "pair", "key": "mtfs|L:US7140461093|S:US3364331070", "display": "RVTY/FSLR"}
+{"ts": "2026-09-30T12:54:03+00:00", "event": "register_node", "spid": "SPPREB0Q65O", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG7S00T1042", "display": "HPE/PNR"}
+{"ts": "2026-09-30T12:54:03+00:00", "event": "register_node", "spid": "SPPRWNW8ZMU", "kind": "pair", "key": "mtfs|L:US42824C1099|S:US9831341071", "display": "HPE/WYNN"}
+{"ts": "2026-09-30T12:54:19+00:00", "event": "register_node", "spid": "SPPRR2MOG19", "kind": "pair", "key": "mtfs|L:US7140461093|S:US3364331070", "display": "RVTY/FSLR"}
+{"ts": "2026-09-30T12:54:19+00:00", "event": "register_node", "spid": "SPPREB0Q65O", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG7S00T1042", "display": "HPE/PNR"}
+{"ts": "2026-09-30T12:54:19+00:00", "event": "register_node", "spid": "SPPRWNW8ZMU", "kind": "pair", "key": "mtfs|L:US42824C1099|S:US9831341071", "display": "HPE/WYNN"}
+{"ts": "2026-09-30T12:54:51+00:00", "event": "register_node", "spid": "SPPRR2MOG19", "kind": "pair", "key": "mtfs|L:US7140461093|S:US3364331070", "display": "RVTY/FSLR"}
+{"ts": "2026-09-30T12:54:51+00:00", "event": "register_node", "spid": "SPPREB0Q65O", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG7S00T1042", "display": "HPE/PNR"}
+{"ts": "2026-09-30T12:54:51+00:00", "event": "register_node", "spid": "SPPRWNW8ZMU", "kind": "pair", "key": "mtfs|L:US42824C1099|S:US9831341071", "display": "HPE/WYNN"}
+{"ts": "2026-09-30T13:01:05+00:00", "event": "build_master", "total": 292, "cusip_hit": 291, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-10-01T12:58:32+00:00", "event": "build_master", "total": 292, "cusip_hit": 291, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-10-02T00:26:29+00:00", "event": "register_node", "spid": "SPSSM5UX2PE", "kind": "subsector", "key": "aeus|SS:ipp_wholesale", "display": "ipp_wholesale"}
+{"ts": "2026-10-02T21:05:20+00:00", "event": "build_master", "total": 292, "cusip_hit": 291, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-10-03T14:11:29+00:00", "event": "register_security", "isin": "US68902V1070", "ticker": "OTIS", "cusip": "68902V107"}
+{"ts": "2026-10-03T14:11:32+00:00", "event": "build_master", "total": 293, "cusip_hit": 292, "placeholder": 0, "renamed": 1, "delisted_kept": 1}
+{"ts": "2026-10-03T14:11:33+00:00", "event": "register_node", "spid": "SPPRC79SVBK", "kind": "pair", "key": "mtfs|L:US6974351057|S:US68902V1070", "display": "PANW/OTIS"}

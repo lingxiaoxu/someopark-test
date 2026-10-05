@@ -10,6 +10,20 @@ from crypto_trading.crypto_common.execution import Order
 from crypto_trading.crypto_strategies.live_watch import common
 
 
+@pytest.fixture(autouse=True)
+def _no_live_recorder_reads(monkeypatch):
+    """No test in this file may read LIVE recorder files (2026-09-30).
+
+    The day-band flow gate and the no-dump tier read the HL / index recorder
+    tails; pinning only the UTC hour left submit() tests flickering with real
+    market conditions (a genuine skip turned `live_disarmed` into
+    `skipped_by_flow_gate`). Tests that exercise the gate stub decide()
+    explicitly and never depend on real rows."""
+    import crypto_trading.crypto_common.execution_events as ee
+    monkeypatch.setattr(ee.EventExecutionRouter, "_tail_rows",
+                        staticmethod(lambda path, n: []))
+
+
 @pytest.fixture
 def sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(common, "STATE_DIR", tmp_path)
@@ -948,7 +962,7 @@ def test_runner_survives_a_missing_experimental_strategy():
     r = subprocess.run([sys.executable, "-c", probe], capture_output=True,
                        text=True, timeout=120, cwd=str(repo), env=env)
     assert r.returncode == 0, f"runner died without w8:\n{r.stderr[-2000:]}"
-    assert r.stdout.startswith("OK 7")
+    assert r.stdout.startswith("OK 8")          # W1-W7 + the W7 table scanner (2026-10-02)
 
 
 def test_w7_mirrors_and_live_intents_only_the_main_cell(sandbox, monkeypatch):
@@ -1011,9 +1025,15 @@ def test_events_live_gate_never_downgrades_silently(monkeypatch):
     monkeypatch.setattr(
         "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
         Boom)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
     r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
         ticker="KXBTC15M-X", side="no", entry_price=0.88, contracts=25)
-    assert r["status"] == "live_disarmed" and r["price_dollars"] == 0.88
+    # 2026-09-30 buffer: the wire limit is paper+1c; the paper price is audited
+    assert r["status"] == "live_disarmed" and r["price_dollars"] == 0.89
+    assert r["paper_price_dollars"] == 0.88 and r["limit_buffer_c"] == 1
 
     router = ee.EventExecutionRouter(strategy="w7_noisefade")
     monkeypatch.setattr(ee.EventExecutionRouter, "gate_status",
@@ -1036,11 +1056,113 @@ def test_events_live_gate_never_downgrades_silently(monkeypatch):
         Client)
     monkeypatch.setattr(ee.EventExecutionRouter, "gate_status",
                         lambda self: {"live_open": True})
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
     r = router.submit(ticker="KXBTC15M-X", side="no", entry_price=0.88,
                       contracts=25, armed=True)
     assert r["status"] == "live_sent"
-    assert sent == [{"ticker": "KXBTC15M-X", "side": "no", "count": 25,
-                     "price_dollars": 0.88, "tif": "immediate_or_cancel"}]
+    # PROD_SIZING resizes w7 BTC to 40 in the day band (v3, 2026-10-02; the 25
+    # passed in is the paper size; prod sizing is decoupled by directive).
+    assert sent == [{"ticker": "KXBTC15M-X", "side": "no", "count": 40,
+                     "price_dollars": 0.89, "tif": "immediate_or_cancel"}]
+
+
+def test_events_prod_sizing_override_scopes(monkeypatch):
+    """PROD sizing v2 (2026-09-30 directive): UTC-hour banded — day (06-23)
+    w7 BTC 40 / alts 30 (v3), night (00-05) BTC 20 / alts 20 (v4, 2026-10-04). Other strategies
+    pass through untouched, the override is visible in the DISARMED audit row
+    too, and the demo mirror path must NOT consult PROD_SIZING (demo 25)."""
+    import inspect
+    import crypto_trading.crypto_common.execution_events as ee
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("no venue client while disarmed")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Boom)
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+    for hour, btc, alt in ((14, 40, 30), (3, 20, 20), (0, 20, 20), (5, 20, 20), (6, 40, 30)):
+        monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                            staticmethod(lambda h=hour: h))
+        assert w7.submit(ticker="KXBTC15M-26SEP300100-00", side="yes",
+                         entry_price=0.90, contracts=25)["contracts"] == btc, hour
+        for series in ("KXETH15M", "KXSOL15M", "KXDOGE15M", "KXXRP15M"):
+            r = w7.submit(ticker=f"{series}-26SEP300100-00", side="yes",
+                          entry_price=0.90, contracts=25)
+            assert r["contracts"] == alt, (hour, series)
+    other = ee.EventExecutionRouter(strategy="w5_knockdown")
+    assert other.submit(ticker="KXBTC15M-26SEP300100-00", side="yes",
+                        entry_price=0.90, contracts=25)["contracts"] == 25
+    # demo mirror keeps the caller's size: no PROD_SIZING reference in it
+    src = inspect.getsource(ee.EventExecutionRouter._mirror_w7_demo)
+    assert "PROD_SIZING" not in src
+
+
+def test_events_day_band_flow_gate_skip_bypass_and_fail_open(monkeypatch):
+    """2026-09-30 flow gate: DAY band skips a prod order only on an explicit
+    'skip' verdict from the registered downside_paper policy; the NIGHT band
+    never consults the gate; a policy exception or non-skip verdict sends
+    normally (fail-open). Demo mirror must not reference FLOW_GATE."""
+    import inspect
+    import crypto_trading.crypto_common.execution_events as ee
+    import crypto_trading.crypto_strategies.downside_paper.policy as pol
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("no venue client on a skipped/disarmed order")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Boom)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_tail_rows",
+                        staticmethod(lambda path, n: []))
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+
+    # day band + skip verdict -> skipped audit row, no venue construction
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 14))
+    monkeypatch.setattr(pol, "decide", lambda c, f, p: {
+        "decision": "skip", "aligned_observed_flow_1m": -0.9,
+        "aligned_momentum_1m_bp": -12.0})
+    r = w7.submit(ticker="KXETH15M-26SEP300700-00", side="yes",
+                  entry_price=0.85, contracts=25)
+    assert r["status"] == "skipped_by_flow_gate" and r["contracts"] == 30
+    assert r["aligned_observed_flow_1m"] == -0.9
+    assert r["flow_gate"]["decision"] == "skip"
+
+    # night band: gate bypassed even with a skip verdict -> disarmed audit row
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 3))
+    r = w7.submit(ticker="KXETH15M-26SEP300100-00", side="yes",
+                  entry_price=0.85, contracts=25)
+    assert r["status"] == "live_disarmed" and r["contracts"] == 20
+    assert r["flow_gate"]["decision"] == "night"
+
+    # day band + accept verdict -> sends (disarmed audit row here)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 14))
+    monkeypatch.setattr(pol, "decide",
+                        lambda c, f, p: {"decision": "accept"})
+    r = w7.submit(ticker="KXETH15M-26SEP300700-00", side="yes",
+                  entry_price=0.85, contracts=25)
+    assert r["status"] == "live_disarmed"
+    assert r["flow_gate"]["decision"] == "accept"
+
+    # day band + policy blowing up -> fail-open, order proceeds
+    def explode(c, f, p):
+        raise RuntimeError("feature pipeline down")
+    monkeypatch.setattr(pol, "decide", explode)
+    r = w7.submit(ticker="KXETH15M-26SEP300700-00", side="yes",
+                  entry_price=0.85, contracts=25)
+    assert r["status"] == "live_disarmed"
+    assert r["flow_gate"]["decision"] == "error"
+
+    # other strategies and the demo mirror never consult the gate
+    assert ee.EventExecutionRouter(strategy="w5_knockdown")._flow_gate_decision(
+        "KXBTC15M-X", "yes")["decision"] == "off"
+    src = inspect.getsource(ee.EventExecutionRouter._mirror_w7_demo)
+    assert "FLOW_GATE" not in src
 
 
 def test_events_gate_status_defaults_closed(monkeypatch):
@@ -1106,3 +1228,472 @@ def test_w7_cum_equals_the_sum_of_stored_trades_exactly(sandbox, monkeypatch):
     st = common.load_state("w7_noisefade")
     booked = sum(t["pnl_c"] for t in st["trades"]) * 25 / 100
     assert st["cum_net_usd"] == pytest.approx(booked, abs=1e-9)
+
+
+def test_prod_submit_rounds_paper_cost_to_whole_cents(monkeypatch):
+    """Prod tick rule (learned 2026-09-28, first live batch): sub-cent limit
+    prices are rejected with 400 invalid_price above $0.10. The paper cost is
+    a depth-weighted average, so the prod IOC limit must round to the cent;
+    the disarmed audit row shows exactly what an armed order would send.
+
+    Pinned to the NIGHT band (2026-09-30): the day-band flow gate and no-dump
+    tier read LIVE recorder files, so an unpinned no-order here flickered with
+    real market conditions. The rounding invariant lives on paper_price; the
+    wire price additionally carries the +1c buffer."""
+    from crypto_trading.crypto_common.execution_events import EventExecutionRouter
+    monkeypatch.setattr(EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 3))
+    r = EventExecutionRouter(strategy="w7_noisefade")
+    out = r.submit(ticker="KXDOGE15M-x", side="no", entry_price=0.8876,
+                   contracts=25, armed=False)
+    assert out["status"] == "live_disarmed"
+    assert out["paper_price_dollars"] == 0.89
+    assert out["price_dollars"] == 0.90 and out["limit_buffer_c"] == 1
+    assert r.submit(ticker="KXBTC15M-x", side="no", entry_price=0.85,
+                    contracts=25, armed=False)["paper_price_dollars"] == 0.85
+    assert r.submit(ticker="KXETH15M-x", side="no", entry_price=0.904,
+                    contracts=25, armed=False)["paper_price_dollars"] == 0.90
+    assert r.submit(ticker="KXSOL15M-x", side="yes", entry_price=0.985,
+                    contracts=25, armed=False)["price_dollars"] == 0.99
+
+
+def test_events_no_dump_tier_quarters_day_band_no_orders(monkeypatch):
+    """2026-09-30 no-after-dump tier: DAY-band NO orders are cut to x0.25 when
+    the coin's prior-60min index move < -50bp; YES orders and milder moves are
+    untouched; a missing trend fails OPEN to full size; the NIGHT band never
+    consults the trend at all. Audit rides on every day-band NO row."""
+    import crypto_trading.crypto_common.execution_events as ee
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("no venue client while disarmed")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Boom)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_tail_rows",
+                        staticmethod(lambda path, n: []))
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 14))
+
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: -80.0))
+    r = w7.submit(ticker="KXBTC15M-26SEP301400-00", side="no",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 10 and r["no_dump"] == {"trend_bp": -80.0,
+                                                     "lookback_s": 1800.0,
+                                                     "mult": 0.25}
+    # dump-quartered NO is EXCLUDED from the +1c buffer (user design)
+    assert r["price_dollars"] == 0.85 and r["limit_buffer_c"] == 0
+    r = w7.submit(ticker="KXETH15M-26SEP301400-00", side="no",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 8                      # 30 x0.25 = 7.5 -> 8
+    # yes untouched, and carries no no_dump audit
+    r = w7.submit(ticker="KXETH15M-26SEP301400-00", side="yes",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 30 and "no_dump" not in r
+
+    # milder move and missing trend: full size, audit says mult 1.0
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: -30.0))
+    r = w7.submit(ticker="KXETH15M-26SEP301400-00", side="no",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 30 and r["no_dump"]["mult"] == 1.0
+    # a NORMAL no order gets the buffer
+    assert r["price_dollars"] == 0.86 and r["limit_buffer_c"] == 1
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    r = w7.submit(ticker="KXETH15M-26SEP301400-00", side="no",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 30 and r["no_dump"] == {"trend_bp": None,
+                                                     "lookback_s": 1800.0,
+                                                     "mult": 1.0}
+
+    # night band never consults the trend (a poisoned seam must not fire)
+    def poison(cls, coin, lb=1800.0):
+        raise AssertionError("night band must not read the trend")
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(poison))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 3))
+    r = w7.submit(ticker="KXBTC15M-26SEP300300-00", side="no",
+                  entry_price=0.85, contracts=25)
+    assert r["contracts"] == 20 and "no_dump" not in r          # night BTC 20 (v4, 2026-10-04)
+
+
+def test_events_limit_buffer_cap_and_scope(monkeypatch):
+    """+1c buffer caps at 0.99 and never touches non-PROD_SIZING strategies."""
+    import crypto_trading.crypto_common.execution_events as ee
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("no venue client while disarmed")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient",
+        Boom)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour",
+                        staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+    r = w7.submit(ticker="KXBTC15M-X", side="yes", entry_price=0.98,
+                  contracts=25)
+    assert r["price_dollars"] == 0.99 and r["limit_buffer_c"] == 1
+    r = w7.submit(ticker="KXBTC15M-X", side="yes", entry_price=0.99,
+                  contracts=25)
+    assert r["price_dollars"] == 0.99 and r["limit_buffer_c"] == 0
+    other = ee.EventExecutionRouter(strategy="w5_knockdown")
+    r = other.submit(ticker="KXBTC15M-X", side="yes", entry_price=0.90,
+                     contracts=25)
+    assert r["price_dollars"] == 0.90 and r["limit_buffer_c"] == 0
+
+
+def _user_dir(tmp_path, monkeypatch, users, owner_kid="owner-kid", allow=None, ratios=None):
+    """Build an isolated ~/.kalshi with validated user accounts.
+
+    ``allow``: the owner's manual live-trading allowlist; defaults to every
+    user built here (pass [] to model 'validated but not enabled'). Every user
+    also gets the owner's approval record at ratio 1.0 unless `ratios` says
+    otherwise (None = no approval for that user)."""
+    import json as _j
+    import crypto_trading.crypto_common.config as cfg
+    d = tmp_path / "kalshi"
+    (d / "disabled").mkdir(parents=True)
+    (d / "trading" / "approved").mkdir(parents=True)
+    reg, lines = {}, []
+    for uid, kid in users:
+        pem = d / f"prod_{uid}.pem"
+        pem.write_text("dummy")
+        reg[uid] = {"status": "active"}
+        lines += [f"KALSHI_PROD_API_KEY_ID_{uid}={kid}",
+                  f"KALSHI_PROD_PRIVATE_KEY_PATH_{uid}={pem}"]
+        ratio = (ratios or {}).get(uid, 1.0)
+        if ratio is not None:
+            (d / "trading" / "approved" / f"{uid}.json").write_text(_j.dumps({"user_id": uid, "ratio": ratio}))
+    (d / "users.json").write_text(_j.dumps(reg))
+    (d / "users.env").write_text("\n".join(lines) + "\n")
+    monkeypatch.setattr(cfg, "USER_KEY_DIR", d)
+    allowed = ",".join(u for u, _ in users) if allow is None else ",".join(allow)
+    fake = {"KALSHI_PROD_API_KEY_ID": owner_kid, "KALSHI_PROD_TRADING_USER_IDS": allowed}
+    monkeypatch.setattr(cfg, "env", lambda k, default="": fake.get(k) or default)
+    return d
+
+
+def test_validated_user_never_trades_without_owner_allowlist(tmp_path, monkeypatch):
+    """2026-10-01 user directive: passing the key check gives a user his own
+    VIEW only. Mirroring W7 into his account needs the owner's manual
+    allowlist entry; an empty list means the owner trades alone."""
+    import crypto_trading.crypto_common.config as cfg
+    import crypto_trading.crypto_common.execution_events as ee
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")], allow=[])
+    assert cfg.kalshi_user_accounts() == []
+    calls = []
+
+    class Client:
+        def __init__(self, *, env=None, key=None, **k):
+            self.who = "owner" if key is None else key.key_id
+
+        def create_order(self, **kw):
+            calls.append(self.who)
+            return {"status_code": 201, "response": "{}", "body_sent": {}}
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Client)
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status", lambda self: {"live_open": True})
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    import threading
+    spawned = []
+    real_thread = threading.Thread
+    monkeypatch.setattr(threading, "Thread",
+                        lambda *a, **k: spawned.append(k.get("name")) or real_thread(*a, **k))
+    r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
+        ticker="KXETH15M-X", side="yes", entry_price=0.85, contracts=25, armed=True)
+    assert calls == ["owner"] and "user_results" not in r     # owner row byte-identical to before
+    assert "w7-user-mirror" not in spawned                    # empty allowlist: no thread at all
+    assert not (tmp_path / "kalshi" / "journal").exists()     # ...and no journal I/O
+    # allowlisting ONE user enables exactly that one
+    _user_dir(tmp_path / "b", monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")], allow=[U2])
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U2]
+
+
+U1 = "aaaaaaa1-0000-4000-8000-000000000001"
+U2 = "aaaaaaa2-0000-4000-8000-000000000002"
+
+
+def test_user_accounts_mirror_after_owner_identical_intent(tmp_path, monkeypatch):
+    """2026-10-01: validated user accounts receive the IDENTICAL order the
+    owner sent, strictly AFTER the owner's order returned; a 401 disables only
+    that account; the owner's own key id can never appear as a user."""
+    import crypto_trading.crypto_common.execution_events as ee
+    import crypto_trading.crypto_common.config as cfg
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")])
+    calls = []
+
+    class Client:
+        def __init__(self, *, env=None, key=None, **k):
+            assert env == "prod"
+            self.who = "owner" if key is None else key.key_id
+
+        def create_order(self, **kw):
+            calls.append((self.who, kw))
+            code = 401 if self.who == "kid-u2" else 201
+            return {"status_code": code, "response": "{}", "body_sent": {}}
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Client)
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status",
+                        lambda self: {"live_open": True})
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    # run the (normally daemon-thread) user mirror inline so the test is deterministic
+    monkeypatch.setattr(ee.EventExecutionRouter, "_spawn_user_mirror",
+                        lambda self, intent: self._mirror_user_accounts(dict(intent)))
+    r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
+        ticker="KXETH15M-X", side="yes", entry_price=0.85, contracts=25, armed=True)
+    assert r["status"] == "live_sent"
+    assert "user_results" not in r                      # owner row never carries user data
+    assert calls[0][0] == "owner"                       # owner first, always
+    assert sorted(c[0] for c in calls[1:]) == ["kid-u1", "kid-u2"]
+    owner_kw = calls[0][1]
+    assert all(kw == owner_kw for _, kw in calls[1:])   # identical intent
+    assert owner_kw["count"] == 30 and owner_kw["price_dollars"] == 0.86
+    rows = _journal(tmp_path)
+    by = {}
+    for row in rows:
+        by.setdefault(row["account"], []).append(row)
+    for uid in (U1, U2):                                # pending_send, then result, same mirror_id
+        assert [x["status"] for x in by[uid]] == ["pending_send", "live_sent"]
+        assert by[uid][0]["mirror_id"] == by[uid][1]["mirror_id"]
+        assert by[uid][1]["ticker"] == "KXETH15M-X" and by[uid][1]["contracts"] == 30
+    assert by[U1][1]["status_code"] == 201 and by[U2][1].get("disabled") is True
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U1]   # U2 now off
+    jd = tmp_path / "kalshi" / "journal"
+    assert oct(jd.stat().st_mode & 0o777) == "0o700"
+    assert all(oct(f.stat().st_mode & 0o777) == "0o600" for f in jd.iterdir())
+
+
+def _journal(tmp_path):
+    import json as _j
+    out = []
+    for f in sorted((tmp_path / "kalshi" / "journal").glob("*.jsonl")):
+        out += [_j.loads(x) for x in f.read_text().splitlines() if x.strip()]
+    return out
+
+
+def test_gate_skips_are_journaled_only_for_mirrored_users_and_only_when_armed(tmp_path, monkeypatch):
+    import crypto_trading.crypto_common.execution_events as ee
+    import crypto_trading.crypto_strategies.downside_paper.policy as pol
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")], allow=[U1])
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    monkeypatch.setattr(pol, "decide", lambda c, f, p: {"decision": "skip"})
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+    assert w7.submit(ticker="KXETH15M-X", side="yes", entry_price=0.85,
+                     contracts=25)["status"] == "skipped_by_flow_gate"   # disarmed
+    assert not (tmp_path / "kalshi" / "journal").exists()
+    r = w7.submit(ticker="KXETH15M-X", side="yes", entry_price=0.85, contracts=25, armed=True)
+    assert r["status"] == "skipped_by_flow_gate" and "user_results" not in r
+    rows = _journal(tmp_path)
+    assert [(x["account"], x["status"]) for x in rows] == [(U1, "skipped_by_flow_gate")]
+
+
+def test_user_accounts_never_receive_disarmed_or_gated_orders(tmp_path, monkeypatch):
+    import crypto_trading.crypto_common.execution_events as ee
+    import crypto_trading.crypto_strategies.downside_paper.policy as pol
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1")])
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("no order may be built")
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Boom)
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    w7 = ee.EventExecutionRouter(strategy="w7_noisefade")
+    assert w7.submit(ticker="KXETH15M-X", side="yes", entry_price=0.85,
+                     contracts=25)["status"] == "live_disarmed"
+    monkeypatch.setattr(pol, "decide", lambda c, f, p: {"decision": "skip"})
+    assert w7.submit(ticker="KXETH15M-X", side="yes", entry_price=0.85,
+                     contracts=25, armed=True)["status"] == "skipped_by_flow_gate"
+
+
+def test_user_account_loader_rejects_owner_key_and_incomplete_entries(tmp_path, monkeypatch):
+    import crypto_trading.crypto_common.config as cfg
+    d = _user_dir(tmp_path, monkeypatch, [(U1, "owner-kid"), (U2, "kid-u2")])
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U2]   # owner key excluded
+    (d / f"prod_{U2}.pem").unlink()
+    assert cfg.kalshi_user_accounts() == []                           # missing key file
+    (d / "users.json").write_text("{not json")
+    assert cfg.kalshi_user_accounts() == []                           # corrupt registry
+
+
+def test_owner_private_key_reuploaded_under_another_login_is_never_a_user(tmp_path, monkeypatch):
+    """D0 (2026-10-01 review): exclusion is by the key the owner's orders really
+    sign with AND by private-key fingerprint, not only KALSHI_PROD_API_KEY_ID."""
+    import crypto_trading.crypto_common.config as cfg
+    d = _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")])
+    owner_pem = tmp_path / "owner.pem"
+    owner_pem.write_text("OWNER-PRIVATE-KEY")
+    (d / f"prod_{U1}.pem").write_text("OWNER-PRIVATE-KEY\n")      # same key, other login
+    fake = {"KALSHI_PROD_API_KEY_ID": "owner-kid", "KALSHI_PROD_PRIVATE_KEY_PATH": str(owner_pem),
+            "KALSHI_MARGIN_KEY_ID": "margin-kid",
+            "KALSHI_PROD_TRADING_USER_IDS": f"{U1},{U2}"}
+    monkeypatch.setattr(cfg, "env", lambda k, default="": fake.get(k) or default)
+    monkeypatch.setattr(cfg, "_PM_ENV", {})
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U2]
+    # a user carrying the owner's MARGIN key id is excluded too
+    (d / "users.env").write_text(f"KALSHI_PROD_API_KEY_ID_{U2}=margin-kid\nKALSHI_PROD_PRIVATE_KEY_PATH_{U2}={d}/prod_{U2}.pem\n")
+    assert cfg.kalshi_user_accounts() == []
+
+
+def test_one_kalshi_account_is_never_mirrored_twice(tmp_path, monkeypatch):
+    """2026-10-01 review: one person with two Supabase logins could verify the
+    SAME Kalshi account twice. Every user sharing a Kalshi account with another
+    user id (same key id, or overlapping account key-id hashes recorded at
+    verification) or with the owner is dropped - never double-ordered."""
+    import hashlib
+    import json as _j
+    import crypto_trading.crypto_common.config as cfg
+    h = lambda k: hashlib.sha256(k.encode()).hexdigest()
+    U3 = "aaaaaaa3-0000-4000-8000-000000000003"
+    # same key id under two user ids -> both out, the third user unaffected
+    _user_dir(tmp_path / "a", monkeypatch, [(U1, "kid-x"), (U2, "kid-x"), (U3, "kid-3")])
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U3]
+    # different key ids, but the same Kalshi account (verification saw both keys)
+    d = _user_dir(tmp_path / "b", monkeypatch, [(U1, "kid-1"), (U2, "kid-2"), (U3, "kid-3")])
+    reg = _j.loads((d / "users.json").read_text())
+    reg[U1]["account_key_hashes"] = [h("kid-1"), h("kid-2")]
+    reg[U2]["account_key_hashes"] = [h("kid-2")]
+    (d / "users.json").write_text(_j.dumps(reg))
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U3]
+    # a user's Kalshi account that also holds the OWNER's key -> out
+    reg = {u: {"status": "active"} for u in (U1, U2, U3)}
+    reg[U3]["account_key_hashes"] = [h("kid-3"), h("owner-kid")]
+    (d / "users.json").write_text(_j.dumps(reg))
+    assert [a.user_id for a in cfg.kalshi_user_accounts()] == [U1, U2]
+
+
+
+def test_user_needs_owner_approval_and_stop_marker_wins(tmp_path, monkeypatch):
+    """2026-10-04 standard flow: an allowlisted user is mirrored only with the
+    owner's approval record (valid ratio, same id). The user's own application
+    never trades by itself; a stop marker (user on the panel, or the owner)
+    takes effect on the very next call, no restart."""
+    import json as _j
+    import crypto_trading.crypto_common.config as cfg
+    d = _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")], ratios={U1: 0.25, U2: None})
+    (d / "trading" / "requests").mkdir(parents=True)
+    (d / "trading" / "requests" / f"{U2}.json").write_text(
+        _j.dumps({"user_id": U2, "ratio": 1.0, "ack_version": "2026-10-04"}))
+    assert [(a.user_id, a.ratio) for a in cfg.kalshi_user_accounts()] == [(U1, 0.25)]   # U2 applied, not approved
+    for bad in ({"user_id": U2, "ratio": 0.5}, {"user_id": U1, "ratio": 0}, {"user_id": U1, "ratio": 1.5},
+                {"user_id": U1, "ratio": "x"}, {"user_id": U1}, [1]):
+        (d / "trading" / "approved" / f"{U1}.json").write_text(_j.dumps(bad))
+        assert cfg.kalshi_user_accounts() == [], bad              # other id / outside (0, 1] / garbage
+    (d / "trading" / "approved" / f"{U1}.json").write_text(_j.dumps({"user_id": U1, "ratio": 0.5}))
+    assert [a.ratio for a in cfg.kalshi_user_accounts()] == [0.5]
+    (d / "trading" / "stopped").mkdir(parents=True)
+    (d / "trading" / "stopped" / f"{U1}.json").write_text(_j.dumps({"user_id": U1, "by": "user"}))
+    assert cfg.kalshi_user_accounts() == []                       # stop wins
+
+
+def test_user_orders_are_scaled_by_the_approved_ratio(tmp_path, monkeypatch):
+    """User contracts = floor(owner contracts x ratio), never above the owner's;
+    below one contract nothing is sent and the skip is journaled. The owner's
+    own order is untouched."""
+    import crypto_trading.crypto_common.execution_events as ee
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1"), (U2, "kid-u2")], ratios={U1: 0.25, U2: 0.1})
+    calls = []
+
+    class Client:
+        def __init__(self, *, env=None, key=None, **k):
+            self.who = "owner" if key is None else key.key_id
+
+        def create_order(self, **kw):
+            calls.append((self.who, kw["count"]))
+            return {"status_code": 201, "response": "{}", "body_sent": {}}
+    monkeypatch.setattr(
+        "crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Client)
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status", lambda self: {"live_open": True})
+    monkeypatch.setattr(ee.EventExecutionRouter, "MACRO_GUARD", {})     # never depend on the real calendar
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp",
+                        classmethod(lambda cls, coin, lb=1800.0: None))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_spawn_user_mirror",
+                        lambda self, intent: self._mirror_user_accounts(dict(intent)))
+    r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
+        ticker="KXETH15M-X", side="yes", entry_price=0.85, contracts=25, armed=True)
+    assert r["status"] == "live_sent" and calls[0] == ("owner", 30)    # owner: alt day base 30
+    assert sorted(calls[1:]) == [("kid-u1", 7), ("kid-u2", 3)]          # floor(30*.25)=7, floor(30*.1)=3
+    sent = [x for x in _journal(tmp_path) if x["status"] == "live_sent"]
+    assert sorted((x["account"], x["contracts"], x["owner_contracts"], x["ratio"]) for x in sent) == \
+        [(U1, 7, 30, 0.25), (U2, 3, 30, 0.1)]
+    calls.clear()                                                       # a 5-lot (macro guard size)
+    out = ee.EventExecutionRouter(strategy="w7_noisefade")._mirror_user_accounts(
+        {"ticker": "KXETH15M-Y", "side": "yes", "contracts": 5, "price_dollars": 0.9})
+    assert calls == [("kid-u1", 1)]                                     # floor(5*.25)=1; 10% of 5 < 1
+    assert [(x["account"], x["status"], x["contracts"]) for x in out if x["account"] == U2] == \
+        [(U2, "skipped_below_one_contract", 0)]
+
+def test_prod_band_and_night_sizes_v4_20261004():
+    """User 2026-10-04: W7 prod (and its paper mirrors W11/W13, which read these constants) trade only
+    favourites priced 0.80-0.97; the night band (UTC 00-05) sizes are 20 for BTC and the alts alike."""
+    import inspect
+    import crypto_trading.crypto_common.execution_events as ee
+    # conftest blanks PROD_BAND for every test, so check the shipped value in the source itself
+    assert 'PROD_BAND: dict = {"w7_noisefade": (0.80, 0.97)}' in inspect.getsource(ee)
+    sz = ee.EventExecutionRouter.PROD_SIZING["w7_noisefade"]
+    assert sz["night"] == {"KXBTC15M": 20, "default": 20} and sz["day"] == {"KXBTC15M": 40, "default": 30}
+    assert tuple(sz["night_hours_utc"]) == (0, 1, 2, 3, 4, 5)
+
+
+def test_session_isolation_from_real_user_accounts_and_venue_network():
+    """2026-10-05 incident guard (tests/conftest.py): no test can reach the real
+    ~/.kalshi, the real allowlist, or any Kalshi/Supabase host - not even a daemon
+    thread that outlives its test."""
+    from pathlib import Path
+    import requests
+    import crypto_trading.crypto_common.config as cfg
+    import crypto_trading.ops.export_prediction_frontend as ex
+    assert cfg.trading_user_ids() == set()
+    assert cfg.USER_KEY_DIR != Path.home() / ".kalshi" and ex.USER_KEY_DIR == cfg.USER_KEY_DIR
+    assert cfg.kalshi_user_accounts() == []
+    for url in ("https://external-api.kalshi.com/trade-api/v2/portfolio/orders",
+                "https://external-api.demo.kalshi.co/trade-api/v2/portfolio/balance",
+                "https://abc.supabase.co/auth/v1/admin/users"):
+        with pytest.raises(RuntimeError, match="blocked in tests"):
+            requests.Session().post(url, json={})
+
+
+def test_user_mirror_inherits_the_no_1_5x_cap(tmp_path, monkeypatch):
+    """2026-10-05 (user: 去掉 1.5 倍, also for the user account): the mirror sends the
+    owner's FINAL intent x the user's ratio, so the x1.5 cap reaches every user too."""
+    import crypto_trading.crypto_common.execution_events as ee
+    _user_dir(tmp_path, monkeypatch, [(U1, "kid-u1")], ratios={U1: 1.0})
+    calls = []
+
+    class Client:
+        def __init__(self, *, env=None, key=None, **k):
+            self.who = "owner" if key is None else key.key_id
+
+        def create_order(self, **kw):
+            calls.append((self.who, kw["count"]))
+            return {"status_code": 201, "response": "{}", "body_sent": {}}
+    monkeypatch.setattr("crypto_trading.crypto_common.kalshi.rest_event.KalshiEventOrderClient", Client)
+    monkeypatch.setattr(ee.EventExecutionRouter, "TABLE_LIVE",
+                        {"w7_noisefade": {"enabled": True, "window_cap_mult": 1.5, "max_size_mult": 1.0}})
+    monkeypatch.setattr(ee.EventExecutionRouter, "MACRO_GUARD", {})
+    monkeypatch.setattr(ee.EventExecutionRouter, "gate_status", lambda self: {"live_open": True})
+    monkeypatch.setattr(ee.EventExecutionRouter, "_utc_hour", staticmethod(lambda: 14))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_trend_bp", classmethod(lambda cls, coin, lb=1800.0: None))
+    monkeypatch.setattr(ee.EventExecutionRouter, "_flow_gate_decision", lambda self, t, s: {"decision": "accept"})
+    monkeypatch.setattr(ee.EventExecutionRouter, "_spawn_user_mirror",
+                        lambda self, intent: self._mirror_user_accounts(dict(intent)))
+    r = ee.EventExecutionRouter(strategy="w7_noisefade").submit(
+        ticker="KXBTC15M-26OCT050800-00", side="yes", entry_price=0.85, contracts=25, armed=True, size_mult=1.5,
+        entry_source="table_top1_T-9.75", table_decision={"action": "trade", "slot": "top1", "mult": 1.5, "scenario": "S"})
+    assert r["status"] == "live_sent" and r["contracts"] == 40 and r["size_mult"] == 1.0 and r["size_mult_table"] == 1.5
+    assert calls == [("owner", 40), ("kid-u1", 40)]                  # day BTC base 40, not 60, for both accounts

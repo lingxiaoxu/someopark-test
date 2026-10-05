@@ -1,0 +1,268 @@
+{
+ "mrpt": {
+  "as_of": "2026-10-02",
+  "balance_sheet": {
+   "cash": 1037497.15,
+   "net_securities": 0.0,
+   "nav": 1037497.15,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 0.0,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 3220.41,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 588.3,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 29231.51,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1037497.15,
+    "net_income": 0.0,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 0.0,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1034276.74,
+    "net_income": 3220.41,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 0.3114,
+    "max_drawdown_pct": -0.6
+   },
+   "1M": {
+    "beginning_nav": 1036908.85,
+    "net_income": 588.3,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 0.0567,
+    "max_drawdown_pct": -0.85
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 29231.51,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 2.8992,
+    "max_drawdown_pct": -3.21
+   }
+  },
+  "positions": {},
+  "pnl": {
+   "cumulative_realized": 38495.63,
+   "cumulative_dividends": -998.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 37497.15
+  },
+  "activity_today": {
+   "n_trades": 0,
+   "realized_today": 0,
+   "trades": []
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-10-02",
+  "balance_sheet": {
+   "cash": 768646.89,
+   "net_securities": 292808.88,
+   "nav": 1061455.77,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 41088.44,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 49264.04,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 161895.37,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 60449.86,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1020367.33,
+    "net_income": 41088.44,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1061455.77,
+    "return_pct": 4.0268,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1012191.73,
+    "net_income": 49264.04,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1061455.77,
+    "return_pct": 4.8671,
+    "max_drawdown_pct": -1.92
+   },
+   "1M": {
+    "beginning_nav": 899560.4,
+    "net_income": 161895.37,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1061455.77,
+    "return_pct": 17.9972,
+    "max_drawdown_pct": -9.72
+   },
+   "ITD": {
+    "beginning_nav": 1001005.91,
+    "net_income": 60449.86,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1061455.77,
+    "return_pct": 6.0389,
+    "max_drawdown_pct": -26.85
+   }
+  },
+  "positions": {
+   "PCG": {
+    "shares": -5644,
+    "avg_cost": 12.32,
+    "entry_date": "2026-09-14"
+   },
+   "AMD": {
+    "shares": 290,
+    "avg_cost": 615.797241,
+    "entry_date": "2026-09-24"
+   },
+   "CHTR": {
+    "shares": -987,
+    "avg_cost": 110.67,
+    "entry_date": "2026-09-29"
+   },
+   "RVTY": {
+    "shares": 714,
+    "avg_cost": 152.77,
+    "entry_date": "2026-09-29"
+   },
+   "FSLR": {
+    "shares": -617,
+    "avg_cost": 176.93,
+    "entry_date": "2026-09-29"
+   },
+   "HPE": {
+    "shares": 7178,
+    "avg_cost": 61.49,
+    "entry_date": "2026-09-29"
+   },
+   "PNR": {
+    "shares": -1998,
+    "avg_cost": 53.47,
+    "entry_date": "2026-09-29"
+   },
+   "WYNN": {
+    "shares": -1396,
+    "avg_cost": 78.23,
+    "entry_date": "2026-09-29"
+   },
+   "PANW": {
+    "shares": 123,
+    "avg_cost": 403.24,
+    "entry_date": "2026-10-02"
+   },
+   "OTIS": {
+    "shares": -772,
+    "avg_cost": 64.05,
+    "entry_date": "2026-10-02"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 472.8,
+   "cumulative_dividends": -6613.11,
+   "cumulative_fees": 0.0,
+   "unrealized": 67596.08,
+   "total": 61455.77
+  },
+  "activity_today": {
+   "n_trades": 4,
+   "realized_today": 53.66,
+   "trades": [
+    {
+     "date": "2026-10-02",
+     "ticker": "PLTR",
+     "side": "SELL",
+     "shares": 360,
+     "price": 188.75,
+     "avg_cost_at_trade": 192.59,
+     "realized_pnl": -1382.4,
+     "gross": 67950.0,
+     "dedup_key": "2026-10-02-PLTR-SELL-PLTR/DOW|s1",
+     "lot": "PLTR/DOW|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 192.59,
+     "lot_realized": -1382.4,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-10-02",
+     "ticker": "DOW",
+     "side": "BUY",
+     "shares": 2434,
+     "price": 27.97,
+     "avg_cost_at_trade": 28.56,
+     "realized_pnl": 1436.06,
+     "gross": -68078.98,
+     "dedup_key": "2026-10-02-DOW-BUY-PLTR/DOW|s2",
+     "lot": "PLTR/DOW|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 28.56,
+     "lot_realized": 1436.06,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-10-02",
+     "ticker": "PANW",
+     "side": "BUY",
+     "shares": 123,
+     "price": 403.24,
+     "gross": -49598.52,
+     "dedup_key": "2026-10-02-PANW-BUY-PANW/OTIS|s1",
+     "lot": "PANW/OTIS|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-10-02",
+     "ticker": "OTIS",
+     "side": "SELL",
+     "shares": 772,
+     "price": 64.05,
+     "gross": 49446.6,
+     "dedup_key": "2026-10-02-OTIS-SELL-PANW/OTIS|s2",
+     "lot": "PANW/OTIS|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    }
+   ]
+  }
+ }
+}

@@ -42,6 +42,15 @@ except ImportError as _e:                                    # pragma: no cover
 else:
     STRATS["w8"] = w8_complete_set
     CADENCE_S["w8"] = 2
+# W7 table-driven prod entries at the non-T-8 bins (2026-10-02). Isolated like
+# W8: if the module cannot load, W1-W7 must still run.
+try:
+    from . import w7_table
+except ImportError as _e:                                    # pragma: no cover
+    logger.warning("w7_table not available (%s) - W7 keeps its T-8 behaviour", _e)
+else:
+    STRATS["w7t"] = w7_table
+    CADENCE_S["w7t"] = 10
 TOPUP_S = 21600          # 6h: keep the data the modules depend on fresh
 
 
@@ -81,10 +90,31 @@ def run_once(names: list[str], *, confirm_spot: bool = False) -> dict:
     return out
 
 
+def _publish_trading_allowlist() -> None:
+    """Write THIS process's effective per-user live-trading allowlist to
+    ~/.kalshi/trading_active.json (2026-10-01) so the web panel reports what
+    the running W7 actually mirrors - the allowlist is fixed at import, so
+    editing .env without a restart must not show as enabled."""
+    try:
+        import os
+        from crypto_trading.crypto_common.config import USER_KEY_DIR, trading_user_ids
+        USER_KEY_DIR.mkdir(parents=True, exist_ok=True)
+        os.chmod(USER_KEY_DIR, 0o700)
+        path = USER_KEY_DIR / "trading_active.json"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"user_ids": sorted(trading_user_ids()),
+                                   "pid": os.getpid(), "published_at": time.time()}))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+        logger.info("per-user live allowlist published: %d user(s)", len(trading_user_ids()))
+    except Exception as e:                                        # noqa: BLE001
+        logger.warning("allowlist publish failed: %s", str(e)[:120])
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--strategy", default="all",
-                    choices=["all", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"])
+                    choices=["all", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w7t", "w8"])
     ap.add_argument("--loop", type=int, default=0,
                     help="seconds between iterations (0 = run once)")
     ap.add_argument("--confirm-spot", action="store_true",
@@ -102,12 +132,22 @@ def main(argv=None) -> int:
 
     last_run = {n: 0.0 for n in names}
     last_topup = 0.0
+    _TOPUP_THREAD = None
     logger.info("live_watch loop started: %s every %ss (cadence-gated)",
                 names, args.loop)
+    if "w7" in names:
+        _publish_trading_allowlist()
     while True:
         now = time.time()
         if now - last_topup >= TOPUP_S:
-            data_topup()
+            # In a background thread (2026-10-02): the top-up's subprocesses took
+            # 54 s on the last restart and can take minutes on a slow network,
+            # and a blocked loop can miss a W7 entry bin (+-0.6 min each). The
+            # top-up only refreshes parquet that W4/W1 read; nothing waits on it.
+            if _TOPUP_THREAD is None or not _TOPUP_THREAD.is_alive():
+                import threading
+                _TOPUP_THREAD = threading.Thread(target=data_topup, name="data-topup", daemon=True)
+                _TOPUP_THREAD.start()
             last_topup = now
         due = [n for n in names if now - last_run[n] >= CADENCE_S[n]]
         if due:

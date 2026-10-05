@@ -6,15 +6,13 @@ import fs from 'fs'
 import path from 'path'
 import { getBackendPath } from '../config.js'
 import type { AgentTool } from './index.js'
+import { resolveAllowed } from './pathGuard.js'
 
 const ALLOWED_ROOT = path.resolve(getBackendPath('.'))
 
+// Shared guard (symlinks, separator-safe root check, secret deny-list).
 function validatePath(filePath: string): string {
-  const resolved = path.resolve(filePath)
-  if (!resolved.startsWith(ALLOWED_ROOT)) {
-    throw new Error(`Path not allowed. Must be within ${ALLOWED_ROOT}`)
-  }
-  return resolved
+  return resolveAllowed(filePath)
 }
 
 interface NotebookCell {

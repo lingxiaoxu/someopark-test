@@ -151,7 +151,27 @@ for W in walk_forward walk_forward_mtfs; do
   check_mount
 
   BAK_IDX=$(mktemp); SRC_IDX=$(mktemp)
+  # 守卫(2026-09-30,与 clean_old_mlruns.sh 同步): 备份目录必须真的可读。
+  # mlruns weekly 曾因 launchd 缺 TCC 权限读不到外置盘,空索引把全部候选判成
+  # 「备份中不存在」→「★ 删除 0 个」,失败伪装成功。本脚本同一模式,一并设防:
+  # ls 失败响亮地死;索引为空而本机有 window 时也死(备份只增不减,不可能空)。
+  TCC_ERR=$(mktemp)
+  if ! ls -1 "$BAK/$W" > /dev/null 2>"$TCC_ERR"; then
+    log "FATAL: 备份目录无法读取: $BAK/$W"
+    log "       错误: $(head -1 "$TCC_ERR")"
+    log "       典型原因: launchd/TCC 权限。中止,一个不删。"
+    rm -f "$TCC_ERR"; exit 9
+  fi
+  rm -f "$TCC_ERR"
   index_tree "$BAK/$W"   > "$BAK_IDX"
+  if [[ ! -s "$BAK_IDX" ]]; then
+    N_LOCAL_W=$(ls -d "$HR/$W"/window*/ 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$N_LOCAL_W" -gt 0 ]]; then
+      log "FATAL: 外置盘索引为空($BAK/$W),但本机有 $N_LOCAL_W 个 window。"
+      log "       该状态只可能是读取失败,不是备份缺失。中止,一个不删。"
+      exit 9
+    fi
+  fi
   index_tree "$HR/$W"    > "$SRC_IDX"
   check_mount
 

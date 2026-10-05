@@ -20,6 +20,7 @@
     }
   },
   "include": [
+    "src/vite-env.d.ts",
     "src/crypto-markets/**/*.ts",
     "src/crypto-markets/**/*.tsx"
   ],

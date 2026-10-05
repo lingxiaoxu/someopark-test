@@ -4,7 +4,11 @@ python -m crypto_trading.ops.export_prediction_frontend --once
 python -m crypto_trading.ops.export_prediction_frontend --watch 60
 
 Reads source ledgers without importing a strategy or order client. The only
-network capability is a Demo-host GET allowlist. Account snapshots are reused
+network capability is a Demo-host GET allowlist plus one public, unauthenticated
+Kalshi market-record GET for a closed window the strike identity cannot settle
+(official_result; cached, rate limited). Exact prod fees/costs come from LOCAL caches
+written by the separate read-only ops/prod_fill_sync job (this publisher still makes
+no prod-account call). Account snapshots are reused
 for at least 180 seconds with their original source timestamp. Writes are
 restricted to this publisher's private directory and its public namespace.
 """
@@ -16,6 +20,7 @@ from decimal import Decimal
 import gzip
 import hashlib
 import json
+import re
 import math
 import os
 from pathlib import Path
@@ -104,7 +109,8 @@ def runtime(source, status, at, stale=180, detail=''):
 
 def verdict_text(v):
     if not v: return '固定 300 个独立窗口验收尚未形成结论'
-    return ('固定验收通过' if v.get('passed') else '固定验收未通过') + '；' + str(v.get('windows', v.get('n_windows', 300))) + ' 个窗口'
+    n = v.get('signal_windows', v.get('windows', v.get('n_windows', 300)))
+    return ('固定验收通过' if v.get('passed') else '固定验收未通过') + '；' + str(n) + ' 个窗口'
 
 
 def main_trade(row, registered):
@@ -324,12 +330,432 @@ def fave_demo(attempts, account, errors):
         positions.append(dict(ticker=ticker, asset=asset(ticker), close_at=o['close_at'], yes_quantity=None, no_quantity=None, paired_quantity=None, net_quantity=None, cost_usd=None, fees_usd=None, verified=False, source_as_of=asof, exit_status='发送或成交尚未核验；风险敞口未知'))
     incomplete = any(not o['verified'] for o in orders)
     p = performance(status='unavailable' if not account else 'partial' if incomplete or errors else 'verified', source_as_of=asof,
-                    scope='MAIN 注册以来'+('（'+account['since']+' 起）' if account and account.get('since') else '')+'，按本策略 order_id 归属的 Demo 已结算成交；排除未核验订单与未结算仓位。',
+                    scope='MAIN 注册以来的已核验 Demo 结算。',
                     net_pnl_usd=sum(r['net_usd'] for r in closed) if account else None,
                     fees_usd=sum(r['fees_usd'] for r in closed) if account else None,
                     settled_count=len(closed) if account else None, open_count=len(positions) if account else None, unresolved_count=sum(not o['verified'] for o in orders),
-                    curve=curve((r['at'],r['net_usd']) for r in closed), note='官方 fills 核验数量、费用；官方 Demo settlement 提供结果。未核验记录不以纸面或回执金额补齐。')
+                    curve=curve((r['at'],r['net_usd']) for r in closed), note='按官方成交与结算核验。')
     return p, orders, positions, closed
+
+
+def _ticker_close_ts(ticker):
+    """KX<COIN>15M-26SEP301330-30 → 收盘 epoch(票面为美东挂钟时间)。"""
+    try:
+        from zoneinfo import ZoneInfo
+        part = ticker.split('-')[1]
+        d = datetime.strptime(part[:-4], '%y%b%d')
+        return datetime(d.year, d.month, d.day, int(part[-4:-2]), int(part[-2:]),
+                        tzinfo=ZoneInfo('America/New_York')).timestamp()
+    except Exception:
+        return None
+
+
+def _order_detail(r, rc=None, fill=None, avg=None):
+    """回执+执行审计 → 订单详情;只收录真实存在的字段,None 一律剔除。"""
+    body = r.get('body_sent') or {}
+    fg = r.get('flow_gate') or {}
+    nd = r.get('no_dump') or {}
+    side = r.get('side')
+    det = dict(
+        client_order_id=(rc or {}).get('client_order_id') or body.get('client_order_id'),
+        venue_ts=iso(float((rc or {}).get('ts_ms'))/1000.0) if (rc or {}).get('ts_ms') else None,
+        avg_fill_price=(round(number(avg if side == 'yes' else 1-avg), 4)
+                        if (avg is not None and fill) else None),
+        remaining_count=number((rc or {}).get('remaining_count')),
+        http_status=r.get('status_code') if isinstance(r.get('status_code'), int) else None,
+        tif=r.get('tif') or body.get('time_in_force'),
+        stp=body.get('self_trade_prevention_type'),
+        role='taker' if fill else None,
+        paper_price=number(r.get('paper_price_dollars')),
+        buffer_c=r.get('limit_buffer_c') if isinstance(r.get('limit_buffer_c'), (int, float)) else None,
+        trend_bp=number(nd.get('trend_bp', nd.get('trend60_bp'))),
+        size_mult=number(nd.get('mult')),
+        gate=fg.get('decision') or ('skip' if r.get('status') == 'skipped_by_flow_gate' else None),
+        gate_flow=number(fg.get('aligned_observed_flow_1m') if fg.get('aligned_observed_flow_1m') is not None
+                         else r.get('aligned_observed_flow_1m')),
+        gate_momentum=number(fg.get('aligned_momentum_1m_bp') if fg.get('aligned_momentum_1m_bp') is not None
+                             else r.get('aligned_momentum_1m_bp')),
+    )
+    det = {k: v for k, v in det.items() if v is not None}
+    return det or None
+
+
+_STRIKES = {}                     # orderbook recording path -> (size, {close_time: strike})
+_CLOSE_RE = re.compile(rb'"close_time": ?"([^"]+)"'); _STRIKE_RE = re.compile(rb'"strike": ?([-+0-9.eE]+)')
+
+
+def _window_strikes(series, day, crypto=CRYPTO):
+    """{close_time: strike} for one series/UTC day from the strips orderbook recording
+    (live .jsonl or rotated .jsonl.gz); re-read only when the file has grown."""
+    folder = crypto/'price_data/kalshi/event_strips/prod'/series/'orderbook'
+    path = next((folder/n for n in (f'{day}.jsonl', f'{day}.jsonl.gz') if (folder/n).exists()), None)
+    if path is None: return {}
+    size = path.stat().st_size
+    hit = _STRIKES.get(str(path))
+    if hit and hit[0] == size: return hit[1]
+    out = {}
+    opener = gzip.open if path.suffix == '.gz' else open
+    try:
+        with opener(path, 'rb') as fh:
+            for line in fh:
+                m = _CLOSE_RE.search(line); k = _STRIKE_RE.search(line)
+                if m and k and m.group(1) not in out:
+                    try: out[m.group(1).decode()] = float(k.group(1))
+                    except ValueError: continue
+    except OSError:
+        return {}
+    _STRIKES[str(path)] = (size, out)
+    return out
+
+
+def strike_identity_result(ticker, crypto=CRYPTO, now=None):
+    """Official result for a closed 15M market the paper ledger does not hold (prod traded a
+    (ticker, side) the paper never took, which the table-driven bins allow since 2026-10-02):
+    the NEXT window's strike IS this window's settlement price (60 s BRTI average), so
+    next > strike -> 'yes', next < strike -> 'no'. Equal strikes, a missing next window or a
+    market not yet closed -> None (the leg stays open until it can be settled)."""
+    cts = _ticker_close_ts(ticker)
+    if cts is None or cts > (time.time() if now is None else now) - 30: return None
+    series = ticker.split('-')[0]
+    key = lambda t: datetime.fromtimestamp(t, timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    strikes = {}
+    for t in (cts - 900, cts, cts + 900):          # a window's rows are recorded on the day it is OPEN: a 00:00 close lives in the previous day's file
+        strikes.update(_window_strikes(series, key(t)[:10], crypto))
+    k, kn = strikes.get(key(cts)), strikes.get(key(cts + 900))
+    if k is None or kn is None or kn == k: return None
+    return 'yes' if kn > k else 'no'
+
+
+_OFFICIAL = {}                    # cache path -> {ticker: 'yes'|'no'}; a finalized result never changes
+_OFFICIAL_RETRY = {}              # ticker -> earliest next lookup after an unfinalized / failed GET
+OFFICIAL_LOOKUPS_PER_MIN = 4
+_OFFICIAL_BUDGET = {'at': 0.0, 'n': 0}
+
+
+def _fetch_official(ticker):
+    """Public unauthenticated market record, copied from w7_noisefade.official_result with a
+    short timeout so the publisher never stalls on the venue: 'yes'/'no' once finalized."""
+    import requests
+    from crypto_trading.crypto_common.kalshi.enums import rest_base
+    try:
+        r = requests.get(rest_base('prod') + f'/markets/{ticker}', timeout=4,
+                         headers={'User-Agent': 'someopark-crypto/0.1'})
+        if r.status_code == 200:
+            res = r.json().get('market', {}).get('result')
+            return res if res in ('yes', 'no') else None
+    except (requests.RequestException, ValueError):
+        pass
+    return None
+
+
+def official_result(ticker, crypto=CRYPTO, now=None, fetch=None):
+    """Kalshi's own finalized result for a closed market strike_identity_result cannot settle.
+    Consecutive windows carry the identical strike when the venue's reference price stalls
+    (2 of 664 windows in the 14 days to 2026-10-04, both on 2026-10-03; equality settled YES),
+    so the identity returns None and the leg would stay '等待官方结算' forever. Final results are
+    cached in frontend_prediction/official_results.json; an unfinalized or failed lookup is
+    retried after 300 s; at most OFFICIAL_LOOKUPS_PER_MIN network calls per minute."""
+    now = time.time() if now is None else now
+    cts = _ticker_close_ts(ticker)
+    if cts is None or cts + 120 > now: return None            # finalization lags the close by minutes
+    path = crypto/'trading_signals/frontend_prediction/official_results.json'
+    cache = _OFFICIAL.get(str(path))
+    if cache is None:
+        try: cache = {k: v for k, v in json.loads(path.read_text()).items() if v in ('yes', 'no')}
+        except (OSError, ValueError, AttributeError): cache = {}
+        _OFFICIAL[str(path)] = cache
+    if ticker in cache: return cache[ticker]
+    if _OFFICIAL_RETRY.get(ticker, 0) > now: return None
+    if now - _OFFICIAL_BUDGET['at'] >= 60: _OFFICIAL_BUDGET.update(at=now, n=OFFICIAL_LOOKUPS_PER_MIN)
+    if _OFFICIAL_BUDGET['n'] <= 0: return None
+    _OFFICIAL_BUDGET['n'] -= 1
+    res = (fetch or _fetch_official)(ticker)
+    if res not in ('yes', 'no'):
+        _OFFICIAL_RETRY[ticker] = now + 300
+        return None
+    cache[ticker] = res
+    try: atomic_json(path, dict(cache))
+    except Exception: pass
+    return res
+
+
+PROD_FILLS_OWNER = PRIVATE / 'prod_fills_owner.json'
+
+
+def load_exact_fills(path):
+    """order_id -> {count, cost, fees} from the read-only prod fill sync (ops/prod_fill_sync).
+
+    The receipts' average_fee_paid / average_fill_price are rounded to 4 decimals and
+    under-count fees by a fraction of a cent per order; Kalshi's own fills are exact.
+    Missing or unreadable cache = {} (every order keeps its receipt numbers)."""
+    try:
+        if not Path(path).exists(): return {}
+        orders = read_json(Path(path)).get('orders')
+    except (OSError, ValueError, AttributeError):
+        return {}
+    out = {}
+    for oid, a in (orders if isinstance(orders, dict) else {}).items():
+        try:
+            out[oid] = dict(count=float(a['count']), cost=float(a['cost']), fees=float(a['fees']))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def _exact_cost_fee(exact, oid, fill):
+    """(cost_usd, fees_usd) from Kalshi's fills when they cover exactly this receipt's fill count."""
+    x = (exact or {}).get(oid)
+    if x and fill > 0 and abs(x['count']-fill) < 1e-6:
+        return x['cost'], x['fees']
+    return None
+
+
+def prod_results(keys, state, crypto=CRYPTO, now=None):
+    """(ticker, side) -> (win, closed_at). The paper ledger's official result first (same market,
+    same side, as before); a prod leg the paper never held settles by strike_identity_result
+    once its market has closed, timestamped at the market close; the venue's own record
+    (official_result) decides the rare window the identity cannot (equal strikes)."""
+    res = {(t['ticker'], t['side']): (bool(t.get('win')), t.get('closed'))
+           for t in state.get('trades', []) if t.get('pnl_c') is not None}
+    for tk, side in set(keys):
+        if (tk, side) in res: continue
+        r_ = strike_identity_result(tk, crypto, now) or official_result(tk, crypto, now)
+        if r_ in ('yes', 'no'):
+            res[(tk, side)] = (side == r_, iso(_ticker_close_ts(tk)))
+    return res
+
+
+def fave_prod_ledger(rows, state, crypto=CRYPTO, now=None, exact=None):
+    """实盘账本三件套(orders/positions/settlements)——取代 FAVE 视图里的
+    Demo 账本(用户指令 2026-09-30:artifact 视图全部改 prod)。回执是交易所
+    同步答复;结算结果经纸面账本取官方 result,纸面没有同一 ticker/方向的腿时
+    (按表下单的时点纸面可能不在价带)按下一窗行权价=本窗结算价的恒等式结算
+    (见 strike_identity_result);闸口跳单以 status='skipped' 入列,保持跟踪
+    差异可见;启动自检合成行(ticker 含 LIVE)不入账。"""
+    sent = [r for r in rows if r.get('action') == 'live_order_result' and r.get('status') == 'live_sent']
+    res = prod_results([(r.get('ticker'), r.get('side')) for r in sent], state, crypto, now)
+    orders = []
+    for r in rows:
+        if r.get('action') != 'live_order_result': continue
+        tk = r.get('ticker') or ''
+        if 'LIVE' in tk: continue
+        st_ = r.get('status'); ts = r['ts']
+        settled = res.get((tk, r.get('side')))
+        cts = _ticker_close_ts(tk)
+        base = dict(ticker=tk, asset=asset(tk), at=iso(ts),
+                    close_at=(iso(settled[1]) if settled else (iso(cts) if cts else None)),
+                    side=r.get('side'), entry=True,
+                    quantity=float(r.get('contracts') or 0),
+                    price=number(r.get('price_dollars')))
+        if st_ == 'skipped_by_flow_gate':
+            orders.append(dict(id=hashlib.sha256((tk+str(ts)+'skip').encode()).hexdigest()[:20],
+                               **{**base, 'quantity': 0.0}, filled=0.0, cost_usd=0.0,
+                               fees_usd=0.0, status='skipped', verified=True, detail=_order_detail(r)))
+            continue
+        if st_ != 'live_sent': continue
+        rc = parse_receipt(r) or {}
+        code = r.get('status_code')
+        oid = rc.get('order_id') or (r.get('body_sent') or {}).get('client_order_id') \
+              or hashlib.sha256((tk+str(ts)).encode()).hexdigest()[:20]
+        if isinstance(code, int) and 400 <= code < 500:
+            orders.append(dict(id=oid, **base, filled=0.0, cost_usd=0.0,
+                               fees_usd=0.0, status='rejected', verified=True, detail=_order_detail(r, rc)))
+            continue
+        if not rc.get('order_id'):
+            orders.append(dict(id=oid, **base, filled=None, cost_usd=None,
+                               fees_usd=None, status='unknown', verified=False, detail=_order_detail(r, rc)))
+            continue
+        fill = float(rc.get('fill_count') or 0)
+        avg = float(rc.get('average_fill_price') or 0)
+        fee = float(rc.get('average_fee_paid') or 0)*fill
+        cost = (avg if r.get('side') == 'yes' else (1-avg))*fill if fill > 0 else 0.0
+        ex = _exact_cost_fee(exact, rc.get('order_id'), fill)
+        if ex: cost, fee = ex                  # Kalshi's own fills: exact to the 1/10000 dollar
+        status = 'filled' if fill >= base['quantity']-1e-9 else ('partial' if fill > 0 else 'zero_fill')
+        orders.append(dict(id=oid, **base, filled=fill, cost_usd=round(cost, 4),
+                           fees_usd=round(fee, 4), status=status, verified=True,
+                           detail=_order_detail(r, rc, fill, avg)))
+    closed = []; positions = []
+    by = defaultdict(list)
+    for o in orders:
+        if o['status'] in ('filled', 'partial') and (o['filled'] or 0) > 0:
+            by[(o['ticker'], o['side'])].append(o)
+    for (tk, side), os_ in sorted(by.items()):
+        q = sum(o['filled'] for o in os_)
+        cost = sum(o['cost_usd'] for o in os_); fees = sum(o['fees_usd'] for o in os_)
+        settled = res.get((tk, side))
+        if settled is not None:
+            win, closed_at = settled
+            payout = q if win else 0.0
+            closed.append(dict(ticker=tk, asset=asset(tk), at=iso(closed_at) or os_[0]['close_at'],
+                               result=(side if win else ('no' if side == 'yes' else 'yes')),
+                               quantity=q, cost_usd=round(cost, 4), fees_usd=round(fees, 4),
+                               payout_usd=payout, net_usd=round(payout-cost-fees, 4)))
+        else:
+            cts = _ticker_close_ts(tk)
+            positions.append(dict(ticker=tk, asset=asset(tk), close_at=os_[0]['close_at'],
+                                  yes_quantity=q if side == 'yes' else 0.0,
+                                  no_quantity=q if side == 'no' else 0.0,
+                                  paired_quantity=0.0, net_quantity=q if side == 'yes' else -q,
+                                  cost_usd=round(cost, 4), fees_usd=round(fees, 4), verified=True,
+                                  source_as_of=None,
+                                  exit_status='等待官方结算' if (cts and cts < (time.time() if now is None else now)) else '持有至结算'))
+    closed.sort(key=lambda x: str(x['at']))
+    return orders, positions, closed
+
+
+USER_KEY_DIR = Path(os.environ.get('KALSHI_USER_KEY_DIR') or (Path.home()/'.kalshi'))
+
+
+def read_user_journal(journal_dir=None):
+    """All per-user order rows from the PRIVATE journal (~/.kalshi/journal).
+
+    The W7 router writes one `pending_send` row before each user order and one
+    result row after, both with the same mirror_id; the last row per mirror_id
+    wins. A request interrupted by a restart therefore stays visible as an
+    unresolved order (no order_id) instead of disappearing.
+    """
+    journal_dir = journal_dir or (USER_KEY_DIR/'journal')
+    rows, last = [], {}
+    for f in sorted(Path(journal_dir).glob('*.jsonl')) if Path(journal_dir).is_dir() else []:
+        for ln in f.read_text(errors='ignore').splitlines():
+            try:
+                r = json.loads(ln)
+            except ValueError:
+                continue
+            if not isinstance(r, dict) or not r.get('account'):
+                continue
+            if r.get('mirror_id'):
+                last[r['mirror_id']] = r
+            else:
+                rows.append(r)
+    for r in last.values():
+        if r.get('status') == 'pending_send':
+            r = dict(r, status='live_sent', status_code=None, response=None)
+        rows.append(r)
+    rows.sort(key=lambda r: str(r.get('ts')))
+    return rows
+
+
+def user_prod_rows(journal_rows, uid):
+    """One user's rows, already in the OWNER's row shape (2026-10-01).
+
+    Attribution is by account only - never by a time window - so re-verifying
+    a key can never drop orders, positions or settlements the user really has.
+    Gate skips are journaled only for users who were actually being mirrored.
+    """
+    out = []
+    for r in journal_rows:
+        if r.get('account') != uid:
+            continue
+        row = dict(r)
+        if row.get('error'):
+            row['status_code'] = None; row['response'] = None
+        row.setdefault('body_sent', {})
+        out.append(row)
+    return out
+
+
+def _empty_execution(label, since, note):
+    return dict(label=label, since=iso(since), source_as_of=None, scope='你的 Kalshi Production 账户', note=note,
+                **{k: None for k in ('signals','requested_contracts','accepted','filled_orders','full_fills','partial_fills',
+                                     'zero_fills','filled_contracts','empty_side','unavailable','other_skips')})
+
+
+_USER_UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+
+
+def write_user_ledgers(state, now, paper=(), out_dir=None, journal_dir=None, fills_dir=None):
+    """Private per-user ledgers OUTSIDE the repo (~/.kalshi/ledgers, 0700/0600);
+    served only by the authenticated web route to their owner."""
+    out_dir = Path(out_dir or (USER_KEY_DIR/'ledgers'))
+    try:
+        registry = json.loads((USER_KEY_DIR/'users.json').read_text())
+    except (OSError, ValueError):
+        return 0
+    if not isinstance(registry, dict):
+        return 0
+    journal = read_user_journal(journal_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(out_dir, 0o700)
+    # same Supabase id everywhere: registry key == record user_id == file name
+    active = {uid: rec for uid, rec in registry.items()
+              if _USER_UUID.fullmatch(uid) and isinstance(rec, dict)
+              and rec.get('status') == 'active' and rec.get('user_id', uid) == uid}
+    for stale in out_dir.glob('*.json'):                 # disconnected users' books
+        if _USER_UUID.fullmatch(stale.stem) and stale.stem not in active:
+            stale.unlink(missing_ok=True)
+    n = 0
+    for uid, rec in active.items():
+        urows = user_prod_rows(journal, uid)
+        exact = load_exact_fills(Path(fills_dir or (USER_KEY_DIR/'fills'))/f'{uid}.json')
+        orders, positions, settlements = fave_prod_ledger(urows, state, exact=exact)
+        execution = {}
+        first = min((timestamp(r['ts']) for r in urows), default=None)
+        for key, label, since in (('all', '跟单开通以来', first), ('recent', '最近48h MAIN', now-48*3600)):
+            if since is None:
+                execution[key] = _empty_execution(label, now, '尚无跟单订单。')
+                continue
+            ps = [r for r in paper if timestamp(r['ts']) >= since]
+            os_ = [o for o in orders if timestamp(o['at']) >= since]
+            execution[key] = execution_stats(label, since, iso(now), ps, os_,
+                note='分母为 MAIN 纸面信号；你的下单张数 = 平台主账户张数 × 你的跟单比例（向下取整，不足 1 张不下单）。跳单与 IOC 落空为跟踪差异。',
+                scope='按你的交易所回执归属的 Prod 实盘执行。')
+        payload = dict(user_id=uid, email=rec.get('email'), generated_at=iso(now),
+                       validated_at=rec.get('validated_at'),
+                       prod=fave_prod(urows, state, exact=exact), orders=orders, positions=positions,
+                       settlements=settlements, execution=execution)
+        path = out_dir/f'{uid}.json'
+        tmp = path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, allow_nan=False))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+        n += 1
+    return n
+
+
+def fave_prod(rows, state, crypto=CRYPTO, now=None, exact=None):
+    """W7 实盘腿(2026-09-28 武装)。按交易所同步下单回执计账:fill_count /
+    average_fill_price(YES 侧价,no 单成本=1-px)/ average_fee_paid;官方结算
+    结果取自纸面账本——其结算真值本就是 venue 官方 result;纸面没有的腿按
+    strike_identity_result(下一窗行权价=本窗结算价)结算。发布器对 prod 零
+    网络调用,只读日志与状态,维持"仅 Demo 网络"的姿态。IOC 落空与拒单是与
+    纸面的跟踪差异,计数披露但不以纸面金额补齐。"""
+    sent = [r for r in rows if r.get('action') == 'live_order_result' and r.get('status') == 'live_sent']
+    res = prod_results([(r.get('ticker'), r.get('side')) for r in sent], state, crypto, now)
+    if not sent:
+        return performance(status='unavailable', scope='MAIN [0.78,0.98] 实盘镜像（2026-09-28 武装）。', note='武装后尚无实盘派发。')
+    settled = []; open_ = miss = rej = unresolved = 0; latest = None
+    for r in sent:
+        latest = r['ts'] if latest is None or str(r['ts']) > str(latest) else latest
+        rc = parse_receipt(r) or {}
+        code = r.get('status_code')
+        if isinstance(code, int) and code >= 400:
+            rej += 1; continue                 # 4xx = 已知零执行(如修复前的 invalid_price)
+        if not rc.get('order_id'):
+            unresolved += 1; continue          # 超时/无回执:执行状态未知
+        n = float(rc.get('fill_count') or 0)
+        if n <= 0:
+            miss += 1; continue                # IOC 落空:已知零执行
+        px = float(rc.get('average_fill_price') or 0)
+        total = (px if r.get('side') == 'yes' else round(1 - px, 4)) * n
+        fee = float(rc.get('average_fee_paid') or 0) * n
+        ex = _exact_cost_fee(exact, rc.get('order_id'), n)
+        if ex: total, fee = ex                 # Kalshi's own fills: exact to the 1/10000 dollar
+        key = (r.get('ticker'), r.get('side'))
+        if key in res:
+            win, closed = res[key]
+            settled.append(dict(at=closed or r['ts'], net_usd=n - total - fee if win else -total - fee, fees_usd=fee))
+        else:
+            open_ += 1
+    return performance(
+        status='partial' if unresolved else 'verified', source_as_of=latest,
+        scope='2026-09-28 起的 MAIN 实盘镜像；跳单、IOC 落空与拒单计为跟踪差异。',
+        net_pnl_usd=round(sum(x['net_usd'] for x in settled), 4) if settled else 0.0,
+        fees_usd=round(sum(x['fees_usd'] for x in settled), 4) if settled else 0.0,
+        settled_count=len(settled), open_count=open_, unresolved_count=unresolved,
+        sample_windows=len(settled), curve=curve((x['at'], x['net_usd']) for x in settled),
+        note='按官方回执与结算计账；成本与手续费优先取 Kalshi 逐笔成交的精确值。')
 
 
 def pfme_demo(state, at):
@@ -372,10 +798,10 @@ def paper_performance(sid, state, at):
         rows=[r for r in state['trades'] if main_trade(r,state['main_registered_at'])]
         windows=state['windows_main']; net=sum(float(w['sum_c'])/100*25 for w in windows.values())
         if abs(net-sum(float(r['pnl_c'])/100*25 for r in rows)) > 1e-5: raise ValueError('FAVE MAIN window ledger mismatch')
-        return performance(status='verified', source_as_of=iso(at), scope='MAIN 注册后 $0.78–$0.98 的25张纸面交易；完全排除宽区间与观察组。',
+        return performance(status='verified', source_as_of=iso(at), scope='MAIN 注册频段的纸面交易。',
                            net_pnl_usd=net, fees_usd=None, settled_count=len(rows), open_count=sum(main_trade(r,state['main_registered_at']) for r in state['positions'].values()),
                            curve=curve((k,float(v['sum_c'])/100*25) for k,v in windows.items()), sample_windows=len(windows), unresolved_count=0, verdict=verdict_text(state.get('verdict_main')),
-                           note='Prod 盘口纸面成本和模型手续费；不是 Demo 已实现收益。源账本未逐笔单列手续费，不另造总费用。')
+                           note='含纸面模型费用。')
     book=state['books']['tilted']; rows=book['trades']; grouped=defaultdict(list)
     for r in rows: grouped[r['close_ts']].append(r)
     active={t:rs for t,rs in grouped.items() if any(r['fills'] for r in rs)}
@@ -383,11 +809,11 @@ def paper_performance(sid, state, at):
     total=sum(r['net_usd'] for r in rows)
     if abs(total-book['cum_net_usd'])>1e-6: raise ValueError('PFME paper ledger mismatch')
     return performance(status='partial' if len(clean)!=len(active) else 'verified', source_as_of=iso(at),
-                       scope='当前 tilted 注册的保守排队模型；不包含 paired 对照。', net_pnl_usd=total,
+                       scope='当前注册的 tilted 书(v10 公允闸处理组)保守排队模型；不含 paired 对照。', net_pnl_usd=total,
                        fees_usd=sum(r['fees_usd'] for r in rows), settled_count=sum(bool(r['fills']) for r in rows),
                        open_count=sum(bool(m.get('fills')) for m in book['positions'].values()),
                        curve=curve((t,sum(r['net_usd'] for r in rs)) for t,rs in grouped.items()), sample_windows=len(clean), unresolved_count=len(active)-len(clean),
-                       verdict=verdict_text(state.get('verdicts',{}).get('tilted')),
+                       verdict=verdict_text(state.get('verdicts',{}).get('fair_gate_diff') or state.get('verdicts',{}).get('tilted')),
                        note=f'有效窗口 {len(clean)}/{len(active)}；管理迟到但成交完整的窗口仍计验收。收益为全部已记账纸面交易，未核验窗口存在时标部分可验证。')
 
 
@@ -563,7 +989,7 @@ def strategy_shell(sid):
 def build_snapshot(*, now=None, signals=SIGNALS, crypto=CRYPTO, private_dir=PRIVATE, reader_factory=DemoReads, offline=False):
     live_clock=now is None
     now=time.time() if now is None else now; since48=now-48*3600
-    snap=dict(schema_version=1,snapshot_id=hashlib.sha256(str(now).encode()).hexdigest()[:16],generated_at=iso(now),execution_environment='demo',market_data_environment='prod',prod_execution_enabled=False,issues=[],strategies={})
+    snap=dict(schema_version=1,snapshot_id=hashlib.sha256(str(now).encode()).hexdigest()[:16],generated_at=iso(now),execution_environment='mixed',market_data_environment='prod',prod_execution_enabled=True,issues=[],strategies={})
     for sid in ('fave','pfme'):
         out=strategy_shell(sid); snap['strategies'][sid]=out
         try:
@@ -576,27 +1002,36 @@ def build_snapshot(*, now=None, signals=SIGNALS, crypto=CRYPTO, private_dir=PRIV
                 if bad: out['issues'].append(issue('fave_logs','INVALID_LINES',f'{bad} 条相关日志无法解析；统计覆盖不完整。'))
                 account,errs=account_snapshot(attempts,start,now,private_dir,reader_factory,offline)
                 out['issues'].extend(errs)
-                out['demo'],out['orders'],out['positions'],out['settlements']=fave_demo(attempts,account,out['issues'])
-                allnew=[r for r in attempts if r.get('execution_version')=='w7_demo_book_v1']
-                cutoff=min((timestamp(r['_source']['ts']) for r in allnew),default=now)
-                for key,label,since in [('all','当前执行版本以来',cutoff),('recent','最近48h MAIN',since48)]:
+                out['demo'],_demo_orders,_demo_positions,_demo_settlements=fave_demo(attempts,account,out['issues'])
+                # 2026-09-30(用户指令):FAVE 的 artifact 账本视图全部改为
+                # Prod 实盘数据;Demo 仅保留「收益与回撤」里的独立评估块。
+                exact=load_exact_fills(Path(private_dir)/PROD_FILLS_OWNER.name)
+                out['orders'],out['positions'],out['settlements']=fave_prod_ledger(rows,state,crypto,now,exact)
+                out['ledger_source']='prod'
+                out['prod']=fave_prod(rows,state,crypto,now,exact)
+                try:
+                    write_user_ledgers(state,now,paper=paper)
+                except Exception as exc:  # a user ledger can never break the public snapshot
+                    out['issues'].append(issue('prod_users','WRITE_FAILED','用户实盘账本生成失败（'+type(exc).__name__+'）。'))
+                cutoff=min((timestamp(o['at']) for o in out['orders']),default=now)
+                for key,label,since in [('all','实盘武装以来',cutoff),('recent','最近48h MAIN',since48)]:
                     ps=[r for r in paper if timestamp(r['ts'])>=since]; os_=[o for o in out['orders'] if timestamp(o['at'])>=since]
-                    ats=[r for r in attempts if timestamp(r['ts'])>=since]
-                    out['execution'][key]=execution_stats(label,since,(account or {}).get('as_of'),ps,os_,ats,
-                        note='分母为 MAIN 入场信号。旧无报价日志缺少合约身份，只列未分类跳过；不可当作确认空盘口。',scope='MAIN paper 信号与 exact ticker / order_id 对应的 Demo 执行。')
+                    out['execution'][key]=execution_stats(label,since,iso(now),ps,os_,
+                        note='分母为 MAIN 纸面信号；申请张数为分时段实盘规模。跳单与 IOC 落空为跟踪差异。',scope='按交易所回执归属的 Prod 实盘执行。')
                 for key,label,since in [('all','当前执行版本以来',cutoff),('recent','最近48小时',since48)]:
                     out['execution']['exits'][key]=execution_stats(label,since,(account or {}).get('as_of'),[],[],note='当前 FAVE 没有主动退出路径，持有至官方结算。',scope='退出订单数量完整为零。')
                 if bad:
                     for key in ('all','recent'):
                         out['execution'][key]['signals']=None; out['execution'][key]['requested_contracts']=None; out['execution'][key]['other_skips']=None
                         out['execution'][key]['note']+=' 相关日志有无法解析的行，信号总数与分母不可确认；订单指标仅为可验证子集。'
-                out['parameters']=[dict(label=k,value=v) for k,v in [('入场区间','$0.78–$0.98'),('信号规模','25 张'),('入场时间','距结束 8 分钟 ± 0.6 分钟'),('执行方式','实时盘口 · IOC'),('持仓管理','持有至官方结算'),('费用','Demo 官方实际成交费用')]]
+                out['parameters']=[dict(label=k,value=v) for k,v in [('入场区间','$0.78–$0.98'),('信号规模','纸面 25 张 · 实盘分时段调整'),('入场时间','距结束 8 分钟 ± 0.6 分钟'),('执行方式','实时盘口 · IOC'),('持仓管理','持有至官方结算'),('费用','交易所官方回执费用')]]
                 out['runtime']=[runtime('FAVE 状态文件','stale' if now-at>300 else 'updated',at,300,'文件更新时间，不冒充进程心跳。'),
                                 runtime('Demo 账户核验','unavailable' if not account else 'degraded' if errs else 'verified',(account or {}).get('as_of'),360,'独立只读 GET；与观察进程无写入连接。')]
             else:
                 p=signals/'w8_demo_mirror/state.json'; demo=read_json(p)
                 if demo.get('mode')!='demo' or demo['version']!=state['version']: raise ValueError('PFME Demo environment or version mismatch')
                 out['demo'],out['orders'],out['positions'],out['settlements']=pfme_demo(demo,demo['last_heartbeat'])
+                out['prod']=performance(status='unavailable', scope='W8 无实盘账户。', note='实盘仅 W7；W8 处于纸面 + Demo 阶段。')
                 for key,label,since in [('all','当前注册全部',timestamp(demo['started_at'])),('recent','最近48小时',since48)]:
                     os_=[o for o in out['orders'] if o['entry'] and timestamp(o['at'])>=since]
                     sig=[dict(quantity=o['quantity']) for o in os_]

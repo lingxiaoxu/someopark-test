@@ -10,6 +10,14 @@ T='KXBTC15M-26SEP150000-00'
 NOW=1789430520.0
 
 
+@pytest.fixture(autouse=True)
+def _no_venue_lookups(monkeypatch):
+    """Tests never reach Kalshi: the venue-record fallback answers 'unfinalized' unless a test
+    installs its own stub; its caches/budget start empty for every test."""
+    monkeypatch.setattr(e, '_fetch_official', lambda tk: None)
+    e._OFFICIAL.clear(); e._OFFICIAL_RETRY.clear(); e._OFFICIAL_BUDGET.update(at=0.0, n=0)
+
+
 def attempt(oid='own', side='no', filled='0.37'):
     return dict(ts=e.iso(NOW-100), contracts=1, price_dollars=.8,prod_close=e.iso(NOW-50),
                 _ticker=T,_side=side,_receipt=dict(order_id=oid,fill_count=filled))
@@ -374,3 +382,138 @@ def test_snapshot_exposes_health_without_changing_paper_or_demo_profit(tmp_path,
     assert {i['code'] for i in pfme['issues']}=={'SOURCE_HASH_MISMATCH','RECENT_OBSERVATION_GAPS'}
     assert pfme['paper']['net_pnl_usd']==pfme['demo']['net_pnl_usd']==0
     assert pfme['paper']['status']==pfme['demo']['status']=='verified'
+
+
+# --- prod legs the paper never held: settled by the strike identity (2026-10-03) ---
+T2 = 'KXBTC15M-26SEP141945-45'            # closes 2026-09-14 23:45 UTC, before NOW; next window closes on the next UTC day
+
+
+def prod_row(ticker=T2, side='yes', fill='10.00', px='0.8000', fee='0.0100'):
+    resp = json.dumps(dict(order_id='o1', fill_count=fill, average_fill_price=px, average_fee_paid=fee))
+    return dict(ts=e.iso(NOW-1500), action='live_order_result', env='prod', status='live_sent', ticker=ticker, side=side,
+                contracts=10, price_dollars=.81, status_code=201,
+                body_sent=dict(ticker=ticker, side='bid' if side == 'yes' else 'ask', client_order_id='c1'), response=resp)
+
+
+def strips(tmp_path, k_this, k_next, gz=False):
+    folder = tmp_path/'price_data/kalshi/event_strips/prod/KXBTC15M/orderbook'; folder.mkdir(parents=True, exist_ok=True)
+    rows = {'2026-09-14': dict(recv_ts=NOW-1000, ticker=T2, close_time='2026-09-14T23:45:00Z', strike=k_this, ob={}),
+            '2026-09-15': dict(recv_ts=NOW-60, ticker='KXBTC15M-26SEP142000-00', close_time='2026-09-15T00:00:00Z', strike=k_next, ob={})}
+    for day, row in rows.items():
+        if gz:
+            import gzip
+            with gzip.open(folder/f'{day}.jsonl.gz', 'wt') as fh: fh.write(json.dumps(row)+'\n')
+        else:
+            (folder/f'{day}.jsonl').write_text(json.dumps(row)+'\n')
+    e._STRIKES.clear()
+    return tmp_path
+
+
+def test_prod_leg_without_paper_trade_settles_by_strike_identity(tmp_path):
+    crypto = strips(tmp_path, 100.0, 101.0)
+    orders, positions, closed = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, NOW)
+    assert positions == [] and len(closed) == 1
+    assert closed[0]['result'] == 'yes' and closed[0]['at'] == e.iso(e._ticker_close_ts(T2))
+    assert abs(closed[0]['net_usd'] - (10*(1-.8) - .1)) < 1e-9
+    p = e.fave_prod([prod_row()], dict(trades=[]), crypto, NOW)
+    assert p['settled_count'] == 1 and p['open_count'] == 0 and abs(p['net_pnl_usd'] - 1.9) < 1e-9
+    # a losing NO leg: next strike above this strike settles YES
+    orders, positions, closed = e.fave_prod_ledger([prod_row(side='no', px='0.2000')], dict(trades=[]), crypto, NOW)
+    assert closed[0]['result'] == 'yes' and abs(closed[0]['net_usd'] - (-(10*.8) - .1)) < 1e-9
+
+
+def test_strike_identity_tie_or_unclosed_market_stays_open(tmp_path):
+    crypto = strips(tmp_path, 100.0, 100.0)
+    orders, positions, closed = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, NOW)
+    assert closed == [] and len(positions) == 1 and positions[0]['exit_status'] == '等待官方结算'
+    assert e.fave_prod([prod_row()], dict(trades=[]), crypto, NOW)['open_count'] == 1
+    crypto = strips(tmp_path, 100.0, 101.0)
+    before_close = e._ticker_close_ts(T2) - 60
+    _, positions, closed = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, before_close)
+    assert closed == [] and positions[0]['exit_status'] == '持有至结算'
+
+
+def test_paper_result_takes_precedence_over_strike_identity(tmp_path):
+    crypto = strips(tmp_path, 100.0, 101.0)
+    state = dict(trades=[dict(ticker=T2, side='yes', win=False, pnl_c=-80.0, closed=e.iso(NOW-700))])
+    _, positions, closed = e.fave_prod_ledger([prod_row()], state, crypto, NOW)
+    assert closed[0]['result'] == 'no' and closed[0]['at'] == e.iso(NOW-700)
+
+
+def test_strike_identity_reads_rotated_gz_and_caches_by_size(tmp_path):
+    crypto = strips(tmp_path, 100.0, 99.0, gz=True)
+    assert e.strike_identity_result(T2, crypto, NOW) == 'no'
+    folder = crypto/'price_data/kalshi/event_strips/prod/KXBTC15M/orderbook'
+    (folder/'2026-09-15.jsonl.gz').unlink()
+    assert e.strike_identity_result(T2, crypto, NOW) is None          # file gone -> unresolved, no stale answer
+
+
+def test_strike_identity_window_closing_at_midnight_reads_previous_days_file(tmp_path):
+    """A window closing at 00:00 UTC was recorded entirely on the previous UTC day."""
+    T3 = 'KXBTC15M-26SEP142000-00'                      # closes 2026-09-15 00:00 UTC (20:00 ET on the 14th)
+    folder = tmp_path/'price_data/kalshi/event_strips/prod/KXBTC15M/orderbook'; folder.mkdir(parents=True, exist_ok=True)
+    (folder/'2026-09-14.jsonl').write_text(json.dumps(dict(recv_ts=NOW-900, ticker=T3, close_time='2026-09-15T00:00:00Z', strike=100.0, ob={}))+'\n')
+    (folder/'2026-09-15.jsonl').write_text(json.dumps(dict(recv_ts=NOW+800, ticker='KXBTC15M-26SEP142015-15', close_time='2026-09-15T00:15:00Z', strike=100.4, ob={}))+'\n')
+    e._STRIKES.clear()
+    assert e.strike_identity_result(T3, tmp_path, NOW + 1000) == 'yes'
+
+
+def test_equal_strike_window_settles_by_venue_record_and_caches_it(tmp_path, monkeypatch):
+    crypto = strips(tmp_path, 100.0, 100.0)                       # identical strikes: identity undecidable
+    calls = []
+    monkeypatch.setattr(e, '_fetch_official', lambda tk: calls.append(tk) or 'yes')
+    e._OFFICIAL.clear(); e._OFFICIAL_RETRY.clear(); e._OFFICIAL_BUDGET.update(at=0.0, n=0)
+    now = e._ticker_close_ts(T2) + 1000
+    orders, positions, closed = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, now)
+    assert calls == [T2] and positions == [] and closed[0]['result'] == 'yes'
+    assert closed[0]['at'] == e.iso(e._ticker_close_ts(T2))
+    assert json.loads((tmp_path/'trading_signals/frontend_prediction/official_results.json').read_text()) == {T2: 'yes'}
+    e._OFFICIAL.clear()                                           # fresh process: the file answers, no network call
+    monkeypatch.setattr(e, '_fetch_official', lambda tk: (_ for _ in ()).throw(AssertionError('network call')))
+    assert e.fave_prod([prod_row()], dict(trades=[]), crypto, now)['settled_count'] == 1
+
+
+def test_venue_record_lookup_waits_for_finalization_and_is_rate_limited(tmp_path, monkeypatch):
+    crypto = strips(tmp_path, 100.0, 100.0)
+    calls = []
+    monkeypatch.setattr(e, '_fetch_official', lambda tk: calls.append(tk) or None)    # not finalized yet
+    e._OFFICIAL.clear(); e._OFFICIAL_RETRY.clear(); e._OFFICIAL_BUDGET.update(at=0.0, n=0)
+    cts = e._ticker_close_ts(T2)
+    assert e.official_result(T2, crypto, cts + 60) is None and calls == []             # just closed: no call yet
+    assert e.official_result(T2, crypto, cts + 200) is None and calls == [T2]          # asked once, unfinalized
+    assert e.official_result(T2, crypto, cts + 260) is None and calls == [T2]          # retry not before 300 s
+    assert e.official_result(T2, crypto, cts + 600) is None and calls == [T2, T2]
+    assert not (tmp_path/'trading_signals/frontend_prediction/official_results.json').exists()
+    e._OFFICIAL_RETRY.clear(); e._OFFICIAL_BUDGET.update(at=0.0, n=0); calls.clear()
+    tickers = [f'KXBTC15M-26SEP30{h:02d}00-00' for h in range(10, 10 + e.OFFICIAL_LOOKUPS_PER_MIN + 2)]
+    for tk in tickers: e.official_result(tk, crypto, NOW + 86400 * 30)
+    assert len(calls) == e.OFFICIAL_LOOKUPS_PER_MIN                                     # per-minute budget
+
+
+def test_exact_prod_fills_replace_receipt_rounding(tmp_path):
+    """2026-10-05: receipts carry 4-decimal averages (fees under-counted ~0.1c/order); the
+    read-only fill sync caches Kalshi's exact per-order sums. When the cache covers an
+    order with the SAME fill count, its exact cost/fee replace the receipt numbers."""
+    crypto = strips(tmp_path, 100.0, 101.0)                     # YES wins
+    cache = tmp_path/'fills.json'
+    cache.write_text(json.dumps({'orders': {'o1': {'count': 10.0, 'cost': 7.9973, 'fees': 0.1063}}}))
+    exact = e.load_exact_fills(cache)
+    orders, _, closed = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, NOW, exact)
+    assert orders[0]['cost_usd'] == 7.9973 and orders[0]['fees_usd'] == 0.1063
+    assert abs(closed[0]['net_usd'] - (10 - 7.9973 - 0.1063)) < 1e-9
+    p = e.fave_prod([prod_row()], dict(trades=[]), crypto, NOW, exact)
+    assert abs(p['net_pnl_usd'] - (10 - 7.9973 - 0.1063)) < 1e-9 and abs(p['fees_usd'] - 0.1063) < 1e-9
+    # a losing NO leg: the cache already holds the NO side's cost
+    cache.write_text(json.dumps({'orders': {'o1': {'count': 10.0, 'cost': 8.0012, 'fees': 0.1121}}}))
+    p = e.fave_prod([prod_row(side='no', px='0.2000')], dict(trades=[]), crypto, NOW, e.load_exact_fills(cache))
+    assert abs(p['net_pnl_usd'] - (-8.0012 - 0.1121)) < 1e-9
+    # a cache that does not cover the whole fill, no cache, or a broken file: receipt numbers stay
+    cache.write_text(json.dumps({'orders': {'o1': {'count': 9.0, 'cost': 7.2, 'fees': 0.09}}}))
+    for ex_ in (e.load_exact_fills(cache), None, {}):
+        orders, _, _ = e.fave_prod_ledger([prod_row()], dict(trades=[]), crypto, NOW, ex_)
+        assert abs(orders[0]['cost_usd'] - 8.0) < 1e-9 and abs(orders[0]['fees_usd'] - 0.1) < 1e-9
+    assert e.load_exact_fills(tmp_path/'missing.json') == {}
+    (tmp_path/'bad.json').write_text('{not json')
+    assert e.load_exact_fills(tmp_path/'bad.json') == {}
+    (tmp_path/'odd.json').write_text(json.dumps({'orders': {'o1': {'count': 'x'}, 'o2': {'count': 1, 'cost': 0.5, 'fees': 0.01}}}))
+    assert e.load_exact_fills(tmp_path/'odd.json') == {'o2': {'count': 1.0, 'cost': 0.5, 'fees': 0.01}}

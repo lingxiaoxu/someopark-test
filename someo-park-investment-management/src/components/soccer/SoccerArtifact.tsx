@@ -33,6 +33,7 @@ import SoccerMatchCard, { clubName } from './SoccerMatchCard';
 import ClubName from './ClubName';
 import { SoccerFocusContext, useClubFocusScroll } from '../../contexts/SoccerFocusContext';
 import SoccerBracket from './SoccerBracket';
+import { useKalshiUser, withUserKalshiProd } from '../../lib/kalshiUser';
 import {
   leagueLabel, stageLabel, statusLabel, sideAbbr,
   fmtDate, fmtDateTime, fmtTime, fmtInt, fmtMoney,
@@ -1262,9 +1263,10 @@ function VenuesApi() {
   const overview = usePoll<any>(() => getSoccerOverview(), 30000);
   const upcoming = usePoll<any>(() => getSoccerUpcoming(), 30000);
   const inplay = usePoll<any>(() => getSoccerInplay(), 30000);
+  const kalshi = useKalshiUser();
   const data = risk.data ?? {};
   if (risk.loading && !risk.data) return <Loading />;
-  const g = data.gates ?? {}, b = data.venue_balances ?? {}, ab = data.api_budget ?? {};
+  const g = data.gates ?? {}, b = withUserKalshiProd(data.venue_balances ?? {}, kalshi), ab = data.api_budget ?? {};
   const cal = data.calibration_gate ?? {};
   const mirror = data.demo_mirror ?? {};
   const balanceStatus = data.venue_balance_status ?? {};

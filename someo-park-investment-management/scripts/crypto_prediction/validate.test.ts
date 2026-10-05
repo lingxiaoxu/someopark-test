@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { SnapshotSchema } from "../../src/crypto-markets/types";
-import { fetchSnapshotFrom, snapshotUrl } from "../../src/crypto-markets/api";
+import { fetchSnapshotFrom, snapshotUrl } from "../../src/crypto-markets/snapshotFetch";
 
 const raw = JSON.parse(
   readFileSync(
@@ -13,7 +13,7 @@ const raw = JSON.parse(
     "utf8",
   ),
 );
-test("real published snapshot matches the strict two-strategy Demo contract", () => {
+test("real published snapshot matches the strict two-strategy contract", () => {
   const snapshot = SnapshotSchema.parse(raw);
   for (const strategy of Object.values(snapshot.strategies)) {
     assert.equal(
@@ -36,15 +36,17 @@ test("real published snapshot matches the strict two-strategy Demo contract", ()
         ) < 1e-6,
       );
     }
-    if (strategy.demo.net_pnl_usd !== null) {
+    // settlements belong to the book named by ledger_source (W7: prod since 9/28)
+    const ledger = strategy.ledger_source === "prod" ? strategy.prod! : strategy.demo;
+    if (ledger.net_pnl_usd !== null) {
       assert.ok(
         Math.abs(
           strategy.settlements.reduce((n, r) => n + r.net_usd, 0) -
-            strategy.demo.net_pnl_usd,
+            ledger.net_pnl_usd,
         ) < 1e-6,
       );
     }
-    for (const perf of [strategy.demo, strategy.paper]) {
+    for (const perf of [strategy.demo, strategy.paper, ...(strategy.prod ? [strategy.prod] : [])]) {
       if (perf.curve.length && perf.net_pnl_usd !== null)
         assert.ok(
           Math.abs(perf.curve.at(-1)!.cumulative_usd - perf.net_pnl_usd) < 1e-5,
@@ -57,7 +59,10 @@ test("real published snapshot matches the strict two-strategy Demo contract", ()
 test("rejects production execution, swapped identity, extra fields, and invalid amounts", () => {
   for (const mutate of [
     (x: any) => {
-      x.prod_execution_enabled = true;
+      x.prod_execution_enabled = "yes";
+    },
+    (x: any) => {
+      x.strategies.fave.ledger_source = "prod_user";
     },
     (x: any) => {
       x.execution_environment = "prod";

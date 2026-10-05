@@ -188,8 +188,30 @@ for R in "${ROOTS[@]}"; do
     DELLIST=$(mktemp); RAW=$(mktemp)
 
     # 快照备份侧（一次性采集，降低掉线窗口）
-    ls -1 "$BAK/$EXP" > "$BAK_LS" 2>/dev/null
+    # 守卫一(2026-09-30): ls 失败必须响亮地死,不许吞错。
+    # 事故: 9/12·9/19·9/26 三次 launchd weekly 因 TCC(可移动卷权限只授给了终端,
+    # 没授给 launchd 拉起的 bash)读不到外置盘,报错被 2>/dev/null 吞掉,空索引把
+    # 全部候选判成「备份中不存在」,最后打出「★ 清理完成:删除 0 个」——失败伪装成功。
+    TCC_ERR=$(mktemp)
+    if ! ls -1 "$BAK/$EXP" > "$BAK_LS" 2>"$TCC_ERR"; then
+      log "FATAL: 备份目录无法读取: $BAK/$EXP"
+      log "       错误: $(head -1 "$TCC_ERR")"
+      log "       典型原因: launchd 环境缺完全磁盘访问/可移动卷权限(TCC)。中止,一个不删。"
+      rm -f "$TCC_ERR"; exit 9
+    fi
+    rm -f "$TCC_ERR"
     index_tree "$BAK/$EXP" > "$BAK_IDX"
+    # 守卫二(2026-09-30): 备份索引为空 + 本机同实验有 run = 不可能状态。
+    # 备份只增不减,实验目录既然在盘上存在就不该空;唯一合理解释是读取失败
+    # (权限/掉线/IO)。此时必须中止,绝不把空索引当「备份缺失」继续跳过。
+    if [[ ! -s "$BAK_IDX" ]]; then
+      N_LOCAL_RUNS=$(find "$SRC/$EXP" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+      if [[ "$N_LOCAL_RUNS" -gt 0 ]]; then
+        log "FATAL: 外置盘索引为空($BAK/$EXP),但本机同实验有 $N_LOCAL_RUNS 个 run。"
+        log "       该状态只可能是读取失败,不是备份缺失。中止,一个不删。"
+        exit 9
+      fi
+    fi
     check_mount
     # 快照本机侧
     index_tree "$SRC/$EXP" > "$SRC_IDX"

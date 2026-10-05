@@ -90,6 +90,19 @@
     height: 100%;
   }
 
+  /* ── 全局等比缩放(2026-09-30)────────────────────────────────────────
+     整个前端以 70% 渲染,等价于浏览器 Cmd+减号 的 zoom-out:字体、间距、
+     边框、图片、图表全部等比,布局重新计算。这是 CSS 标准 zoom
+     (Chrome/Edge 全版本、Safari 全版本、Firefox 126+ 均支持)。
+     不要用 transform:scale 替代——那只缩视觉不缩布局,得手动补偿宽高。
+     不要按元素改字号——永远会漏。
+     JS 侧注意:鼠标坐标与元素矩形的坐标系相对本地 px 的比例因浏览器实现
+     而异 —— 拖拽类计算一律用比例法(指针相对位置 × offsetWidth,见 App.tsx),
+     不要对坐标系做固定系数假设。 */
+  html {
+    zoom: 0.7;
+  }
+
   /* Auto-hide scrollbar — visible only while scrolling */
   .scrollbar-autohide {
     scrollbar-width: thin;

@@ -1,0 +1,254 @@
+{
+ "mrpt": {
+  "as_of": "2026-09-30",
+  "balance_sheet": {
+   "cash": 1037497.15,
+   "net_securities": 0.0,
+   "nav": 1037497.15,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 9403.92,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 4539.63,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -1561.74,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 29231.51,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1028093.23,
+    "net_income": 9403.92,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 0.9147,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1032957.52,
+    "net_income": 4539.63,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 0.4395,
+    "max_drawdown_pct": -0.6
+   },
+   "1M": {
+    "beginning_nav": 1039058.89,
+    "net_income": -1561.74,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": -0.1503,
+    "max_drawdown_pct": -1.06
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 29231.51,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1037497.15,
+    "return_pct": 2.8992,
+    "max_drawdown_pct": -3.21
+   }
+  },
+  "positions": {},
+  "pnl": {
+   "cumulative_realized": 38495.63,
+   "cumulative_dividends": -998.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 37497.15
+  },
+  "activity_today": {
+   "n_trades": 2,
+   "realized_today": 4539.63,
+   "trades": [
+    {
+     "date": "2026-09-30",
+     "ticker": "AKAM",
+     "side": "SELL",
+     "shares": 989,
+     "price": 106.35,
+     "avg_cost_at_trade": 110.41,
+     "realized_pnl": -4015.34,
+     "gross": 105180.15,
+     "dedup_key": "2026-09-30-AKAM-SELL-AKAM/JBL|s1",
+     "lot": "AKAM/JBL|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 110.41,
+     "lot_realized": -4015.34,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-09-30",
+     "ticker": "JBL",
+     "side": "BUY",
+     "shares": 359,
+     "price": 286.86,
+     "avg_cost_at_trade": 310.69,
+     "realized_pnl": 8554.97,
+     "gross": -102982.74,
+     "dedup_key": "2026-09-30-JBL-BUY-AKAM/JBL|s2",
+     "lot": "AKAM/JBL|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 310.69,
+     "lot_realized": 8554.97,
+     "price_basis": "close_resolved"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-09-30",
+  "balance_sheet": {
+   "cash": 768927.79,
+   "net_securities": 242052.6,
+   "nav": 1010980.39,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 18198.8,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 4953.82,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 109273.06,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 9974.48,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 992781.59,
+    "net_income": 18198.8,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1010980.39,
+    "return_pct": 1.8331,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1006026.57,
+    "net_income": 4953.82,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1010980.39,
+    "return_pct": 0.4924,
+    "max_drawdown_pct": -1.92
+   },
+   "1M": {
+    "beginning_nav": 901707.33,
+    "net_income": 109273.06,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1010980.39,
+    "return_pct": 12.1185,
+    "max_drawdown_pct": -9.72
+   },
+   "ITD": {
+    "beginning_nav": 1001005.91,
+    "net_income": 9974.48,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1010980.39,
+    "return_pct": 0.9964,
+    "max_drawdown_pct": -26.85
+   }
+  },
+  "positions": {
+   "PCG": {
+    "shares": -5644,
+    "avg_cost": 12.32,
+    "entry_date": "2026-09-14"
+   },
+   "AMD": {
+    "shares": 290,
+    "avg_cost": 615.797241,
+    "entry_date": "2026-09-24"
+   },
+   "PLTR": {
+    "shares": 360,
+    "avg_cost": 192.59,
+    "entry_date": "2026-09-24"
+   },
+   "DOW": {
+    "shares": -2434,
+    "avg_cost": 28.56,
+    "entry_date": "2026-09-24"
+   },
+   "CHTR": {
+    "shares": -987,
+    "avg_cost": 110.67,
+    "entry_date": "2026-09-29"
+   },
+   "RVTY": {
+    "shares": 714,
+    "avg_cost": 152.77,
+    "entry_date": "2026-09-29"
+   },
+   "FSLR": {
+    "shares": -617,
+    "avg_cost": 176.93,
+    "entry_date": "2026-09-29"
+   },
+   "HPE": {
+    "shares": 7178,
+    "avg_cost": 61.49,
+    "entry_date": "2026-09-29"
+   },
+   "PNR": {
+    "shares": -1998,
+    "avg_cost": 53.47,
+    "entry_date": "2026-09-29"
+   },
+   "WYNN": {
+    "shares": -1396,
+    "avg_cost": 78.23,
+    "entry_date": "2026-09-29"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 419.14,
+   "cumulative_dividends": -6613.11,
+   "cumulative_fees": 0.0,
+   "unrealized": 17174.36,
+   "total": 10980.39
+  },
+  "activity_today": {
+   "n_trades": 1,
+   "realized_today": 0,
+   "trades": [
+    {
+     "date": "2026-09-30",
+     "ticker": "PCG",
+     "side": "DIV",
+     "shares": -5644,
+     "price": 0.05,
+     "gross": -282.2,
+     "dedup_key": "2026-09-30-PCG-DIV"
+    }
+   ]
+  }
+ }
+}

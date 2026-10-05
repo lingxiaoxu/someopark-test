@@ -24,6 +24,7 @@ from .observer import atomic_json, digest, file_hashes, sync_journal, timestamp
 from .fv60_features import ValuationTape
 from .archive_tail import SettlementTape, ArchiveReadError
 from . import fv60_policy as policy
+from ...crypto_common.checkpoint import Checkpoint
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'trading_signals/live_watch/w8_complete_set_state.json'
@@ -32,6 +33,12 @@ PARAMETERS = Path(__file__).with_name('parameters.json')
 PARENT_FILES = [ROOT/'crypto_strategies/live_watch'/n for n in
                 ('w8_complete_set.py', 'common.py', 'config.yaml')]
 PARENT_FILES += [ROOT/'crypto_strategies/event_binary/complete_set.py']
+# Heartbeat/progress fields that change every 1s cycle without any decision.
+# 2026-10-02: rewriting the full state for them was ~1.3 TB/day of SSD writes
+# and filled the disk twice. Rolling them back <=60s on a crash is harmless:
+# archive events re-read from older cursors hit already-final episodes.
+VOLATILE = ('last_tick', 'cycles', 'parent_heartbeat_age_seconds', 'archive_cursors', 'source_read_errors')
+CHECKPOINT_INTERVAL_SECONDS = 60
 
 
 def own_files():
@@ -92,6 +99,7 @@ class Observer:
         self.valuation = ValuationTape(ROOT/'price_data')
         self.settlements = SettlementTape(ROOT/'price_data/kalshi/w8_complete_set/prod')
         self.state_path = self.output/'state.json'
+        self.checkpoint = Checkpoint(atomic_json, volatile=VOLATILE, interval=CHECKPOINT_INTERVAL_SECONDS)
         self.journal_index = {}
         self.parent_signature = None
         self.parent = None
@@ -393,7 +401,10 @@ class Observer:
         # Publication protocol: the first fsync makes the exact decision durable;
         # a second writes its measured publication bound. A crash between them
         # excludes the unconfirmed record, never guesses its earlier timestamp.
-        atomic_json(self.state_path, self.state)
+        # Only a cycle that publishes something needs the first write.
+        publishing = bool(publish_rows or publish_quotes)
+        if publishing:
+            atomic_json(self.state_path, self.state)
         published = self.clock()
         for row in publish_rows:
             row['decision_published_at'] = published
@@ -405,8 +416,10 @@ class Observer:
             row['evaluation'] = policy.evaluate_episode(row)
         self.state['summary'] = policy.summarize(self.state['episodes'])
         self.state.pop('last_error', None)
-        atomic_json(self.state_path, self.state)
-        self.journals()
+        # Journals derive from material state only, so they can change only
+        # in a cycle whose state is written.
+        if self.checkpoint.save(self.state_path, self.state, force=publishing):
+            self.journals()
         return {'at': now, 'version': policy.POLICY_VERSION, 'new_decisions': len(publish_rows),
                 'new_quote_decisions': len(publish_quotes), 'new_settlements': new_settlements,
                 'new_admissions_allowed': self.state['new_admissions_allowed'],

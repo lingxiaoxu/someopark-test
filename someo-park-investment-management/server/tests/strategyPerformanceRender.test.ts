@@ -111,12 +111,13 @@ function assertFullStats(cards: Record<string, string>, selected: string[]) {
   }
 }
 
-test('master benchmark scorecards expose only return and Sharpe while six strategies and master retain all statistics', () => {
+test('master benchmark scorecards expose return, Sharpe, and maximum drawdown while six strategies and master retain all statistics', () => {
   const { html, cards } = render('master');
   for (const key of benchmarks) {
-    assert.deepEqual(cardMetrics(cards[key]), ['RETURN', 'SHARPE'], `${key} is a two-metric benchmark card`);
+    assert.deepEqual(cardMetrics(cards[key]), ['RETURN', 'SHARPE', 'MAX DD'], `${key} is a three-metric benchmark card`);
     assert.ok(!cards[key].includes('$'), `${key} no longer displays notional dollar PnL`);
     assert.ok(cards[key].includes('>+5.00%</div>'), `${key} return still uses the same benchmark data`);
+    assert.ok(cards[key].includes('>-4.55%</div>'), `${key} maximum drawdown still uses the same benchmark data`);
   }
   assertFullStats(cards, [...realStrategies, 'master']);
   assert.ok(html.includes('3 Trading Days · Master AI Portfolio · MRPT + MTFS + SSRS + AISS + AEUS + PC BDC'));

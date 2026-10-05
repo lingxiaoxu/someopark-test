@@ -6,6 +6,7 @@ import { execSync } from 'child_process'
 import path from 'path'
 import { getBackendPath } from '../config.js'
 import type { AgentTool } from './index.js'
+import { resolveAllowed, RG_DENY_GLOBS } from './pathGuard.js'
 
 const ALLOWED_ROOT = path.resolve(getBackendPath('.'))
 
@@ -72,13 +73,11 @@ export const searchContentTool: AgentTool = {
     }
 
     // Search path
-    const absolutePath = searchPath
-      ? path.resolve(getBackendPath(searchPath))
-      : ALLOWED_ROOT
+    const absolutePath = searchPath ? resolveAllowed(searchPath) : ALLOWED_ROOT
 
-    if (!absolutePath.startsWith(ALLOWED_ROOT)) {
-      throw new Error('Search path must be within project directory')
-    }
+    // Secret deny-globs go LAST: in ripgrep the last matching glob wins, so a
+    // caller-supplied --glob can never re-include a credential file.
+    for (const g of RG_DENY_GLOBS) args.push('--glob', g)
 
     args.push(absolutePath)
 

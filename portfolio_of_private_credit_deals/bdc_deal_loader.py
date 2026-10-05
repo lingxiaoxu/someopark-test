@@ -41,7 +41,10 @@ LEGACY_COLS = ["company", "sector", "instrument", "currency", "deal_size", "coup
 SOI_COLS = ["bdc", "sleeve_w", "bdc_fv_share", "deal_uid", "as_of", "adsh",
             "fair_value", "cost", "principal", "all_in_rate", "spread", "rate_floor",
             "pik_rate", "pct_nav", "affiliation", "is_equity", "unfunded", "non_accrual",
-            "industry", "industry_source", "maturity_source"]
+            "industry", "industry_source", "maturity_source",
+            # 2026-09-23:透传 identifier/cik(canon 匹配、审计回溯)与 issuer_clean
+            # (展示名;旧快照无此列时由 to_deal_schema 补 NaN,下游 fillna 兜底)。
+            "identifier", "cik", "issuer_clean"]
 
 
 # ── snapshot loading ────────────────────────────────────────────────────────

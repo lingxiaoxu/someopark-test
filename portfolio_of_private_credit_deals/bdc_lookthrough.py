@@ -80,9 +80,15 @@ def compute_lookthrough(csv_path: str = BDC_DEAL_CSV, as_of: str | None = None,
     mark = pd.to_numeric(deals["fair_value"], errors="coerce") / \
         pd.to_numeric(deals["cost"], errors="coerce")
 
-    # 4) aggregations
+    # 4) aggregations —— 分组用展示名(2026-09-23):issuer_clean 由 ingest 生成
+    # (统一 " | "→", "、剥 TSLX "Debt Investments" 前缀),同一发行人不再因通道
+    # 拼法分裂成多行;旧快照无该列 → 回落 company。仅展示层,uid/键一概不碰。
+    if "issuer_clean" in deals.columns:
+        deals["company_display"] = deals["issuer_clean"].fillna(deals["company"])
+    else:
+        deals["company_display"] = deals["company"]
     by_issuer = (deals.assign(_w=w, _fv=fv)
-                 .groupby("company")
+                 .groupby("company_display")
                  .agg(lt_weight=("_w", "sum"), fair_value=("_fv", "sum"),
                       bdcs=("bdc", lambda s: sorted(set(s))),
                       sectors=("sector", lambda s: sorted({x for x in s if pd.notna(x)})))
@@ -126,7 +132,7 @@ def compute_lookthrough(csv_path: str = BDC_DEAL_CSV, as_of: str | None = None,
 
     out = {
         "as_of": as_of, "deal_count": int(len(deals)),
-        "issuer_count": int(deals["company"].nunique()),
+        "issuer_count": int(deals["company_display"].nunique()),
         "sleeve_alloc": BDC_ALLOC,
         "weighted": {
             "spread": _wavg(deals["spread"], w),
@@ -143,6 +149,9 @@ def compute_lookthrough(csv_path: str = BDC_DEAL_CSV, as_of: str | None = None,
             "note": "+50bps SOFR ≈ +{:.1f}bps book all-in (floating reprices, low price duration; "
                     "fixed loans carry rate duration)".format(sleeve_floating /
                     (float(w.sum()) or 1) * 50),
+            # 2026-09-23 诚实声明:分类依据=spread 是否解析成功;解析失败的浮息贷
+            # 落进 fixed_share —— fixed 是"未识别为浮息"的上界,不是真固息占比。
+            "classified_by": "spread_parsed",
         },
         "maturity_ladder": _maturity_ladder(deals["maturity"], w, as_of),  # G4
         "bdc_non_accrual": bdc_non_accrual or {},                 # G5 per-BDC
@@ -163,6 +172,14 @@ def compute_lookthrough(csv_path: str = BDC_DEAL_CSV, as_of: str | None = None,
             "mark_below_90_weight": float(w[(mark < 0.90)].sum()),
             "pik_loans": int((pik > 0).sum()),
             "non_accrual_loans": int(na.sum()),
+            # 2026-09-23 澄清字段(旧键保留,前端兼容):pik_loans 含股权行(优先股
+            # PIK 股息),债务口径单列;mark_below_90_weight 分母是整册 lt 权重
+            # (含未标记行),份额口径与未标记权重单列,免得 2.17% 被误读成小事。
+            "pik_debt_loans": int(((pik > 0) & ~(deals["is_equity"] == True)).sum()),  # noqa: E712
+            "mark_below_90_share_of_marked": (
+                round(float(w[(mark < 0.90)].sum() / w[mark.notna()].sum()), 5)
+                if float(w[mark.notna()].sum()) else None),
+            "unmarked_weight": round(float(w[mark.isna()].sum()), 5),
         },
     }
     if run_cashflows and "cf_irr" in deals:

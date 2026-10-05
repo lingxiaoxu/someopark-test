@@ -65,3 +65,18 @@
 {"date": "2026-09-01", "ticker": "MCHP", "side": "BUY", "shares": 91, "price": 71.41, "gross": -6498.31, "dedup_key": "2026-09-01-MCHP-BUY"}
 {"date": "2026-09-01", "ticker": "TXN", "side": "BUY", "shares": 410, "price": 253.34, "gross": -103869.4, "dedup_key": "2026-09-01-TXN-BUY"}
 {"date": "2026-09-01", "ticker": "", "side": "FEE", "gross": -318.46, "dedup_key": "2026-09-01-FEE"}
+{"date": "2026-09-23", "ticker": "LRCX", "side": "DIV", "shares": 181, "price": 0.33, "gross": 59.73, "dedup_key": "2026-09-23-LRCX-DIV"}
+{"date": "2026-10-01", "ticker": "ADI", "side": "SELL", "shares": 155, "price": 404.6, "gross": 62713.0, "avg_cost_at_trade": 358.533935, "realized_pnl": 7140.24, "dedup_key": "2026-10-01-ADI-SELL"}
+{"date": "2026-10-01", "ticker": "AMAT", "side": "SELL", "shares": 17, "price": 528.77, "gross": 8989.09, "avg_cost_at_trade": 441.85, "realized_pnl": 1477.64, "dedup_key": "2026-10-01-AMAT-SELL"}
+{"date": "2026-10-01", "ticker": "AMD", "side": "SELL", "shares": 177, "price": 615.73, "gross": 108984.21, "avg_cost_at_trade": 481.117303, "realized_pnl": 23826.45, "dedup_key": "2026-10-01-AMD-SELL"}
+{"date": "2026-10-01", "ticker": "INTC", "side": "SELL", "shares": 174, "price": 120.0, "gross": 20880.0, "avg_cost_at_trade": 94.884726, "realized_pnl": 4370.06, "dedup_key": "2026-10-01-INTC-SELL"}
+{"date": "2026-10-01", "ticker": "KLAC", "side": "SELL", "shares": 676, "price": 200.33, "gross": 135423.08, "avg_cost_at_trade": 170.89, "realized_pnl": 19901.44, "dedup_key": "2026-10-01-KLAC-SELL"}
+{"date": "2026-10-01", "ticker": "LRCX", "side": "SELL", "shares": 75, "price": 340.1, "gross": 25507.5, "avg_cost_at_trade": 289.87, "realized_pnl": 3767.25, "dedup_key": "2026-10-01-LRCX-SELL"}
+{"date": "2026-10-01", "ticker": "MCHP", "side": "SELL", "shares": 257, "price": 78.5, "gross": 20174.5, "avg_cost_at_trade": 72.39179, "realized_pnl": 1569.81, "dedup_key": "2026-10-01-MCHP-SELL"}
+{"date": "2026-10-01", "ticker": "TXN", "side": "SELL", "shares": 1161, "price": 279.79, "gross": 324836.19, "avg_cost_at_trade": 256.768338, "realized_pnl": 26728.15, "dedup_key": "2026-10-01-TXN-SELL"}
+{"date": "2026-10-01", "ticker": "ARM", "side": "BUY", "shares": 58, "price": 292.34, "gross": -16955.72, "dedup_key": "2026-10-01-ARM-BUY"}
+{"date": "2026-10-01", "ticker": "AVGO", "side": "BUY", "shares": 710, "price": 343.64, "gross": -243984.4, "dedup_key": "2026-10-01-AVGO-BUY"}
+{"date": "2026-10-01", "ticker": "CRDO", "side": "BUY", "shares": 72, "price": 210.17, "gross": -15132.24, "dedup_key": "2026-10-01-CRDO-BUY"}
+{"date": "2026-10-01", "ticker": "MRVL", "side": "BUY", "shares": 170, "price": 268.02, "gross": -45563.4, "dedup_key": "2026-10-01-MRVL-BUY"}
+{"date": "2026-10-01", "ticker": "NVDA", "side": "BUY", "shares": 1547, "price": 230.86, "gross": -357140.42, "dedup_key": "2026-10-01-NVDA-BUY"}
+{"date": "2026-10-01", "ticker": "", "side": "FEE", "gross": -532.01, "dedup_key": "2026-10-01-FEE"}
